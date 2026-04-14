@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package inference;
+
+service InferenceService {
+    rpc Infer(InferRequest) returns (InferResponse);
+}
+
+message InferRequest {
+    bytes tensor_data = 1;
+    repeated int64 shape = 2;
+}
+
+message InferResponse {
+    bytes tensor_data = 1;
+    repeated int64 shape = 2;
+    // Diagnostic timing from Service B (milliseconds)
+    double deserialize_ms = 3;
+    double compute_ms = 4;
+    double serialize_ms = 5;
+}
