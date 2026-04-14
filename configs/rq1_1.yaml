@@ -1,0 +1,42 @@
+experiment:
+  name: "RQ1.1"
+  description: "Coarse-boundary screening for ResNet-18 two-part decomposition"
+
+model:
+  name: "resnet18"
+  pretrained: true
+  device: "cpu"
+  input_shape: [1, 3, 224, 224]
+  precision: "fp32"
+
+conditions:
+  - name: "monolithic"
+    type: "monolithic"
+  - name: "split_after_layer1"
+    type: "split"
+    split_after: "layer1"
+  - name: "split_after_layer2"
+    type: "split"
+    split_after: "layer2"
+  - name: "split_after_layer3"
+    type: "split"
+    split_after: "layer3"
+  - name: "split_after_layer4"
+    type: "split"
+    split_after: "layer4"
+
+benchmark:
+  rounds: 5
+  warmup_iterations: 50
+  measured_iterations: 200
+  cooldown_seconds: 5
+  seed: 42
+
+grpc:
+  host: "127.0.0.1"
+  port: 50051
+  max_message_bytes: 16777216
+
+carry_forward:
+  near_best_window_pct: 10.0
+  degeneracy_threshold_pct: 5.0
