@@ -37,6 +37,7 @@ python run_experiment.py --config configs/rq1_1.yaml
 ```
 
 This executes the full benchmark:
+
 - 5 conditions (1 monolithic + 4 split points)
 - 5 rounds × 200 measured iterations per condition per round
 - 50 warmup iterations before each condition (discarded)
@@ -55,6 +56,7 @@ python run_analysis.py results/rq1_1_<timestamp>
 ```
 
 This produces:
+
 - `condition_summaries.csv` — per-condition statistics
 - `round_summaries.csv` — per-(round, condition) statistics
 - `cross_condition.csv` — overhead relative to monolithic
@@ -100,13 +102,13 @@ opus/
 
 ## Conditions
 
-| Condition | Description | Intermediate Tensor | Activation Size |
-|---|---|---|---|
-| C0: Monolithic | Full ResNet-18, direct call | — | — |
-| C1: Split after layer1 | A: stem+layer1, B: layer2–fc | 64×56×56 | ~784 KB |
-| C2: Split after layer2 | A: stem+layer1–2, B: layer3–fc | 128×28×28 | ~392 KB |
-| C3: Split after layer3 | A: stem+layer1–3, B: layer4+fc | 256×14×14 | ~196 KB |
-| C4: Split after layer4 | A: stem+layer1–4, B: avgpool+fc | 512×7×7 | ~98 KB |
+| Condition              | Description                     | Intermediate Tensor | Activation Size |
+| ---------------------- | ------------------------------- | ------------------- | --------------- |
+| C0: Monolithic         | Full ResNet-18, direct call     | —                   | —               |
+| C1: Split after layer1 | A: stem+layer1, B: layer2–fc    | 64×56×56            | ~784 KB         |
+| C2: Split after layer2 | A: stem+layer1–2, B: layer3–fc  | 128×28×28           | ~392 KB         |
+| C3: Split after layer3 | A: stem+layer1–3, B: layer4+fc  | 256×14×14           | ~196 KB         |
+| C4: Split after layer4 | A: stem+layer1–4, B: avgpool+fc | 512×7×7             | ~98 KB          |
 
 ## Measurement Contract
 
