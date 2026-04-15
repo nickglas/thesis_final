@@ -6,7 +6,8 @@ Implements the nested repetition structure from Section 5:
       For each condition c in pi_r:
           Start/restart Service B (if applicable)
           Wait for service readiness
-          Run W warmup iterations (discarded)
+          Run gRPC parity validation (split conditions only)
+          Run warmup with calibration check
           Run M measured iterations (recorded)
           Shut down Service B (if applicable)
           Cooldown pause
@@ -26,6 +27,7 @@ from datetime import datetime
 from src.benchmark.config import ExperimentConfig
 from src.benchmark.cpu_stabilisation import apply_cpu_stabilisation
 from src.benchmark.logging import ArtifactLogger
+from src.benchmark.warmup import run_warmup_calibrated
 from src.client.monolithic import MonolithicClient
 from src.client.split_client import SplitClient
 
@@ -51,6 +53,11 @@ class BenchmarkRunner:
 
         self.all_rows = []
 
+        # Set by run_experiment.py after local parity validation
+        self.parity_local_results = {}
+        self._parity_grpc_results = {}
+        self._warmup_calibrations = {}
+
     # ------------------------------------------------------------------
     # Public entry point
     # ------------------------------------------------------------------
@@ -63,8 +70,7 @@ class BenchmarkRunner:
 
         # Apply CPU-behaviour stabilisation before any measurement
         self.stabilisation_meta = apply_cpu_stabilisation(
-            torch_threads=4,
-            pin_to_physical_cores=True,
+            self.config.cpu_stabilisation,
         )
 
         self.artifact_logger.save_config_copy(self.config_path)
@@ -96,6 +102,17 @@ class BenchmarkRunner:
 
         # Persist raw per-iteration data
         self.artifact_logger.save_raw_iterations(self.all_rows)
+
+        # Persist parity validation artifact
+        parity_artifact = {
+            "local_validation": self.parity_local_results,
+            "grpc_validation": self._parity_grpc_results,
+        }
+        self.artifact_logger.save_json("parity_validation.json", parity_artifact)
+
+        # Persist warmup calibration artifact
+        self.artifact_logger.save_json("warmup_calibration.json", self._warmup_calibrations)
+
         logger.info(f"Benchmark complete. {len(self.all_rows)} iterations recorded.")
         logger.info(f"Results directory: {self.output_dir}")
 
@@ -105,15 +122,27 @@ class BenchmarkRunner:
 
     def _run_monolithic(self, round_num: int, cond):
         client = MonolithicClient()
+        cfg = self.config
 
-        # Warmup
-        logger.info(f"    Warmup: {self.config.warmup_iterations} iterations")
-        for _ in range(self.config.warmup_iterations):
-            client.warmup_infer(self.input_tensor)
+        # Warmup with calibration
+        cal_key = f"{cond.name}_round{round_num}"
+        cal = run_warmup_calibrated(
+            infer_fn=client.warmup_infer,
+            input_tensor=self.input_tensor,
+            n=cfg.warmup_iterations,
+            window=cfg.warmup_calibration_window,
+            cv_threshold=cfg.warmup_calibration_cv_threshold,
+        )
+        self._warmup_calibrations[cal_key] = cal
+        logger.info(
+            f"    Warmup: {cal['total_iterations']} iterations, "
+            f"stabilised={cal['stabilised']}, "
+            f"stabilised_at={cal['stabilised_at_iteration']}"
+        )
 
         # Measured iterations
-        logger.info(f"    Measuring: {self.config.measured_iterations} iterations")
-        for i in range(self.config.measured_iterations):
+        logger.info(f"    Measuring: {cfg.measured_iterations} iterations")
+        for i in range(cfg.measured_iterations):
             metrics = client.infer(self.input_tensor)
             self.all_rows.append({
                 "round": round_num,
@@ -142,10 +171,25 @@ class BenchmarkRunner:
                 cfg.grpc_max_message_bytes,
             )
             try:
-                # Warmup
-                logger.info(f"    Warmup: {cfg.warmup_iterations} iterations")
-                for _ in range(cfg.warmup_iterations):
-                    client.warmup_infer(self.input_tensor)
+                # gRPC parity validation (first round only to avoid redundancy)
+                if round_num == 1:
+                    self._validate_grpc_parity(client, cond)
+
+                # Warmup with calibration
+                cal_key = f"{cond.name}_round{round_num}"
+                cal = run_warmup_calibrated(
+                    infer_fn=client.warmup_infer,
+                    input_tensor=self.input_tensor,
+                    n=cfg.warmup_iterations,
+                    window=cfg.warmup_calibration_window,
+                    cv_threshold=cfg.warmup_calibration_cv_threshold,
+                )
+                self._warmup_calibrations[cal_key] = cal
+                logger.info(
+                    f"    Warmup: {cal['total_iterations']} iterations, "
+                    f"stabilised={cal['stabilised']}, "
+                    f"stabilised_at={cal['stabilised_at_iteration']}"
+                )
 
                 # Measured iterations
                 logger.info(f"    Measuring: {cfg.measured_iterations} iterations")
@@ -161,6 +205,55 @@ class BenchmarkRunner:
                 client.close()
         finally:
             self._stop_service_b(proc)
+
+    def _validate_grpc_parity(self, client, cond):
+        """Run gRPC round-trip parity check. Fail-closed on mismatch."""
+        from src.models.validation import _infer_and_get_tensor
+        from src.models.resnet_splits import get_full_model
+        import numpy as np
+
+        cfg = self.config
+        logger.info(f"    gRPC parity validation: atol={cfg.parity_atol}, "
+                     f"inputs={cfg.parity_num_inputs}")
+
+        rng = np.random.RandomState(cfg.seed)
+        model = get_full_model()
+
+        all_match = True
+        max_diff = 0.0
+
+        for _ in range(cfg.parity_num_inputs):
+            inp = torch.from_numpy(
+                rng.randn(1, 3, 224, 224).astype(np.float32)
+            )
+            with torch.no_grad():
+                mono_out = model(inp)
+            split_out = _infer_and_get_tensor(client, inp)
+
+            diff = (mono_out - split_out).abs().max().item()
+            max_diff = max(max_diff, diff)
+            if diff > cfg.parity_atol:
+                all_match = False
+
+        result = {
+            "match": all_match,
+            "max_abs_diff": max_diff,
+            "atol": cfg.parity_atol,
+            "num_inputs": cfg.parity_num_inputs,
+            "method": "grpc_round_trip",
+        }
+        self._parity_grpc_results[cond.split_after] = result
+
+        status = "PASS" if all_match else "FAIL"
+        logger.info(f"    gRPC parity: {status} (max_abs_diff={max_diff:.2e})")
+
+        if not all_match:
+            raise RuntimeError(
+                f"gRPC parity validation FAILED for {cond.name} "
+                f"(split_after={cond.split_after}). "
+                f"max_abs_diff={max_diff:.2e} > atol={cfg.parity_atol}. "
+                f"Benchmark aborted."
+            )
 
     # ------------------------------------------------------------------
     # Service B process management
@@ -182,6 +275,10 @@ class BenchmarkRunner:
         for var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
             if var in os.environ:
                 env[var] = os.environ[var]
+        # Propagate PyTorch thread counts for Service B to apply
+        threading = cfg.cpu_stabilisation.threading
+        env["PYTORCH_INTRA_OP_THREADS"] = str(threading.pytorch_intra_op)
+        env["PYTORCH_INTER_OP_THREADS"] = str(threading.pytorch_inter_op)
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,

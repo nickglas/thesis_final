@@ -1,5 +1,5 @@
 experiment:
-  name: "RQ1.1"
+  name: "RQ1.1 threaded"
   description: "Coarse-boundary screening for ResNet-18 two-part decomposition"
 
 model:

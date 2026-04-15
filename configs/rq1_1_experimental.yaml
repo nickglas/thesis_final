@@ -1,5 +1,5 @@
 experiment:
-  name: "RQ1.1-smoke"
+  name: "RQ1.1 experimental"
   description: "Smoke test with minimal iterations"
 
 model:
