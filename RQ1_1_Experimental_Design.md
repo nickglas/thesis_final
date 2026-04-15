@@ -164,6 +164,33 @@ gRPC with Protocol Buffers is an appropriate default because it is:
 - **Batch size 1.**
 - **Fixed deterministic input tensor** for the main benchmark. This reduces variance and keeps the experiment focused on boundary effects rather than input heterogeneity.
 
+### CPU-Behaviour Stabilisation Controls
+
+To reduce run-to-run variance and improve measurement reproducibility, the benchmark applies environment-aware CPU-behaviour controls before any measurement begins. These follow standard practice in performance benchmarking literature (Beyer, Löwe & Wendler, "Reliable benchmarking: requirements and solutions", STTT 2019; LLVM Benchmarking Tips; Cui & Pericas, "Characterizing and Mitigating Performance Variability in Parallel Applications on Modern HPC multicore Systems", ICS 2025).
+
+**Applied controls:**
+
+| Control | Setting | Rationale |
+|---|---|---|
+| PyTorch intra-op threads | Fixed at 4 | Prevents non-deterministic thread pool sizing across runs. Matches the number of pinned physical cores. |
+| PyTorch inter-op threads | Fixed at 1 | Single-input sequential inference; no benefit from graph-level parallelism. Eliminates inter-op scheduling variance. |
+| OMP\_NUM\_THREADS / MKL\_NUM\_THREADS | Set to 4 | Ensures underlying BLAS and OpenMP libraries respect the same thread count. Propagated to Service B via environment. |
+| CPU affinity (core pinning) | Pinned to 4 physical cores (SMT siblings excluded) | Avoids OS migration across cores, eliminates L1/L2 cache thrashing from migration, and avoids SMT contention. Applied via `os.sched_setaffinity()`. |
+| Service B thread settings | Mirrors parent process | Thread-count environment variables are propagated to the Service B subprocess. Service B reads `OMP_NUM_THREADS` and calls `torch.set_num_threads()` accordingly. Ensures fairness: both monolithic and split conditions use identical thread configurations. |
+
+**Reported but unavailable controls (WSL2/Hyper-V):**
+
+| Control | Status | Note |
+|---|---|---|
+| CPU frequency governor | Unavailable | `cpufreq` sysfs is not exposed inside WSL2. CPU frequency is managed by the Windows host power plan. Users should set the Windows power plan to "High Performance" before running experiments. |
+| Turbo boost disable | Unavailable | Neither `intel_pstate` nor `cpufreq/boost` sysfs entries are exposed inside WSL2. Boost behaviour is controlled by Windows. Note: on the AMD Ryzen 7 7800X3D, the 3D V-Cache design exhibits less frequency-induced variance than typical desktop CPUs, but this should be acknowledged as a limitation. |
+| Process priority (nice) | Not elevated | Requires root privileges. The benchmark runs at default priority (nice=0). This is acceptable for a single-workload machine with no competing processes. |
+| ASLR | Detected (full) | Address space layout randomisation is enabled (randomize\_va\_space=2). Disabling requires root. Impact on this benchmark is negligible since we measure wall-clock inference latency, not instruction counts. |
+
+**Fairness guarantee:** All controls are applied symmetrically to all conditions. Thread counts, affinity, and environment variables are identical for monolithic and split configurations. The stabilisation layer runs once at benchmark startup, before any condition is executed.
+
+**Metadata recording:** All applied and skipped controls are recorded in `environment.json` under the `cpu_stabilisation` key, ensuring full auditability and reproducibility.
+
 ---
 
 ## 3. Rejected Alternatives
@@ -316,6 +343,9 @@ This is a precondition, not a performance result.
 | Service deployment | Separate OS processes | Real process boundary |
 | OS power profile | High performance if possible | Reduces frequency-scaling variance |
 | CPU frequency | Pinned if possible | Reduces thermal and scaling artifacts |
+| PyTorch threads (intra-op) | Fixed at 4 | Prevents non-deterministic thread pool sizing |
+| PyTorch threads (inter-op) | Fixed at 1 | No graph parallelism needed for single-input inference |
+| CPU affinity | 4 physical cores, SMT excluded | Avoids OS migration and L1/L2 cache thrashing |
 
 ### Warmup Policy
 

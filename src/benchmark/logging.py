@@ -20,7 +20,7 @@ class ArtifactLogger:
     def save_config_copy(self, config_path: str):
         shutil.copy2(config_path, os.path.join(self.output_dir, "config.yaml"))
 
-    def save_environment(self):
+    def save_environment(self, stabilisation_meta: dict = None):
         import torch
         git_hash = "unknown"
         try:
@@ -39,6 +39,8 @@ class ArtifactLogger:
             "cpu_count": os.cpu_count(),
             "git_commit": git_hash,
         }
+        if stabilisation_meta:
+            env["cpu_stabilisation"] = stabilisation_meta
         with open(os.path.join(self.output_dir, "environment.json"), "w") as f:
             json.dump(env, f, indent=2)
 

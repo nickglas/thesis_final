@@ -24,6 +24,7 @@ import grpc
 from datetime import datetime
 
 from src.benchmark.config import ExperimentConfig
+from src.benchmark.cpu_stabilisation import apply_cpu_stabilisation
 from src.benchmark.logging import ArtifactLogger
 from src.client.monolithic import MonolithicClient
 from src.client.split_client import SplitClient
@@ -60,8 +61,14 @@ class BenchmarkRunner:
         logger.info("RQ1.1 Benchmark — Starting")
         logger.info("=" * 60)
 
+        # Apply CPU-behaviour stabilisation before any measurement
+        self.stabilisation_meta = apply_cpu_stabilisation(
+            torch_threads=4,
+            pin_to_physical_cores=True,
+        )
+
         self.artifact_logger.save_config_copy(self.config_path)
-        self.artifact_logger.save_environment()
+        self.artifact_logger.save_environment(self.stabilisation_meta)
 
         cfg = self.config
 
@@ -171,6 +178,10 @@ class BenchmarkRunner:
         logger.info(f"    Starting Service B (split_after={split_after})")
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
+        # Propagate thread-count variables so Service B uses identical settings
+        for var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+            if var in os.environ:
+                env[var] = os.environ[var]
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,

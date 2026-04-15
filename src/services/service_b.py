@@ -4,6 +4,7 @@ Designed to run as a separate OS process (real microservice boundary).
 Prints 'READY' to stdout once the gRPC server is accepting connections.
 """
 
+import os
 import time
 import numpy as np
 import torch
@@ -12,6 +13,21 @@ from concurrent import futures
 
 from proto import inference_pb2, inference_pb2_grpc
 from src.models.resnet_splits import get_split_models
+
+
+def _apply_service_b_thread_settings():
+    """Mirror the thread settings applied by the parent benchmark process.
+
+    Reads OMP_NUM_THREADS from the environment (propagated by the runner)
+    and sets PyTorch threads accordingly.  This ensures Service B uses
+    the same fixed thread count as Service A / the monolithic client,
+    preserving fairness between conditions.
+    """
+    n = os.environ.get("OMP_NUM_THREADS")
+    if n is not None:
+        n = int(n)
+        torch.set_num_threads(n)
+        torch.set_num_interop_threads(1)
 
 
 class InferenceServicer(inference_pb2_grpc.InferenceServiceServicer):
@@ -49,6 +65,7 @@ class InferenceServicer(inference_pb2_grpc.InferenceServiceServicer):
 def serve(split_after: str, host: str = "127.0.0.1", port: int = 50051,
           max_message_bytes: int = 16 * 1024 * 1024):
     """Start the gRPC server and block until termination."""
+    _apply_service_b_thread_settings()
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=1),
         options=[
