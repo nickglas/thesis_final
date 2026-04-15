@@ -1,3 +1,12 @@
+# -----------------------------------------------------------------------------
+# experimental / smoke benchmark mode
+#
+# Intended for: Sanity checks, debugging, pipeline validation.
+#
+# Properties: Minimal iterations/rounds, early exits.
+# Does not guarantee CPU stability; useful only for functional tests.
+# Not suitable for thesis-facing numbers.
+# -----------------------------------------------------------------------------
 experiment:
   name: "RQ1.1 experimental"
   description: "Smoke test with minimal iterations"

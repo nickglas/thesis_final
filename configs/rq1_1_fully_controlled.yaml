@@ -1,6 +1,16 @@
+# -----------------------------------------------------------------------------
+# fully controlled benchmark mode
+#
+# Intended for: Official thesis evaluation.
+#
+# Properties: Single-threaded PyTorch execution pinned strictly to
+# a single physical core with SMT avoided. High process priority.
+# Governor explicitly requested as CPU performance mode, and turbo
+# disabling explicitly requested to minimize frequency variance.
+# -----------------------------------------------------------------------------
 experiment:
-  name: "RQ1.1"
-  description: "Coarse-boundary screening for ResNet-18 two-part decomposition"
+  name: "RQ1.1 fully controlled"
+  description: "Strictly controlled single-core benchmark for thesis defensibility"
 
 model:
   name: "resnet18"
@@ -51,21 +61,21 @@ warmup_calibration:
 
 cpu_stabilisation:
   threading:
-    pytorch_intra_op: 4
+    pytorch_intra_op: 1
     pytorch_inter_op: 1
-    omp_num_threads: 4
-    mkl_num_threads: 4
-    openblas_num_threads: 4
+    omp_num_threads: 1
+    mkl_num_threads: 1
+    openblas_num_threads: 1
   affinity:
     enabled: true
-    num_cores: 4
+    num_cores: 1
     avoid_smt: true
-    explicit_cpus: null # override auto-detection, e.g. [0, 2, 4, 6]
+    explicit_cpus: null
   priority:
     enabled: true
     nice_value: -5
   governor:
-    set_governor: false # requires root on native Linux
+    set_governor: true
     requested_mode: "performance"
   turbo:
-    disable_turbo: false # requires root on native Linux
+    disable_turbo: true

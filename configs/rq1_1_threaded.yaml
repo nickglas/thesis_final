@@ -1,6 +1,15 @@
+# -----------------------------------------------------------------------------
+# threaded pinned benchmark mode
+#
+# Intended for: Limited multi-core comparison runs and historical baselines.
+#
+# Properties: 4 physical cores, SMT disabled, 4 threads, priority nice=-5.
+# Good for representing a more constrained CPU than full node usage but
+# more cores than strict single-core.
+# -----------------------------------------------------------------------------
 experiment:
   name: "RQ1.1 threaded"
-  description: "Coarse-boundary screening for ResNet-18 two-part decomposition"
+  description: "Multi-core boundary screening (pinned to 4 cores)"
 
 model:
   name: "resnet18"
