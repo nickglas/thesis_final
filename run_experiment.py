@@ -17,8 +17,6 @@ def main():
                         help="Path to experiment config YAML")
     parser.add_argument("--output-dir", default=None,
                         help="Override output directory")
-    parser.add_argument("--skip-validation", action="store_true",
-                        help="Skip functional-equivalence check")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -27,21 +25,43 @@ def main():
     )
     logger = logging.getLogger("rq1_1")
 
-    # --- Phase 1: Functional equivalence (precondition) ---
-    if not args.skip_validation:
-        logger.info("Validating functional equivalence of split configurations...")
-        results = validate_equivalence()
-        for split, info in results.items():
-            status = "PASS" if info["match"] else "FAIL"
-            logger.info(f"  {split}: {status}  (max_abs_diff={info['max_abs_diff']:.2e})")
-            if not info["match"]:
-                logger.error(f"Equivalence check FAILED for {split}. Aborting.")
-                sys.exit(1)
-        logger.info("All equivalence checks passed.")
+    config = load_config(args.config)
+
+    # --- Phase 1: Functional equivalence (mandatory precondition) ---
+    # Extract split points from configured conditions
+    split_points = [
+        c.split_after for c in config.conditions
+        if c.type == "split" and c.split_after is not None
+    ]
+
+    logger.info("Validating functional equivalence (local path)...")
+    logger.info(f"  Split points: {split_points}")
+    logger.info(f"  Tolerance: {config.parity_atol}")
+    logger.info(f"  Validation inputs: {config.parity_num_inputs}")
+
+    parity_results = validate_equivalence(
+        split_points=split_points,
+        atol=config.parity_atol,
+        num_inputs=config.parity_num_inputs,
+    )
+
+    parity_pass = True
+    for split, info in parity_results.items():
+        status = "PASS" if info["match"] else "FAIL"
+        logger.info(f"  {split}: {status}  (max_abs_diff={info['max_abs_diff']:.2e})")
+        if not info["match"]:
+            parity_pass = False
+
+    if not parity_pass:
+        logger.error("Parity validation FAILED. Benchmark will not proceed.")
+        sys.exit(1)
+
+    logger.info("All local parity checks passed.")
 
     # --- Phase 2: Benchmark ---
-    config = load_config(args.config)
     runner = BenchmarkRunner(config, args.config, args.output_dir)
+    # Pass parity results so the runner can save them and run gRPC validation
+    runner.parity_local_results = parity_results
     runner.run()
 
     logger.info("Experiment finished. Run run_analysis.py on the results directory.")

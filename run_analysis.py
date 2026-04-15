@@ -15,6 +15,7 @@ from src.analysis.statistics import (
     compute_round_summaries,
     compute_cross_condition,
     compute_effect_sizes,
+    compute_round_consistency,
     apply_carry_forward_rule,
 )
 from src.analysis.plots import generate_all_plots
@@ -70,6 +71,15 @@ def main():
     round_sums = compute_round_summaries(rows)
     artifact.save_csv("round_summaries.csv", round_sums)
 
+    # ----- Cross-round consistency -----
+    round_consistency = compute_round_consistency(round_sums)
+    artifact.save_json("round_consistency.json", round_consistency)
+    for rc in round_consistency:
+        logger.info(
+            f"  {rc['condition']}: round_std={rc['round_std_ms']:.4f} ms  "
+            f"round_cv={rc['round_cv']:.4f}"
+        )
+
     # ----- Cross-condition comparisons -----
     cross = compute_cross_condition(summaries)
     artifact.save_csv("cross_condition.csv", cross)
@@ -95,19 +105,24 @@ def main():
     logger.info(f"  Selected main:      {carry_forward['selected_main']}")
     logger.info(f"  Selected reference: {carry_forward['selected_reference']}")
     logger.info(f"  Rejected:           {carry_forward['rejected']}")
+    logger.info(f"  Fallback used:      {carry_forward.get('fallback_used', False)}")
+    if carry_forward.get("fallback_used"):
+        logger.warning(f"  NOTE: {carry_forward['fallback_note']}")
 
     # ----- Plots -----
     generate_all_plots(results_dir)
     logger.info("Plots generated")
 
     # ----- Summary report -----
-    _generate_report(results_dir, summaries, cross, effects, carry_forward)
+    _generate_report(results_dir, summaries, round_sums, round_consistency,
+                     cross, effects, carry_forward)
     logger.info(f"Analysis complete. All artifacts in {results_dir}")
 
 
 # ------------------------------------------------------------------
 
-def _generate_report(results_dir, summaries, cross, effects, carry_forward):
+def _generate_report(results_dir, summaries, round_sums, round_consistency,
+                     cross, effects, carry_forward):
     """Write a Markdown summary report."""
     lines = [
         "# RQ1.1 Experiment Report\n",
@@ -122,6 +137,32 @@ def _generate_report(results_dir, summaries, cross, effects, carry_forward):
             f"[{s['ci95_lower_ms']:.3f}, {s['ci95_upper_ms']:.3f}] |"
         )
 
+    # ----- Round-level summaries -----
+    lines.extend(["\n## Per-Round Summaries\n"])
+    lines.append("| Round | Condition | N | Mean (ms) | Median (ms) | Std (ms) | p95 (ms) |")
+    lines.append("|---|---|---|---|---|---|---|")
+    for rs in round_sums:
+        lines.append(
+            f"| {rs['round']} | {rs['condition']} | {rs['n']} | "
+            f"{rs['mean_ms']:.3f} | {rs['median_ms']:.3f} | "
+            f"{rs['std_ms']:.3f} | {rs['p95_ms']:.3f} |"
+        )
+
+    # ----- Cross-round consistency -----
+    lines.extend(["\n## Cross-Round Consistency\n"])
+    lines.append(
+        "| Condition | Rounds | Grand Mean (ms) | Round Std (ms) | "
+        "Round Range (ms) | Round CV |"
+    )
+    lines.append("|---|---|---|---|---|---|")
+    for rc in round_consistency:
+        lines.append(
+            f"| {rc['condition']} | {rc['n_rounds']} | "
+            f"{rc['grand_mean_ms']:.3f} | {rc['round_std_ms']:.4f} | "
+            f"{rc['round_range_ms']:.4f} | {rc['round_cv']:.4f} |"
+        )
+
+    # ----- Overhead -----
     lines.extend(["\n## Overhead vs Monolithic\n"])
     if cross:
         lines.append(
@@ -137,16 +178,36 @@ def _generate_report(results_dir, summaries, cross, effects, carry_forward):
                 f"{cc['boundary_crossing_ms']:.3f} |"
             )
 
-    lines.extend(["\n## Effect Sizes\n"])
+    # ----- Effect sizes (secondary, with caveats) -----
+    lines.extend([
+        "\n## Effect Sizes (Supplementary)\n",
+        "> **Methodological note:** Effect sizes below are computed from pooled "
+        "per-iteration data. With N = 1,000 iterations per condition, "
+        "Mann-Whitney p-values are near-zero for any non-trivial difference "
+        "and should not be interpreted as strong evidence of practical "
+        "significance. Cohen's d provides a more informative measure of "
+        "effect magnitude. Cross-round consistency (above) is a more "
+        "defensible indicator of result stability.\n",
+    ])
     if effects:
-        lines.append("| Condition | Cohen's d | Mann-Whitney U | p-value |")
-        lines.append("|---|---|---|---|")
+        lines.append("| Condition | Cohen's d | Interpretation | Mann-Whitney U | p-value |")
+        lines.append("|---|---|---|---|---|")
         for e in effects:
+            d = abs(e['cohens_d'])
+            if d < 0.2:
+                interp = "negligible"
+            elif d < 0.5:
+                interp = "small"
+            elif d < 0.8:
+                interp = "medium"
+            else:
+                interp = "large"
             lines.append(
-                f"| {e['condition']} | {e['cohens_d']:.3f} | "
+                f"| {e['condition']} | {e['cohens_d']:.3f} | {interp} | "
                 f"{e['mann_whitney_u']:.1f} | {e['mann_whitney_p']:.2e} |"
             )
 
+    # ----- Carry-forward -----
     lines.extend([
         "\n## Carry-Forward Selection\n",
         f"- **Raw fastest boundary:** {carry_forward['raw_fastest']} "
@@ -157,6 +218,8 @@ def _generate_report(results_dir, summaries, cross, effects, carry_forward):
         f"{', '.join(carry_forward['near_best_candidates'])}",
         f"- **Degenerate candidates:** "
         f"{', '.join(carry_forward['degenerate_candidates']) or 'None'}",
+        f"- **Degeneracy threshold:** "
+        f"{carry_forward['degeneracy_threshold_pct']}% of split compute",
     ])
 
     if carry_forward["selected_main"]:
@@ -179,6 +242,50 @@ def _generate_report(results_dir, summaries, cross, effects, carry_forward):
     lines.append(
         f"- **Rejected:** {', '.join(carry_forward['rejected']) or 'None'}"
     )
+
+    fallback = carry_forward.get("fallback_used", False)
+    lines.append(f"- **Fallback used:** {fallback}")
+    if fallback:
+        lines.extend([
+            "",
+            f"> **⚠ Fallback note:** {carry_forward['fallback_note']}",
+        ])
+
+    # ----- Selection rule documentation -----
+    lines.extend([
+        "\n## Carry-Forward Rule (as implemented)\n",
+        "1. Identify `raw_fastest`: split with lowest mean end-to-end latency.",
+        f"2. Near-best window: all splits within {carry_forward['near_best_window_pct']}% "
+        "of `raw_fastest` mean.",
+        f"3. Degeneracy filter: exclude candidates where the minor compute side "
+        f"contributes < {carry_forward['degeneracy_threshold_pct']}% of total "
+        "split compute (service\_a + service\_b).",
+        "4. If non-degenerate near-best candidates exist: select `selected_main` "
+        "by (mean\_ms, activation\_bytes), with `selected_reference` as runner-up.",
+        "5. If ALL near-best candidates are degenerate: `selected_main = None`, "
+        "`selected_reference = raw_fastest` (reference only, not promoted).",
+        "6. Tie-break: prefer lower activation\_bytes\_mean.",
+    ])
+
+    # ----- Methodology notes -----
+    lines.extend([
+        "\n## Methodology Notes\n",
+        "- **Parity validation:** Functional equivalence was verified as a "
+        "mandatory precondition for both local (PartA→PartB) and gRPC "
+        "round-trip paths. Results are recorded in `parity_validation.json`.",
+        "- **Warmup calibration:** Each condition×round warmup was monitored "
+        "for latency stabilisation using a trailing-window coefficient of "
+        "variation (CV) check. Calibration results are recorded in "
+        "`warmup_calibration.json`.",
+        "- **Statistical reporting:** Per-iteration significance tests "
+        "(Mann-Whitney U) are reported as supplementary. With large N, "
+        "p-values are inflated and should not be over-interpreted. "
+        "Cross-round consistency and confidence intervals are the primary "
+        "evidence of result stability.",
+        "- **Carry-forward rule:** The selection rule is predeclared and "
+        "fully explicit. No hidden fallback promotes degenerate candidates "
+        "to `selected_main`.",
+    ])
 
     with open(os.path.join(results_dir, "report.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")

@@ -1,10 +1,15 @@
 """CPU-behaviour stabilisation for reproducible benchmarking.
 
 Applies environment-aware controls to reduce run-to-run variance:
-  1. Fixed PyTorch thread counts (intra-op and inter-op)
+  1. Fixed thread counts (PyTorch, OMP, MKL, OpenBLAS)
   2. CPU affinity / core pinning for the benchmark process
   3. Process priority elevation (nice)
-  4. ASLR detection and reporting
+  4. CPU frequency governor control (Linux only, requires root)
+  5. Turbo boost control (Linux only, requires root)
+  6. ASLR detection and reporting
+
+All controls are driven by the CpuStabilisationConfig dataclass,
+which is populated from the cpu_stabilisation section of the YAML config.
 
 These controls follow recommendations from:
   - Beyer, Löwe & Wendler, "Reliable benchmarking: requirements and solutions",
@@ -16,16 +21,24 @@ These controls follow recommendations from:
     in Parallel Applications on Modern HPC multicore Systems", ICS 2025
 
 Only controls that are actually available in the current environment are
-applied; unavailable controls (e.g. CPU frequency governor on WSL2) are
-reported as skipped rather than faked.
+applied; unavailable controls are reported as skipped rather than faked.
+
+Metadata records:
+  - requested: what the config asked for
+  - detected: what the environment supports
+  - applied: what was actually set
+  - error: why a requested setting could not be applied (if applicable)
 """
 
 import os
+import glob
 import logging
 import platform
 from typing import Dict, Any, List, Optional
 
 import torch
+
+from src.benchmark.config import CpuStabilisationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -71,150 +84,350 @@ def _detect_aslr() -> Optional[str]:
     return None
 
 
+def _read_sysfs(path: str) -> Optional[str]:
+    """Read a single-line sysfs value, or return None."""
+    if os.path.exists(path):
+        try:
+            with open(path) as f:
+                return f.read().strip()
+        except OSError:
+            return None
+    return None
+
+
+def _write_sysfs(path: str, value: str) -> Optional[str]:
+    """Write a value to a sysfs file.  Returns None on success, error string on failure."""
+    try:
+        with open(path, "w") as f:
+            f.write(value)
+        return None
+    except PermissionError:
+        return f"Permission denied writing to {path} (requires root)"
+    except OSError as e:
+        return f"OS error writing to {path}: {e}"
+
+
 # ---------------------------------------------------------------------------
 # Main stabilisation entry point
 # ---------------------------------------------------------------------------
 
-def apply_cpu_stabilisation(
-    torch_threads: int = 4,
-    pin_to_physical_cores: bool = True,
-) -> Dict[str, Any]:
+def apply_cpu_stabilisation(cfg: CpuStabilisationConfig) -> Dict[str, Any]:
     """Apply CPU-behaviour stabilisation and return a metadata dict.
 
     Parameters
     ----------
-    torch_threads : int
-        Number of PyTorch intra-op threads.  Should match the number of
-        pinned cores for best stability.  Also sets OMP_NUM_THREADS and
-        MKL_NUM_THREADS via environment variables.
-    pin_to_physical_cores : bool
-        If True, restrict the process to one logical CPU per physical core
-        (avoiding SMT siblings).  Falls back gracefully if topology info
-        is unavailable.
+    cfg : CpuStabilisationConfig
+        Configuration from the YAML cpu_stabilisation section.
 
     Returns
     -------
     dict
-        Metadata describing all applied (and skipped) controls, suitable
-        for inclusion in environment.json.
+        Metadata describing all requested, detected, and applied controls,
+        suitable for inclusion in environment.json.
     """
     meta: Dict[str, Any] = {}
 
-    # ---- 1. PyTorch thread settings ----
-    # Fix intra-op threads (used by ATen parallel ops)
-    torch.set_num_threads(torch_threads)
-    # Fix inter-op threads (graph parallelism); set to 1 for sequential
-    # operator execution which is most reproducible for single-input inference
-    torch.set_num_interop_threads(1)
+    # ---- 1. Threading ----
+    meta["threading"] = _apply_threading(cfg.threading)
 
-    # Also set environment variables so that any child processes or
-    # underlying BLAS/OpenMP libraries respect the same thread count.
-    os.environ["OMP_NUM_THREADS"] = str(torch_threads)
-    os.environ["MKL_NUM_THREADS"] = str(torch_threads)
-    os.environ["OPENBLAS_NUM_THREADS"] = str(torch_threads)
-
-    meta["torch_num_threads"] = torch.get_num_threads()
-    meta["torch_num_interop_threads"] = torch.get_num_interop_threads()
-    meta["omp_num_threads"] = os.environ.get("OMP_NUM_THREADS")
-    logger.info(
-        f"PyTorch threads: intra-op={torch.get_num_threads()}, "
-        f"inter-op={torch.get_num_interop_threads()}"
-    )
-
-    # ---- 2. CPU affinity / core pinning ----
-    if pin_to_physical_cores:
-        physical = _detect_physical_cores()
-        if physical is not None:
-            # Pin to the requested number of physical cores
-            pin_set = physical[:torch_threads] if len(physical) >= torch_threads else physical
-            try:
-                os.sched_setaffinity(0, pin_set)
-                actual = sorted(os.sched_getaffinity(0))
-                meta["cpu_affinity_applied"] = True
-                meta["cpu_affinity_cores"] = actual
-                meta["cpu_affinity_method"] = "os.sched_setaffinity (physical cores only, SMT siblings excluded)"
-                logger.info(f"CPU affinity pinned to physical cores: {actual}")
-            except OSError as e:
-                meta["cpu_affinity_applied"] = False
-                meta["cpu_affinity_error"] = str(e)
-                logger.warning(f"Could not set CPU affinity: {e}")
-        else:
-            meta["cpu_affinity_applied"] = False
-            meta["cpu_affinity_error"] = "Topology info unavailable; cannot identify physical cores"
-            logger.warning("CPU topology info unavailable; skipping core pinning")
-    else:
-        meta["cpu_affinity_applied"] = False
-        meta["cpu_affinity_error"] = "Disabled by configuration"
+    # ---- 2. CPU affinity ----
+    meta["affinity"] = _apply_affinity(cfg.affinity)
 
     # ---- 3. Process priority ----
-    try:
-        current_nice = os.nice(0)
-        if current_nice == 0:
-            # Try to raise priority slightly (lower nice = higher priority)
-            try:
-                os.nice(-5)
-                meta["process_nice"] = os.nice(0)
-                meta["process_nice_applied"] = True
-                logger.info(f"Process nice set to {meta['process_nice']}")
-            except PermissionError:
-                meta["process_nice"] = current_nice
-                meta["process_nice_applied"] = False
-                meta["process_nice_error"] = "Insufficient privileges for nice(-5)"
-                logger.info("Cannot raise process priority (no root); running at default nice=0")
-        else:
-            meta["process_nice"] = current_nice
-            meta["process_nice_applied"] = False
-    except OSError:
-        meta["process_nice_applied"] = False
-        meta["process_nice_error"] = "os.nice not available"
+    meta["priority"] = _apply_priority(cfg.priority)
 
-    # ---- 4. CPU frequency governor ----
-    governor_path = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
-    if os.path.exists(governor_path):
-        try:
-            with open(governor_path) as f:
-                meta["cpu_governor"] = f.read().strip()
-            meta["cpu_governor_note"] = "Detected but not modified (requires root)"
-        except OSError:
-            meta["cpu_governor"] = "unreadable"
-    else:
-        meta["cpu_governor"] = "unavailable"
-        meta["cpu_governor_note"] = (
-            "cpufreq sysfs not exposed (expected on WSL2/Hyper-V). "
-            "CPU frequency is managed by the Windows host."
-        )
-    logger.info(f"CPU governor: {meta['cpu_governor']}")
+    # ---- 4. CPU governor ----
+    meta["governor"] = _apply_governor(cfg.governor)
 
     # ---- 5. Turbo boost ----
-    turbo_paths = [
-        "/sys/devices/system/cpu/intel_pstate/no_turbo",
-        "/sys/devices/system/cpu/cpufreq/boost",
-    ]
-    meta["turbo_boost_control"] = "unavailable"
-    for tp in turbo_paths:
-        if os.path.exists(tp):
-            try:
-                with open(tp) as f:
-                    meta["turbo_boost_control"] = f"detected at {tp}: {f.read().strip()}"
-            except OSError:
-                pass
-            break
-    if meta["turbo_boost_control"] == "unavailable":
-        meta["turbo_boost_note"] = (
-            "Turbo boost sysfs not exposed (expected on WSL2/Hyper-V). "
-            "Boost behaviour is controlled by Windows power plan on the host."
-        )
-    logger.info(f"Turbo boost: {meta['turbo_boost_control']}")
+    meta["turbo"] = _apply_turbo(cfg.turbo)
 
-    # ---- 6. ASLR status ----
+    # ---- 6. ASLR (detect only) ----
     aslr = _detect_aslr()
-    meta["aslr_randomize_va_space"] = aslr if aslr is not None else "unreadable"
-    if aslr is not None:
-        labels = {"0": "disabled", "1": "conservative", "2": "full"}
-        logger.info(f"ASLR: {labels.get(aslr, aslr)}")
-
-    # ---- 7. Platform summary ----
-    meta["stabilisation_applied"] = True
-    meta["platform_is_wsl2"] = "microsoft" in platform.release().lower()
+    meta["aslr"] = {
+        "detected": aslr,
+        "note": "Detection only; disabling requires root and has negligible impact on wall-clock inference latency.",
+    }
 
     return meta
+
+
+# ---------------------------------------------------------------------------
+# Individual control implementations
+# ---------------------------------------------------------------------------
+
+def _apply_threading(cfg) -> Dict[str, Any]:
+    """Apply thread-count settings to PyTorch and environment variables."""
+    torch.set_num_threads(cfg.pytorch_intra_op)
+    torch.set_num_interop_threads(cfg.pytorch_inter_op)
+
+    os.environ["OMP_NUM_THREADS"] = str(cfg.omp_num_threads)
+    os.environ["MKL_NUM_THREADS"] = str(cfg.mkl_num_threads)
+    os.environ["OPENBLAS_NUM_THREADS"] = str(cfg.openblas_num_threads)
+
+    result = {
+        "requested": {
+            "pytorch_intra_op": cfg.pytorch_intra_op,
+            "pytorch_inter_op": cfg.pytorch_inter_op,
+            "omp_num_threads": cfg.omp_num_threads,
+            "mkl_num_threads": cfg.mkl_num_threads,
+            "openblas_num_threads": cfg.openblas_num_threads,
+        },
+        "applied": {
+            "pytorch_intra_op": torch.get_num_threads(),
+            "pytorch_inter_op": torch.get_num_interop_threads(),
+            "omp_num_threads": os.environ.get("OMP_NUM_THREADS"),
+            "mkl_num_threads": os.environ.get("MKL_NUM_THREADS"),
+            "openblas_num_threads": os.environ.get("OPENBLAS_NUM_THREADS"),
+        },
+    }
+
+    logger.info(
+        f"Threading: intra-op={torch.get_num_threads()}, "
+        f"inter-op={torch.get_num_interop_threads()}, "
+        f"OMP={cfg.omp_num_threads}, MKL={cfg.mkl_num_threads}, "
+        f"OpenBLAS={cfg.openblas_num_threads}"
+    )
+    return result
+
+
+def _apply_affinity(cfg) -> Dict[str, Any]:
+    """Apply CPU affinity / core pinning."""
+    result: Dict[str, Any] = {
+        "requested": {
+            "enabled": cfg.enabled,
+            "num_cores": cfg.num_cores,
+            "avoid_smt": cfg.avoid_smt,
+            "explicit_cpus": cfg.explicit_cpus,
+        },
+    }
+
+    if not cfg.enabled:
+        result["applied"] = False
+        result["reason"] = "Disabled by configuration"
+        logger.info("CPU affinity: disabled by configuration")
+        return result
+
+    # Determine the pin set
+    if cfg.explicit_cpus is not None:
+        pin_set = cfg.explicit_cpus
+        method = "explicit_cpus from configuration"
+    else:
+        physical = _detect_physical_cores()
+        if physical is not None and cfg.avoid_smt:
+            # Pick from physical cores only
+            pin_set = physical[:cfg.num_cores] if len(physical) >= cfg.num_cores else physical
+            method = f"auto-detected physical cores (SMT excluded), first {cfg.num_cores}"
+        elif physical is not None:
+            # All logical CPUs available, just take the first N
+            try:
+                all_cpus = sorted(os.sched_getaffinity(0))
+            except OSError:
+                all_cpus = list(range(os.cpu_count() or 1))
+            pin_set = all_cpus[:cfg.num_cores]
+            method = f"first {cfg.num_cores} logical CPUs (SMT not avoided)"
+        else:
+            result["applied"] = False
+            result["detected"] = "Topology info unavailable; cannot identify physical cores"
+            result["error"] = "Cannot determine core topology; affinity not applied"
+            logger.warning("CPU topology info unavailable; skipping core pinning")
+            return result
+
+    result["detected"] = {
+        "physical_cores_available": _detect_physical_cores(),
+        "total_cpus": os.cpu_count(),
+    }
+
+    try:
+        os.sched_setaffinity(0, pin_set)
+        actual = sorted(os.sched_getaffinity(0))
+        result["applied"] = True
+        result["applied_cores"] = actual
+        result["method"] = method
+        logger.info(f"CPU affinity pinned to cores: {actual} ({method})")
+    except (OSError, AttributeError) as e:
+        result["applied"] = False
+        result["error"] = str(e)
+        logger.warning(f"Could not set CPU affinity: {e}")
+
+    return result
+
+
+def _apply_priority(cfg) -> Dict[str, Any]:
+    """Apply process priority (nice) adjustment."""
+    result: Dict[str, Any] = {
+        "requested": {
+            "enabled": cfg.enabled,
+            "nice_value": cfg.nice_value,
+        },
+    }
+
+    if not cfg.enabled:
+        result["applied"] = False
+        result["reason"] = "Disabled by configuration"
+        logger.info("Process priority adjustment: disabled by configuration")
+        return result
+
+    try:
+        current_nice = os.nice(0)
+        result["detected"] = {"current_nice": current_nice}
+        try:
+            os.nice(cfg.nice_value)
+            final_nice = os.nice(0)
+            result["applied"] = True
+            result["applied_nice"] = final_nice
+            logger.info(f"Process nice adjusted to {final_nice}")
+        except PermissionError:
+            result["applied"] = False
+            result["applied_nice"] = current_nice
+            result["error"] = (
+                f"Insufficient privileges for nice({cfg.nice_value}); "
+                f"running at default nice={current_nice}"
+            )
+            logger.info(
+                f"Cannot set nice({cfg.nice_value}) (no root); "
+                f"running at default nice={current_nice}"
+            )
+    except (OSError, AttributeError):
+        result["applied"] = False
+        result["error"] = "os.nice not available on this platform"
+        logger.info("os.nice not available; skipping priority adjustment")
+
+    return result
+
+
+def _apply_governor(cfg) -> Dict[str, Any]:
+    """Detect and optionally set CPU frequency governor."""
+    result: Dict[str, Any] = {
+        "requested": {
+            "set_governor": cfg.set_governor,
+            "requested_mode": cfg.requested_mode,
+        },
+    }
+
+    governor_path = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+    current = _read_sysfs(governor_path)
+
+    if current is not None:
+        result["detected"] = current
+    else:
+        result["detected"] = "unavailable"
+        result["note"] = (
+            "cpufreq sysfs not exposed (expected on WSL2/Hyper-V or non-Linux). "
+            "CPU frequency is managed by the host OS."
+        )
+        if cfg.set_governor:
+            result["applied"] = False
+            result["error"] = "Governor sysfs not available; cannot set governor"
+            logger.warning(
+                f"Governor requested='{cfg.requested_mode}' but cpufreq sysfs "
+                "is not available; skipping"
+            )
+        else:
+            result["applied"] = False
+            result["reason"] = "Not requested and sysfs unavailable"
+        logger.info(f"CPU governor: unavailable")
+        return result
+
+    logger.info(f"CPU governor detected: {current}")
+
+    if not cfg.set_governor:
+        result["applied"] = False
+        result["reason"] = "Not requested by configuration"
+        return result
+
+    # Attempt to set governor on all CPU cores
+    governor_paths = glob.glob("/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor")
+    if not governor_paths:
+        result["applied"] = False
+        result["error"] = "No governor sysfs paths found"
+        return result
+
+    errors = []
+    for gp in sorted(governor_paths):
+        err = _write_sysfs(gp, cfg.requested_mode)
+        if err:
+            errors.append(err)
+
+    if errors:
+        result["applied"] = False
+        result["error"] = errors[0]  # Report first error (usually all identical)
+        logger.warning(f"Could not set governor to '{cfg.requested_mode}': {errors[0]}")
+    else:
+        # Verify
+        new_governor = _read_sysfs(governor_path)
+        result["applied"] = True
+        result["applied_mode"] = new_governor
+        logger.info(f"CPU governor set to '{new_governor}' on {len(governor_paths)} cores")
+
+    return result
+
+
+def _apply_turbo(cfg) -> Dict[str, Any]:
+    """Detect and optionally disable turbo boost."""
+    result: Dict[str, Any] = {
+        "requested": {
+            "disable_turbo": cfg.disable_turbo,
+        },
+    }
+
+    # Intel pstate: writing "1" to no_turbo disables turbo
+    intel_path = "/sys/devices/system/cpu/intel_pstate/no_turbo"
+    # Generic cpufreq: writing "0" to boost disables turbo
+    generic_path = "/sys/devices/system/cpu/cpufreq/boost"
+
+    intel_val = _read_sysfs(intel_path)
+    generic_val = _read_sysfs(generic_path)
+
+    if intel_val is not None:
+        result["detected"] = {
+            "interface": "intel_pstate",
+            "no_turbo": intel_val,
+            "turbo_enabled": intel_val == "0",
+        }
+        turbo_path = intel_path
+        disable_value = "1"
+    elif generic_val is not None:
+        result["detected"] = {
+            "interface": "cpufreq_boost",
+            "boost": generic_val,
+            "turbo_enabled": generic_val == "1",
+        }
+        turbo_path = generic_path
+        disable_value = "0"
+    else:
+        result["detected"] = "unavailable"
+        result["note"] = (
+            "Neither intel_pstate/no_turbo nor cpufreq/boost sysfs entries "
+            "are exposed. Turbo behaviour is controlled by the host OS."
+        )
+        if cfg.disable_turbo:
+            result["applied"] = False
+            result["error"] = "Turbo boost sysfs not available; cannot disable"
+            logger.warning("Turbo disable requested but sysfs not available; skipping")
+        else:
+            result["applied"] = False
+            result["reason"] = "Not requested and sysfs unavailable"
+        logger.info("Turbo boost control: unavailable")
+        return result
+
+    logger.info(f"Turbo boost detected: {result['detected']}")
+
+    if not cfg.disable_turbo:
+        result["applied"] = False
+        result["reason"] = "Not requested by configuration"
+        return result
+
+    err = _write_sysfs(turbo_path, disable_value)
+    if err:
+        result["applied"] = False
+        result["error"] = err
+        logger.warning(f"Could not disable turbo boost: {err}")
+    else:
+        # Verify
+        new_val = _read_sysfs(turbo_path)
+        result["applied"] = True
+        result["applied_value"] = new_val
+        logger.info(f"Turbo boost disabled (wrote '{disable_value}' to {turbo_path})")
+
+    return result

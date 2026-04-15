@@ -18,15 +18,23 @@ from src.models.resnet_splits import get_split_models
 def _apply_service_b_thread_settings():
     """Mirror the thread settings applied by the parent benchmark process.
 
-    Reads OMP_NUM_THREADS from the environment (propagated by the runner)
+    Reads thread-count environment variables propagated by the runner
     and sets PyTorch threads accordingly.  This ensures Service B uses
-    the same fixed thread count as Service A / the monolithic client,
+    the same fixed thread counts as Service A / the monolithic client,
     preserving fairness between conditions.
     """
-    n = os.environ.get("OMP_NUM_THREADS")
-    if n is not None:
-        n = int(n)
-        torch.set_num_threads(n)
+    intra = os.environ.get("PYTORCH_INTRA_OP_THREADS")
+    inter = os.environ.get("PYTORCH_INTER_OP_THREADS")
+    omp = os.environ.get("OMP_NUM_THREADS")
+
+    if intra is not None:
+        torch.set_num_threads(int(intra))
+    elif omp is not None:
+        torch.set_num_threads(int(omp))
+
+    if inter is not None:
+        torch.set_num_interop_threads(int(inter))
+    else:
         torch.set_num_interop_threads(1)
 
 

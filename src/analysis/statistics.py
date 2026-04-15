@@ -150,7 +150,13 @@ def compute_cross_condition(summaries: List[Dict]) -> List[Dict]:
 
 
 def compute_effect_sizes(rows: List[Dict], summaries: List[Dict]) -> List[Dict]:
-    """Compute Cohen's d and Mann-Whitney U for each split vs monolithic."""
+    """Compute Cohen's d and Mann-Whitney U for each split vs monolithic.
+
+    NOTE: These are computed from pooled per-iteration data.  With large N
+    (e.g. 1000 iterations), nearly any difference produces a small p-value.
+    Effect sizes (Cohen's d) are more informative than p-values here.
+    These results should be interpreted with that caveat.
+    """
     mono_lat = np.array([
         r["end_to_end_ms"] for r in rows if r["condition"] == "monolithic"
     ])
@@ -188,8 +194,49 @@ def compute_effect_sizes(rows: List[Dict], summaries: List[Dict]) -> List[Dict]:
             "cohens_d": float(cohens_d),
             "mann_whitney_u": float(u_stat),
             "mann_whitney_p": float(p_value),
+            "n_monolithic": len(mono_lat),
+            "n_split": len(split_lat),
+            "pooling_note": (
+                "Per-iteration pooling; with large N, p-values are "
+                "near-zero for any non-trivial difference. "
+                "Cohen's d is more informative for effect magnitude."
+            ),
         })
     return effects
+
+
+# ------------------------------------------------------------------
+# Cross-round consistency
+# ------------------------------------------------------------------
+
+def compute_round_consistency(round_summaries: List[Dict]) -> List[Dict]:
+    """Compute cross-round consistency metrics per condition.
+
+    For each condition, computes the standard deviation and range of
+    round-level means, giving visibility into run-to-run stability.
+    """
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for rs in round_summaries:
+        groups[rs["condition"]].append(rs["mean_ms"])
+
+    results = []
+    for condition, round_means in groups.items():
+        arr = np.array(round_means)
+        n_rounds = len(arr)
+        results.append({
+            "condition": condition,
+            "n_rounds": n_rounds,
+            "round_means_ms": [round(float(x), 4) for x in arr],
+            "grand_mean_ms": float(np.mean(arr)),
+            "round_std_ms": float(np.std(arr, ddof=1)) if n_rounds > 1 else 0.0,
+            "round_range_ms": float(np.max(arr) - np.min(arr)),
+            "round_cv": (
+                float(np.std(arr, ddof=1) / np.mean(arr))
+                if np.mean(arr) > 0 and n_rounds > 1 else 0.0
+            ),
+        })
+    return results
 
 
 # ------------------------------------------------------------------
@@ -201,14 +248,23 @@ def apply_carry_forward_rule(summaries: List[Dict], cross_condition: List[Dict],
                              degeneracy_pct: float) -> Dict:
     """Apply the predeclared carry-forward rule.
 
-    1. Primary criterion:  minimise mean end-to-end latency among splits.
-    2. Near-best window:   within near_best_pct % of the best split mean.
-    3. Degeneracy filter:  reject candidates where one side contributes
-                           less than degeneracy_pct % of total split compute.
-    4. Tie-break:          prefer lower activation_bytes_mean.
+    Rule (executed in strict order):
+      1. Identify raw_fastest: the split with lowest mean end-to-end latency.
+      2. Near-best window: all splits within near_best_pct % of raw_fastest.
+      3. Degeneracy filter: exclude candidates where the minor side contributes
+         less than degeneracy_pct % of total split compute (service_a + service_b).
+      4. If at least one non-degenerate near-best candidate exists:
+           - selected_main = best by (mean_ms, activation_bytes_mean).
+           - selected_reference = next best from same set, if any.
+           - fallback_used = False.
+      5. If ALL near-best candidates are degenerate:
+           - selected_main = None  (no valid main candidate).
+           - selected_reference = raw_fastest (retained as reference only).
+           - fallback_used = True.
+      6. Tie-break: prefer lower activation_bytes_mean.
 
     Returns a dict with output categories:
-      raw_fastest, selected_main, selected_reference, rejected
+      raw_fastest, selected_main, selected_reference, rejected, fallback_used
     """
     splits = [s for s in summaries if s["condition"] != "monolithic"]
     if not splits:
@@ -234,28 +290,35 @@ def apply_carry_forward_rule(summaries: List[Dict], cross_condition: List[Dict],
 
     non_degenerate = [s for s in near_best if not is_degenerate(s)]
 
-    # 4. Selection with tie-break on activation bytes
+    # 4/5. Selection
     def sort_key(s):
         return (s["mean_ms"], s.get("activation_bytes_mean", 0))
 
     if non_degenerate:
+        # Normal path: at least one valid candidate
         selected_main = min(non_degenerate, key=sort_key)
         remaining = [s for s in non_degenerate
                      if s["condition"] != selected_main["condition"]]
         selected_reference = min(remaining, key=sort_key) if remaining else None
+        fallback_used = False
     else:
-        # Fallback: all near-best are degenerate
-        selected_main = min(near_best, key=sort_key)
-        selected_reference = None
+        # All near-best candidates are degenerate.
+        # Do NOT promote a degenerate candidate to selected_main.
+        selected_main = None
+        # Retain raw_fastest as a reference-only candidate for diagnostic use.
+        selected_reference = raw_fastest
+        fallback_used = True
 
-    # Build rejected list
-    selected_names = {selected_main["condition"]}
-    if selected_reference:
+    # Build rejected list (everything not selected)
+    selected_names = set()
+    if selected_main is not None:
+        selected_names.add(selected_main["condition"])
+    if selected_reference is not None:
         selected_names.add(selected_reference["condition"])
     rejected = [s["condition"] for s in splits
                 if s["condition"] not in selected_names]
 
-    return {
+    result = {
         "raw_fastest": raw_fastest["condition"],
         "raw_fastest_mean_ms": raw_fastest["mean_ms"],
         "near_best_window_pct": near_best_pct,
@@ -264,11 +327,25 @@ def apply_carry_forward_rule(summaries: List[Dict], cross_condition: List[Dict],
         "degeneracy_threshold_pct": degeneracy_pct,
         "degenerate_candidates": [s["condition"] for s in near_best
                                   if is_degenerate(s)],
-        "selected_main": selected_main["condition"],
-        "selected_main_mean_ms": selected_main["mean_ms"],
+        "selected_main": (selected_main["condition"]
+                          if selected_main else None),
+        "selected_main_mean_ms": (selected_main["mean_ms"]
+                                  if selected_main else None),
         "selected_reference": (selected_reference["condition"]
                                if selected_reference else None),
         "selected_reference_mean_ms": (selected_reference["mean_ms"]
                                        if selected_reference else None),
         "rejected": rejected,
+        "fallback_used": fallback_used,
     }
+
+    if fallback_used:
+        result["fallback_note"] = (
+            "All near-best candidates were compute-degenerate "
+            f"(minor side < {degeneracy_pct}% of split compute). "
+            "No candidate was promoted to selected_main. "
+            "The raw fastest boundary is retained as selected_reference "
+            "for diagnostic purposes only."
+        )
+
+    return result
