@@ -152,9 +152,12 @@ def plot_stationarity(rows: List[Dict], output_path: str):
 # Entry point
 # ------------------------------------------------------------------
 
-def generate_all_plots(results_dir: str):
+def generate_all_plots(results_dir: str, output_dir: str = None):
+    if output_dir is None:
+        output_dir = results_dir
+
     raw_path = os.path.join(results_dir, "raw_iterations.csv")
-    plots_dir = os.path.join(results_dir, "plots")
+    plots_dir = os.path.join(output_dir, "plots")
     os.makedirs(plots_dir, exist_ok=True)
 
     rows = _load_csv(raw_path)
@@ -164,7 +167,7 @@ def generate_all_plots(results_dir: str):
     plot_stationarity(rows, os.path.join(plots_dir, "stationarity.png"))
 
     # Overhead-vs-activation requires cross_condition.csv
-    cc_path = os.path.join(results_dir, "cross_condition.csv")
+    cc_path = os.path.join(output_dir, "cross_condition.csv")
     if os.path.exists(cc_path):
         cross_condition = _load_csv(cc_path)
         plot_overhead_vs_activation(
