@@ -55,6 +55,14 @@ Raw per-iteration data is saved to `results/rq1_1_<timestamp>/raw_iterations.csv
 python run_analysis.py results/rq1_1_<timestamp>
 ```
 
+If the source results directory is read-only, the analysis script now writes
+derived artifacts to a sibling directory named `results/rq1_1_<timestamp>_analysis`.
+You can also override that explicitly:
+
+```bash
+python run_analysis.py results/rq1_1_<timestamp> --output-dir results/my_analysis_output
+```
+
 This produces:
 
 - `condition_summaries.csv` — per-condition statistics

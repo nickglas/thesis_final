@@ -30,6 +30,14 @@ def main():
                         help="Path to results directory (e.g. results/rq1_1_20260414_...)")
     parser.add_argument("--config", default=None,
                         help="Config YAML (defaults to results_dir/config.yaml)")
+    parser.add_argument(
+        "--output-dir",
+        default=None,
+        help=(
+            "Directory for derived analysis artifacts. Defaults to results_dir "
+            "when writable, otherwise falls back to a sibling *_analysis directory."
+        ),
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -39,9 +47,10 @@ def main():
     logger = logging.getLogger("rq1_1_analysis")
 
     results_dir = args.results_dir
+    output_dir = _resolve_analysis_output_dir(results_dir, args.output_dir, logger)
     config_path = args.config or os.path.join(results_dir, "config.yaml")
     config = load_config(config_path)
-    artifact = ArtifactLogger(results_dir)
+    artifact = ArtifactLogger(output_dir)
 
     # ----- Load raw data -----
     raw_path = os.path.join(results_dir, "raw_iterations.csv")
@@ -110,26 +119,61 @@ def main():
         logger.warning(f"  NOTE: {carry_forward['fallback_note']}")
 
     # ----- Plots -----
-    generate_all_plots(results_dir)
+    generate_all_plots(results_dir, output_dir)
     logger.info("Plots generated")
 
     # ----- Summary report -----
-    _generate_report(results_dir, summaries, round_sums, round_consistency,
-                     cross, effects, carry_forward)
-    logger.info(f"Analysis complete. All artifacts in {results_dir}")
+    _generate_report(results_dir, output_dir, summaries, round_sums,
+                     round_consistency, cross, effects, carry_forward)
+    if output_dir == results_dir:
+        logger.info(f"Analysis complete. All artifacts in {output_dir}")
+    else:
+        logger.info(
+            "Analysis complete. Derived artifacts in %s (source data read from %s)",
+            output_dir,
+            results_dir,
+        )
 
 
 # ------------------------------------------------------------------
 
-def _generate_report(results_dir, summaries, round_sums, round_consistency,
-                     cross, effects, carry_forward):
+def _resolve_analysis_output_dir(results_dir, requested_output_dir, logger):
+    if requested_output_dir:
+        os.makedirs(requested_output_dir, exist_ok=True)
+        return requested_output_dir
+
+    if os.path.isdir(results_dir) and os.access(results_dir, os.W_OK | os.X_OK):
+        return results_dir
+
+    normalized_results_dir = os.path.normpath(results_dir)
+    parent_dir = os.path.dirname(normalized_results_dir)
+    base_name = os.path.basename(normalized_results_dir)
+    fallback_dir = os.path.join(parent_dir, f"{base_name}_analysis")
+    os.makedirs(fallback_dir, exist_ok=True)
+    logger.warning(
+        "Results directory %s is not writable; writing derived analysis artifacts to %s",
+        results_dir,
+        fallback_dir,
+    )
+    return fallback_dir
+
+
+def _generate_report(source_results_dir, output_dir, summaries, round_sums,
+                     round_consistency, cross, effects, carry_forward):
     """Write a Markdown summary report."""
-    lines = [
-        "# RQ1.1 Experiment Report\n",
+    lines = ["# RQ1.1 Experiment Report\n"]
+    if output_dir != source_results_dir:
+        lines.extend([
+            "> Source results directory: "
+            f"`{source_results_dir}`.",
+            "> Derived analysis artifacts directory: "
+            f"`{output_dir}`.\n",
+        ])
+    lines.extend([
         "## Condition Summaries\n",
         "| Condition | N | Mean (ms) | Median (ms) | Std (ms) | p95 (ms) | 95% CI |",
         "|---|---|---|---|---|---|---|",
-    ]
+    ])
     for s in summaries:
         lines.append(
             f"| {s['condition']} | {s['n']} | {s['mean_ms']:.3f} | "
@@ -259,12 +303,12 @@ def _generate_report(results_dir, summaries, round_sums, round_consistency,
         "of `raw_fastest` mean.",
         f"3. Degeneracy filter: exclude candidates where the minor compute side "
         f"contributes < {carry_forward['degeneracy_threshold_pct']}% of total "
-        "split compute (service\_a + service\_b).",
+        "split compute (`service_a` + `service_b`).",
         "4. If non-degenerate near-best candidates exist: select `selected_main` "
-        "by (mean\_ms, activation\_bytes), with `selected_reference` as runner-up.",
+        "by (`mean_ms`, `activation_bytes`), with `selected_reference` as runner-up.",
         "5. If ALL near-best candidates are degenerate: `selected_main = None`, "
         "`selected_reference = raw_fastest` (reference only, not promoted).",
-        "6. Tie-break: prefer lower activation\_bytes\_mean.",
+        "6. Tie-break: prefer lower `activation_bytes_mean`.",
     ])
 
     # ----- Methodology notes -----
@@ -287,7 +331,7 @@ def _generate_report(results_dir, summaries, round_sums, round_consistency,
         "to `selected_main`.",
     ])
 
-    with open(os.path.join(results_dir, "report.md"), "w", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "report.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
 
