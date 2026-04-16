@@ -116,20 +116,23 @@ If the stem split is studied at all, it should be treated only as:
 **Split (Conditions 1–4):**
 
 ```text
-[Client/Service A Process]          [Service B Process]
-  input_tensor → part_A(input)
+[Client/Service A Process]          [Service B Process (separate OS process)]
+  t_start
+  input_tensor → part_A(input)      [service_a_compute_ms]
                     ↓
-              serialize(intermediate)
+  t_boundary_start
+              serialize(intermediate)  [request_serialize_ms]
                     ↓
-              ──── gRPC call ────→   deserialize(intermediate)
-                                     part_B(intermediate)
-                                     serialize(output)
+              ──── gRPC Infer() ────→  deserialize(intermediate) [request_deserialize_ms]
+                                       part_B(intermediate)      [service_b_compute_ms]
+                                       serialize(output)         [response_serialize_ms]
               ←─── gRPC response ──
-              deserialize(output)
-                    ↓
-              output_tensor
+              deserialize(output)      [response_deserialize_ms]
+  t_boundary_end                       [boundary_crossing_ms = t_boundary_end - t_boundary_start]
+  t_end                                [end_to_end_ms = t_end - t_start]
 
-  ↑ timing start                     ↑ timing stop (after deserialize)
+  Server-side sub-timings (deserialize_ms, compute_ms, serialize_ms)
+  are embedded in the gRPC InferResponse proto message.
 ```
 
 ### Key Design Decisions
@@ -174,17 +177,18 @@ To reduce run-to-run variance and improve measurement reproducibility, the bench
 
 All controls are fully configurable from the `cpu_stabilisation:` section of the YAML config. We provide three standard configurations, each representing a different measurement mode:
 
-1. **configs/rq1_1_fully_controlled.yaml**: The strict thesis-facing benchmark mode. Enforces absolute minimisation of contention by pinning to 1 physical core with 1 thread, alongside explicit requests for "performance" CPU governor and turbo boost disabling. Use this for the most robust statistical outcomes.
-2. **configs/rq1_1_threaded.yaml**: The historical limited multi-core mode. Limits PyTorch and BLAS to 4 threads executing on 4 pinned physical cores, preventing SMT and cross-node migration while representing standard multi-core deployment scenarios.
-3. **configs/rq1_1_experimental.yaml**: A non-stabilised smoke test profile designed for fast pipeline validation, employing minimal iterations with standard defaults.
+1. **configs/rq1/1.1/rq1_1_fully_controlled.yaml**: The strict thesis-facing benchmark mode. Enforces absolute minimisation of contention by pinning to 1 physical core with 1 thread, alongside explicit requests for "performance" CPU governor and turbo boost disabling. Use this for the most robust statistical outcomes.
+2. **configs/rq1/1.1/rq1_1_threaded.yaml**: The multi-core mode. Limits PyTorch and BLAS to 4 threads executing on 4 pinned physical cores, preventing SMT and cross-node migration while representing standard multi-core deployment scenarios. Governor and turbo controls are not set.
+3. **configs/rq1/1.1/rq1_1_experimental.yaml**: A non-stabilised smoke test profile designed for fast pipeline validation, employing minimal iterations (1 round, 3 warmup, 5 measured) with only 2 conditions (monolithic + split_after_layer2). Process priority is disabled.
 
 **Applied controls (config-driven):**
 
 | Control                           | Config key                                                     | Fully Controlled Default | Threaded Default | Rationale                                                                                                                                                                                                        |
 | --------------------------------- | -------------------------------------------------------------- | ------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PyTorch intra-op threads          | `threading.pytorch_intra_op`                                   | 1                        | 4                | Prevents non-deterministic thread pool sizing. Single-threaded mode eliminates all intra-op synchronisation variance.                                                                                            |
+| PyTorch intra-op threads          | `threading.pytorch_intra_op`                                   | 1                        | 4                | Single-threaded mode eliminates all intra-op synchronisation variance. Threaded mode represents a standard multi-core scenario.                                                                                  |
 | PyTorch inter-op threads          | `threading.pytorch_inter_op`                                   | 1                        | 1                | Single-input sequential inference; no benefit from graph-level parallelism. Eliminates inter-op scheduling variance.                                                                                             |
 | OMP_NUM_THREADS / MKL_NUM_THREADS | `threading.omp_num_threads` / `threading.mkl_num_threads`      | 1                        | 4                | Ensures underlying BLAS and OpenMP libraries respect the same thread count. Propagated to Service B via environment.                                                                                             |
+| OPENBLAS_NUM_THREADS              | `threading.openblas_num_threads`                               | 1                        | 4                | Controls OpenBLAS thread count alongside OMP and MKL. Propagated to Service B via environment.                                                                                                                   |
 | CPU affinity (core pinning)       | `affinity.enabled`, `affinity.num_cores`, `affinity.avoid_smt` | true / 1 / true          | true / 4 / true  | Avoids OS migration across cores, eliminates L1/L2 cache thrashing from migration, and avoids SMT contention. `explicit_cpus` can override auto-detection. Applied via `os.sched_setaffinity()`.                 |
 | Process priority (nice)           | `priority.enabled`, `priority.nice_value`                      | true / -5                | true / -5        | Raises process priority where privileges allow. Falls back gracefully without root.                                                                                                                              |
 | Service B thread settings         | Propagated via env vars                                        | Mirrors parent           | Mirrors parent   | `PYTORCH_INTRA_OP_THREADS` and `PYTORCH_INTER_OP_THREADS` are propagated to the Service B subprocess. Service B reads these and calls `torch.set_num_threads()` / `torch.set_num_interop_threads()` accordingly. |
@@ -284,36 +288,37 @@ It may be retained only as appendix or exploratory material.
 Use:
 
 ```
-boundary_crossing_interval_ms
+boundary_crossing_ms
 ```
 
 not the looser phrase _communication overhead_, unless explicitly clarified.
 
-**Definition:** Wall-clock interval from the start of serializing the intermediate tensor on Service A / caller side to the completion of response deserialization on the caller side.
+**Definition:** Wall-clock interval measured entirely client-side, from the start of serializing the intermediate tensor on Service A / caller side to the completion of response deserialization on the caller side.
 
-**Purpose:** This metric captures the compound cost of crossing the service boundary. It may include:
+**Purpose:** This metric captures the compound cost of crossing the service boundary. It includes:
 
-- serialization
-- deserialization
-- gRPC framework overhead
-- process-boundary transfer effects
-- RPC-related waiting
+- request serialization (client-side)
+- gRPC framework overhead and RPC round-trip
+- request deserialization (server-side)
+- Service B compute
+- response serialization (server-side)
+- response deserialization (client-side)
 
-It should not be described as a pure transport-only communication metric.
+Server-side sub-timings (`deserialize_ms`, `compute_ms`, `serialize_ms`) are embedded in the gRPC response proto and recorded as diagnostic metrics (`request_deserialize_ms`, `service_b_compute_ms`, `response_serialize_ms`). The client also records `request_serialize_ms` and `response_deserialize_ms` from its own timing.
+
+This metric should not be described as a pure transport-only communication metric.
 
 ### Diagnostic-Only Metrics (Not for Main Claims)
 
-These may be recorded but should remain diagnostic:
+These are recorded in `raw_iterations.csv` but should remain diagnostic:
 
-- request serialization time
-- request deserialization time
-- response serialization time
-- response deserialization time
-- gRPC round-trip time
-- Service B internal timing
-- CPU utilization
-- memory usage
-- system timestamp
+- `request_serialize_ms` — client-side, time to serialize intermediate tensor to bytes
+- `request_deserialize_ms` — server-reported, time to deserialize intermediate tensor from bytes
+- `response_serialize_ms` — server-reported, time to serialize output tensor to bytes
+- `response_deserialize_ms` — client-side, time to deserialize output tensor from bytes
+- CPU utilization (not currently recorded)
+- memory usage (not currently recorded)
+- system timestamp (not currently recorded)
 
 ### Why Diagnostic Metrics Are Separate
 
@@ -334,10 +339,10 @@ Before any performance measurement, verify that:
 
 This is a **mandatory precondition**, not an optional check:
 
-1. **Local validation** (PartA → PartB in-process) is run before the benchmark starts. If any split fails, the benchmark aborts.
-2. **gRPC validation** (PartA → gRPC → Service B → response) is run for each split condition on its first round, after service startup. If any split fails, the benchmark aborts.
-3. Both validation results are saved as `parity_validation.json` with tolerance, input count, max absolute difference, and pass/fail per split point.
-4. The `--skip-validation` flag has been removed. Parity cannot be bypassed.
+1. **Local validation** (PartA → PartB in-process) is run by `run_experiment.py` before the benchmark starts. If any split fails, the process exits (`sys.exit(1)`).
+2. **gRPC validation** (PartA → gRPC → Service B → response) is run by the benchmark runner for each split condition in round 1, after Service B startup. If any split fails, the runner raises `RuntimeError` and the benchmark aborts.
+3. Both validation results are saved as `parity_validation.json` (with separate `local_validation` and `grpc_validation` sections) recording tolerance, input count, max absolute difference, and pass/fail per split point.
+4. There is no `--skip-validation` flag. Parity cannot be bypassed.
 
 ---
 
@@ -345,22 +350,28 @@ This is a **mandatory precondition**, not an optional check:
 
 ### Benchmark Conditions
 
-| Parameter                  | Value                                                   | Justification                                          |
-| -------------------------- | ------------------------------------------------------- | ------------------------------------------------------ |
-| Model                      | ResNet-18 (torchvision, pretrained)                     | Standard, interpretable, manageable on CPU             |
-| Input shape                | (1, 3, 224, 224), FP32                                  | Standard ImageNet shape                                |
-| Input data                 | Fixed deterministic tensor                              | Reduces variance                                       |
-| Batch size                 | 1                                                       | Measures per-request latency                           |
-| Device                     | CPU                                                     | Avoids GPU confounds                                   |
-| Inference mode             | `model.eval()`, `torch.no_grad()`                       | Standard inference                                     |
-| Communication              | gRPC, localhost, unary RPC                              | Appropriate microservice baseline                      |
-| Serialization              | Protocol Buffers or equivalent raw-bytes tensor payload | Efficient and standard                                 |
-| Service deployment         | Separate OS processes                                   | Real process boundary                                  |
-| OS power profile           | High performance if possible                            | Reduces frequency-scaling variance                     |
-| CPU frequency              | Pinned if possible                                      | Reduces thermal and scaling artifacts                  |
-| PyTorch threads (intra-op) | Fixed at 4                                              | Prevents non-deterministic thread pool sizing          |
-| PyTorch threads (inter-op) | Fixed at 1                                              | No graph parallelism needed for single-input inference |
-| CPU affinity               | 4 physical cores, SMT excluded                          | Avoids OS migration and L1/L2 cache thrashing          |
+All parameters below are driven by YAML configuration. The **fully controlled** profile (`configs/rq1/1.1/rq1_1_fully_controlled.yaml`) is the thesis-facing benchmark mode. The threaded and experimental profiles override specific values as described in the CPU-Behaviour Stabilisation Controls section.
+
+| Parameter                  | Value (fully controlled)                             | Justification                                          |
+| -------------------------- | ---------------------------------------------------- | ------------------------------------------------------ |
+| Model                      | ResNet-18 (torchvision, pretrained)                  | Standard, interpretable, manageable on CPU             |
+| Input shape                | (1, 3, 224, 224), FP32                               | Standard ImageNet shape                                |
+| Input data                 | Fixed deterministic tensor (seed 42)                 | Reduces variance                                       |
+| Batch size                 | 1                                                    | Measures per-request latency                           |
+| Device                     | CPU                                                  | Avoids GPU confounds                                   |
+| Inference mode             | `model.eval()`, `torch.no_grad()`                    | Standard inference                                     |
+| Communication              | gRPC, localhost (127.0.0.1:50051), unary RPC         | Appropriate microservice baseline                      |
+| Serialization              | Protocol Buffers with raw-bytes tensor payload       | Efficient and standard                                 |
+| Service deployment         | Separate OS processes                                | Real process boundary                                  |
+| gRPC server workers        | 1 (`max_workers=1`)                                  | Single-threaded server, no server-side parallelism     |
+| OS power profile           | High performance if possible                         | Reduces frequency-scaling variance                     |
+| CPU frequency              | Performance governor requested (unavailable on WSL2) | Reduces thermal and scaling artifacts                  |
+| Turbo boost                | Disable requested (unavailable on WSL2)              | Reduces frequency-induced variance                     |
+| PyTorch threads (intra-op) | 1                                                    | Eliminates all intra-op synchronisation variance       |
+| PyTorch threads (inter-op) | 1                                                    | No graph parallelism needed for single-input inference |
+| OMP / MKL / OpenBLAS       | All set to 1                                         | Ensures BLAS libraries respect the same thread count   |
+| CPU affinity               | 1 physical core, SMT excluded                        | Avoids OS migration and L1/L2 cache thrashing          |
+| Process priority           | nice = -5                                            | Raises priority where privileges allow                 |
 
 ### Warmup Policy
 
@@ -369,10 +380,11 @@ Warmup is explicit and condition-specific.
 **Protocol:**
 
 1. Before each condition in each round, run W = 50 warmup iterations.
-2. During warmup, monitor latency stabilisation using a trailing-window coefficient of variation (CV) check (window = 10 iterations, threshold CV < 0.02).
-3. Record the stabilisation point (or lack thereof) as an artifact in `warmup_calibration.json`.
-4. If stabilisation is not reached within W iterations, log a warning but proceed. The configured W is treated as a minimum.
-5. Exclude all warmup iterations from measurement summaries.
+2. During warmup, monitor latency stabilisation using a trailing-window coefficient of variation (CV) check (window = 10 iterations, threshold CV < 0.02). The CV uses population standard deviation (`ddof=0`), appropriate for a running window estimate.
+3. All W warmup iterations are always executed (minimum guarantee), regardless of whether stabilisation is reached earlier.
+4. Record the stabilisation point (or lack thereof) as an artifact in `warmup_calibration.json`.
+5. If stabilisation is not reached within W iterations, log a warning but proceed.
+6. Exclude all warmup iterations from measurement summaries.
 
 **Rationale:** A fixed warmup count is the simplest defensible approach for CPU inference. The empirical stabilisation check provides evidence that W = 50 is sufficient, without introducing adaptive warmup complexity.
 
@@ -389,14 +401,14 @@ This is intentionally ambitious and should be kept.
 
 ```
 For each round r in 1..R:
-    Generate condition-order permutation π_r
+    Generate condition-order permutation π_r (seeded: Random(seed + r))
     For each condition c in π_r:
-        Start/restart Service B (if applicable)
-        Wait for service readiness
-        Run W warmup iterations (discarded)
-        Run M measured iterations (recorded)
-        Record per-round summary statistics
-        Shut down Service B (if applicable)
+        Start Service B subprocess (if split condition)
+        Wait for gRPC channel ready (if split condition)
+        Run gRPC parity validation (split conditions, round 1 only)
+        Run W warmup iterations with calibration check (discarded)
+        Run M measured iterations (recorded to raw_iterations.csv)
+        Shut down Service B (if split condition)
         Cooldown pause: 5 seconds
 ```
 
@@ -447,10 +459,11 @@ In split conditions, Service A and Service B run in separate processes. Monolith
 
 - Mean latency (primary)
 - Median latency
-- Standard deviation
+- Standard deviation (sample, `ddof=1`)
 - p5, p25, p75, p95, p99
 - Min, max
-- 95% confidence intervals
+- 95% confidence intervals (t-distribution, `df=n-1`)
+- Means of secondary metrics: `service_a_compute_ms`, `service_b_compute_ms`, `boundary_crossing_ms`, `activation_bytes`
 
 **Per round × condition:**
 
@@ -459,9 +472,10 @@ In split conditions, Service A and Service B run in separate processes. Monolith
 
 **Cross-round consistency (primary stability evidence):**
 
-- Standard deviation of round means
+- Standard deviation of round means (sample, `ddof=1`)
 - Range of round means
 - Coefficient of variation of round means
+- Saved as `round_consistency.json`
 - This is more defensible than per-iteration p-values for assessing result stability
 
 **Cross-condition comparisons:**
@@ -480,10 +494,10 @@ In split conditions, Service A and Service B run in separate processes. Monolith
 
 **Visualization:**
 
-- box or violin plots
-- latency distributions
-- overhead vs. activation-transfer burden
-- per-iteration stationarity checks
+- `latency_boxplot.png` — box plot per condition
+- `latency_violin.png` — violin plot with means and medians
+- `overhead_vs_activation.png` — scatter: activation KB vs overhead ms
+- `stationarity.png` — per-iteration time series per condition, ordered by (round, iteration)
 
 ---
 
@@ -577,6 +591,7 @@ opus/
 ├── proto/
 │   └── inference.proto
 ├── src/
+│   ├── __init__.py
 │   ├── models/
 │   │   ├── resnet_splits.py
 │   │   └── validation.py
@@ -588,6 +603,7 @@ opus/
 │   │   ├── timer.py
 │   │   ├── runner.py
 │   │   ├── warmup.py
+│   │   ├── cpu_stabilisation.py
 │   │   └── logging.py
 │   ├── analysis/
 │   │   ├── statistics.py
@@ -596,10 +612,15 @@ opus/
 │       ├── monolithic.py
 │       └── split_client.py
 ├── configs/
-│   ├── rq1_1_fully_controlled.yaml
-│   ├── rq1_1_threaded.yaml
-│   └── rq1_1_experimental.yaml
+│   └── rq1/
+│       └── 1.1/
+│           ├── rq1_1_fully_controlled.yaml
+│           ├── rq1_1_threaded.yaml
+│           └── rq1_1_experimental.yaml
 ├── results/
+├── run_experiment.py
+├── run_analysis.py
+├── build_proto.py
 ├── requirements.txt
 └── README.md
 ```
@@ -621,22 +642,24 @@ opus/
 
 Implement timing for:
 
-- end-to-end latency
-- Service A compute
-- `boundary_crossing_interval_ms`
-- Service B compute
+- end-to-end latency (`end_to_end_ms`)
+- Service A compute (`service_a_compute_ms`)
+- boundary-crossing interval (`boundary_crossing_ms`)
+- Service B compute (`service_b_compute_ms`, server-reported via gRPC response)
+- Diagnostic sub-timings (`request_serialize_ms`, `request_deserialize_ms`, `response_serialize_ms`, `response_deserialize_ms`)
 
 Validate that intervals are sensible and non-negative.
 
 ### Phase 4: Benchmark Orchestrator
 
-- Config loading
-- Process management
-- Warmup handling
+- Config loading (`src/benchmark/config.py`)
+- CPU-behaviour stabilisation (`src/benchmark/cpu_stabilisation.py`)
+- Process management (Service B subprocess lifecycle)
+- Warmup handling with calibration
 - Measurement loop
-- 5-round structure
-- Randomized ordering
-- Environment metadata capture
+- 5-round structure with seeded randomised ordering
+- Environment metadata capture (`environment.json`)
+- Entry points: `run_experiment.py` (benchmark), `run_analysis.py` (post-experiment analysis)
 
 ### Phase 5: Warmup Calibration
 
@@ -653,11 +676,13 @@ Validate that intervals are sensible and non-negative.
 
 ### Phase 7: Analysis and Reporting
 
-- Compute summary statistics
-- Compute overhead relative to monolith
-- Apply carry-forward rule
-- Generate plots
-- Generate thesis-facing report
+- Compute summary statistics (`condition_summaries.csv`, `round_summaries.csv`)
+- Compute overhead relative to monolith (`cross_condition.csv`)
+- Compute effect sizes with caveat (`effect_sizes.csv`)
+- Compute cross-round consistency (`round_consistency.json`)
+- Apply carry-forward rule (`carry_forward.json`)
+- Generate plots (`plots/latency_boxplot.png`, `latency_violin.png`, `overhead_vs_activation.png`, `stationarity.png`)
+- Generate thesis-facing report (`report.md`)
 
 ### Implementation Constraints
 
@@ -701,14 +726,16 @@ Validate that intervals are sensible and non-negative.
 | Main split scope              | 4 coarse architectural boundaries | 1 split or exhaustive layer sweep | Supports thesis-facing selection without overbroad characterization |
 | Stem split                    | Excluded from main sweep          | Included in main sweep            | Better thesis story and less trivial domination of results          |
 | Monolithic baseline           | Direct function call              | gRPC-wrapped monolith             | Measures total boundary introduction cost                           |
-| Communication-adjacent metric | `boundary_crossing_interval_ms`   | "communication overhead"          | More honest and less ambiguous                                      |
+| Communication-adjacent metric | `boundary_crossing_ms`            | "communication overhead"          | More honest and less ambiguous                                      |
 | Primary ranking metric        | Mean latency                      | Median latency                    | Better aligned with carry-forward selection logic                   |
 | Secondary robustness metrics  | Median, p95, std                  | Mean only                         | Preserves stability and variability interpretation                  |
 | Compute device                | CPU                               | GPU                               | Avoids GPU confounds                                                |
-| Locality                      | Localhost                         | Networked deployment              | Isolates boundary effects                                           |
+| Locality                      | Localhost (127.0.0.1)             | Networked deployment              | Isolates boundary effects                                           |
 | Batch size                    | 1                                 | Larger batches                    | Measures per-request cost cleanly                                   |
 | Repetition structure          | 5 rounds × 200 iterations         | Smaller benchmark                 | Stronger statistical discipline                                     |
-| Ordering                      | Randomized per round              | Fixed order                       | Reduces temporal confounds                                          |
+| Ordering                      | Randomized per round (seeded)     | Fixed order                       | Reduces temporal confounds                                          |
+| Threading (thesis mode)       | 1 intra-op, 1 inter-op thread     | Multi-threaded                    | Eliminates thread-pool scheduling variance                          |
+| CPU affinity (thesis mode)    | 1 physical core, SMT excluded     | Multi-core                        | Eliminates migration and cache thrashing                            |
 
 ---
 
@@ -716,6 +743,19 @@ Validate that intervals are sensible and non-negative.
 >
 > - RQ1.1 is now a **selection study**
 > - The main sweep is now **4 coarse boundaries**, not 5
-> - "communication overhead" is replaced by **`boundary_crossing_interval_ms`**
+> - "communication overhead" is replaced by **`boundary_crossing_ms`**
 > - **Mean** latency is now primary for selection
 > - The **strong 5 × 200 repetition structure** stays
+>
+> **Reconciled with codebase (16 April 2026):**
+>
+> - Config paths updated to `configs/rq1/1.1/` (nested layout)
+> - Project structure updated to match actual directory tree
+> - Benchmark conditions table now describes the **fully controlled** profile as thesis-facing default
+> - `openblas_num_threads` added to threading controls
+> - Three config profiles (fully controlled, threaded, experimental) clarified with accurate descriptions
+> - Warmup calibration: noted that all W iterations always execute and CV uses population std
+> - Parity validation: clarified two-stage enforcement (local + gRPC round 1)
+> - Repetition pseudo-code updated to match actual implementation
+> - Design decision record extended with threading and affinity choices
+> - Server-side diagnostic timings described in boundary-crossing metric section
