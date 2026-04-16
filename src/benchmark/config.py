@@ -21,7 +21,6 @@ class ThreadingConfig:
     mkl_num_threads: int = 4
     openblas_num_threads: int = 4
 
-
 @dataclass
 class AffinityConfig:
     """CPU core-pinning settings."""
@@ -59,56 +58,6 @@ class CpuStabilisationConfig:
     priority: PriorityConfig = field(default_factory=PriorityConfig)
     governor: GovernorConfig = field(default_factory=GovernorConfig)
     turbo: TurboConfig = field(default_factory=TurboConfig)
-
-
-@dataclass
-class ThreadingConfig:
-    """Thread-count settings for PyTorch, OpenMP, MKL, and OpenBLAS."""
-    pytorch_intra_op: int = 4
-    pytorch_inter_op: int = 1
-    omp_num_threads: int = 4
-    mkl_num_threads: int = 4
-    openblas_num_threads: int = 4
-
-
-@dataclass
-class AffinityConfig:
-    """CPU core-pinning settings."""
-    enabled: bool = True
-    num_cores: int = 4
-    avoid_smt: bool = True
-    explicit_cpus: Optional[List[int]] = None
-
-
-@dataclass
-class PriorityConfig:
-    """Process priority (nice) settings."""
-    enabled: bool = True
-    nice_value: int = -5
-
-
-@dataclass
-class GovernorConfig:
-    """CPU frequency governor settings."""
-    set_governor: bool = False
-    requested_mode: str = "performance"
-
-
-@dataclass
-class TurboConfig:
-    """Turbo boost control settings."""
-    disable_turbo: bool = False
-
-
-@dataclass
-class CpuStabilisationConfig:
-    """Top-level CPU stabilisation configuration."""
-    threading: ThreadingConfig = field(default_factory=ThreadingConfig)
-    affinity: AffinityConfig = field(default_factory=AffinityConfig)
-    priority: PriorityConfig = field(default_factory=PriorityConfig)
-    governor: GovernorConfig = field(default_factory=GovernorConfig)
-    turbo: TurboConfig = field(default_factory=TurboConfig)
-
 
 @dataclass
 class ExperimentConfig:
