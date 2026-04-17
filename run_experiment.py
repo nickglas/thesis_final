@@ -1,8 +1,10 @@
 """Main entry point for the RQ1.1 benchmark experiment."""
 
+import os
 import sys
 import logging
 import argparse
+import subprocess
 
 from src.models.validation import validate_equivalence
 from src.benchmark.config import load_config
@@ -17,6 +19,16 @@ def main():
                         help="Path to experiment config YAML")
     parser.add_argument("--output-dir", default=None,
                         help="Override output directory")
+    parser.add_argument(
+        "--run-analysis",
+        action="store_true",
+        help="Run run_analysis.py automatically after the benchmark completes",
+    )
+    parser.add_argument(
+        "--analysis-output-dir",
+        default=None,
+        help="Optional output directory for derived analysis artifacts",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -64,7 +76,31 @@ def main():
     runner.parity_local_results = parity_results
     runner.run()
 
-    logger.info("Experiment finished. Run run_analysis.py on the results directory.")
+    if args.run_analysis:
+        analysis_script = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "run_analysis.py",
+        )
+        results_dir = os.path.abspath(runner.output_dir)
+        analysis_cmd = [sys.executable, analysis_script, results_dir]
+        if args.analysis_output_dir:
+            analysis_cmd.extend(["--output-dir", args.analysis_output_dir])
+
+        logger.info(
+            "Experiment finished. Running post-experiment analysis for %s",
+            results_dir,
+        )
+        try:
+            subprocess.run(analysis_cmd, check=True)
+        except subprocess.CalledProcessError as exc:
+            logger.error(
+                "Post-experiment analysis failed with exit code %s",
+                exc.returncode,
+            )
+            sys.exit(exc.returncode)
+        logger.info("Post-experiment analysis complete.")
+    else:
+        logger.info("Experiment finished. Run run_analysis.py on the results directory.")
 
 
 if __name__ == "__main__":
