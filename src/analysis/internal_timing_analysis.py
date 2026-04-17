@@ -266,8 +266,11 @@ def generate_report(results_dir: str, config: Optional[Any] = None) -> str:
     lines = []
     lines.append("# Internal Timing Report — ResNet-18 Compute Distribution\n")
 
-    # --- Config ---
-    lines.append("## Configuration\n")
+    # --- 1. Setup ---
+    lines.append("## 1. Setup\n")
+
+    # --- 1.1 Config ---
+    lines.append("### 1.1 Configuration\n")
     config_path = os.path.join(results_dir, "config.yaml")
     if os.path.exists(config_path):
         with open(config_path) as f:
@@ -276,8 +279,8 @@ def generate_report(results_dir: str, config: Optional[Any] = None) -> str:
         lines.append(config_text.rstrip())
         lines.append("```\n")
 
-    # --- Environment ---
-    lines.append("## Environment\n")
+    # --- 1.2 Environment ---
+    lines.append("### 1.2 Environment\n")
     if env:
         lines.append(f"- **Platform:** {env.get('platform', 'N/A')}")
         lines.append(f"- **Processor:** {env.get('processor', 'N/A')}")
@@ -287,8 +290,11 @@ def generate_report(results_dir: str, config: Optional[Any] = None) -> str:
         lines.append(f"- **Git commit:** {env.get('git_commit', 'N/A')}")
         lines.append("")
 
-    # --- Validation ---
-    lines.append("## Functional Equivalence Validation\n")
+    # --- 2. Validation ---
+    lines.append("## 2. Validation\n")
+
+    # --- 2.1 Functional Equivalence ---
+    lines.append("### 2.1 Functional Equivalence\n")
     if validation:
         lines.append(f"- **Passed:** {validation.get('passed', 'N/A')}")
         lines.append(f"- **Inputs tested:** {validation.get('num_inputs', 'N/A')}")
@@ -296,8 +302,8 @@ def generate_report(results_dir: str, config: Optional[Any] = None) -> str:
         lines.append(f"- **Tolerance:** {validation.get('atol', 'N/A'):.2e}")
         lines.append("")
 
-    # --- Warmup ---
-    lines.append("## Warmup\n")
+    # --- 2.2 Warmup ---
+    lines.append("### 2.2 Warmup Calibration\n")
     if warmup:
         lines.append(f"- **Total warmup iterations:** {warmup.get('total_iterations', 'N/A')}")
         lines.append(f"- **Stabilised:** {warmup.get('stabilised', 'N/A')}")
@@ -308,18 +314,26 @@ def generate_report(results_dir: str, config: Optional[Any] = None) -> str:
         lines.append("")
 
     # --- Overhead ---
-    lines.append("## Instrumentation Overhead\n")
+    lines.append("### 2.3 Instrumentation Overhead\n")
     if overhead:
         lines.append(f"- **Plain forward mean:** {overhead.get('plain_mean_ms', 'N/A'):.4f} ms")
         lines.append(f"- **Instrumented forward mean:** {overhead.get('instrumented_mean_ms', 'N/A'):.4f} ms")
         lines.append(f"- **Overhead:** {overhead.get('overhead_ms', 'N/A'):.4f} ms ({overhead.get('overhead_pct', 'N/A'):.2f}%)")
         lines.append(f"- **Samples:** {overhead.get('n_samples', 'N/A')}")
+        method = overhead.get('method', 'unknown')
+        lines.append(f"- **Method:** {method}")
+        n_warmup = overhead.get('n_warmup')
+        if n_warmup:
+            lines.append(f"- **Overhead warmup:** {n_warmup} iterations per model")
         lines.append("")
     else:
         lines.append("Overhead measurement was disabled.\n")
 
+    # --- 3. Results ---
+    lines.append("## 3. Results\n")
+
     # --- Stage-Level Summary ---
-    lines.append("## Stage-Level Summary (L1)\n")
+    lines.append("### 3.1 Stage-Level Summary (L1)\n")
     stage_units = [s for s in summaries if s["level"] == "L1"]
     stage_units.sort(key=lambda x: -x["pct_of_model"])
     lines.append(_format_summary_table(stage_units))
@@ -328,7 +342,7 @@ def generate_report(results_dir: str, config: Optional[Any] = None) -> str:
     # --- Block-Level Summary ---
     block_units = [s for s in summaries if s["level"] == "L2"]
     if block_units:
-        lines.append("## Block-Level Summary (L2)\n")
+        lines.append("### 3.2 Block-Level Summary (L2)\n")
         block_units.sort(key=lambda x: -x["pct_of_model"])
         lines.append(_format_summary_table(block_units))
         lines.append("")
@@ -336,7 +350,7 @@ def generate_report(results_dir: str, config: Optional[Any] = None) -> str:
     # --- Operation-Level Summary grouped by block ---
     op_units = [s for s in summaries if s["level"] == "L3"]
     if op_units:
-        lines.append("## Operation-Level Summary (L3) — Grouped by Parent\n")
+        lines.append("### 3.3 Operation-Level Summary (L3) — Grouped by Parent\n")
         parents_seen = []
         op_by_parent: Dict[str, List] = defaultdict(list)
         for s in op_units:
@@ -347,26 +361,47 @@ def generate_report(results_dir: str, config: Optional[Any] = None) -> str:
         for parent in parents_seen:
             ops = op_by_parent[parent]
             ops.sort(key=lambda x: -x["pct_of_model"])
-            lines.append(f"### {parent}\n")
+            lines.append(f"#### {parent}\n")
             lines.append(_format_summary_table(ops))
             lines.append("")
 
     # --- Ranked Top Operations ---
     if op_units:
-        lines.append("## Ranked Operations (Top 20 by Compute Share)\n")
+        lines.append("### 3.4 Ranked Operations (Top 20 by Compute Share)\n")
         ranked = sorted(op_units, key=lambda x: -x["pct_of_model"])[:20]
         lines.append(_format_summary_table(ranked))
         lines.append("")
-        # Flag tiny operations
-        tiny = [s for s in ranked if s["mean_ms"] < 0.01]
-        if tiny:
-            lines.append("> **Note:** Operations with mean < 0.01 ms are near the resolution "
-                         "limit of `time.perf_counter()` and should be interpreted with caution. "
-                         "Their rankings may be unreliable.\n")
+
+    # --- Reliability tiers ---
+    if op_units:
+        lines.append("### 3.5 Measurement Reliability Tiers\n")
+        lines.append("> Operations are classified by mean timing relative to "
+                     "`time.perf_counter()` resolution and Python call overhead "
+                     "(~0.5–1 µs per `_pc()` call).\n")
+        high = [s for s in op_units if s["mean_ms"] >= 1.0]
+        moderate = [s for s in op_units if 0.1 <= s["mean_ms"] < 1.0]
+        low = [s for s in op_units if s["mean_ms"] < 0.1]
+        lines.append(f"- **High confidence** (mean ≥ 1.0 ms): {len(high)} operations — "
+                     "timer overhead negligible relative to measured value.")
+        if high:
+            names = ", ".join(f"`{s['unit_name']}`" for s in sorted(high, key=lambda x: -x["mean_ms"])[:8])
+            lines.append(f"  - Examples: {names}")
+        lines.append(f"- **Moderate confidence** (0.1–1.0 ms): {len(moderate)} operations — "
+                     "measurable but higher relative variance expected.")
+        if moderate:
+            names = ", ".join(f"`{s['unit_name']}`" for s in sorted(moderate, key=lambda x: -x["mean_ms"])[:6])
+            lines.append(f"  - Examples: {names}")
+        lines.append(f"- **Low confidence** (mean < 0.1 ms): {len(low)} operations — "
+                     "near timer resolution limit. Rankings within this tier are unreliable. "
+                     "Useful only for confirming these operations are negligible.")
+        if low:
+            names = ", ".join(f"`{s['unit_name']}`" for s in sorted(low, key=lambda x: -x["mean_ms"])[:6])
+            lines.append(f"  - Examples: {names}")
+        lines.append("")
 
     # --- Timing Gap Analysis ---
     if timing_gaps:
-        lines.append("## Timing Gap Analysis\n")
+        lines.append("### 3.6 Timing Gap Analysis\n")
         lines.append("> *Parent timings and the sum of their children are measured independently. "
                      "A small positive residual (the \"timing gap\") is expected due to Python "
                      "interpreter overhead between `perf_counter()` calls. This gap does not "
@@ -381,13 +416,18 @@ def generate_report(results_dir: str, config: Optional[Any] = None) -> str:
         lines.append("")
 
     # --- Cross-Round Consistency ---
-    lines.append("## Cross-Round Consistency\n")
+    lines.append("### 3.7 Cross-Round Consistency\n")
     # Show units with highest round CV
     unit_cvs: Dict[str, float] = {}
     for r in round_consistency:
         if "round_cv" in r:
             unit_cvs[r["unit_name"]] = r["round_cv"]
     if unit_cvs:
+        # Check for single-round degenerate case
+        n_rounds = len(set(r["round"] for r in round_consistency))
+        if n_rounds <= 1:
+            lines.append("> *Single-round run: cross-round CV is not meaningful. "
+                         "Run with ≥ 3 rounds to assess round-to-round stability.*\n")
         sorted_cvs = sorted(unit_cvs.items(), key=lambda x: -x[1])[:15]
         lines.append("| Unit | Round CV |")
         lines.append("|------|----------|")
@@ -395,17 +435,20 @@ def generate_report(results_dir: str, config: Optional[Any] = None) -> str:
             lines.append(f"| {name} | {cv:.4f} |")
         lines.append("")
 
-    # --- Observations ---
-    lines.append("## Observations\n")
+    # --- 4. Interpretation ---
+    lines.append("## 4. Interpretation\n")
+
+    # --- 4.1 Observations ---
+    lines.append("### 4.1 Observations\n")
     observations = _generate_observations(summaries, timing_gaps)
     for obs in observations:
         lines.append(f"- {obs}")
     lines.append("")
 
-    # --- Model total ---
+    # --- 4.2 Model total ---
     if "model" in by_name:
         m = by_name["model"]
-        lines.append("## Model Total\n")
+        lines.append("### 4.2 Model Total\n")
         lines.append(f"- **Mean forward pass:** {m['mean_ms']:.4f} ms")
         lines.append(f"- **Median:** {m['median_ms']:.4f} ms")
         lines.append(f"- **Std:** {m['std_ms']:.4f} ms")
@@ -484,7 +527,7 @@ def _generate_observations(summaries: List[Dict[str, Any]],
             f"of total ({top_block['mean_ms']:.4f} ms)."
         )
 
-    # Conv vs other ops
+    # Conv vs other ops — only report for high-confidence ops
     ops = [s for s in summaries if s["level"] == "L3"]
     if ops:
         conv_ops = [s for s in ops if "conv" in s["unit_name"]]
@@ -500,17 +543,16 @@ def _generate_observations(summaries: List[Dict[str, Any]],
             bn_pct = bn_total / model_mean * 100 if model_mean > 0 else 0.0
             obs.append(f"BatchNorm operations account for {bn_pct:.1f}% of total compute.")
 
-    # Downsample blocks vs non-downsample blocks
-    if blocks:
-        ds_blocks = [s for s in blocks if s["unit_name"].endswith(".0") and
-                     s["unit_name"].split(".")[0] in ("layer2", "layer3", "layer4")]
-        non_ds_blocks = [s for s in blocks if s not in ds_blocks]
-        if ds_blocks and non_ds_blocks:
-            ds_mean = sum(s["mean_ms"] for s in ds_blocks) / len(ds_blocks)
-            non_ds_mean = sum(s["mean_ms"] for s in non_ds_blocks) / len(non_ds_blocks)
+        # Micro-op caveat
+        micro_ops = [s for s in ops if s["mean_ms"] < 0.1]
+        if micro_ops:
+            micro_total = sum(s["mean_ms"] for s in micro_ops)
+            model_mean = by_name.get("model", {}).get("mean_ms", 1.0)
+            micro_pct = micro_total / model_mean * 100 if model_mean > 0 else 0.0
             obs.append(
-                f"Blocks with downsample average {ds_mean:.4f} ms vs "
-                f"{non_ds_mean:.4f} ms for blocks without downsample."
+                f"Operations below 0.1 ms (relu, add, some bn) collectively account for "
+                f"~{micro_pct:.1f}% of compute. Individual rankings within this tier "
+                f"are near timer resolution and should not be over-interpreted."
             )
 
     # Timing gaps

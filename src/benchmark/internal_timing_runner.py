@@ -156,24 +156,42 @@ class InternalTimingRunner:
 
     def _measure_overhead(self, model: InstrumentedResNet,
                           input_tensor: torch.Tensor) -> Dict[str, Any]:
-        """Measure instrumentation overhead by comparing plain vs instrumented forward."""
-        n_overhead = 50
-        plain_model = get_full_model()
+        """Measure instrumentation overhead by comparing plain vs instrumented forward.
 
-        # Plain forward timings
+        Methodology:
+        - Both models are warmed up equally before measurement.
+        - Measurements are interleaved (ABAB) to neutralise ordering/cache effects.
+        - Both paths are timed from the same outer window (perf_counter wrapping
+          the torch.no_grad + forward call) so the comparison is symmetric.
+        """
+        n_overhead = 50
+        n_warmup = 20
+        plain_model = get_full_model()
+        plain_model.eval()
+
+        # Warm up BOTH models equally
+        for _ in range(n_warmup):
+            with torch.no_grad():
+                _ = plain_model(input_tensor)
+        for _ in range(n_warmup):
+            with torch.no_grad():
+                _ = model.warmup_forward(input_tensor)
+
+        # Interleaved measurement (ABAB) with symmetric outer timing
         plain_times = []
+        instr_times = []
         for _ in range(n_overhead):
+            # Plain
             t0 = time.perf_counter()
             with torch.no_grad():
                 _ = plain_model(input_tensor)
             plain_times.append((time.perf_counter() - t0) * 1000)
 
-        # Instrumented forward timings (use the 'model' total)
-        instr_times = []
-        for _ in range(n_overhead):
+            # Instrumented — timed from same outer window
+            t0 = time.perf_counter()
             with torch.no_grad():
-                _, timings = model(input_tensor)
-            instr_times.append(timings["model"])
+                _, _ = model(input_tensor)
+            instr_times.append((time.perf_counter() - t0) * 1000)
 
         plain_mean = sum(plain_times) / len(plain_times)
         instr_mean = sum(instr_times) / len(instr_times)
@@ -182,10 +200,12 @@ class InternalTimingRunner:
 
         return {
             "n_samples": n_overhead,
+            "n_warmup": n_warmup,
             "plain_mean_ms": round(plain_mean, 4),
             "instrumented_mean_ms": round(instr_mean, 4),
             "overhead_ms": round(overhead_ms, 4),
             "overhead_pct": round(overhead_pct, 2),
+            "method": "interleaved_outer_timing",
         }
 
     def _run_measurement_loop(self, model: InstrumentedResNet,
