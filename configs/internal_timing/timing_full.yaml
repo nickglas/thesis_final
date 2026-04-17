@@ -1,0 +1,57 @@
+# Internal Timing Mode — Full Operation-Level Profiling
+# Strict single-thread/single-core CPU stabilisation.
+# This is the primary exploratory profiling config.
+#
+# NOTE: This is an exploratory mode, NOT thesis-facing split benchmarking.
+# It measures local compute distribution within a single-process forward pass.
+
+experiment:
+  name: "internal_timing_resnet18"
+  description: "Full operation-level compute distribution profiling of ResNet-18"
+
+model:
+  name: "resnet18"
+  pretrained: true
+  device: "cpu"
+  input_shape: [1, 3, 224, 224]
+  precision: "fp32"
+
+timing:
+  level: "full" # stage | block | operation | full
+  include_stem_ops: true
+  include_timing_gaps: true
+  measure_overhead: true
+
+benchmark:
+  rounds: 3
+  warmup_iterations: 30
+  measured_iterations: 100
+  seed: 42
+
+validation:
+  num_inputs: 5
+  atol: 1.0e-6
+
+warmup_calibration:
+  window: 10
+  cv_threshold: 0.02
+
+cpu_stabilisation:
+  threading:
+    pytorch_intra_op: 1
+    pytorch_inter_op: 1
+    omp_num_threads: 1
+    mkl_num_threads: 1
+    openblas_num_threads: 1
+  affinity:
+    enabled: true
+    num_cores: 1
+    avoid_smt: true
+  priority:
+    enabled: true
+    nice_value: -5
+  governor:
+    set_governor: false
+    requested_mode: "performance"
+  turbo:
+    disable_turbo: false

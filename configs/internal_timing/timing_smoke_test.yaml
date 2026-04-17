@@ -1,0 +1,55 @@
+# Internal Timing Mode — Smoke Test
+# Minimal iterations for pipeline validation only.
+# NOT for evidence or thesis-facing use.
+#
+# NOTE: This is an exploratory mode, NOT thesis-facing split benchmarking.
+
+experiment:
+  name: "internal_timing_smoke_test"
+  description: "Smoke test for internal timing pipeline validation"
+
+model:
+  name: "resnet18"
+  pretrained: true
+  device: "cpu"
+  input_shape: [1, 3, 224, 224]
+  precision: "fp32"
+
+timing:
+  level: "full"
+  include_stem_ops: true
+  include_timing_gaps: true
+  measure_overhead: true
+
+benchmark:
+  rounds: 1
+  warmup_iterations: 3
+  measured_iterations: 5
+  seed: 42
+
+validation:
+  num_inputs: 3
+  atol: 1.0e-6
+
+warmup_calibration:
+  window: 3
+  cv_threshold: 0.05
+
+cpu_stabilisation:
+  threading:
+    pytorch_intra_op: 1
+    pytorch_inter_op: 1
+    omp_num_threads: 1
+    mkl_num_threads: 1
+    openblas_num_threads: 1
+  affinity:
+    enabled: false
+    num_cores: 1
+    avoid_smt: true
+  priority:
+    enabled: false
+    nice_value: -5
+  governor:
+    set_governor: false
+  turbo:
+    disable_turbo: false
