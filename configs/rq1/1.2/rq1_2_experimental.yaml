@@ -1,0 +1,71 @@
+# -----------------------------------------------------------------------------
+# RQ1.2 experimental / smoke-test mode
+#
+# Fast pipeline validation with minimal iterations.
+# NOT for thesis-facing results.
+# -----------------------------------------------------------------------------
+experiment:
+  name: "RQ1.2 experimental"
+  description: "Smoke-test config for RQ1.2 pipeline validation"
+
+model:
+  name: "resnet18"
+  pretrained: true
+  device: "cpu"
+  input_shape: [1, 3, 224, 224]
+  precision: "fp32"
+
+conditions:
+  - name: "monolithic"
+    type: "monolithic"
+  - name: "split_after_layer3_block0"
+    type: "split"
+    split_after: "layer3.0"
+  - name: "split_after_layer3"
+    type: "split"
+    split_after: "layer3"
+
+benchmark:
+  rounds: 1
+  warmup_iterations: 3
+  measured_iterations: 5
+  cooldown_seconds: 2
+  seed: 42
+
+grpc:
+  host: "127.0.0.1"
+  port: 50051
+  max_message_bytes: 16777216
+
+carry_forward:
+  near_best_window_pct: 5.0
+  degeneracy_threshold_pct: 10.0
+
+parity:
+  atol: 1.0e-5
+  num_inputs: 5
+
+warmup_calibration:
+  window: 3
+  cv_threshold: 0.02
+
+cpu_stabilisation:
+  threading:
+    pytorch_intra_op: 1
+    pytorch_inter_op: 1
+    omp_num_threads: 1
+    mkl_num_threads: 1
+    openblas_num_threads: 1
+  affinity:
+    enabled: false
+    num_cores: 1
+    avoid_smt: true
+    explicit_cpus: null
+  priority:
+    enabled: false
+    nice_value: 0
+  governor:
+    set_governor: false
+    requested_mode: "performance"
+  turbo:
+    disable_turbo: false
