@@ -5,8 +5,11 @@ carry-forward rule, generates plots, and writes a summary report.
 """
 
 import os
+import json
 import argparse
 import logging
+
+import yaml
 
 from src.benchmark.config import load_config
 from src.analysis.statistics import (
@@ -50,6 +53,9 @@ def main():
     output_dir = _resolve_analysis_output_dir(results_dir, args.output_dir, logger)
     config_path = args.config or os.path.join(results_dir, "config.yaml")
     config = load_config(config_path)
+    config_snapshot = _load_yaml_snapshot(config_path, logger)
+    environment_path = os.path.join(results_dir, "environment.json")
+    environment_snapshot = _load_json_snapshot(environment_path, logger)
     artifact = ArtifactLogger(output_dir)
 
     # ----- Load raw data -----
@@ -125,7 +131,11 @@ def main():
     # ----- Summary report -----
     _generate_report(results_dir, output_dir, summaries, round_sums,
                      round_consistency, cross, effects, carry_forward,
-                     config.experiment_name)
+                     experiment_name=config.experiment_name,
+                     config_path=config_path,
+                     config_snapshot=config_snapshot,
+                     environment_path=environment_path,
+                     environment_snapshot=environment_snapshot)
     if output_dir == results_dir:
         logger.info(f"Analysis complete. All artifacts in {output_dir}")
     else:
@@ -159,9 +169,144 @@ def _resolve_analysis_output_dir(results_dir, requested_output_dir, logger):
     return fallback_dir
 
 
+def _load_yaml_snapshot(path, logger):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        logger.warning("Config snapshot not found at %s", path)
+    except Exception as exc:
+        logger.warning("Could not read config snapshot %s: %s", path, exc)
+    return None
+
+
+def _load_json_snapshot(path, logger):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        logger.warning("Environment snapshot not found at %s", path)
+    except Exception as exc:
+        logger.warning("Could not read environment snapshot %s: %s", path, exc)
+    return None
+
+
+def _flatten_mapping(mapping, prefix=""):
+    rows = []
+    if not isinstance(mapping, dict):
+        return rows
+
+    for key, value in mapping.items():
+        full_key = f"{prefix}.{key}" if prefix else str(key)
+        if isinstance(value, dict):
+            rows.extend(_flatten_mapping(value, full_key))
+        else:
+            rows.append((full_key, value))
+    return rows
+
+
+def _format_report_value(value):
+    if value is None:
+        text = "n/a"
+    elif isinstance(value, bool):
+        text = "true" if value else "false"
+    elif isinstance(value, (list, tuple)):
+        text = ", ".join(str(item) for item in value) if value else "n/a"
+    else:
+        text = str(value)
+    return text.replace("|", "\\|").replace("\n", "<br>")
+
+
+def _append_settings_table(lines, rows):
+    if not rows:
+        lines.append("_No recorded settings._")
+        return
+
+    lines.append("| Setting | Value |")
+    lines.append("|---|---|")
+    for key, value in rows:
+        lines.append(f"| {key} | {_format_report_value(value)} |")
+
+
+def _append_config_details(lines, config_path, config_snapshot):
+    lines.extend([
+        "\n## Configuration Used\n",
+        f"- **Config snapshot:** `{config_path}`",
+    ])
+
+    if not config_snapshot:
+        lines.extend(["", "_Config snapshot unavailable._"])
+        return
+
+    section_order = [
+        "experiment",
+        "model",
+        "benchmark",
+        "grpc",
+        "carry_forward",
+        "parity",
+        "warmup_calibration",
+        "cpu_stabilisation",
+    ]
+
+    for section_name in section_order:
+        section = config_snapshot.get(section_name)
+        if not section:
+            continue
+        lines.extend([f"\n### {section_name.replace('_', ' ').title()}\n"])
+        _append_settings_table(lines, _flatten_mapping(section))
+
+    conditions = config_snapshot.get("conditions")
+    if conditions:
+        lines.extend([
+            "\n### Conditions\n",
+            "| Condition | Type | Split After |",
+            "|---|---|---|",
+        ])
+        for condition in conditions:
+            if isinstance(condition, dict):
+                lines.append(
+                    f"| {_format_report_value(condition.get('name'))} | "
+                    f"{_format_report_value(condition.get('type'))} | "
+                    f"{_format_report_value(condition.get('split_after'))} |"
+                )
+            else:
+                lines.append(f"| {_format_report_value(condition)} | n/a | n/a |")
+
+
+def _append_environment_details(lines, environment_path, environment_snapshot):
+    lines.extend([
+        "\n## Environment Used\n",
+        f"- **Environment snapshot:** `{environment_path}`",
+    ])
+
+    if not environment_snapshot:
+        lines.extend(["", "_Environment snapshot unavailable._"])
+        return
+
+    runtime_rows = [
+        (key, value)
+        for key, value in environment_snapshot.items()
+        if key != "cpu_stabilisation"
+    ]
+    if runtime_rows:
+        lines.extend(["\n### Runtime\n"])
+        _append_settings_table(lines, runtime_rows)
+
+    cpu_stabilisation = environment_snapshot.get("cpu_stabilisation")
+    if cpu_stabilisation:
+        lines.extend(["\n### CPU Stabilisation Observed\n"])
+        if isinstance(cpu_stabilisation, dict):
+            _append_settings_table(lines, _flatten_mapping(cpu_stabilisation))
+        else:
+            _append_settings_table(lines, [("cpu_stabilisation", cpu_stabilisation)])
+
+
 def _generate_report(source_results_dir, output_dir, summaries, round_sums,
                      round_consistency, cross, effects, carry_forward,
-                     experiment_name="RQ1.1"):
+                     experiment_name="RQ1.1", config_path=None,
+                     config_snapshot=None, environment_path=None,
+                     environment_snapshot=None):
     """Write a Markdown summary report."""
     lines = [f"# {experiment_name} Experiment Report\n"]
     if output_dir != source_results_dir:
@@ -171,6 +316,12 @@ def _generate_report(source_results_dir, output_dir, summaries, round_sums,
             "> Derived analysis artifacts directory: "
             f"`{output_dir}`.\n",
         ])
+
+    if config_path:
+        _append_config_details(lines, config_path, config_snapshot)
+    if environment_path:
+        _append_environment_details(lines, environment_path, environment_snapshot)
+
     lines.extend([
         "## Condition Summaries\n",
         "| Condition | N | Mean (ms) | Median (ms) | Std (ms) | p95 (ms) | 95% CI |",

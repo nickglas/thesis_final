@@ -46,6 +46,13 @@ This executes the full benchmark:
 
 Raw per-iteration data is saved to `results/rq1_1_<timestamp>/raw_iterations.csv`.
 
+If you want the analysis artifacts and Markdown report to be generated
+immediately after the benchmark completes, add `--run-analysis`:
+
+```bash
+python run_experiment.py --config <your-config-path> --run-analysis
+```
+
 **Estimated wall-clock time:** roughly 30–90 minutes depending on hardware
 (5000 measured iterations total, plus warmup and cooldown).
 
@@ -71,7 +78,8 @@ This produces:
 - `effect_sizes.csv` — Cohen's d and Mann-Whitney U
 - `carry_forward.json` — carry-forward selection result
 - `plots/` — box plot, violin plot, overhead scatter, stationarity traces
-- `report.md` — Markdown summary report
+- `report.md` — Markdown summary report, including the archived `config.yaml`
+  and `environment.json` snapshots used for the run
 
 ## Project Structure
 
