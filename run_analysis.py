@@ -1,4 +1,4 @@
-"""Post-experiment analysis for RQ1.1 results.
+"""Post-experiment analysis.
 
 Reads raw_iterations.csv, computes all statistics, applies the
 carry-forward rule, generates plots, and writes a summary report.
@@ -24,7 +24,7 @@ from src.benchmark.logging import ArtifactLogger
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Analyse RQ1.1 benchmark results"
+        description="Analyse benchmark results"
     )
     parser.add_argument("results_dir",
                         help="Path to results directory (e.g. results/rq1_1_20260414_...)")
@@ -44,7 +44,7 @@ def main():
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
-    logger = logging.getLogger("rq1_1_analysis")
+    logger = logging.getLogger("analysis")
 
     results_dir = args.results_dir
     output_dir = _resolve_analysis_output_dir(results_dir, args.output_dir, logger)
@@ -124,7 +124,8 @@ def main():
 
     # ----- Summary report -----
     _generate_report(results_dir, output_dir, summaries, round_sums,
-                     round_consistency, cross, effects, carry_forward)
+                     round_consistency, cross, effects, carry_forward,
+                     config.experiment_name)
     if output_dir == results_dir:
         logger.info(f"Analysis complete. All artifacts in {output_dir}")
     else:
@@ -159,9 +160,10 @@ def _resolve_analysis_output_dir(results_dir, requested_output_dir, logger):
 
 
 def _generate_report(source_results_dir, output_dir, summaries, round_sums,
-                     round_consistency, cross, effects, carry_forward):
+                     round_consistency, cross, effects, carry_forward,
+                     experiment_name="RQ1.1"):
     """Write a Markdown summary report."""
-    lines = ["# RQ1.1 Experiment Report\n"]
+    lines = [f"# {experiment_name} Experiment Report\n"]
     if output_dir != source_results_dir:
         lines.extend([
             "> Source results directory: "

@@ -43,7 +43,9 @@ class BenchmarkRunner:
 
         if output_dir is None:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_dir = os.path.join("results", f"rq1_1_{ts}")
+            # Derive prefix from experiment name, e.g. "RQ1.2 ..." → "rq1_2"
+            prefix = config.experiment_name.split()[0].lower().replace(".", "_")
+            output_dir = os.path.join("results", f"{prefix}_{ts}")
         self.output_dir = output_dir
         self.artifact_logger = ArtifactLogger(output_dir)
 
@@ -65,7 +67,7 @@ class BenchmarkRunner:
     def run(self):
         """Execute the full benchmark and save raw artifacts."""
         logger.info("=" * 60)
-        logger.info("RQ1.1 Benchmark — Starting")
+        logger.info("%s Benchmark — Starting", self.config.experiment_name)
         logger.info("=" * 60)
 
         # Apply CPU-behaviour stabilisation before any measurement
