@@ -79,44 +79,56 @@ class BenchmarkRunner:
         self.artifact_logger.save_environment(self.stabilisation_meta)
 
         cfg = self.config
+        completed = False
 
-        for round_num in range(1, cfg.rounds + 1):
-            # Randomised condition order for this round (seeded)
-            rng = random.Random(cfg.seed + round_num)
-            order = list(range(len(cfg.conditions)))
-            rng.shuffle(order)
+        try:
+            for round_num in range(1, cfg.rounds + 1):
+                # Randomised condition order for this round (seeded)
+                rng = random.Random(cfg.seed + round_num)
+                order = list(range(len(cfg.conditions)))
+                rng.shuffle(order)
 
-            names = [cfg.conditions[i].name for i in order]
-            logger.info(f"Round {round_num}/{cfg.rounds} — order: {names}")
+                names = [cfg.conditions[i].name for i in order]
+                logger.info(f"Round {round_num}/{cfg.rounds} — order: {names}")
 
-            for idx in order:
-                cond = cfg.conditions[idx]
-                logger.info(f"  Condition: {cond.name}")
+                for idx in order:
+                    cond = cfg.conditions[idx]
+                    logger.info(f"  Condition: {cond.name}")
 
-                if cond.type == "monolithic":
-                    self._run_monolithic(round_num, cond)
-                else:
-                    self._run_split(round_num, cond)
+                    if cond.type == "monolithic":
+                        self._run_monolithic(round_num, cond)
+                    else:
+                        self._run_split(round_num, cond)
 
-                # Cooldown between conditions
-                logger.info(f"  Cooldown: {cfg.cooldown_seconds}s")
-                time.sleep(cfg.cooldown_seconds)
+                    # Cooldown between conditions
+                    logger.info(f"  Cooldown: {cfg.cooldown_seconds}s")
+                    time.sleep(cfg.cooldown_seconds)
 
-        # Persist raw per-iteration data
+            completed = True
+        finally:
+            self._persist_artifacts()
+            if completed:
+                logger.info(
+                    f"Benchmark complete. {len(self.all_rows)} iterations recorded."
+                )
+            else:
+                logger.warning(
+                    "Benchmark interrupted after %s iterations. Partial artifacts saved.",
+                    len(self.all_rows),
+                )
+            logger.info(f"Results directory: {self.output_dir}")
+
+    def _persist_artifacts(self):
         self.artifact_logger.save_raw_iterations(self.all_rows)
 
-        # Persist parity validation artifact
         parity_artifact = {
             "local_validation": self.parity_local_results,
             "grpc_validation": self._parity_grpc_results,
         }
         self.artifact_logger.save_json("parity_validation.json", parity_artifact)
-
-        # Persist warmup calibration artifact
-        self.artifact_logger.save_json("warmup_calibration.json", self._warmup_calibrations)
-
-        logger.info(f"Benchmark complete. {len(self.all_rows)} iterations recorded.")
-        logger.info(f"Results directory: {self.output_dir}")
+        self.artifact_logger.save_json(
+            "warmup_calibration.json", self._warmup_calibrations
+        )
 
     # ------------------------------------------------------------------
     # Monolithic condition
@@ -146,12 +158,14 @@ class BenchmarkRunner:
         logger.info(f"    Measuring: {cfg.measured_iterations} iterations")
         for i in range(cfg.measured_iterations):
             metrics = client.infer(self.input_tensor)
-            self.all_rows.append({
+            row = {
                 "round": round_num,
                 "condition": cond.name,
                 "iteration": i + 1,
                 **metrics,
-            })
+            }
+            self.all_rows.append(row)
+            self.artifact_logger.append_raw_iterations([row])
 
     # ------------------------------------------------------------------
     # Split condition
@@ -197,12 +211,14 @@ class BenchmarkRunner:
                 logger.info(f"    Measuring: {cfg.measured_iterations} iterations")
                 for i in range(cfg.measured_iterations):
                     metrics = client.infer(self.input_tensor)
-                    self.all_rows.append({
+                    row = {
                         "round": round_num,
                         "condition": cond.name,
                         "iteration": i + 1,
                         **metrics,
-                    })
+                    }
+                    self.all_rows.append(row)
+                    self.artifact_logger.append_raw_iterations([row])
             finally:
                 client.close()
         finally:

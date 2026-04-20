@@ -1,4 +1,4 @@
-"""Statistical analysis for RQ1.1 benchmark results.
+"""Statistical analysis for RQ1.x benchmark results.
 
 Implements:
   - Per-condition summary statistics (mean, median, std, percentiles, CI)
@@ -26,8 +26,11 @@ def load_raw_iterations(path: str) -> List[Dict[str, Any]]:
         rows = []
         for row in reader:
             for key in row:
-                if key in ("round", "iteration", "activation_bytes"):
-                    row[key] = int(float(row[key]))
+                if key in ("round", "iteration", "num_hops") or key.endswith("_bytes"):
+                    try:
+                        row[key] = int(float(row[key]))
+                    except (ValueError, TypeError):
+                        pass
                 elif key != "condition":
                     try:
                         row[key] = float(row[key])
@@ -35,6 +38,17 @@ def load_raw_iterations(path: str) -> List[Dict[str, Any]]:
                         pass
             rows.append(row)
     return rows
+
+
+def _find_baseline_condition(names: List[str]):
+    if "monolithic" in names:
+        return "monolithic"
+    if "monolithic_k8s_1svc" in names:
+        return "monolithic_k8s_1svc"
+    for name in names:
+        if str(name).startswith("monolithic"):
+            return name
+    return None
 
 
 # ------------------------------------------------------------------
@@ -71,19 +85,47 @@ def compute_condition_summary(rows: List[Dict], condition: str) -> Dict:
     summary["ci95_lower_ms"] = summary["mean_ms"] - t_crit * se
     summary["ci95_upper_ms"] = summary["mean_ms"] + t_crit * se
 
-    # Secondary metrics for split conditions
-    summary["service_a_compute_ms_mean"] = float(
-        np.mean([r["service_a_compute_ms"] for r in cond_rows])
-    )
-    summary["service_b_compute_ms_mean"] = float(
-        np.mean([r["service_b_compute_ms"] for r in cond_rows])
-    )
-    summary["boundary_crossing_ms_mean"] = float(
-        np.mean([r["boundary_crossing_ms"] for r in cond_rows])
-    )
-    summary["activation_bytes_mean"] = float(
-        np.mean([r["activation_bytes"] for r in cond_rows])
-    )
+    if all("service_a_compute_ms" in r for r in cond_rows):
+        summary["service_a_compute_ms_mean"] = float(
+            np.mean([r["service_a_compute_ms"] for r in cond_rows])
+        )
+    if all("service_b_compute_ms" in r for r in cond_rows):
+        summary["service_b_compute_ms_mean"] = float(
+            np.mean([r["service_b_compute_ms"] for r in cond_rows])
+        )
+    if all("boundary_crossing_ms" in r for r in cond_rows):
+        summary["boundary_crossing_ms_mean"] = float(
+            np.mean([r["boundary_crossing_ms"] for r in cond_rows])
+        )
+    if all("activation_bytes" in r for r in cond_rows):
+        summary["activation_bytes_mean"] = float(
+            np.mean([r["activation_bytes"] for r in cond_rows])
+        )
+
+    if all("total_compute_ms" in r for r in cond_rows):
+        summary["total_compute_ms_mean"] = float(
+            np.mean([r["total_compute_ms"] for r in cond_rows])
+        )
+    if all("non_compute_overhead_ms" in r for r in cond_rows):
+        summary["non_compute_overhead_ms_mean"] = float(
+            np.mean([r["non_compute_overhead_ms"] for r in cond_rows])
+        )
+        summary.setdefault(
+            "boundary_crossing_ms_mean",
+            summary["non_compute_overhead_ms_mean"],
+        )
+    if all("total_activation_bytes" in r for r in cond_rows):
+        summary["total_activation_bytes_mean"] = float(
+            np.mean([r["total_activation_bytes"] for r in cond_rows])
+        )
+        summary.setdefault(
+            "activation_bytes_mean",
+            summary["total_activation_bytes_mean"],
+        )
+    if all("num_hops" in r for r in cond_rows):
+        summary["num_hops_mean"] = float(
+            np.mean([r["num_hops"] for r in cond_rows])
+        )
 
     return summary
 
@@ -122,29 +164,34 @@ def compute_round_summaries(rows: List[Dict]) -> List[Dict]:
 
 def compute_cross_condition(summaries: List[Dict]) -> List[Dict]:
     """Compute overhead of each split condition relative to monolithic."""
-    mono = next((s for s in summaries if s["condition"] == "monolithic"), None)
-    if not mono:
+    baseline_name = _find_baseline_condition([s["condition"] for s in summaries])
+    if baseline_name is None:
         return []
+    baseline = next(s for s in summaries if s["condition"] == baseline_name)
 
     comparisons = []
     for s in summaries:
-        if s["condition"] == "monolithic":
+        if s["condition"] == baseline_name:
             continue
-        overhead_ms = s["mean_ms"] - mono["mean_ms"]
+        overhead_ms = s["mean_ms"] - baseline["mean_ms"]
         overhead_pct = (
-            (overhead_ms / mono["mean_ms"]) * 100 if mono["mean_ms"] > 0
+            (overhead_ms / baseline["mean_ms"]) * 100
+            if baseline["mean_ms"] > 0
             else float("inf")
         )
         comparisons.append({
             "condition": s["condition"],
             "split_mean_ms": s["mean_ms"],
-            "monolith_mean_ms": mono["mean_ms"],
+            "baseline_condition": baseline_name,
+            "monolith_mean_ms": baseline["mean_ms"],
             "overhead_ms": overhead_ms,
             "overhead_pct": overhead_pct,
             "activation_bytes": s.get("activation_bytes_mean", 0),
             "service_a_compute_ms": s.get("service_a_compute_ms_mean", 0),
             "service_b_compute_ms": s.get("service_b_compute_ms_mean", 0),
             "boundary_crossing_ms": s.get("boundary_crossing_ms_mean", 0),
+            "total_compute_ms": s.get("total_compute_ms_mean", 0),
+            "num_hops": s.get("num_hops_mean", 0),
         })
     return comparisons
 
@@ -157,15 +204,19 @@ def compute_effect_sizes(rows: List[Dict], summaries: List[Dict]) -> List[Dict]:
     Effect sizes (Cohen's d) are more informative than p-values here.
     These results should be interpreted with that caveat.
     """
+    baseline_name = _find_baseline_condition([s["condition"] for s in summaries])
+    if baseline_name is None:
+        return []
+
     mono_lat = np.array([
-        r["end_to_end_ms"] for r in rows if r["condition"] == "monolithic"
+        r["end_to_end_ms"] for r in rows if r["condition"] == baseline_name
     ])
     if len(mono_lat) == 0:
         return []
 
     effects = []
     for s in summaries:
-        if s["condition"] == "monolithic":
+        if s["condition"] == baseline_name:
             continue
         split_lat = np.array([
             r["end_to_end_ms"] for r in rows if r["condition"] == s["condition"]
@@ -191,6 +242,7 @@ def compute_effect_sizes(rows: List[Dict], summaries: List[Dict]) -> List[Dict]:
 
         effects.append({
             "condition": s["condition"],
+            "baseline_condition": baseline_name,
             "cohens_d": float(cohens_d),
             "mann_whitney_u": float(u_stat),
             "mann_whitney_p": float(p_value),
@@ -266,9 +318,27 @@ def apply_carry_forward_rule(summaries: List[Dict], cross_condition: List[Dict],
     Returns a dict with output categories:
       raw_fastest, selected_main, selected_reference, rejected, fallback_used
     """
-    splits = [s for s in summaries if s["condition"] != "monolithic"]
+    baseline_name = _find_baseline_condition([s["condition"] for s in summaries])
+    splits = [
+        s for s in summaries
+        if baseline_name is None or s["condition"] != baseline_name
+    ]
     if not splits:
         return {"error": "No split conditions found"}
+
+    if not all(
+        "service_a_compute_ms_mean" in s and "service_b_compute_ms_mean" in s
+        for s in splits
+    ):
+        return {
+            "applicable": False,
+            "reason": (
+                "Carry-forward is only defined for the two-service split-selection "
+                "experiments (RQ1.1/RQ1.2). RQ1.4 uses a predefined Kubernetes "
+                "chain configuration set, so no carry-forward decision is applied."
+            ),
+            "baseline_condition": baseline_name,
+        }
 
     # 1. Raw fastest boundary
     raw_fastest = min(splits, key=lambda s: s["mean_ms"])
@@ -319,6 +389,7 @@ def apply_carry_forward_rule(summaries: List[Dict], cross_condition: List[Dict],
                 if s["condition"] not in selected_names]
 
     result = {
+        "applicable": True,
         "raw_fastest": raw_fastest["condition"],
         "raw_fastest_mean_ms": raw_fastest["mean_ms"],
         "near_best_window_pct": near_best_pct,

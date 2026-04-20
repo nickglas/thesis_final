@@ -1,0 +1,45 @@
+# Client pod for running RQ1.4 benchmark from inside the cluster.
+# Fully controlled profile: mirrors the strict single-thread / single-core
+# intent used in RQ1.1 and RQ1.2 fully controlled configs.
+#
+# Notes:
+# - The benchmark process applies cpu_stabilisation at runtime.
+# - These env vars make the container-level threading intent explicit.
+# - Governor / turbo requests are handled by apply_cpu_stabilisation() as
+#   best-effort operations inside the containerised environment.
+# - The client pod keeps the same 1-CPU fully controlled behaviour as the
+#   service pods but uses 1Gi memory because it also loads the full model for
+#   local parity validation inside the cluster.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: benchmark-client
+  namespace: rq14
+  labels:
+    app: thesis-inference
+    role: client
+spec:
+  restartPolicy: Never
+  containers:
+    - name: client
+      image: thesis-inference:latest
+      imagePullPolicy: IfNotPresent
+      command: ["sleep", "infinity"]
+      env:
+        - name: PYTORCH_INTRA_OP_THREADS
+          value: "1"
+        - name: PYTORCH_INTER_OP_THREADS
+          value: "1"
+        - name: OMP_NUM_THREADS
+          value: "1"
+        - name: MKL_NUM_THREADS
+          value: "1"
+        - name: OPENBLAS_NUM_THREADS
+          value: "1"
+      resources:
+        requests:
+          cpu: "1"
+          memory: "1Gi"
+        limits:
+          cpu: "1"
+          memory: "1Gi"

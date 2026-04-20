@@ -54,6 +54,19 @@ class ArtifactLogger:
             writer.writeheader()
             writer.writerows(rows)
 
+    def append_raw_iterations(self, rows: List[Dict[str, Any]]):
+        if not rows:
+            return
+        path = os.path.join(self.output_dir, "raw_iterations.csv")
+        fieldnames = list(rows[0].keys())
+        file_has_content = os.path.exists(path) and os.path.getsize(path) > 0
+        mode = "a" if file_has_content else "w"
+        with open(path, mode, newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if not file_has_content:
+                writer.writeheader()
+            writer.writerows(rows)
+
     def save_json(self, filename: str, data: Any):
         with open(os.path.join(self.output_dir, filename), "w") as f:
             json.dump(data, f, indent=2)
