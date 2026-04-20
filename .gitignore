@@ -1,5 +1,6 @@
 results
 thesis
+results_exports
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

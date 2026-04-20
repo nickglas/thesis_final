@@ -1,5 +1,6 @@
-"""Experiment configuration loading and dataclasses."""
+"""Experiment configuration loading, dataclasses, and K8s naming helpers."""
 
+import re
 import yaml
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -8,8 +9,9 @@ from typing import List, Optional
 @dataclass
 class ConditionConfig:
     name: str
-    type: str           # "monolithic" or "split"
+    type: str           # "monolithic", "split", or "chain"
     split_after: Optional[str] = None
+    chain_split_points: Optional[List[str]] = None
 
 
 @dataclass
@@ -59,6 +61,48 @@ class CpuStabilisationConfig:
     governor: GovernorConfig = field(default_factory=GovernorConfig)
     turbo: TurboConfig = field(default_factory=TurboConfig)
 
+
+@dataclass
+class K8sResourceConfig:
+    """Pod resource requests/limits for Kubernetes deployments.
+
+    When requests == limits, the pod receives Guaranteed QoS class,
+    which is the strongest scheduling guarantee Kubernetes offers.
+    """
+    cpu_request: str = "4"
+    cpu_limit: str = "4"
+    memory_request: str = "1Gi"
+    memory_limit: str = "1Gi"
+
+
+@dataclass
+class K8sConfig:
+    """Kubernetes deployment configuration for RQ1.4+ experiments."""
+    namespace: str = "rq14"
+    service_name_template: str = "{condition}-svc-{index}"
+    grpc_port: int = 50051
+    max_message_bytes: int = 16 * 1024 * 1024
+    readiness_timeout: float = 60.0
+    image: str = "thesis-inference:latest"
+    image_pull_policy: str = "IfNotPresent"
+    resources: K8sResourceConfig = field(default_factory=K8sResourceConfig)
+
+
+def sanitize_k8s_name_component(value: str) -> str:
+    """Convert an arbitrary identifier into a DNS-safe K8s name component."""
+    sanitized = value.lower().replace("_", "-")
+    sanitized = re.sub(r"[^a-z0-9-]", "-", sanitized)
+    sanitized = re.sub(r"-+", "-", sanitized).strip("-")
+    return sanitized or "default"
+
+
+def format_k8s_service_name(template: str, condition_name: str, index: int) -> str:
+    """Format a K8s resource/service name using the sanitized condition form."""
+    return template.format(
+        condition=sanitize_k8s_name_component(condition_name),
+        index=index,
+    )
+
 @dataclass
 class ExperimentConfig:
     # Experiment metadata
@@ -104,6 +148,9 @@ class ExperimentConfig:
         default_factory=CpuStabilisationConfig
     )
 
+    # Kubernetes (optional, for RQ1.4+ chain experiments)
+    kubernetes: Optional[K8sConfig] = None
+
 
 def load_config(path: str) -> ExperimentConfig:
     """Load experiment configuration from a YAML file."""
@@ -116,6 +163,7 @@ def load_config(path: str) -> ExperimentConfig:
             name=c["name"],
             type=c["type"],
             split_after=c.get("split_after"),
+            chain_split_points=c.get("chain_split_points"),
         ))
 
     # Parse cpu_stabilisation section
@@ -177,4 +225,27 @@ def load_config(path: str) -> ExperimentConfig:
         warmup_calibration_window=raw.get("warmup_calibration", {}).get("window", 10),
         warmup_calibration_cv_threshold=raw.get("warmup_calibration", {}).get("cv_threshold", 0.02),
         cpu_stabilisation=cpu_stab,
+        kubernetes=_parse_k8s_config(raw.get("kubernetes")),
+    )
+
+
+def _parse_k8s_config(raw) -> Optional[K8sConfig]:
+    if raw is None:
+        return None
+    res_raw = raw.get("resources", {})
+    resources = K8sResourceConfig(
+        cpu_request=str(res_raw.get("cpu_request", "4")),
+        cpu_limit=str(res_raw.get("cpu_limit", "4")),
+        memory_request=str(res_raw.get("memory_request", "1Gi")),
+        memory_limit=str(res_raw.get("memory_limit", "1Gi")),
+    )
+    return K8sConfig(
+        namespace=raw.get("namespace", "rq14"),
+        service_name_template=raw.get("service_name_template", "{condition}-svc-{index}"),
+        grpc_port=raw.get("grpc_port", 50051),
+        max_message_bytes=raw.get("max_message_bytes", 16 * 1024 * 1024),
+        readiness_timeout=raw.get("readiness_timeout", 60.0),
+        image=raw.get("image", "thesis-inference:latest"),
+        image_pull_policy=raw.get("image_pull_policy", "IfNotPresent"),
+        resources=resources,
     )

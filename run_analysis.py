@@ -116,13 +116,16 @@ def main():
     )
     artifact.save_json("carry_forward.json", carry_forward)
     logger.info("Carry-forward selection:")
-    logger.info(f"  Raw fastest:        {carry_forward['raw_fastest']}")
-    logger.info(f"  Selected main:      {carry_forward['selected_main']}")
-    logger.info(f"  Selected reference: {carry_forward['selected_reference']}")
-    logger.info(f"  Rejected:           {carry_forward['rejected']}")
-    logger.info(f"  Fallback used:      {carry_forward.get('fallback_used', False)}")
-    if carry_forward.get("fallback_used"):
-        logger.warning(f"  NOTE: {carry_forward['fallback_note']}")
+    if carry_forward.get("applicable", True):
+        logger.info(f"  Raw fastest:        {carry_forward['raw_fastest']}")
+        logger.info(f"  Selected main:      {carry_forward['selected_main']}")
+        logger.info(f"  Selected reference: {carry_forward['selected_reference']}")
+        logger.info(f"  Rejected:           {carry_forward['rejected']}")
+        logger.info(f"  Fallback used:      {carry_forward.get('fallback_used', False)}")
+        if carry_forward.get("fallback_used"):
+            logger.warning(f"  NOTE: {carry_forward['fallback_note']}")
+    else:
+        logger.info(f"  Not applicable:     {carry_forward.get('reason', 'n/a')}")
 
     # ----- Plots -----
     generate_all_plots(results_dir, output_dir)
@@ -243,6 +246,7 @@ def _append_config_details(lines, config_path, config_snapshot):
         "model",
         "benchmark",
         "grpc",
+        "kubernetes",
         "carry_forward",
         "parity",
         "warmup_calibration",
@@ -260,18 +264,21 @@ def _append_config_details(lines, config_path, config_snapshot):
     if conditions:
         lines.extend([
             "\n### Conditions\n",
-            "| Condition | Type | Split After |",
-            "|---|---|---|",
+            "| Condition | Type | Split After | Chain Split Points |",
+            "|---|---|---|---|",
         ])
         for condition in conditions:
             if isinstance(condition, dict):
                 lines.append(
                     f"| {_format_report_value(condition.get('name'))} | "
                     f"{_format_report_value(condition.get('type'))} | "
-                    f"{_format_report_value(condition.get('split_after'))} |"
+                    f"{_format_report_value(condition.get('split_after'))} | "
+                    f"{_format_report_value(condition.get('chain_split_points'))} |"
                 )
             else:
-                lines.append(f"| {_format_report_value(condition)} | n/a | n/a |")
+                lines.append(
+                    f"| {_format_report_value(condition)} | n/a | n/a | n/a |"
+                )
 
 
 def _append_environment_details(lines, environment_path, environment_snapshot):
@@ -360,11 +367,12 @@ def _generate_report(source_results_dir, output_dir, summaries, round_sums,
         )
 
     # ----- Overhead -----
-    lines.extend(["\n## Overhead vs Monolithic\n"])
+    baseline_label = cross[0].get("baseline_condition", "monolithic") if cross else "monolithic"
+    lines.extend([f"\n## Overhead vs {baseline_label}\n"])
     if cross:
         lines.append(
             "| Condition | Overhead (ms) | Overhead (%) "
-            "| Activation (KB) | Boundary Crossing (ms) |"
+            "| Activation (KB) | Boundary / Non-Compute (ms) |"
         )
         lines.append("|---|---|---|---|---|")
         for cc in cross:
@@ -405,64 +413,69 @@ def _generate_report(source_results_dir, output_dir, summaries, round_sums,
             )
 
     # ----- Carry-forward -----
-    lines.extend([
-        "\n## Carry-Forward Selection\n",
-        f"- **Raw fastest boundary:** {carry_forward['raw_fastest']} "
-        f"({carry_forward['raw_fastest_mean_ms']:.3f} ms)",
-        f"- **Near-best window:** {carry_forward['near_best_window_pct']}% "
-        f"→ threshold {carry_forward['near_best_threshold_ms']:.3f} ms",
-        f"- **Near-best candidates:** "
-        f"{', '.join(carry_forward['near_best_candidates'])}",
-        f"- **Degenerate candidates:** "
-        f"{', '.join(carry_forward['degenerate_candidates']) or 'None'}",
-        f"- **Degeneracy threshold:** "
-        f"{carry_forward['degeneracy_threshold_pct']}% of split compute",
-    ])
-
-    if carry_forward["selected_main"]:
-        lines.append(
-            f"- **Selected main candidate:** {carry_forward['selected_main']} "
-            f"({carry_forward['selected_main_mean_ms']:.3f} ms)"
-        )
-    else:
-        lines.append("- **Selected main candidate:** None")
-
-    if carry_forward.get("selected_reference"):
-        lines.append(
-            f"- **Selected reference candidate:** "
-            f"{carry_forward['selected_reference']} "
-            f"({carry_forward['selected_reference_mean_ms']:.3f} ms)"
-        )
-    else:
-        lines.append("- **Selected reference candidate:** None")
-
-    lines.append(
-        f"- **Rejected:** {', '.join(carry_forward['rejected']) or 'None'}"
-    )
-
-    fallback = carry_forward.get("fallback_used", False)
-    lines.append(f"- **Fallback used:** {fallback}")
-    if fallback:
+    lines.extend(["\n## Carry-Forward Selection\n"])
+    if carry_forward.get("applicable", True):
         lines.extend([
-            "",
-            f"> **⚠ Fallback note:** {carry_forward['fallback_note']}",
+            f"- **Raw fastest boundary:** {carry_forward['raw_fastest']} "
+            f"({carry_forward['raw_fastest_mean_ms']:.3f} ms)",
+            f"- **Near-best window:** {carry_forward['near_best_window_pct']}% "
+            f"→ threshold {carry_forward['near_best_threshold_ms']:.3f} ms",
+            f"- **Near-best candidates:** "
+            f"{', '.join(carry_forward['near_best_candidates'])}",
+            f"- **Degenerate candidates:** "
+            f"{', '.join(carry_forward['degenerate_candidates']) or 'None'}",
+            f"- **Degeneracy threshold:** "
+            f"{carry_forward['degeneracy_threshold_pct']}% of split compute",
         ])
 
-    # ----- Selection rule documentation -----
-    lines.extend([
-        "\n## Carry-Forward Rule (as implemented)\n",
-        "1. Identify `raw_fastest`: split with lowest mean end-to-end latency.",
-        f"2. Near-best window: all splits within {carry_forward['near_best_window_pct']}% "
-        "of `raw_fastest` mean.",
-        f"3. Degeneracy filter: exclude candidates where the minor compute side "
-        f"contributes < {carry_forward['degeneracy_threshold_pct']}% of total "
-        "split compute (`service_a` + `service_b`).",
-        "4. If non-degenerate near-best candidates exist: select `selected_main` "
-        "by (`mean_ms`, `activation_bytes`), with `selected_reference` as runner-up.",
-        "5. If ALL near-best candidates are degenerate: `selected_main = None`, "
-        "`selected_reference = raw_fastest` (reference only, not promoted).",
-        "6. Tie-break: prefer lower `activation_bytes_mean`.",
-    ])
+        if carry_forward["selected_main"]:
+            lines.append(
+                f"- **Selected main candidate:** {carry_forward['selected_main']} "
+                f"({carry_forward['selected_main_mean_ms']:.3f} ms)"
+            )
+        else:
+            lines.append("- **Selected main candidate:** None")
+
+        if carry_forward.get("selected_reference"):
+            lines.append(
+                f"- **Selected reference candidate:** "
+                f"{carry_forward['selected_reference']} "
+                f"({carry_forward['selected_reference_mean_ms']:.3f} ms)"
+            )
+        else:
+            lines.append("- **Selected reference candidate:** None")
+
+        lines.append(
+            f"- **Rejected:** {', '.join(carry_forward['rejected']) or 'None'}"
+        )
+
+        fallback = carry_forward.get("fallback_used", False)
+        lines.append(f"- **Fallback used:** {fallback}")
+        if fallback:
+            lines.extend([
+                "",
+                f"> **⚠ Fallback note:** {carry_forward['fallback_note']}",
+            ])
+
+        lines.extend([
+            "\n## Carry-Forward Rule (as implemented)\n",
+            "1. Identify `raw_fastest`: split with lowest mean end-to-end latency.",
+            f"2. Near-best window: all splits within {carry_forward['near_best_window_pct']}% "
+            "of `raw_fastest` mean.",
+            f"3. Degeneracy filter: exclude candidates where the minor compute side "
+            f"contributes < {carry_forward['degeneracy_threshold_pct']}% of total "
+            "split compute (`service_a` + `service_b`).",
+            "4. If non-degenerate near-best candidates exist: select `selected_main` "
+            "by (`mean_ms`, `activation_bytes`), with `selected_reference` as runner-up.",
+            "5. If ALL near-best candidates are degenerate: `selected_main = None`, "
+            "`selected_reference = raw_fastest` (reference only, not promoted).",
+            "6. Tie-break: prefer lower `activation_bytes_mean`.",
+        ])
+    else:
+        lines.extend([
+            "- **Status:** Not applicable",
+            f"- **Reason:** {carry_forward.get('reason', 'n/a')}",
+        ])
 
     # ----- Methodology notes -----
     lines.extend([
@@ -479,9 +492,12 @@ def _generate_report(source_results_dir, output_dir, summaries, round_sums,
         "p-values are inflated and should not be over-interpreted. "
         "Cross-round consistency and confidence intervals are the primary "
         "evidence of result stability.",
-        "- **Carry-forward rule:** The selection rule is predeclared and "
-        "fully explicit. No hidden fallback promotes degenerate candidates "
-        "to `selected_main`.",
+        "- **Carry-forward rule:** " + (
+            "The selection rule is predeclared and fully explicit. No hidden "
+            "fallback promotes degenerate candidates to `selected_main`."
+            if carry_forward.get("applicable", True)
+            else "Not applicable for this experiment; the configuration set is predefined rather than selected by a carry-forward stage."
+        ),
     ])
 
     with open(os.path.join(output_dir, "report.md"), "w", encoding="utf-8") as f:

@@ -18,4 +18,16 @@ message InferResponse {
     double deserialize_ms = 3;
     double compute_ms = 4;
     double serialize_ms = 5;
+    // Per-hop timing for chain mode (RQ1.4+)
+    repeated HopTiming hop_timings = 6;
+}
+
+// Timing for a single hop in a chain of services.
+message HopTiming {
+    int32 hop_index = 1;
+    double deserialize_ms = 2;
+    double compute_ms = 3;
+    double serialize_ms = 4;
+    double forward_ms = 5;
+    int64 activation_bytes = 6;
 }
