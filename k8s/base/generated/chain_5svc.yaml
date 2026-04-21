@@ -83,6 +83,10 @@ spec:
             limits:
               cpu: "1"
               memory: "512Mi"
+          securityContext:
+            capabilities:
+              add:
+                - SYS_NICE
           readinessProbe:
             tcpSocket:
               port: 50051
@@ -175,6 +179,10 @@ spec:
             limits:
               cpu: "1"
               memory: "512Mi"
+          securityContext:
+            capabilities:
+              add:
+                - SYS_NICE
           readinessProbe:
             tcpSocket:
               port: 50051
@@ -267,6 +275,10 @@ spec:
             limits:
               cpu: "1"
               memory: "512Mi"
+          securityContext:
+            capabilities:
+              add:
+                - SYS_NICE
           readinessProbe:
             tcpSocket:
               port: 50051
@@ -359,6 +371,10 @@ spec:
             limits:
               cpu: "1"
               memory: "512Mi"
+          securityContext:
+            capabilities:
+              add:
+                - SYS_NICE
           readinessProbe:
             tcpSocket:
               port: 50051
@@ -449,6 +465,10 @@ spec:
             limits:
               cpu: "1"
               memory: "512Mi"
+          securityContext:
+            capabilities:
+              add:
+                - SYS_NICE
           readinessProbe:
             tcpSocket:
               port: 50051

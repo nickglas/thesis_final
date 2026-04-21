@@ -39,6 +39,8 @@ PRUNE_IMAGE=0
 ROLLING_MODE=0
 RESOURCES_DEPLOYED=0
 FINAL_RESULTS_DIR=""
+HOST_CPU_GOVERNOR_SET=0
+HOST_CPU_TURBO_DISABLED=0
 
 readonly REQUIRED_FILES=(
   "Dockerfile"
@@ -95,6 +97,8 @@ die() {
 
 on_exit() {
   local exit_code=$?
+
+  restore_host_cpu_controls || true
 
   if (( exit_code != 0 )); then
     if (( RESOURCES_DEPLOYED )); then
@@ -297,6 +301,24 @@ validate_fully_controlled_config() {
   done
 }
 
+wait_for_kube_system_label_ready() {
+  local label_selector="$1"
+  local component_name="$2"
+  local pod_count
+
+  pod_count="$(kubectl get pods -n kube-system -l "${label_selector}" --no-headers 2>/dev/null | wc -l | tr -d '[:space:]')"
+  if [[ -z "${pod_count}" || "${pod_count}" == "0" ]]; then
+    warn "No kube-system pods matched '${label_selector}' while checking ${component_name}. Continuing because this cluster may use a non-standard add-on layout."
+    return 0
+  fi
+
+  log "Checking kube-system readiness for ${component_name} (${label_selector})."
+  kubectl wait --for=condition=Ready pod -n kube-system -l "${label_selector}" --timeout=60s >/dev/null || {
+    kubectl get pods -n kube-system -l "${label_selector}" -o wide || true
+    die "kube-system component '${component_name}' is not Ready. Local cluster DNS or service routing is unhealthy; fix the cluster before running RQ1.4."
+  }
+}
+
 condition_expected_pods() {
   local condition_name="$1"
   if [[ "${condition_name}" == "monolithic_k8s_1svc" ]]; then
@@ -339,6 +361,10 @@ preflight() {
   else
     log "Orchestration mode: full simultaneous deployment"
   fi
+
+  wait_for_kube_system_label_ready "k8s-app=kube-dns" "CoreDNS"
+  wait_for_kube_system_label_ready "k8s-app=kube-proxy" "kube-proxy"
+
   warn "This automation guarantees single-threaded pods and 1-CPU Guaranteed QoS from the repo config. Fixed-core exclusivity, CPU governor control, and turbo disable remain node-level or best-effort in Kubernetes and are not fully enforceable from this script alone."
 }
 
@@ -444,8 +470,81 @@ print(
 PY
 }
 
+# ---------------------------------------------------------------------------
+# Host-level CPU controls (best-effort, non-fatal)
+# ---------------------------------------------------------------------------
+
+prepare_host_cpu_controls() {
+  log "Attempting to apply host-level CPU controls (best-effort)."
+
+  local governor_ok=0 turbo_ok=0
+
+  # Set performance governor on all CPUs
+  if ls /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1; then
+    if echo "performance" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1; then
+      governor_ok=1
+      log "CPU governor set to 'performance' on all CPUs."
+    else
+      warn "Could not set CPU governor to 'performance' (sudo write to sysfs failed). Continuing with default scheduler."
+    fi
+  else
+    warn "cpufreq governor sysfs path not found; CPU frequency scaling controls are unavailable on this host."
+  fi
+
+  # Disable turbo / boost
+  local boost_path=""
+  if [[ -f /sys/devices/system/cpu/intel_pstate/no_turbo ]]; then
+    boost_path="/sys/devices/system/cpu/intel_pstate/no_turbo"
+    if echo "1" | sudo tee "${boost_path}" >/dev/null 2>&1; then
+      turbo_ok=1
+      log "Intel turbo boost disabled (intel_pstate/no_turbo=1)."
+    else
+      warn "Could not disable Intel turbo boost. Continuing with turbo enabled."
+    fi
+  elif [[ -f /sys/devices/system/cpu/cpufreq/boost ]]; then
+    boost_path="/sys/devices/system/cpu/cpufreq/boost"
+    if echo "0" | sudo tee "${boost_path}" >/dev/null 2>&1; then
+      turbo_ok=1
+      log "CPU boost disabled (cpufreq/boost=0)."
+    else
+      warn "Could not disable CPU boost. Continuing with boost enabled."
+    fi
+  else
+    warn "No known boost/turbo sysfs path found; turbo controls are unavailable on this host."
+  fi
+
+  HOST_CPU_GOVERNOR_SET="${governor_ok}"
+  HOST_CPU_TURBO_DISABLED="${turbo_ok}"
+
+  if (( governor_ok || turbo_ok )); then
+    log "Host CPU controls applied: governor_set=${governor_ok} turbo_disabled=${turbo_ok}"
+  else
+    warn "No host CPU controls could be applied. Results may exhibit higher variance due to CPU frequency scaling."
+  fi
+}
+
+restore_host_cpu_controls() {
+  if (( HOST_CPU_GOVERNOR_SET )); then
+    if echo "schedutil" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1; then
+      log "CPU governor restored to 'schedutil'."
+    else
+      warn "Could not restore CPU governor to 'schedutil'."
+    fi
+  fi
+
+  if (( HOST_CPU_TURBO_DISABLED )); then
+    if [[ -f /sys/devices/system/cpu/intel_pstate/no_turbo ]]; then
+      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo >/dev/null 2>&1 || \
+        warn "Could not re-enable Intel turbo boost."
+    elif [[ -f /sys/devices/system/cpu/cpufreq/boost ]]; then
+      echo "1" | sudo tee /sys/devices/system/cpu/cpufreq/boost >/dev/null 2>&1 || \
+        warn "Could not re-enable CPU boost."
+    fi
+    log "CPU boost/turbo restored."
+  fi
+}
+
 build_image() {
-  log "Building Docker image ${IMAGE_TAG}."
   docker build -t "${IMAGE_TAG}" "${REPO_ROOT}"
 }
 
@@ -554,11 +653,11 @@ PY
 
 render_client_manifest() {
   log "Rendering a fully controlled client pod manifest directly from the config."
-  "${PYTHON_BIN}" - "${CONFIG_PATH}" > "${CLIENT_MANIFEST_PATH}" <<'PY'
+  "${PYTHON_BIN}" - "${CONFIG_PATH}" "${KUBE_CONTEXT}" "${KUBE_CLUSTER_INFO}" > "${CLIENT_MANIFEST_PATH}" <<'PY'
 import sys
 import yaml
 
-config_path = sys.argv[1]
+config_path, kube_context, kube_cluster_info = sys.argv[1], sys.argv[2], sys.argv[3]
 
 with open(config_path, "r", encoding="utf-8") as handle:
     config = yaml.safe_load(handle)
@@ -595,6 +694,26 @@ lines = [
     f"          value: \"{threading['mkl_num_threads']}\"",
     "        - name: OPENBLAS_NUM_THREADS",
     f"          value: \"{threading['openblas_num_threads']}\"",
+    "        - name: KUBE_CLUSTER_CONTEXT",
+    f"          value: \"{kube_context}\"",
+    "        - name: KUBE_CLUSTER_INFO",
+    f"          value: \"{kube_cluster_info}\"",
+    "        - name: MY_POD_NAME",
+    "          valueFrom:",
+    "            fieldRef:",
+    "              fieldPath: metadata.name",
+    "        - name: MY_NODE_NAME",
+    "          valueFrom:",
+    "            fieldRef:",
+    "              fieldPath: spec.nodeName",
+    "        - name: MY_POD_IP",
+    "          valueFrom:",
+    "            fieldRef:",
+    "              fieldPath: status.podIP",
+    "      securityContext:",
+    "        capabilities:",
+    "          add:",
+    "            - SYS_NICE",
     "      resources:",
     "        requests:",
     f"          cpu: \"{resources['cpu_request']}\"",
@@ -872,12 +991,77 @@ export_results() {
   log "Export completed: ${HOST_EXPORT_DIR}"
 }
 
+collect_and_inject_pod_metadata() {
+  local condition_name="$1"
+  # Pod labels use the raw condition name (underscores preserved — label values allow underscores)
+  local meta_file_in_pod="/tmp/rq14_pod_metadata_${condition_name}.json"
+
+  log "Collecting pod metadata for ${condition_name} via kubectl on the host."
+
+  # Build a JSON array of service pod records using kubectl (runs on host).
+  # Use -o json + Python parsing to avoid jsonpath dot-notation issues with
+  # hyphenated label keys like 'segment-index'.
+  local services_json
+  services_json="$(
+    "${PYTHON_BIN}" - "${NAMESPACE}" "${condition_name}" <<'PY'
+import json
+import subprocess
+import sys
+
+namespace, condition_name = sys.argv[1], sys.argv[2]
+
+raw = subprocess.check_output(
+    [
+        "kubectl", "get", "pods",
+        "-n", namespace,
+        "-l", f"condition={condition_name}",
+        "-o", "json",
+    ],
+    text=True,
+    stderr=subprocess.DEVNULL,
+    timeout=15,
+)
+pod_list = json.loads(raw)
+
+records = []
+for item in pod_list.get("items", []):
+    labels = item.get("metadata", {}).get("labels", {})
+    spec = item.get("spec", {})
+    status = item.get("status", {})
+    records.append({
+        "pod_name": item.get("metadata", {}).get("name", "unknown"),
+        "node_name": spec.get("nodeName", "unknown"),
+        "pod_ip": status.get("podIP", "unknown"),
+        "segment_index": labels.get("segment-index", "unknown"),
+    })
+
+print(json.dumps(records))
+PY
+  )" || { warn "kubectl pod query failed for ${condition_name}"; return 1; }
+
+  # Inject the JSON file into the benchmark-client pod
+  kubectl exec -n "${NAMESPACE}" "${CLIENT_POD_NAME}" -- \
+    python3 -c "
+import json, sys
+data = json.loads(sys.argv[1])
+with open('${meta_file_in_pod}', 'w') as f:
+    json.dump(data, f)
+" "${services_json}" || { warn "Failed to write pod metadata into client pod"; return 1; }
+
+  log "Pod metadata for ${condition_name} injected into pod at ${meta_file_in_pod}."
+}
+
 run_condition_benchmark() {
   local condition_name="$1"
   local benchmark_exit_code
   local condition_log_path="${HOST_BENCHMARK_LOG_DIR}/${condition_name}.log"
   local pod_output_dir="${POD_PARTIAL_RESULTS_ROOT}/${condition_name}"
   local host_condition_results_dir="${HOST_PARTIAL_RESULTS_DIR}/${condition_name}"
+
+  # Collect service pod metadata from the host (where kubectl works) and
+  # inject it into the client pod as a JSON file before starting the benchmark.
+  collect_and_inject_pod_metadata "${condition_name}" || \
+    warn "Could not inject pod metadata for ${condition_name}; provenance fields will be 'unknown'."
 
   log "Running the in-cluster rolling benchmark for ${condition_name}."
   kubectl exec -n "${NAMESPACE}" "${CLIENT_POD_NAME}" -- rm -rf "${pod_output_dir}" >/dev/null 2>&1 || true
@@ -1026,6 +1210,8 @@ gather_diagnostics() {
 
   kubectl get pods -n "${NAMESPACE}" -o wide | tee "${DIAGNOSTICS_DIR}/kubectl_get_pods.txt"
   kubectl get svc -n "${NAMESPACE}" | tee "${DIAGNOSTICS_DIR}/kubectl_get_svc.txt"
+  kubectl get pods -n kube-system -o wide > "${DIAGNOSTICS_DIR}/kubectl_get_kube_system_pods.txt" 2>&1 || true
+  kubectl get svc -n kube-system > "${DIAGNOSTICS_DIR}/kubectl_get_kube_system_svc.txt" 2>&1 || true
 
   local pod_names pod_name
   pod_names="$(kubectl get pods -n "${NAMESPACE}" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)"
@@ -1034,6 +1220,17 @@ gather_diagnostics() {
     kubectl describe pod -n "${NAMESPACE}" "${pod_name}" > "${DIAGNOSTICS_DIR}/${pod_name}.describe.txt" || true
     kubectl logs -n "${NAMESPACE}" "${pod_name}" --tail=200 > "${DIAGNOSTICS_DIR}/${pod_name}.log.txt" 2>&1 || true
   done <<< "${pod_names}"
+
+  local kube_system_selector selector_safe kube_pod_names kube_pod_name
+  for kube_system_selector in "k8s-app=kube-dns" "k8s-app=kube-proxy"; do
+    selector_safe="${kube_system_selector//=/_}"
+    kube_pod_names="$(kubectl get pods -n kube-system -l "${kube_system_selector}" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)"
+    while IFS= read -r kube_pod_name; do
+      [[ -n "${kube_pod_name}" ]] || continue
+      kubectl describe pod -n kube-system "${kube_pod_name}" > "${DIAGNOSTICS_DIR}/${selector_safe}_${kube_pod_name}.describe.txt" 2>&1 || true
+      kubectl logs -n kube-system "${kube_pod_name}" --tail=200 > "${DIAGNOSTICS_DIR}/${selector_safe}_${kube_pod_name}.log.txt" 2>&1 || true
+    done <<< "${kube_pod_names}"
+  done
 }
 
 cleanup_cluster() {
@@ -1065,6 +1262,7 @@ main() {
   preflight
   capacity_preflight
   prepare_artifact_dirs
+  prepare_host_cpu_controls
   build_image
   load_image_if_needed
   generate_manifests

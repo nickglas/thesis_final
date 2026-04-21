@@ -15,6 +15,7 @@ import grpc
 from concurrent import futures
 
 from proto import inference_pb2, inference_pb2_grpc
+from src.grpc_target import ResolvedInferenceClient
 from src.models.resnet_splits import get_chain_segments
 
 
@@ -44,17 +45,17 @@ class ChainServicer(inference_pb2_grpc.InferenceServiceServicer):
         0-based index of this segment in the chain.
     split_points : list[str]
         Ordered coarse split-point names defining the chain.
-    next_stub : InferenceServiceStub or None
-        gRPC stub for the next service in the chain. None for the last segment.
+    next_client : ResolvedInferenceClient or None
+        gRPC client for the next service in the chain. None for the last segment.
     """
 
     def __init__(self, segment_index: int, split_points: list,
-                 next_stub=None):
+                 next_client=None):
         segments = get_chain_segments(split_points)
         self.segment = segments[segment_index]
         self.segment_index = segment_index
         self.is_last = self.segment.is_last
-        self.next_stub = next_stub
+        self.next_client = next_client
 
     def Infer(self, request, context):
         # Deserialize input
@@ -96,7 +97,7 @@ class ChainServicer(inference_pb2_grpc.InferenceServiceServicer):
             shape=out_shape,
         )
         t_fwd_start = time.perf_counter()
-        downstream_response = self.next_stub.Infer(fwd_request)
+        downstream_response = self.next_client.infer(fwd_request)
         t_fwd_end = time.perf_counter()
 
         own_timing = inference_pb2.HopTiming(
@@ -127,16 +128,12 @@ def serve(segment_index: int, split_points: list,
     _apply_thread_settings()
 
     # Connect to the next service if this is not the last segment
-    next_stub = None
+    next_client = None
     if next_address is not None:
-        channel = grpc.insecure_channel(
+        next_client = ResolvedInferenceClient(
             next_address,
-            options=[
-                ("grpc.max_send_message_length", max_message_bytes),
-                ("grpc.max_receive_message_length", max_message_bytes),
-            ],
+            max_message_bytes=max_message_bytes,
         )
-        next_stub = inference_pb2_grpc.InferenceServiceStub(channel)
 
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=1),
@@ -145,7 +142,7 @@ def serve(segment_index: int, split_points: list,
             ("grpc.max_receive_message_length", max_message_bytes),
         ],
     )
-    servicer = ChainServicer(segment_index, split_points, next_stub)
+    servicer = ChainServicer(segment_index, split_points, next_client)
     inference_pb2_grpc.add_InferenceServiceServicer_to_server(servicer, server)
     addr = f"{host}:{port}"
     server.add_insecure_port(addr)

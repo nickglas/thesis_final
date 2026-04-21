@@ -12,9 +12,9 @@ Timing boundaries:
 import time
 import numpy as np
 import torch
-import grpc
 
-from proto import inference_pb2, inference_pb2_grpc
+from proto import inference_pb2
+from src.grpc_target import ResolvedInferenceClient
 
 
 class ChainClient:
@@ -22,14 +22,20 @@ class ChainClient:
 
     def __init__(self, first_address: str,
                  max_message_bytes: int = 16 * 1024 * 1024):
-        self.channel = grpc.insecure_channel(
+        self.client = ResolvedInferenceClient(
             first_address,
-            options=[
-                ("grpc.max_send_message_length", max_message_bytes),
-                ("grpc.max_receive_message_length", max_message_bytes),
-            ],
+            max_message_bytes=max_message_bytes,
         )
-        self.stub = inference_pb2_grpc.InferenceServiceStub(self.channel)
+
+    def infer_response(self, input_tensor: torch.Tensor):
+        """Run one RPC and return the raw gRPC response object."""
+        request_bytes = input_tensor.contiguous().numpy().tobytes()
+        request_shape = list(input_tensor.shape)
+        request = inference_pb2.InferRequest(
+            tensor_data=request_bytes,
+            shape=request_shape,
+        )
+        return self.client.infer(request)
 
     def infer(self, input_tensor: torch.Tensor) -> dict:
         """Run chain inference with full timing instrumentation."""
@@ -39,14 +45,14 @@ class ChainClient:
         t_ser_start = time.perf_counter()
         request_bytes = input_tensor.contiguous().numpy().tobytes()
         request_shape = list(input_tensor.shape)
-        t_ser_end = time.perf_counter()
-
-        # gRPC call to first service in chain
         request = inference_pb2.InferRequest(
             tensor_data=request_bytes,
             shape=request_shape,
         )
-        response = self.stub.Infer(request)
+        t_ser_end = time.perf_counter()
+
+        # gRPC call to first service in chain
+        response = self.client.infer(request)
 
         # Deserialize final output
         t_deser_start = time.perf_counter()
@@ -98,13 +104,7 @@ class ChainClient:
 
     def warmup_infer(self, input_tensor: torch.Tensor):
         """Single warmup inference call (minimal instrumentation)."""
-        request_bytes = input_tensor.contiguous().numpy().tobytes()
-        request_shape = list(input_tensor.shape)
-        request = inference_pb2.InferRequest(
-            tensor_data=request_bytes,
-            shape=request_shape,
-        )
-        self.stub.Infer(request)
+        self.infer_response(input_tensor)
 
     def close(self):
-        self.channel.close()
+        self.client.close()

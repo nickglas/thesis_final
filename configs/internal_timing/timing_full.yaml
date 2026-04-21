@@ -23,9 +23,9 @@ timing:
   measure_overhead: true
 
 benchmark:
-  rounds: 3
-  warmup_iterations: 30
-  measured_iterations: 100
+  rounds: 10
+  warmup_iterations: 50
+  measured_iterations: 200
   seed: 42
 
 validation:

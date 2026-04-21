@@ -18,6 +18,7 @@ entrypoint or operator scripts), not by this runner.
 """
 
 import os
+import json
 import time
 import random
 import logging
@@ -37,6 +38,7 @@ from src.benchmark.cpu_stabilisation import apply_cpu_stabilisation
 from src.benchmark.logging import ArtifactLogger
 from src.benchmark.warmup import run_warmup_calibrated
 from src.client.chain_client import ChainClient
+from src.grpc_target import resolve_target_address
 from src.models.resnet_splits import get_full_model, get_chain_segments
 
 logger = logging.getLogger(__name__)
@@ -111,7 +113,10 @@ def wait_for_all_services(addresses: list, timeout: float = 60.0):
     """
     for svc_name, address in addresses:
         logger.info(f"      Waiting for {svc_name} at {address}...")
-        channel = grpc.insecure_channel(address)
+        resolved_address = resolve_target_address(address)
+        if resolved_address != address:
+            logger.info(f"      {svc_name} resolved to {resolved_address}")
+        channel = grpc.insecure_channel(resolved_address)
         try:
             grpc.channel_ready_future(channel).result(timeout=timeout)
             logger.info(f"      {svc_name} READY")
@@ -130,6 +135,13 @@ def collect_k8s_metadata(cond, k8s_cfg: K8sConfig,
 
     Gathers pod names, node placement, and cluster context where available.
     Failures are non-fatal — returns best-effort metadata.
+
+    Priority for each field:
+      1. Injected JSON file written by the host script before this run
+         (``/tmp/rq14_pod_metadata_{cond.name}.json``)
+      2. Environment variables injected via the Downward API / pod spec
+      3. kubectl subprocess call (works only if kubectl is installed in
+         the container image — typically not the case)
     """
     meta = {
         "namespace": k8s_cfg.namespace,
@@ -139,29 +151,62 @@ def collect_k8s_metadata(cond, k8s_cfg: K8sConfig,
         "services": [],
     }
 
-    # Cluster context
-    try:
-        ctx = subprocess.check_output(
-            ["kubectl", "config", "current-context"],
-            stderr=subprocess.DEVNULL, timeout=5,
-        ).decode().strip()
-        meta["cluster_context"] = ctx
-    except Exception:
-        meta["cluster_context"] = "unknown"
+    # --- Cluster context ---
+    # Try env var first (set by render_client_manifest in the shell script),
+    # then fall back to kubectl (unavailable inside the pod in practice).
+    cluster_context = os.environ.get("KUBE_CLUSTER_CONTEXT", "").strip()
+    if cluster_context:
+        meta["cluster_context"] = cluster_context
+    else:
+        try:
+            ctx = subprocess.check_output(
+                ["kubectl", "config", "current-context"],
+                stderr=subprocess.DEVNULL, timeout=5,
+            ).decode().strip()
+            meta["cluster_context"] = ctx
+        except Exception:
+            meta["cluster_context"] = "unknown"
 
-    # Cluster info (server URL)
-    try:
-        info = subprocess.check_output(
-            ["kubectl", "cluster-info"],
-            stderr=subprocess.DEVNULL, timeout=5,
-        ).decode().strip()
-        # Extract first line (control plane address)
-        first_line = info.split("\n")[0] if info else ""
-        meta["cluster_info"] = first_line
-    except Exception:
-        meta["cluster_info"] = "unknown"
+    # --- Cluster info ---
+    cluster_info = os.environ.get("KUBE_CLUSTER_INFO", "").strip()
+    if cluster_info:
+        meta["cluster_info"] = cluster_info
+    else:
+        # In-cluster: KUBERNETES_SERVICE_HOST / PORT are always injected
+        k8s_host = os.environ.get("KUBERNETES_SERVICE_HOST", "")
+        k8s_port = os.environ.get("KUBERNETES_SERVICE_PORT", "")
+        if k8s_host:
+            meta["cluster_info"] = f"https://{k8s_host}:{k8s_port}" if k8s_port else f"https://{k8s_host}"
+        else:
+            try:
+                info = subprocess.check_output(
+                    ["kubectl", "cluster-info"],
+                    stderr=subprocess.DEVNULL, timeout=5,
+                ).decode().strip()
+                first_line = info.split("\n")[0] if info else ""
+                meta["cluster_info"] = first_line
+            except Exception:
+                meta["cluster_info"] = "unknown"
 
-    # Per-service pod details
+    # --- Load service pod details from the injected metadata file ---
+    # The host script (run_rq14_fully_controlled.sh) writes this file into
+    # the pod before the benchmark starts.  Each entry maps segment_index
+    # to its pod/node identity.
+    injected_meta_path = f"/tmp/rq14_pod_metadata_{cond.name}.json"
+    injected_pods: dict = {}  # segment_index (str) -> record dict
+    try:
+        with open(injected_meta_path, "r", encoding="utf-8") as fh:
+            pod_records = json.load(fh)
+        for record in pod_records:
+            seg = str(record.get("segment_index", ""))
+            if seg:
+                injected_pods[seg] = record
+    except Exception:
+        pass  # file absent or malformed — will fall back to kubectl
+
+    # --- Per-service pod details ---
+    # Pod labels use the raw condition name (label values allow underscores).
+    condition_label = cond.name
     for svc_name, address in service_addresses:
         svc_meta = {
             "service_name": svc_name,
@@ -171,28 +216,39 @@ def collect_k8s_metadata(cond, k8s_cfg: K8sConfig,
             "pod_ip": "unknown",
         }
 
-        # Find the segment index from the service name suffix
         try:
             seg_idx = svc_name.rsplit("-", 1)[-1]
-            pod_json = subprocess.check_output(
-                [
-                    "kubectl", "get", "pods",
-                    "-n", k8s_cfg.namespace,
-                    "-l", f"condition={cond.name},segment-index={seg_idx}",
-                    "-o", "jsonpath="
-                    "{.items[0].metadata.name}|"
-                    "{.items[0].spec.nodeName}|"
-                    "{.items[0].status.podIP}",
-                ],
-                stderr=subprocess.DEVNULL, timeout=10,
-            ).decode().strip()
-            parts = pod_json.split("|")
-            if len(parts) >= 3:
-                svc_meta["pod_name"] = parts[0] or "unknown"
-                svc_meta["node_name"] = parts[1] or "unknown"
-                svc_meta["pod_ip"] = parts[2] or "unknown"
         except Exception:
-            pass
+            seg_idx = ""
+
+        # 1. Try injected JSON from host script
+        if seg_idx and seg_idx in injected_pods:
+            record = injected_pods[seg_idx]
+            svc_meta["pod_name"] = record.get("pod_name") or "unknown"
+            svc_meta["node_name"] = record.get("node_name") or "unknown"
+            svc_meta["pod_ip"] = record.get("pod_ip") or "unknown"
+        elif seg_idx:
+            # 2. Fallback: kubectl (uses sanitised label to avoid underscore/hyphen mismatch)
+            try:
+                pod_json = subprocess.check_output(
+                    [
+                        "kubectl", "get", "pods",
+                        "-n", k8s_cfg.namespace,
+                        "-l", f"condition={condition_label},segment-index={seg_idx}",
+                        "-o", "jsonpath="
+                        "{.items[0].metadata.name}|"
+                        "{.items[0].spec.nodeName}|"
+                        "{.items[0].status.podIP}",
+                    ],
+                    stderr=subprocess.DEVNULL, timeout=10,
+                ).decode().strip()
+                parts = pod_json.split("|")
+                if len(parts) >= 3:
+                    svc_meta["pod_name"] = parts[0] or "unknown"
+                    svc_meta["node_name"] = parts[1] or "unknown"
+                    svc_meta["pod_ip"] = parts[2] or "unknown"
+            except Exception:
+                pass
 
         meta["services"].append(svc_meta)
 
@@ -343,6 +399,7 @@ class K8sBenchmarkRunner:
                 n=cfg.warmup_iterations,
                 window=cfg.warmup_calibration_window,
                 cv_threshold=cfg.warmup_calibration_cv_threshold,
+                max_extra_iterations=cfg.warmup_calibration_max_extra_iterations,
             )
             self._warmup_calibrations[cal_key] = cal
             logger.info(
@@ -418,15 +475,6 @@ class K8sBenchmarkRunner:
 def _infer_and_get_tensor(client: ChainClient,
                           input_tensor: torch.Tensor) -> torch.Tensor:
     """Run chain inference and return the output tensor."""
-    from proto import inference_pb2
-
-    request_bytes = input_tensor.contiguous().numpy().tobytes()
-    request_shape = list(input_tensor.shape)
-    response = client.stub.Infer(
-        inference_pb2.InferRequest(
-            tensor_data=request_bytes,
-            shape=request_shape,
-        )
-    )
+    response = client.infer_response(input_tensor)
     out_arr = np.frombuffer(response.tensor_data, dtype=np.float32).copy()
     return torch.from_numpy(out_arr.reshape(list(response.shape)))
