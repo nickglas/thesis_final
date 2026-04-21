@@ -146,6 +146,7 @@ class BenchmarkRunner:
             n=cfg.warmup_iterations,
             window=cfg.warmup_calibration_window,
             cv_threshold=cfg.warmup_calibration_cv_threshold,
+            max_extra_iterations=cfg.warmup_calibration_max_extra_iterations,
         )
         self._warmup_calibrations[cal_key] = cal
         logger.info(
@@ -199,6 +200,7 @@ class BenchmarkRunner:
                     n=cfg.warmup_iterations,
                     window=cfg.warmup_calibration_window,
                     cv_threshold=cfg.warmup_calibration_cv_threshold,
+                    max_extra_iterations=cfg.warmup_calibration_max_extra_iterations,
                 )
                 self._warmup_calibrations[cal_key] = cal
                 logger.info(

@@ -104,6 +104,7 @@ parity:
 warmup_calibration:
   window: 10
   cv_threshold: 0.02
+  max_extra_iterations: -1  # -1 = unlimited (safety cap: 10 000 iterations)
 
 cpu_stabilisation:
   threading:

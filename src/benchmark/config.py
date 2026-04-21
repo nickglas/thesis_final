@@ -142,6 +142,7 @@ class ExperimentConfig:
     # Warmup calibration
     warmup_calibration_window: int = 10
     warmup_calibration_cv_threshold: float = 0.02
+    warmup_calibration_max_extra_iterations: int = 0
 
     # CPU stabilisation
     cpu_stabilisation: CpuStabilisationConfig = field(
@@ -224,6 +225,7 @@ def load_config(path: str) -> ExperimentConfig:
         parity_num_inputs=raw.get("parity", {}).get("num_inputs", 5),
         warmup_calibration_window=raw.get("warmup_calibration", {}).get("window", 10),
         warmup_calibration_cv_threshold=raw.get("warmup_calibration", {}).get("cv_threshold", 0.02),
+        warmup_calibration_max_extra_iterations=raw.get("warmup_calibration", {}).get("max_extra_iterations", 0),
         cpu_stabilisation=cpu_stab,
         kubernetes=_parse_k8s_config(raw.get("kubernetes")),
     )

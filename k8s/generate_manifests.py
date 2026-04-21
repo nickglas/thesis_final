@@ -234,6 +234,10 @@ spec:
             limits:
               cpu: "{cpu_lim}"
               memory: "{mem_lim}"
+          securityContext:
+            capabilities:
+              add:
+                - SYS_NICE
           readinessProbe:
             tcpSocket:
               port: {port}

@@ -39,6 +39,7 @@ def run_warmup_calibrated(
     n: int,
     window: int = 10,
     cv_threshold: float = 0.02,
+    max_extra_iterations: int = 0,
 ) -> Dict[str, Any]:
     """Run warmup iterations with empirical stabilisation detection.
 
@@ -54,21 +55,32 @@ def run_warmup_calibrated(
         Trailing window size for CV computation.
     cv_threshold : float
         CV below this value indicates stabilisation.
+    max_extra_iterations : int
+        Additional iterations allowed beyond n if stabilisation has not yet
+        been detected. The configured n remains the minimum warmup count.
 
     Returns
     -------
     dict
         Calibration metadata:
-          total_iterations, stabilised (bool),
+          configured_iterations, total_iterations, stabilised (bool),
           stabilised_at_iteration (int or None),
+          extra_iterations_used, max_extra_iterations,
           final_window_cv, cv_threshold, window_size,
           warmup_latencies_ms (list of all warmup timings).
     """
+    _UNLIMITED_WARMUP_CAP = 10_000
     latencies = []
     stabilised = False
     stabilised_at = None
+    if max_extra_iterations < 0:
+        total_limit = n + _UNLIMITED_WARMUP_CAP
+        max_extra_iterations = _UNLIMITED_WARMUP_CAP  # for reporting
+    else:
+        max_extra_iterations = max(0, max_extra_iterations)
+        total_limit = n + max_extra_iterations
 
-    for i in range(n):
+    for i in range(total_limit):
         t0 = time.perf_counter()
         infer_fn(input_tensor)
         t1 = time.perf_counter()
@@ -85,6 +97,9 @@ def run_warmup_calibrated(
                     stabilised = True
                     stabilised_at = i + 1
 
+        if (i + 1) >= n and stabilised:
+            break
+
     # Final CV for the last window
     final_cv = None
     if len(latencies) >= window:
@@ -96,15 +111,18 @@ def run_warmup_calibrated(
 
     if not stabilised:
         logger.warning(
-            f"Warmup did not stabilise within {n} iterations "
+            f"Warmup did not stabilise within {len(latencies)} iterations "
             f"(CV={final_cv:.4f} > threshold={cv_threshold}). "
-            f"Proceeding with configured warmup count."
+            f"Proceeding after the configured warmup budget."
         )
 
     return {
-        "total_iterations": n,
+        "configured_iterations": n,
+        "total_iterations": len(latencies),
         "stabilised": stabilised,
         "stabilised_at_iteration": stabilised_at,
+        "extra_iterations_used": max(0, len(latencies) - n),
+        "max_extra_iterations": max_extra_iterations,
         "final_window_cv": final_cv,
         "cv_threshold": cv_threshold,
         "window_size": window,
