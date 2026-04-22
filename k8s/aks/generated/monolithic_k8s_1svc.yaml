@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: monolithic-k8s-1svc-svc-1
+  namespace: rq15
+  labels:
+    app: thesis-inference
+    condition: monolithic_k8s_1svc
+    segment-index: "1"
+    experiment: rq15
+spec:
+  type: ClusterIP
+  selector:
+    app: thesis-inference
+    condition: monolithic_k8s_1svc
+    segment-index: "1"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monolithic-k8s-1svc-svc-1
+  namespace: rq15
+  labels:
+    app: thesis-inference
+    condition: monolithic_k8s_1svc
+    segment-index: "1"
+    experiment: rq15
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thesis-inference
+      condition: monolithic_k8s_1svc
+      segment-index: "1"
+  template:
+    metadata:
+      labels:
+        app: thesis-inference
+        condition: monolithic_k8s_1svc
+        segment-index: "1"
+        experiment: rq15
+        experiment-condition: monolithic_k8s_1svc
+    spec:
+      nodeSelector:
+        agentpool: rq15pool
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  experiment-condition: monolithic_k8s_1svc
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: inference
+          image: thesisrq15acr.azurecr.io/thesis-inference@sha256:c843bd76d0db506eb6f05be660946f56ed40d684fe15c27fd27922d67b9db7cb
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 50051
+              name: grpc
+          args:
+            - "--segment_index"
+            - "0"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "50051"
+            - "--max_message_bytes"
+            - "16777216"
+          env:
+            - name: PYTORCH_INTRA_OP_THREADS
+              value: "1"
+            - name: PYTORCH_INTER_OP_THREADS
+              value: "1"
+            - name: OMP_NUM_THREADS
+              value: "1"
+            - name: MKL_NUM_THREADS
+              value: "1"
+            - name: OPENBLAS_NUM_THREADS
+              value: "1"
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          readinessProbe:
+            tcpSocket:
+              port: 50051
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6

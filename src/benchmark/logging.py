@@ -7,6 +7,7 @@ import shutil
 import platform
 import subprocess
 import datetime
+from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List
 
 
@@ -19,6 +20,18 @@ class ArtifactLogger:
 
     def save_config_copy(self, config_path: str):
         shutil.copy2(config_path, os.path.join(self.output_dir, "config.yaml"))
+
+    def save_resolved_config(self, config: Any, config_path: str):
+        if is_dataclass(config):
+            data = asdict(config)
+        else:
+            data = config
+        payload = {
+            "source_config_path": os.path.abspath(config_path),
+            "resolved_config": data,
+        }
+        with open(os.path.join(self.output_dir, "resolved_config.json"), "w") as f:
+            json.dump(payload, f, indent=2)
 
     def save_environment(self, stabilisation_meta: dict = None):
         import torch

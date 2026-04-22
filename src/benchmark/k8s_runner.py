@@ -23,6 +23,7 @@ import time
 import random
 import logging
 import subprocess
+from typing import Optional
 
 import grpc
 import torch
@@ -45,6 +46,116 @@ logger = logging.getLogger(__name__)
 
 # Maximum hop columns in the CSV (chain_5svc = 5 services)
 MAX_HOPS = 5
+RUNTIME_METADATA_PATH = "/tmp/k8s_runtime_metadata.json"
+
+
+def _read_json_file(path: str) -> Optional[dict]:
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except Exception:
+        return None
+
+
+def _container_resource_snapshot(container: dict) -> dict:
+    resources = container.get("resources", {})
+    return {
+        "requests": resources.get("requests", {}) or {},
+        "limits": resources.get("limits", {}) or {},
+    }
+
+
+def _service_record_from_runtime(record: dict, default_address: str) -> dict:
+    return {
+        "service_name": record.get("service_name", "unknown"),
+        "address": record.get("address") or default_address,
+        "segment_index": str(record.get("segment_index", "unknown")),
+        "pod_name": record.get("pod_name") or "unknown",
+        "node_name": record.get("node_name") or "unknown",
+        "pod_ip": record.get("pod_ip") or "unknown",
+        "image": record.get("image") or "unknown",
+        "image_id": record.get("image_id") or "unknown",
+        "image_pull_policy": record.get("image_pull_policy") or "unknown",
+        "qos_class": record.get("qos_class") or "unknown",
+        "resources": record.get("resources") or {"requests": {}, "limits": {}},
+    }
+
+
+def _resolve_cluster_identity(runtime_meta: Optional[dict]) -> dict:
+    cluster_context = os.environ.get("KUBE_CLUSTER_CONTEXT", "").strip()
+    cluster_info = os.environ.get("KUBE_CLUSTER_INFO", "").strip()
+
+    if runtime_meta:
+        cluster_context = runtime_meta.get("cluster_context") or cluster_context
+        cluster_info = runtime_meta.get("cluster_info") or cluster_info
+
+    if not cluster_context:
+        try:
+            cluster_context = subprocess.check_output(
+                ["kubectl", "config", "current-context"],
+                stderr=subprocess.DEVNULL, timeout=5,
+            ).decode().strip()
+        except Exception:
+            cluster_context = "unknown"
+
+    if not cluster_info:
+        k8s_host = os.environ.get("KUBERNETES_SERVICE_HOST", "")
+        k8s_port = os.environ.get("KUBERNETES_SERVICE_PORT", "")
+        if k8s_host:
+            cluster_info = (
+                f"https://{k8s_host}:{k8s_port}" if k8s_port else f"https://{k8s_host}"
+            )
+        else:
+            try:
+                info = subprocess.check_output(
+                    ["kubectl", "cluster-info"],
+                    stderr=subprocess.DEVNULL, timeout=5,
+                ).decode().strip()
+                cluster_info = info.split("\n")[0] if info else "unknown"
+            except Exception:
+                cluster_info = "unknown"
+
+    return {
+        "cluster_context": cluster_context,
+        "cluster_info": cluster_info,
+    }
+
+
+def _resolve_client_metadata(k8s_cfg: K8sConfig, runtime_meta: Optional[dict]) -> dict:
+    client_meta = {
+        "pod_name": os.environ.get("MY_POD_NAME", "").strip() or "unknown",
+        "node_name": os.environ.get("MY_NODE_NAME", "").strip() or "unknown",
+        "pod_ip": os.environ.get("MY_POD_IP", "").strip() or "unknown",
+        "image": k8s_cfg.image,
+        "image_id": "unknown",
+        "image_pull_policy": k8s_cfg.image_pull_policy,
+        "qos_class": "unknown",
+        "resources": {
+            "requests": {
+                "cpu": k8s_cfg.client_resources.cpu_request,
+                "memory": k8s_cfg.client_resources.memory_request,
+            },
+            "limits": {
+                "cpu": k8s_cfg.client_resources.cpu_limit,
+                "memory": k8s_cfg.client_resources.memory_limit,
+            },
+        },
+    }
+
+    if runtime_meta and isinstance(runtime_meta.get("client"), dict):
+        observed = runtime_meta["client"]
+        client_meta.update({
+            "pod_name": observed.get("pod_name") or client_meta["pod_name"],
+            "node_name": observed.get("node_name") or client_meta["node_name"],
+            "pod_ip": observed.get("pod_ip") or client_meta["pod_ip"],
+            "image": observed.get("image") or client_meta["image"],
+            "image_id": observed.get("image_id") or client_meta["image_id"],
+            "image_pull_policy": observed.get("image_pull_policy") or client_meta["image_pull_policy"],
+            "qos_class": observed.get("qos_class") or client_meta["qos_class"],
+            "resources": observed.get("resources") or client_meta["resources"],
+        })
+
+    return client_meta
 
 
 def _flatten_chain_metrics(metrics: dict) -> dict:
@@ -149,44 +260,35 @@ def collect_k8s_metadata(cond, k8s_cfg: K8sConfig,
         "num_services": len(service_addresses),
         "split_points": cond.chain_split_points or [],
         "services": [],
+        "declared_kubernetes_config": {
+            "image": k8s_cfg.image,
+            "image_pull_policy": k8s_cfg.image_pull_policy,
+            "service_resources": {
+                "requests": {
+                    "cpu": k8s_cfg.resources.cpu_request,
+                    "memory": k8s_cfg.resources.memory_request,
+                },
+                "limits": {
+                    "cpu": k8s_cfg.resources.cpu_limit,
+                    "memory": k8s_cfg.resources.memory_limit,
+                },
+            },
+            "client_resources": {
+                "requests": {
+                    "cpu": k8s_cfg.client_resources.cpu_request,
+                    "memory": k8s_cfg.client_resources.memory_request,
+                },
+                "limits": {
+                    "cpu": k8s_cfg.client_resources.cpu_limit,
+                    "memory": k8s_cfg.client_resources.memory_limit,
+                },
+            },
+        },
     }
 
-    # --- Cluster context ---
-    # Try env var first (set by render_client_manifest in the shell script),
-    # then fall back to kubectl (unavailable inside the pod in practice).
-    cluster_context = os.environ.get("KUBE_CLUSTER_CONTEXT", "").strip()
-    if cluster_context:
-        meta["cluster_context"] = cluster_context
-    else:
-        try:
-            ctx = subprocess.check_output(
-                ["kubectl", "config", "current-context"],
-                stderr=subprocess.DEVNULL, timeout=5,
-            ).decode().strip()
-            meta["cluster_context"] = ctx
-        except Exception:
-            meta["cluster_context"] = "unknown"
-
-    # --- Cluster info ---
-    cluster_info = os.environ.get("KUBE_CLUSTER_INFO", "").strip()
-    if cluster_info:
-        meta["cluster_info"] = cluster_info
-    else:
-        # In-cluster: KUBERNETES_SERVICE_HOST / PORT are always injected
-        k8s_host = os.environ.get("KUBERNETES_SERVICE_HOST", "")
-        k8s_port = os.environ.get("KUBERNETES_SERVICE_PORT", "")
-        if k8s_host:
-            meta["cluster_info"] = f"https://{k8s_host}:{k8s_port}" if k8s_port else f"https://{k8s_host}"
-        else:
-            try:
-                info = subprocess.check_output(
-                    ["kubectl", "cluster-info"],
-                    stderr=subprocess.DEVNULL, timeout=5,
-                ).decode().strip()
-                first_line = info.split("\n")[0] if info else ""
-                meta["cluster_info"] = first_line
-            except Exception:
-                meta["cluster_info"] = "unknown"
+    runtime_meta = _read_json_file(RUNTIME_METADATA_PATH)
+    meta.update(_resolve_cluster_identity(runtime_meta))
+    meta["client"] = _resolve_client_metadata(k8s_cfg, runtime_meta)
 
     # --- Load service pod details from the injected metadata file ---
     # The host script (run_rq14_fully_controlled.sh) writes this file into
@@ -204,53 +306,98 @@ def collect_k8s_metadata(cond, k8s_cfg: K8sConfig,
     except Exception:
         pass  # file absent or malformed — will fall back to kubectl
 
+    runtime_services = {}
+    if runtime_meta:
+        for record in runtime_meta.get("conditions", {}).get(cond.name, []):
+            seg = str(record.get("segment_index", ""))
+            if seg:
+                runtime_services[seg] = record
+
     # --- Per-service pod details ---
     # Pod labels use the raw condition name (label values allow underscores).
     condition_label = cond.name
     for svc_name, address in service_addresses:
-        svc_meta = {
-            "service_name": svc_name,
-            "address": address,
-            "pod_name": "unknown",
-            "node_name": "unknown",
-            "pod_ip": "unknown",
-        }
-
         try:
             seg_idx = svc_name.rsplit("-", 1)[-1]
         except Exception:
             seg_idx = ""
 
-        # 1. Try injected JSON from host script
-        if seg_idx and seg_idx in injected_pods:
+        svc_meta = {
+            "service_name": svc_name,
+            "address": address,
+            "segment_index": seg_idx or "unknown",
+            "pod_name": "unknown",
+            "node_name": "unknown",
+            "pod_ip": "unknown",
+            "image": k8s_cfg.image,
+            "image_id": "unknown",
+            "image_pull_policy": k8s_cfg.image_pull_policy,
+            "qos_class": "unknown",
+            "resources": {
+                "requests": {
+                    "cpu": k8s_cfg.resources.cpu_request,
+                    "memory": k8s_cfg.resources.memory_request,
+                },
+                "limits": {
+                    "cpu": k8s_cfg.resources.cpu_limit,
+                    "memory": k8s_cfg.resources.memory_limit,
+                },
+            },
+        }
+
+        # 1. Preferred: unified runtime metadata injected by the host script.
+        if seg_idx and seg_idx in runtime_services:
+            svc_meta.update(_service_record_from_runtime(runtime_services[seg_idx], address))
+        # 2. Legacy per-condition metadata injection.
+        elif seg_idx and seg_idx in injected_pods:
             record = injected_pods[seg_idx]
             svc_meta["pod_name"] = record.get("pod_name") or "unknown"
             svc_meta["node_name"] = record.get("node_name") or "unknown"
             svc_meta["pod_ip"] = record.get("pod_ip") or "unknown"
         elif seg_idx:
-            # 2. Fallback: kubectl (uses sanitised label to avoid underscore/hyphen mismatch)
+            # 3. Fallback: kubectl (uses raw label values; works when kubectl is present in the image)
             try:
-                pod_json = subprocess.check_output(
+                raw = subprocess.check_output(
                     [
                         "kubectl", "get", "pods",
                         "-n", k8s_cfg.namespace,
                         "-l", f"condition={condition_label},segment-index={seg_idx}",
-                        "-o", "jsonpath="
-                        "{.items[0].metadata.name}|"
-                        "{.items[0].spec.nodeName}|"
-                        "{.items[0].status.podIP}",
+                        "-o", "json",
                     ],
                     stderr=subprocess.DEVNULL, timeout=10,
                 ).decode().strip()
-                parts = pod_json.split("|")
-                if len(parts) >= 3:
-                    svc_meta["pod_name"] = parts[0] or "unknown"
-                    svc_meta["node_name"] = parts[1] or "unknown"
-                    svc_meta["pod_ip"] = parts[2] or "unknown"
+                payload = json.loads(raw)
+                items = payload.get("items", [])
+                if items:
+                    item = items[0]
+                    svc_meta["pod_name"] = item.get("metadata", {}).get("name", "unknown")
+                    svc_meta["node_name"] = item.get("spec", {}).get("nodeName", "unknown")
+                    svc_meta["pod_ip"] = item.get("status", {}).get("podIP", "unknown")
+                    container = (item.get("spec", {}).get("containers") or [{}])[0]
+                    status = (item.get("status", {}).get("containerStatuses") or [{}])[0]
+                    svc_meta["image"] = container.get("image", svc_meta["image"])
+                    svc_meta["image_id"] = status.get("imageID", svc_meta["image_id"])
+                    svc_meta["image_pull_policy"] = container.get("imagePullPolicy", svc_meta["image_pull_policy"])
+                    svc_meta["qos_class"] = item.get("status", {}).get("qosClass", svc_meta["qos_class"])
+                    svc_meta["resources"] = _container_resource_snapshot(container)
             except Exception:
                 pass
 
         meta["services"].append(svc_meta)
+
+    observed_images = sorted({svc.get("image", "unknown") for svc in meta["services"]})
+    observed_policies = sorted({svc.get("image_pull_policy", "unknown") for svc in meta["services"]})
+    service_resource_signatures = sorted({
+        json.dumps(svc.get("resources", {}), sort_keys=True)
+        for svc in meta["services"]
+    })
+    meta["observed_deployment_profile"] = {
+        "service_images": observed_images,
+        "service_image_pull_policies": observed_policies,
+        "service_resources_uniform": len(service_resource_signatures) == 1,
+        "service_resources": json.loads(service_resource_signatures[0]) if service_resource_signatures else {},
+        "client": meta["client"],
+    }
 
     meta["collected_at"] = datetime.now().isoformat()
     return meta
@@ -309,6 +456,7 @@ class K8sBenchmarkRunner:
         )
 
         self.artifact_logger.save_config_copy(self.config_path)
+        self.artifact_logger.save_resolved_config(self.config, self.config_path)
         self.artifact_logger.save_environment(self.stabilisation_meta)
 
         cfg = self.config
@@ -404,8 +552,9 @@ class K8sBenchmarkRunner:
             self._warmup_calibrations[cal_key] = cal
             logger.info(
                 f"    Warmup: {cal['total_iterations']} iterations, "
-                f"stabilised={cal['stabilised']}, "
-                f"stabilised_at={cal['stabilised_at_iteration']}"
+                f"stabilised_once={cal['stabilised_once']}, "
+                f"first_stabilised_at={cal['first_stabilised_at_iteration']}, "
+                f"final_window_stabilised={cal['final_window_stabilised']}"
             )
 
             # Measured iterations

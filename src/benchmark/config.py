@@ -86,6 +86,7 @@ class K8sConfig:
     image: str = "thesis-inference:latest"
     image_pull_policy: str = "IfNotPresent"
     resources: K8sResourceConfig = field(default_factory=K8sResourceConfig)
+    client_resources: K8sResourceConfig = field(default_factory=K8sResourceConfig)
 
 
 def sanitize_k8s_name_component(value: str) -> str:
@@ -241,6 +242,13 @@ def _parse_k8s_config(raw) -> Optional[K8sConfig]:
         memory_request=str(res_raw.get("memory_request", "1Gi")),
         memory_limit=str(res_raw.get("memory_limit", "1Gi")),
     )
+    client_res_raw = raw.get("client_resources", res_raw)
+    client_resources = K8sResourceConfig(
+        cpu_request=str(client_res_raw.get("cpu_request", resources.cpu_request)),
+        cpu_limit=str(client_res_raw.get("cpu_limit", resources.cpu_limit)),
+        memory_request=str(client_res_raw.get("memory_request", resources.memory_request)),
+        memory_limit=str(client_res_raw.get("memory_limit", resources.memory_limit)),
+    )
     return K8sConfig(
         namespace=raw.get("namespace", "rq14"),
         service_name_template=raw.get("service_name_template", "{condition}-svc-{index}"),
@@ -250,4 +258,5 @@ def _parse_k8s_config(raw) -> Optional[K8sConfig]:
         image=raw.get("image", "thesis-inference:latest"),
         image_pull_policy=raw.get("image_pull_policy", "IfNotPresent"),
         resources=resources,
+        client_resources=client_resources,
     )
