@@ -5,9 +5,10 @@ before each condition in each round, excluded from all summaries.
 
 This module runs the full W warmup iterations and additionally
 checks whether latency has stabilised by monitoring the coefficient
-of variation (CV) over a trailing window.  The calibration result
-is recorded as an artifact so the thesis can document whether the
-chosen warmup count was sufficient.
+of variation (CV) over a trailing window. The calibration result
+records both the first time a stable window is observed and whether
+the final trailing window also remains stable, so the artifact is
+auditable without relying on a single ambiguous boolean.
 
 The benchmark always runs at least W iterations.  If stabilisation
 has not been reached by iteration W, a warning is logged but
@@ -63,8 +64,10 @@ def run_warmup_calibrated(
     -------
     dict
         Calibration metadata:
-          configured_iterations, total_iterations, stabilised (bool),
-          stabilised_at_iteration (int or None),
+          configured_iterations, total_iterations, stabilised (legacy bool),
+          stabilised_once (bool), first_stabilised_at_iteration (int or None),
+          final_window_stabilised (bool or None),
+          stabilised_at_iteration (legacy alias),
           extra_iterations_used, max_extra_iterations,
           final_window_cv, cv_threshold, window_size,
           warmup_latencies_ms (list of all warmup timings).
@@ -109,6 +112,10 @@ def run_warmup_calibrated(
             std = math.sqrt(sum((x - mean) ** 2 for x in tail) / len(tail))
             final_cv = std / mean
 
+    final_window_stabilised = None
+    if final_cv is not None:
+        final_window_stabilised = final_cv < cv_threshold
+
     if not stabilised:
         logger.warning(
             f"Warmup did not stabilise within {len(latencies)} iterations "
@@ -120,7 +127,10 @@ def run_warmup_calibrated(
         "configured_iterations": n,
         "total_iterations": len(latencies),
         "stabilised": stabilised,
+        "stabilised_once": stabilised,
+        "first_stabilised_at_iteration": stabilised_at,
         "stabilised_at_iteration": stabilised_at,
+        "final_window_stabilised": final_window_stabilised,
         "extra_iterations_used": max(0, len(latencies) - n),
         "max_extra_iterations": max_extra_iterations,
         "final_window_cv": final_cv,

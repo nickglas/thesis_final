@@ -1,0 +1,48 @@
+# Generated benchmark client pod.
+# Regenerate from the experiment config before applying.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: benchmark-client
+  namespace: rq15
+  labels:
+    app: thesis-inference
+    role: client
+    experiment: rq15
+spec:
+  restartPolicy: Never
+  containers:
+    - name: client
+      image: "thesisrq15acr.azurecr.io/thesis-inference@sha256:c843bd76d0db506eb6f05be660946f56ed40d684fe15c27fd27922d67b9db7cb"
+      imagePullPolicy: Always
+      command: ["sleep", "infinity"]
+      env:
+        - name: PYTORCH_INTRA_OP_THREADS
+          value: "1"
+        - name: PYTORCH_INTER_OP_THREADS
+          value: "1"
+        - name: OMP_NUM_THREADS
+          value: "1"
+        - name: MKL_NUM_THREADS
+          value: "1"
+        - name: OPENBLAS_NUM_THREADS
+          value: "1"
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+        limits:
+          cpu: "500m"
+          memory: "1Gi"

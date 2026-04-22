@@ -1,0 +1,13 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# DO NOT commit terraform.tfvars — it is gitignored.
+
+# Required: ACR name must be globally unique and alphanumeric only.
+acr_name = "thesisrq15acr"
+
+# Optional overrides (defaults are set in variables.tf):
+# resource_group_name = "rg-thesis-rq15"
+# location            = "westeurope"
+# cluster_name        = "thesis-rq15"
+# nodepool_name       = "rq15pool"
+# node_count          = 1
+# node_vm_size        = "Standard_D8s_v5"

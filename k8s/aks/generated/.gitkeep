@@ -1,0 +1,5 @@
+# This directory is populated by:
+#   python k8s/aks/generate_aks_manifests.py --acr-image <acr-image>
+#
+# Do not commit generated manifests with real image digests.
+# The placeholder manifests below are for structural review only.

@@ -1,0 +1,10 @@
+# Terraform state and local files — do not commit.
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfstate.d/
+*.tfplan
+*.tfvars
+# Allow the example file through.
+!terraform.tfvars.example

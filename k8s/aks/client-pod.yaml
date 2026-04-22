@@ -1,0 +1,77 @@
+# Legacy smoke-profile client pod for running RQ1.5 from inside the AKS cluster.
+#
+# Prefer the config-driven workflow instead:
+#   python k8s/aks/generate_aks_manifests.py --config configs/rq1/1.5/rq1_5_smoke.yaml
+#   kubectl apply -f k8s/aks/generated/
+#
+# This file intentionally matches the current smoke-profile client resources.
+# Do not use it for the thesis-facing full run; generate 99_benchmark_client.yaml
+# from configs/rq1/1.5/rq1_5_full.yaml instead.
+#
+# Differences from k8s/base/client-pod.yaml (RQ1.4):
+#   - namespace: rq15
+#   - image: ACR reference with Always pull policy
+#   - cpu/memory: 100m request, 500m limit, 1Gi memory — small scheduling
+#     footprint so the full smoke deployment fits on a single D4s_v3 node,
+#     while preserving headroom for the active benchmark client.
+#   - SYS_NICE capability omitted — not available on AKS managed nodes
+#   - experiment: rq15 label added
+#
+# Update the image field to match the ACR reference used for the experiment,
+# then apply with: kubectl apply -f k8s/aks/client-pod.yaml
+#
+# Usage after apply:
+#   # Smoke test:
+#   kubectl exec -it -n rq15 benchmark-client -- \
+#     python run_k8s_experiment.py --config configs/rq1/1.5/rq1_5_smoke.yaml
+#
+#   # Copy results out after completion:
+#   kubectl cp rq15/benchmark-client:/app/results/ ./results/rq1_5_<timestamp>/
+apiVersion: v1
+kind: Pod
+metadata:
+  name: benchmark-client
+  namespace: rq15
+  labels:
+    app: thesis-inference
+    role: client
+    experiment: rq15
+spec:
+  restartPolicy: Never
+  containers:
+    - name: client
+      # Replace with actual ACR image reference before applying.
+      # Must match the image used in k8s/aks/generated/ manifests.
+      image: "thesisrq15acr.azurecr.io/thesis-inference:rq15-v1"
+      imagePullPolicy: Always
+      command: ["sleep", "infinity"]
+      env:
+        - name: PYTORCH_INTRA_OP_THREADS
+          value: "1"
+        - name: PYTORCH_INTER_OP_THREADS
+          value: "1"
+        - name: OMP_NUM_THREADS
+          value: "1"
+        - name: MKL_NUM_THREADS
+          value: "1"
+        - name: OPENBLAS_NUM_THREADS
+          value: "1"
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "1Gi"
+        limits:
+          cpu: "500m"
+          memory: "1Gi"

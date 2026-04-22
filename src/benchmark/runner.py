@@ -76,6 +76,7 @@ class BenchmarkRunner:
         )
 
         self.artifact_logger.save_config_copy(self.config_path)
+        self.artifact_logger.save_resolved_config(self.config, self.config_path)
         self.artifact_logger.save_environment(self.stabilisation_meta)
 
         cfg = self.config
@@ -151,8 +152,9 @@ class BenchmarkRunner:
         self._warmup_calibrations[cal_key] = cal
         logger.info(
             f"    Warmup: {cal['total_iterations']} iterations, "
-            f"stabilised={cal['stabilised']}, "
-            f"stabilised_at={cal['stabilised_at_iteration']}"
+                f"stabilised_once={cal['stabilised_once']}, "
+                f"first_stabilised_at={cal['first_stabilised_at_iteration']}, "
+                f"final_window_stabilised={cal['final_window_stabilised']}"
         )
 
         # Measured iterations

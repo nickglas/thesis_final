@@ -1,0 +1,153 @@
+# -----------------------------------------------------------------------------
+# RQ1.5 AKS Fully Controlled Benchmark Profile
+#
+# Purpose: Thesis-facing primary RQ1.5 benchmark on Azure Kubernetes Service.
+#   5 rounds × 200 measured iterations × 5 conditions = 5,000 iterations.
+#   This is the AKS transfer validation of the RQ1.4 fully controlled run.
+#
+# Dependency: Smoke test (rq1_5_smoke.yaml) must pass before this is run.
+#
+# Run sequence:
+#   1. Confirm the smoke test passed.
+#   2. Run the Python orchestration entrypoint for the thesis-facing path.
+#      Fresh cluster + fresh image:
+#        python scripts/run_rq15_fully_controlled.py \
+#          --provision \
+#          --push \
+#          --build \
+#          --acr-name <your-acr>
+#      The default provisioner for --provision is the Terraform module under infra/.
+#      Use --provisioner az only if you explicitly want the older direct-Azure-CLI path.
+#      Existing cluster + existing pinned image:
+#        python scripts/run_rq15_fully_controlled.py
+#   3. The orchestrator writes a runtime-pinned effective config, runs the
+#      rolling fail-closed preflight, regenerates manifests, deploys each
+#      condition, exports artifacts, merges them, and runs host-side analysis.
+#   4. Optionally add --delete-aks-on-success or
+#      --delete-resource-group-on-success for automatic teardown.
+#
+# Rolling mode is the intended thesis-facing AKS execution path when cluster
+# capacity cannot host the entire 1→5 service family simultaneously. Each
+# condition is still measured under the same fully controlled resource profile
+# and then merged back into one result artifact set for RQ1.5.
+#
+# AKS limitations (documented, not defects):
+#   - CPU governor and turbo boost controls are unavailable on AKS managed nodes.
+#     Guaranteed QoS (cpu requests == limits) is the strongest available isolation.
+#   - No static CPU manager on default AKS node pools.
+#   - Noisy-neighbour risk is present and acknowledged in environment.json.
+#
+# Thesis status: PRIMARY.
+#   Results from this config are intended to be frozen and reported as RQ1.5.
+# -----------------------------------------------------------------------------
+experiment:
+  name: "RQ1.5 AKS fully controlled"
+  description: "AKS transfer validation of RQ1.4 — single-threaded, Guaranteed QoS, pod colocation enforced"
+
+model:
+  name: "resnet18"
+  pretrained: true
+  device: "cpu"
+  input_shape: [1, 3, 224, 224]
+  precision: "fp32"
+
+conditions:
+  - name: "monolithic_k8s_1svc"
+    type: "chain"
+    chain_split_points: []
+
+  - name: "chain_2svc"
+    type: "chain"
+    chain_split_points: ["layer2"]
+
+  - name: "chain_3svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer3"]
+
+  - name: "chain_4svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer2", "layer3"]
+
+  - name: "chain_5svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer2", "layer3", "layer4"]
+
+benchmark:
+  rounds: 5
+  warmup_iterations: 50
+  measured_iterations: 200
+  cooldown_seconds: 5
+  seed: 42
+
+# Local gRPC settings (unused in K8s mode; retained for config schema compatibility).
+# Kept aligned with RQ1.4 fully controlled config.
+grpc:
+  host: "127.0.0.1"
+  port: 50051
+  max_message_bytes: 16777216
+
+# Carry-forward (not applicable to RQ1.5; retained for config schema compatibility).
+carry_forward:
+  near_best_window_pct: 5.0
+  degeneracy_threshold_pct: 10.0
+
+parity:
+  atol: 1.0e-5
+  num_inputs: 5
+
+warmup_calibration:
+  window: 10
+  cv_threshold: 0.02
+  # Unlimited extra iterations: if AKS pods need longer to stabilise, allow it.
+  # RQ1.5 design note: if CV threshold is not reached within 50 warmup iterations,
+  # the warmup limit is raised to 100 (i.e. up to 50 extra). This is recorded as
+  # a deviation if it occurs and reported in the thesis.
+  max_extra_iterations: -1
+
+# Single-threaded fully controlled profile.
+# Governor and turbo disabled — unavailable on AKS managed nodes.
+# Thread counts are fully controlled via pod env vars (identical to RQ1.4).
+cpu_stabilisation:
+  threading:
+    pytorch_intra_op: 1
+    pytorch_inter_op: 1
+    omp_num_threads: 1
+    mkl_num_threads: 1
+    openblas_num_threads: 1
+  affinity:
+    enabled: true
+    num_cores: 1
+    avoid_smt: true
+    explicit_cpus: null
+  priority:
+    enabled: true
+    nice_value: -5
+  governor:
+    set_governor: false
+    requested_mode: "performance"
+  turbo:
+    disable_turbo: false
+
+kubernetes:
+  namespace: "rq15"
+  service_name_template: "{condition}-svc-{index}"
+  grpc_port: 50051
+  max_message_bytes: 16777216
+  readiness_timeout: 120.0
+  # The Python orchestrator can publish a fresh image and write a runtime-pinned
+  # effective config automatically when run with --push. If you skip --push,
+  # this source config must already contain a pinned digest reference.
+  image: "thesisrq15acr.azurecr.io/thesis-inference@sha256:fa599a6ea53622ae04ca64f2ebe9369444907ba9510a5efa8c51a744ef48c0a2"
+  image_pull_policy: "Always"
+  resources:
+    cpu_request: "1"
+    cpu_limit: "1"
+    memory_request: "1Gi"
+    memory_limit: "1Gi"
+  # Client pod resources are parsed and used by generate_aks_manifests.py,
+  # the full-run preflight, and the expected resolved config artifact.
+  client_resources:
+    cpu_request: "500m"
+    cpu_limit: "500m"
+    memory_request: "1Gi"
+    memory_limit: "1Gi"
