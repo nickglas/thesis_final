@@ -74,10 +74,10 @@ def _collect_pod_placement(
 ) -> tuple[dict[str, str], bool]:
     placement: dict[str, str] = {}
     colocated = True
+    required_conditions = 0
 
     for condition_meta in deployment_metadata.values():
         if not isinstance(condition_meta, dict):
-            colocated = False
             continue
 
         client = condition_meta.get("client") or {}
@@ -88,26 +88,68 @@ def _collect_pod_placement(
 
         service_nodes = set()
         services = condition_meta.get("services") or []
-        if not services:
-            colocated = False
-            continue
-
         for service in services:
             if not isinstance(service, dict):
-                colocated = False
                 continue
             service_name = service.get("service_name")
             node_name = service.get("node_name")
             if service_name and node_name and node_name != "unknown":
                 placement[str(service_name)] = str(node_name)
                 service_nodes.add(str(node_name))
-            else:
+
+        validation = condition_meta.get("placement_validation") or {}
+        if bool(validation.get("required")):
+            required_conditions += 1
+            if str(validation.get("status")) != "pass":
                 colocated = False
 
-        if len(service_nodes) != 1:
-            colocated = False
+    return placement, colocated if required_conditions else False
 
-    return placement, colocated
+
+def _collect_condition_placement_validation(
+    deployment_metadata: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    conditions: dict[str, dict[str, Any]] = {}
+    checked_conditions: list[str] = []
+    required_conditions: list[str] = []
+    all_required_conditions_passed = True
+
+    for condition_name, condition_meta in deployment_metadata.items():
+        if not isinstance(condition_meta, dict):
+            continue
+
+        validation = condition_meta.get("placement_validation") or {}
+        if not isinstance(validation, dict) or not validation:
+            continue
+
+        summary = {
+            "checked": bool(validation.get("checked")),
+            "required": bool(validation.get("required")),
+            "status": validation.get("status") or "unknown",
+            "colocated": validation.get("colocated"),
+            "client_node": validation.get("client_node") or "unknown",
+            "service_nodes": list(validation.get("service_nodes") or []),
+        }
+        conditions[str(condition_name)] = summary
+        if summary["checked"]:
+            checked_conditions.append(str(condition_name))
+        if summary["required"]:
+            required_conditions.append(str(condition_name))
+            if summary["status"] != "pass":
+                all_required_conditions_passed = False
+
+    payload = {
+        "conditions": conditions,
+        "checked_conditions": checked_conditions,
+        "required_conditions": required_conditions,
+    }
+    if required_conditions:
+        payload["all_required_conditions_passed"] = all_required_conditions_passed
+    return {
+        key: value
+        for key, value in payload.items()
+        if value not in (None, "", [], {})
+    }
 
 
 def build_environment_deployment_section(
@@ -130,6 +172,8 @@ def build_environment_deployment_section(
 
     cluster_deployment = sample_meta.get("cluster_deployment") or {}
     placement, pod_colocation_enforced = _collect_pod_placement(deployment_metadata)
+    placement_policy = sample_meta.get("placement_policy") or {}
+    placement_validation = _collect_condition_placement_validation(deployment_metadata)
     cluster_type = _infer_cluster_type(sample_meta, cluster_deployment)
 
     node_count = _coerce_int(cluster_deployment.get("node_count"))
@@ -168,6 +212,8 @@ def build_environment_deployment_section(
         "cni": _first_non_empty(cluster_deployment.get("cni")),
         "namespace": _first_non_empty(cluster_deployment.get("namespace"), sample_meta.get("namespace")),
         "pod_colocation_enforced": pod_colocation_enforced,
+        "placement_policy": placement_policy,
+        "placement_validation": placement_validation,
         "pod_placement": placement,
         "container_image_digest": digest,
         "acr_registry": registry,

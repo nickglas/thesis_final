@@ -466,6 +466,7 @@ def _append_environment_details(lines, environment_path, environment_snapshot):
         lines.extend(["\n### Deployment\n"])
         if isinstance(deployment, dict):
             _append_settings_table(lines, _flatten_mapping(deployment))
+            _append_placement_summary(lines, deployment)
         else:
             _append_settings_table(lines, [("deployment", deployment)])
 
@@ -476,6 +477,44 @@ def _append_environment_details(lines, environment_path, environment_snapshot):
             _append_settings_table(lines, _flatten_mapping(cpu_stabilisation))
         else:
             _append_settings_table(lines, [("cpu_stabilisation", cpu_stabilisation)])
+
+
+def _append_placement_summary(lines, deployment):
+    placement_validation = deployment.get("placement_validation") or {}
+    conditions = placement_validation.get("conditions") or {}
+    if not isinstance(conditions, dict) or not conditions:
+        return
+
+    placement_policy = deployment.get("placement_policy") or {}
+    lines.extend(["\n### Placement Summary\n"])
+
+    strategy = placement_policy.get("strategy")
+    if strategy:
+        lines.append(
+            "- Placement policy: "
+            f"strategy={_format_report_value(strategy)}, "
+            f"require_same_node={_format_report_value(placement_policy.get('require_same_node'))}, "
+            f"fail_if_not_colocated={_format_report_value(placement_policy.get('fail_if_not_colocated'))}."
+        )
+    if "all_required_conditions_passed" in placement_validation:
+        lines.append(
+            "- Required colocated conditions passed: "
+            f"{_format_report_value(placement_validation.get('all_required_conditions_passed'))}."
+        )
+
+    lines.extend([
+        "| Condition | Checked | Required | Status | Client Node | Service Nodes |",
+        "|---|---|---|---|---|---|",
+    ])
+    for condition_name, details in conditions.items():
+        lines.append(
+            f"| {_format_report_value(condition_name)} | "
+            f"{_format_report_value(details.get('checked'))} | "
+            f"{_format_report_value(details.get('required'))} | "
+            f"{_format_report_value(details.get('status'))} | "
+            f"{_format_report_value(details.get('client_node'))} | "
+            f"{_format_report_value(details.get('service_nodes'))} |"
+        )
 
 
 def _condition_service_count(condition_name):

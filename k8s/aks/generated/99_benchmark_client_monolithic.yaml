@@ -1,5 +1,6 @@
 # Generated benchmark client pod.
 # Regenerate from the experiment config before applying.
+# Condition-specific placement manifest for monolithic.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -10,6 +11,8 @@ metadata:
     role: client
     workload-role: client
     experiment: rq11-azure
+    condition: monolithic
+    experiment-condition: monolithic
 spec:
   restartPolicy: Never
   containers:

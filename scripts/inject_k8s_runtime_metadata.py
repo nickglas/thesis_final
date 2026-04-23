@@ -186,6 +186,22 @@ def _pod_snapshot(pod: dict) -> dict:
     return snapshot
 
 
+def _placement_policy(config) -> dict:
+    placement = config.kubernetes.placement
+    policy = {
+        "strategy": placement.strategy,
+        "require_same_node": bool(placement.require_same_node),
+        "fail_if_not_colocated": bool(placement.fail_if_not_colocated),
+        "node_selector": dict(placement.node_selector),
+        "node_pool": placement.node_pool,
+    }
+    return {
+        key: value
+        for key, value in policy.items()
+        if value not in (None, "") and not (isinstance(value, dict) and not value)
+    }
+
+
 def _build_runtime_metadata(config_path: str, namespace: str, client_pod: str) -> dict:
     config = load_config(config_path)
     current_context = _kubectl_text(["config", "current-context"])
@@ -205,6 +221,7 @@ def _build_runtime_metadata(config_path: str, namespace: str, client_pod: str) -
             current_context,
             cluster_info,
         ),
+        "placement_policy": _placement_policy(config),
         "client": _pod_snapshot(client_json),
         "conditions": {},
     }
@@ -222,7 +239,7 @@ def _build_runtime_metadata(config_path: str, namespace: str, client_pod: str) -
         pod_list = _kubectl_json([
             "get", "pods",
             "-n", namespace,
-            "-l", f"condition={cond.name}",
+            "-l", f"condition={cond.name},workload-role=service",
             "-o", "json",
         ])
         records = []
