@@ -1,0 +1,2 @@
+# monolithic runs entirely inside the benchmark client pod.
+# No remote service manifests are required for this condition.

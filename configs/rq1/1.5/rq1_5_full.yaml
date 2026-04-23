@@ -147,7 +147,7 @@ kubernetes:
   # Client pod resources are parsed and used by generate_aks_manifests.py,
   # the full-run preflight, and the expected resolved config artifact.
   client_resources:
-    cpu_request: "500m"
-    cpu_limit: "500m"
+    cpu_request: "1"
+    cpu_limit: "1"
     memory_request: "1Gi"
     memory_limit: "1Gi"

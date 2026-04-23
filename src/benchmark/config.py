@@ -3,7 +3,7 @@
 import re
 import yaml
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -76,6 +76,16 @@ class K8sResourceConfig:
 
 
 @dataclass
+class K8sPlacementConfig:
+    """Explicit placement controls for Kubernetes benchmark pods."""
+    strategy: str = "none"
+    require_same_node: bool = False
+    fail_if_not_colocated: bool = False
+    node_selector: Dict[str, str] = field(default_factory=dict)
+    node_pool: Optional[str] = None
+
+
+@dataclass
 class K8sConfig:
     """Kubernetes deployment configuration for RQ1.4+ experiments."""
     namespace: str = "rq14"
@@ -87,6 +97,7 @@ class K8sConfig:
     image_pull_policy: str = "IfNotPresent"
     resources: K8sResourceConfig = field(default_factory=K8sResourceConfig)
     client_resources: K8sResourceConfig = field(default_factory=K8sResourceConfig)
+    placement: K8sPlacementConfig = field(default_factory=K8sPlacementConfig)
 
 
 def sanitize_k8s_name_component(value: str) -> str:
@@ -249,6 +260,22 @@ def _parse_k8s_config(raw) -> Optional[K8sConfig]:
         memory_request=str(client_res_raw.get("memory_request", resources.memory_request)),
         memory_limit=str(client_res_raw.get("memory_limit", resources.memory_limit)),
     )
+    placement_raw = raw.get("placement", {}) or {}
+    node_selector_raw = placement_raw.get("node_selector", {}) or {}
+    placement = K8sPlacementConfig(
+        strategy=str(placement_raw.get("strategy", "none")),
+        require_same_node=bool(placement_raw.get("require_same_node", False)),
+        fail_if_not_colocated=bool(placement_raw.get("fail_if_not_colocated", False)),
+        node_selector={
+            str(key): str(value)
+            for key, value in node_selector_raw.items()
+        },
+        node_pool=(
+            str(placement_raw.get("node_pool"))
+            if placement_raw.get("node_pool") not in (None, "")
+            else None
+        ),
+    )
     return K8sConfig(
         namespace=raw.get("namespace", "rq14"),
         service_name_template=raw.get("service_name_template", "{condition}-svc-{index}"),
@@ -259,4 +286,5 @@ def _parse_k8s_config(raw) -> Optional[K8sConfig]:
         image_pull_policy=raw.get("image_pull_policy", "IfNotPresent"),
         resources=resources,
         client_resources=client_resources,
+        placement=placement,
     )
