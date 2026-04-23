@@ -10,6 +10,7 @@ import argparse
 import base64
 import json
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -31,6 +32,130 @@ def _kubectl_json(args: list[str]) -> dict:
 
 def _kubectl_text(args: list[str]) -> str:
     return subprocess.check_output(["kubectl", *args], text=True).strip()
+
+
+def _kubectl_json_or_none(args: list[str]) -> dict | None:
+    try:
+        return _kubectl_json(args)
+    except Exception:
+        return None
+
+
+def _az_json_or_none(args: list[str]) -> dict | list | None:
+    if shutil.which("az") is None:
+        return None
+    try:
+        output = subprocess.check_output(["az", *args, "--output", "json"], text=True)
+        return json.loads(output)
+    except Exception:
+        return None
+
+
+def _normalize_cni_name(value: str | None) -> str | None:
+    if not value:
+        return None
+    normalized = value.strip().lower()
+    if normalized == "azure":
+        return "azure-cni"
+    return normalized
+
+
+def _select_aks_cluster(current_context: str, cluster_info: str) -> dict:
+    clusters = _az_json_or_none(["aks", "list"])
+    if not isinstance(clusters, list):
+        return {}
+
+    for cluster in clusters:
+        if not isinstance(cluster, dict):
+            continue
+        name = str(cluster.get("name", ""))
+        fqdn = str(cluster.get("fqdn", ""))
+        if name and name == current_context:
+            return cluster
+        if fqdn and fqdn in cluster_info:
+            return cluster
+
+    if len(clusters) == 1 and isinstance(clusters[0], dict):
+        return clusters[0]
+    return {}
+
+
+def _summarize_values(values: set[str]) -> str | None:
+    cleaned = sorted({value for value in values if value and value != "unknown"})
+    if not cleaned:
+        return None
+    if len(cleaned) == 1:
+        return cleaned[0]
+    return ", ".join(cleaned)
+
+
+def _build_cluster_deployment_metadata(namespace: str, current_context: str, cluster_info: str) -> dict:
+    deployment = {
+        "type": "kubernetes",
+        "namespace": namespace,
+    }
+
+    version_payload = _kubectl_json_or_none(["version", "-o", "json"])
+    if isinstance(version_payload, dict):
+        deployment["cluster_version"] = (
+            version_payload.get("serverVersion", {}) or {}
+        ).get("gitVersion")
+
+    nodes_payload = _kubectl_json_or_none(["get", "nodes", "-o", "json"])
+    if isinstance(nodes_payload, dict):
+        nodes = nodes_payload.get("items") or []
+        if nodes:
+            deployment["node_count"] = len(nodes)
+        instance_types = set()
+        regions = set()
+        for node in nodes:
+            labels = ((node.get("metadata") or {}).get("labels") or {})
+            instance_types.add(
+                str(
+                    labels.get("node.kubernetes.io/instance-type")
+                    or labels.get("beta.kubernetes.io/instance-type")
+                    or ""
+                )
+            )
+            regions.add(
+                str(
+                    labels.get("topology.kubernetes.io/region")
+                    or labels.get("failure-domain.beta.kubernetes.io/region")
+                    or ""
+                )
+            )
+        deployment["node_instance_type"] = _summarize_values(instance_types)
+        deployment["azure_region"] = _summarize_values(regions)
+
+    aks_cluster = _select_aks_cluster(current_context, cluster_info)
+    if aks_cluster:
+        deployment["cluster_type"] = "aks"
+        deployment["cluster_version"] = aks_cluster.get("kubernetesVersion") or deployment.get("cluster_version")
+        deployment["azure_region"] = aks_cluster.get("location") or deployment.get("azure_region")
+        deployment["cni"] = _normalize_cni_name(
+            ((aks_cluster.get("networkProfile") or {}).get("networkPlugin"))
+        )
+        pool_profiles = aks_cluster.get("agentPoolProfiles") or []
+        total_nodes = 0
+        vm_sizes = set()
+        for pool in pool_profiles:
+            if not isinstance(pool, dict):
+                continue
+            count = pool.get("count")
+            if isinstance(count, int):
+                total_nodes += count
+            vm_sizes.add(str(pool.get("vmSize") or ""))
+        if total_nodes > 0:
+            deployment["node_count"] = total_nodes
+        deployment["node_instance_type"] = _summarize_values(vm_sizes) or deployment.get("node_instance_type")
+    elif ".azmk8s.io" in cluster_info:
+        deployment["cluster_type"] = "aks"
+
+    return {
+        key: value
+        for key, value in deployment.items()
+        if value not in (None, "")
+    }
 
 
 def _container_snapshot(pod: dict) -> dict:
@@ -75,6 +200,11 @@ def _build_runtime_metadata(config_path: str, namespace: str, client_pod: str) -
         "namespace": namespace,
         "cluster_context": current_context,
         "cluster_info": cluster_info,
+        "cluster_deployment": _build_cluster_deployment_metadata(
+            namespace,
+            current_context,
+            cluster_info,
+        ),
         "client": _pod_snapshot(client_json),
         "conditions": {},
     }

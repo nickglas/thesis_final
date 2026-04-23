@@ -57,6 +57,16 @@ class ArtifactLogger:
         with open(os.path.join(self.output_dir, "environment.json"), "w") as f:
             json.dump(env, f, indent=2)
 
+    def update_environment(self, updates: Dict[str, Any]):
+        path = os.path.join(self.output_dir, "environment.json")
+        current: Dict[str, Any] = {}
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                current = json.load(f)
+        current.update(updates)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(current, f, indent=2)
+
     def save_raw_iterations(self, rows: List[Dict[str, Any]]):
         if not rows:
             return

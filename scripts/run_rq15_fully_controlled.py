@@ -25,6 +25,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.benchmark.config import load_config
+from src.benchmark.deployment_metadata import build_environment_deployment_section
 
 
 DEFAULT_CONFIG_REL = "configs/rq1/1.5/rq1_5_full.yaml"
@@ -1261,6 +1262,14 @@ class RQ15Orchestrator:
 
         if environment is None:
             environment = {}
+        deployment_section = build_environment_deployment_section(deployment_metadata)
+        if deployment_section:
+            environment["deployment"] = deployment_section
+            if not deployment_section.get("pod_colocation_enforced", False):
+                raise PipelineError(
+                    "Rolling merge detected missing or non-colocated service pod placement. "
+                    "RQ1.5 requires verifiable same-node colocation for each condition."
+                )
         environment["rolling_orchestration"] = {
             "enabled": True,
             "conditions": self.conditions,

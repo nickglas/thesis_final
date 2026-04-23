@@ -36,6 +36,7 @@ from src.benchmark.config import (
     format_k8s_service_name,
 )
 from src.benchmark.cpu_stabilisation import apply_cpu_stabilisation
+from src.benchmark.deployment_metadata import build_environment_deployment_section
 from src.benchmark.logging import ArtifactLogger
 from src.benchmark.warmup import run_warmup_calibrated
 from src.client.chain_client import ChainClient
@@ -288,6 +289,9 @@ def collect_k8s_metadata(cond, k8s_cfg: K8sConfig,
 
     runtime_meta = _read_json_file(RUNTIME_METADATA_PATH)
     meta.update(_resolve_cluster_identity(runtime_meta))
+    meta["cluster_deployment"] = (
+        runtime_meta.get("cluster_deployment") if runtime_meta else {}
+    ) or {}
     meta["client"] = _resolve_client_metadata(k8s_cfg, runtime_meta)
 
     # --- Load service pod details from the injected metadata file ---
@@ -505,6 +509,11 @@ class K8sBenchmarkRunner:
         self.artifact_logger.save_json(
             "deployment_metadata.json", self._deployment_metadata
         )
+        deployment_section = build_environment_deployment_section(
+            self._deployment_metadata
+        )
+        if deployment_section:
+            self.artifact_logger.update_environment({"deployment": deployment_section})
 
     def _run_chain_condition(self, round_num: int, cond):
         """Run one chain condition (including monolithic_k8s_1svc)."""
