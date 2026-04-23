@@ -51,6 +51,181 @@ def _find_baseline_condition(names: List[str]):
     return None
 
 
+def _condition_rankings(summaries: List[Dict]) -> Dict[str, int]:
+    ranked = sorted(
+        (s for s in summaries if s.get("condition") is not None),
+        key=lambda s: (float(s.get("mean_ms", float("inf"))), str(s.get("condition", ""))),
+    )
+    return {
+        summary["condition"]: index
+        for index, summary in enumerate(ranked, start=1)
+    }
+
+
+def compute_normalized_reference_estimates(
+    current_summaries: List[Dict],
+    reference_summaries: List[Dict],
+    reference_metric: str = "total_compute_ms_mean",
+) -> Dict[str, float]:
+    """Scale frozen reference compute means to the current monolithic baseline.
+
+    This preserves the relative compute distribution seen in the controlled
+    reference run while anchoring the absolute scale to the current experiment's
+    monolithic latency. It is intended for heuristic decomposition rather than
+    direct instrumentation.
+    """
+    current_baseline_name = _find_baseline_condition(
+        [summary["condition"] for summary in current_summaries]
+    )
+    reference_baseline_name = _find_baseline_condition(
+        [summary["condition"] for summary in reference_summaries]
+    )
+    if current_baseline_name is None or reference_baseline_name is None:
+        return {}
+
+    current_baseline = next(
+        (summary for summary in current_summaries if summary["condition"] == current_baseline_name),
+        None,
+    )
+    reference_baseline = next(
+        (summary for summary in reference_summaries if summary["condition"] == reference_baseline_name),
+        None,
+    )
+    if current_baseline is None or reference_baseline is None:
+        return {}
+
+    current_baseline_mean = current_baseline.get("mean_ms")
+    reference_baseline_metric = reference_baseline.get(reference_metric)
+    if not isinstance(current_baseline_mean, (int, float)):
+        return {}
+    if not isinstance(reference_baseline_metric, (int, float)):
+        return {}
+    if not math.isfinite(current_baseline_mean) or not math.isfinite(reference_baseline_metric):
+        return {}
+    if reference_baseline_metric <= 0:
+        return {}
+
+    scale = float(current_baseline_mean) / float(reference_baseline_metric)
+    estimates: Dict[str, float] = {}
+    for reference_summary in reference_summaries:
+        condition = reference_summary.get("condition")
+        reference_value = reference_summary.get(reference_metric)
+        if condition is None or not isinstance(reference_value, (int, float)):
+            continue
+        if not math.isfinite(reference_value):
+            continue
+        estimates[condition] = float(reference_value) * scale
+    return estimates
+
+
+def enrich_condition_summaries(
+    summaries: List[Dict],
+    estimated_compute_ms_by_condition: Dict[str, float] | None = None,
+) -> List[Dict]:
+    """Add baseline-overhead and inferred non-compute metrics to summaries."""
+    baseline_name = _find_baseline_condition([s["condition"] for s in summaries])
+    if baseline_name is None:
+        return [dict(summary) for summary in summaries]
+
+    baseline_summary = next(
+        (summary for summary in summaries if summary["condition"] == baseline_name),
+        None,
+    )
+    if baseline_summary is None:
+        return [dict(summary) for summary in summaries]
+
+    baseline_mean = float(baseline_summary["mean_ms"])
+    rankings = _condition_rankings(summaries)
+    enriched: List[Dict] = []
+
+    for summary in summaries:
+        row = dict(summary)
+        mean_latency = float(summary["mean_ms"])
+        absolute_overhead = mean_latency - baseline_mean
+        row["baseline_condition"] = baseline_name
+        row["baseline_mean_latency_ms"] = baseline_mean
+        row["mean_latency_ms"] = mean_latency
+        row["absolute_overhead_ms"] = absolute_overhead
+        row["pct_overhead_vs_baseline"] = (
+            (absolute_overhead / baseline_mean) * 100
+            if baseline_mean > 0
+            else float("inf")
+        )
+        row["latency_rank"] = rankings.get(summary["condition"])
+
+        estimated_compute_ms = None
+        if estimated_compute_ms_by_condition is not None:
+            candidate = estimated_compute_ms_by_condition.get(summary["condition"])
+            if isinstance(candidate, (int, float)) and math.isfinite(candidate):
+                estimated_compute_ms = float(candidate)
+
+        row["estimated_compute_ms"] = estimated_compute_ms
+        if estimated_compute_ms is None:
+            row["inferred_non_compute_overhead_ms"] = None
+            row["inferred_non_compute_pct"] = None
+        else:
+            inferred_non_compute = mean_latency - estimated_compute_ms
+            row["inferred_non_compute_overhead_ms"] = inferred_non_compute
+            row["inferred_non_compute_pct"] = (
+                (inferred_non_compute / mean_latency) * 100
+                if mean_latency > 0
+                else float("inf")
+            )
+
+        enriched.append(row)
+
+    return enriched
+
+
+def compute_cross_stage_comparison(
+    current_summaries: List[Dict],
+    reference_summaries: List[Dict],
+    current_label: str = "current",
+    reference_label: str = "reference",
+) -> List[Dict]:
+    """Compare matched conditions across two experiment stages."""
+    current_lookup = {
+        summary["condition"]: summary
+        for summary in current_summaries
+        if summary.get("condition") is not None
+    }
+    reference_lookup = {
+        summary["condition"]: summary
+        for summary in reference_summaries
+        if summary.get("condition") is not None
+    }
+
+    comparison_rows: List[Dict] = []
+    for summary in current_summaries:
+        condition = summary.get("condition")
+        if condition is None or condition not in reference_lookup:
+            continue
+        current_row = current_lookup[condition]
+        reference_row = reference_lookup[condition]
+        current_rank = current_row.get("latency_rank")
+        reference_rank = reference_row.get("latency_rank")
+        comparison_rows.append({
+            "condition": condition,
+            f"{reference_label}_mean_ms": reference_row.get("mean_ms"),
+            f"{current_label}_mean_ms": current_row.get("mean_ms"),
+            f"{reference_label}_overhead_pct_vs_baseline": reference_row.get("pct_overhead_vs_baseline"),
+            f"{current_label}_overhead_pct_vs_baseline": current_row.get("pct_overhead_vs_baseline"),
+            f"{reference_label}_rank": reference_rank,
+            f"{current_label}_rank": current_rank,
+            "rank_delta": (
+                current_rank - reference_rank
+                if isinstance(current_rank, int) and isinstance(reference_rank, int)
+                else None
+            ),
+            "rank_match": (
+                current_rank == reference_rank
+                if isinstance(current_rank, int) and isinstance(reference_rank, int)
+                else None
+            ),
+        })
+    return comparison_rows
+
+
 # ------------------------------------------------------------------
 # Per-condition summaries
 # ------------------------------------------------------------------

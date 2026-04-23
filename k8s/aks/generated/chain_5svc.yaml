@@ -57,7 +57,7 @@ spec:
               topologyKey: "kubernetes.io/hostname"
       containers:
         - name: inference
-          image: thesisrq15acr.azurecr.io/thesis-inference@sha256:c843bd76d0db506eb6f05be660946f56ed40d684fe15c27fd27922d67b9db7cb
+          image: thesisrq15acr.azurecr.io/thesis-inference@sha256:df3cf16f8760493993f8ad5ba103bc5508a130180baf5130ec44542a44513a8a
           imagePullPolicy: Always
           ports:
             - containerPort: 50051
@@ -162,7 +162,7 @@ spec:
               topologyKey: "kubernetes.io/hostname"
       containers:
         - name: inference
-          image: thesisrq15acr.azurecr.io/thesis-inference@sha256:c843bd76d0db506eb6f05be660946f56ed40d684fe15c27fd27922d67b9db7cb
+          image: thesisrq15acr.azurecr.io/thesis-inference@sha256:df3cf16f8760493993f8ad5ba103bc5508a130180baf5130ec44542a44513a8a
           imagePullPolicy: Always
           ports:
             - containerPort: 50051
@@ -267,7 +267,7 @@ spec:
               topologyKey: "kubernetes.io/hostname"
       containers:
         - name: inference
-          image: thesisrq15acr.azurecr.io/thesis-inference@sha256:c843bd76d0db506eb6f05be660946f56ed40d684fe15c27fd27922d67b9db7cb
+          image: thesisrq15acr.azurecr.io/thesis-inference@sha256:df3cf16f8760493993f8ad5ba103bc5508a130180baf5130ec44542a44513a8a
           imagePullPolicy: Always
           ports:
             - containerPort: 50051
@@ -372,7 +372,7 @@ spec:
               topologyKey: "kubernetes.io/hostname"
       containers:
         - name: inference
-          image: thesisrq15acr.azurecr.io/thesis-inference@sha256:c843bd76d0db506eb6f05be660946f56ed40d684fe15c27fd27922d67b9db7cb
+          image: thesisrq15acr.azurecr.io/thesis-inference@sha256:df3cf16f8760493993f8ad5ba103bc5508a130180baf5130ec44542a44513a8a
           imagePullPolicy: Always
           ports:
             - containerPort: 50051
@@ -477,7 +477,7 @@ spec:
               topologyKey: "kubernetes.io/hostname"
       containers:
         - name: inference
-          image: thesisrq15acr.azurecr.io/thesis-inference@sha256:c843bd76d0db506eb6f05be660946f56ed40d684fe15c27fd27922d67b9db7cb
+          image: thesisrq15acr.azurecr.io/thesis-inference@sha256:df3cf16f8760493993f8ad5ba103bc5508a130180baf5130ec44542a44513a8a
           imagePullPolicy: Always
           ports:
             - containerPort: 50051
