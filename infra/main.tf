@@ -1,4 +1,4 @@
-# RQ1.5 AKS infrastructure — Terraform configuration
+ # RQ1.5 AKS infrastructure — Terraform configuration
 #
 # Provisions:
 #   - Azure Resource Group
@@ -85,10 +85,6 @@ resource "azurerm_kubernetes_cluster" "rq15" {
     name       = var.nodepool_name
     node_count = var.node_count
     vm_size    = var.node_vm_size
-
-    # os_disk_type = "Managed" (default) with Premium SSD backing on Ds_v5 SKUs.
-    # No auto-scaling — node count is fixed for experiment duration.
-    enable_auto_scaling = false
   }
 
   identity {
