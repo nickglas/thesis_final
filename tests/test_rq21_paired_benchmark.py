@@ -1,0 +1,815 @@
+import csv
+import json
+import subprocess
+import sys
+from argparse import Namespace
+from pathlib import Path
+
+import pytest
+
+import scripts.run_rq21_paired_benchmark as paired
+from scripts.run_rq21_paired_benchmark import ConditionContext, PipelineError, RQ21PairedBenchmarkRunner
+
+
+def write_resource_csv(path: Path, rows: list[dict[str, str]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = ["timestamp", "namespace", "container_name", "cpu_usage", "memory_usage"]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def build_runner(records: list[dict[str, object]]) -> RQ21PairedBenchmarkRunner:
+    runner = RQ21PairedBenchmarkRunner.__new__(RQ21PairedBenchmarkRunner)
+    runner.completed_conditions = records
+    runner.condition_names = {
+        "plain": "chain_2svc_plain",
+        "mtls": "chain_2svc_mtls",
+    }
+    return runner
+
+
+def build_condition_context(tmp_path: Path, key: str = "plain") -> ConditionContext:
+    condition_name = f"chain_2svc_{key}"
+    return ConditionContext(
+        key=key,
+        condition_name=condition_name,
+        source_config_path=tmp_path / "source.yaml",
+        effective_config_path=tmp_path / "effective.yaml",
+        service_namespace=f"{key}-svc",
+        client_namespace=f"{key}-client",
+        service_count=2,
+        condition_dir=tmp_path / "condition",
+        manifest_dir=tmp_path / "condition" / "manifests",
+        benchmark_dir=tmp_path / "condition" / "benchmark",
+        diagnostics_dir=tmp_path / "condition" / "diagnostics",
+        resource_samples_path=tmp_path / "condition" / "resource_samples.csv",
+    )
+
+
+def make_container(name: str, cpu: str | None = None, memory: str | None = None) -> dict[str, object]:
+    payload: dict[str, object] = {"name": name}
+    if cpu or memory:
+        payload["resources"] = {
+            "requests": {
+                "cpu": cpu or "",
+                "memory": memory or "",
+            }
+        }
+    return payload
+
+
+def make_pod(
+    name: str,
+    containers: list[str],
+    init_containers: list[str] | None = None,
+) -> dict[str, object]:
+    return {
+        "metadata": {"name": name},
+        "spec": {
+            "containers": [{"name": container} for container in containers],
+            "initContainers": [{"name": container} for container in (init_containers or [])],
+        },
+    }
+
+
+def build_metric_gate_runner(tmp_path: Path) -> tuple[RQ21PairedBenchmarkRunner, ConditionContext]:
+    runner = RQ21PairedBenchmarkRunner.__new__(RQ21PairedBenchmarkRunner)
+    runner.args = Namespace(
+        disable_resource_sampling=False,
+        resource_metric_prime_timeout_seconds=1.0,
+        resource_metric_prime_interval_seconds=0.01,
+    )
+    context = build_condition_context(tmp_path)
+    runner.service_pods = lambda _context: [
+        make_pod("service-1", ["inference"]),
+        make_pod("service-2", ["inference"]),
+    ]
+    runner.client_pod = lambda _context: make_pod("benchmark-client", ["client"])
+    return runner, context
+
+
+def default_runner_args(tmp_path: Path, **overrides) -> Namespace:
+    values = {
+        "plain_config": "configs/rq2/2.1/rq2_1_chain2_plain.yaml",
+        "mtls_config": "configs/rq2/2.1/rq2_1_chain2_mtls.yaml",
+        "results_root": str(tmp_path),
+        "client_pod": "benchmark-client",
+        "nodepool": "rq15pool",
+        "provision": False,
+        "provisioner": "terraform",
+        "acr_name": "testacr",
+        "push": False,
+        "build": False,
+        "image_ref": None,
+        "image_tag": "test",
+        "local_image": "thesis-inference:latest",
+        "no_auto_push_missing_image": False,
+        "resource_group": "rg-test",
+        "cluster_name": "cluster-test",
+        "location": "swedencentral",
+        "node_count": 1,
+        "node_vm_size": "Standard_D8s_v3",
+        "skip_mesh_enable": False,
+        "mesh_revision": "asm-1-29",
+        "readiness_timeout": None,
+        "smoke": False,
+        "paired_passes": 1,
+        "order_seed": 42,
+        "order": "seeded",
+        "preserve_namespaces": False,
+        "cleanup_on_failure": False,
+        "destroy_infrastructure_on_success": False,
+        "destroy_infrastructure_on_failure": False,
+        "disable_resource_sampling": False,
+        "resource_sample_interval_seconds": 5.0,
+        "resource_sample_max_samples": 100000,
+        "resource_metric_prime_timeout_seconds": 180.0,
+        "resource_metric_prime_interval_seconds": 5.0,
+        "generate_only": False,
+    }
+    values.update(overrides)
+    return Namespace(**values)
+
+
+def test_wait_for_resource_metrics_ready_accepts_expected_service_and_client_containers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    runner, context = build_metric_gate_runner(tmp_path)
+
+    def fake_run_command(args, **_kwargs):
+        namespace = args[-1]
+        stdout = {
+            "plain-svc": "\n".join(
+                [
+                    "service-1 inference 100m 200Mi",
+                    "service-2 inference 110m 210Mi",
+                ]
+            ),
+            "plain-client": "benchmark-client client 10m 20Mi",
+        }[namespace]
+        return subprocess.CompletedProcess(args, 0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(paired, "run_command", fake_run_command)
+
+    status = runner.wait_for_resource_metrics_ready(context)
+
+    assert status is not None
+    assert status["ready"] is True
+    assert status["missing"] == {}
+    assert (context.condition_dir / "resource_metric_prime_status.json").exists()
+
+
+def test_wait_for_resource_metrics_ready_fails_before_benchmark_when_condition_metrics_are_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    runner, context = build_metric_gate_runner(tmp_path)
+    runner.args.resource_metric_prime_timeout_seconds = 0.01
+
+    def fake_run_command(args, **_kwargs):
+        namespace = args[-1]
+        stdout = "benchmark-client client 10m 20Mi" if namespace == "plain-client" else ""
+        return subprocess.CompletedProcess(args, 0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(paired, "run_command", fake_run_command)
+
+    with pytest.raises(PipelineError, match="Timed out waiting for resource metrics"):
+        runner.wait_for_resource_metrics_ready(context)
+
+    status = (context.condition_dir / "resource_metric_prime_status.json").read_text(encoding="utf-8")
+    assert "plain-svc" in status
+    assert "service-1" in status
+    assert "service-2" in status
+
+
+def test_expected_resource_metric_containers_includes_native_istio_sidecar_for_mtls(tmp_path: Path):
+    runner = RQ21PairedBenchmarkRunner.__new__(RQ21PairedBenchmarkRunner)
+    context = build_condition_context(tmp_path, key="mtls")
+    runner.service_pods = lambda _context: [
+        make_pod("service-1", ["inference"], ["istio-proxy"]),
+        make_pod("service-2", ["inference"], ["istio-proxy"]),
+    ]
+    runner.client_pod = lambda _context: make_pod("benchmark-client", ["client"])
+
+    expected = runner.expected_resource_metric_containers(context)
+
+    assert expected["mtls-svc"]["service-1"] == ["inference", "istio-proxy"]
+    assert expected["mtls-svc"]["service-2"] == ["inference", "istio-proxy"]
+    assert expected["mtls-client"]["benchmark-client"] == ["client"]
+
+
+def test_pod_request_totals_counts_native_init_sidecar_requests():
+    pod = {
+        "metadata": {"name": "service-1"},
+        "spec": {
+            "containers": [make_container("inference", "1", "1Gi")],
+            "initContainers": [make_container("istio-proxy", "100m", "128Mi")],
+        },
+    }
+
+    totals = paired.pod_request_totals(pod)
+
+    assert totals["app_cpu_mcores_total"] == 1000.0
+    assert totals["sidecar_cpu_mcores_total"] == 100.0
+    assert totals["pod_cpu_mcores_total"] == 1100.0
+    assert totals["app_memory_mib_total"] == 1024.0
+    assert totals["sidecar_memory_mib_total"] == 128.0
+    assert totals["pod_memory_mib_total"] == 1152.0
+
+
+def test_mtls_authorization_policy_validation_requires_only_service1_principal(tmp_path: Path):
+    runner = RQ21PairedBenchmarkRunner.__new__(RQ21PairedBenchmarkRunner)
+    config_path = tmp_path / "mtls.yaml"
+    config_path.write_text(
+        """
+kubernetes:
+  mesh:
+    service_accounts:
+      "1": rq21-chain2-svc1
+    authorization_policy:
+      name: downstream-service1-only
+      source_segment_index: "1"
+      downstream_segment_index: "2"
+""".lstrip(),
+        encoding="utf-8",
+    )
+    runner.source_paths = {"mtls": config_path}
+    runner.effective_config_paths = {"mtls": config_path}
+    context = build_condition_context(tmp_path, key="mtls")
+    policy = {
+        "metadata": {"name": "downstream-service1-only"},
+        "spec": {
+            "selector": {
+                "matchLabels": {
+                    "condition": "chain_2svc_mtls",
+                    "segment-index": "2",
+                    "workload-role": "service",
+                }
+            },
+            "action": "ALLOW",
+            "rules": [
+                {
+                    "from": [
+                        {
+                            "source": {
+                                "principals": [
+                                    "cluster.local/ns/mtls-svc/sa/rq21-chain2-svc1",
+                                    "cluster.local/ns/mtls-svc/sa/unexpected",
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ],
+        },
+    }
+
+    errors, summary = runner.validate_mtls_authorization_policy(context, [policy])
+
+    assert errors
+    assert summary["selects_downstream_service2"] is True
+    assert summary["allows_only_service1_principal"] is False
+
+
+def test_parse_rejects_infrastructure_destroy_without_provision(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_rq21_paired_benchmark.py", "--destroy-infrastructure-on-success"],
+    )
+
+    with pytest.raises(SystemExit):
+        paired.parse_args()
+
+
+def test_prepare_infrastructure_can_provision_push_enable_mesh_and_destroy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    calls: list[str] = []
+
+    class FakeLifecycleRunner:
+        def __init__(self, args):
+            self.args = args
+            self.acr_name = args.acr_name
+            self.mesh = {"revision": args.mesh_revision}
+            self.state = Namespace(artifact_dir=Path(args.results_root) / "fake_preflight")
+
+        def prepare_artifact_dirs(self):
+            self.state.artifact_dir.mkdir(parents=True, exist_ok=True)
+
+        def maybe_provision_cluster(self):
+            calls.append("provision")
+            self.args.resource_group = "rg-from-terraform"
+            self.args.cluster_name = "cluster-from-terraform"
+            self.args.node_vm_size = "Standard_D8s_v3"
+            self.acr_name = "testacr"
+
+        def resolve_image_reference(self):
+            calls.append("resolve_image")
+            payload = {
+                "reason": "configured digest missing from provisioned ACR",
+                "pinned_ref": "testacr.azurecr.io/thesis-inference@sha256:abcdef",
+            }
+            (self.state.artifact_dir / "image_resolution.json").write_text(
+                json.dumps(payload),
+                encoding="utf-8",
+            )
+            return "testacr.azurecr.io/thesis-inference@sha256:abcdef"
+
+        def prepare_effective_config(self, *, resolve_live_revision, image_ref):
+            calls.append("prepare_effective_config")
+            assert resolve_live_revision is True
+            assert image_ref == "testacr.azurecr.io/thesis-inference@sha256:abcdef"
+            self.mesh["revision"] = "asm-1-29"
+
+        def ensure_managed_istio(self):
+            calls.append("ensure_mesh")
+
+        def _terraform_init(self):
+            calls.append("terraform_init")
+
+        def _terraform_var_args(self):
+            return [
+                "-var=resource_group_name=rg-from-terraform",
+                "-var=acr_name=testacr",
+            ]
+
+    destroy_commands: list[list[str]] = []
+
+    def fake_run_command(args, **_kwargs):
+        destroy_commands.append(args)
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(paired, "RQ21PreflightRunner", FakeLifecycleRunner)
+    monkeypatch.setattr(paired, "run_command", fake_run_command)
+
+    args = default_runner_args(
+        tmp_path,
+        provision=True,
+        destroy_infrastructure_on_success=True,
+    )
+    runner = RQ21PairedBenchmarkRunner(args)
+    runner.prepare_artifact_dirs()
+    runner.prepare_infrastructure()
+    runner.destroy_infrastructure("test")
+
+    assert calls[:4] == ["provision", "resolve_image", "prepare_effective_config", "ensure_mesh"]
+    assert calls[-1] == "terraform_init"
+    assert runner.infrastructure_provisioned is True
+    assert runner.infrastructure_destroyed is True
+    assert runner.effective_image_ref == "testacr.azurecr.io/thesis-inference@sha256:abcdef"
+    assert runner.args.resource_group == "rg-from-terraform"
+    assert destroy_commands[0][:4] == ["terraform", "destroy", "-auto-approve", "-input=false"]
+    assert (runner.artifact_dir / "image_reference.txt").read_text(encoding="utf-8").strip() == runner.effective_image_ref
+
+
+def test_summarize_resource_samples_aggregates_passes_and_total_pod_metrics(tmp_path: Path):
+    plain_pass1 = tmp_path / "plain-pass1.csv"
+    plain_pass2 = tmp_path / "plain-pass2.csv"
+    mtls_pass1 = tmp_path / "mtls-pass1.csv"
+    write_resource_csv(
+        plain_pass1,
+        [
+            {"timestamp": "t1", "namespace": "plain-svc", "container_name": "inference", "cpu_usage": "100m", "memory_usage": "200Mi"},
+            {"timestamp": "t1", "namespace": "plain-client", "container_name": "client", "cpu_usage": "10m", "memory_usage": "20Mi"},
+        ],
+    )
+    write_resource_csv(
+        plain_pass2,
+        [
+            {"timestamp": "t2", "namespace": "plain-svc", "container_name": "inference", "cpu_usage": "300m", "memory_usage": "400Mi"},
+            {"timestamp": "t2", "namespace": "plain-client", "container_name": "client", "cpu_usage": "30m", "memory_usage": "40Mi"},
+        ],
+    )
+    write_resource_csv(
+        mtls_pass1,
+        [
+            {"timestamp": "t1", "namespace": "mtls-svc", "container_name": "inference", "cpu_usage": "150m", "memory_usage": "250Mi"},
+            {"timestamp": "t1", "namespace": "mtls-svc", "container_name": "istio-proxy", "cpu_usage": "25m", "memory_usage": "50Mi"},
+            {"timestamp": "t1", "namespace": "mtls-client", "container_name": "client", "cpu_usage": "12m", "memory_usage": "22Mi"},
+        ],
+    )
+
+    runner = build_runner([
+        {
+            "pass": 1,
+            "execution_index": 1,
+            "condition_key": "plain",
+            "resource_samples": str(plain_pass1),
+            "service_namespace": "plain-svc",
+            "client_namespace": "plain-client",
+        },
+        {
+            "pass": 2,
+            "execution_index": 2,
+            "condition_key": "plain",
+            "resource_samples": str(plain_pass2),
+            "service_namespace": "plain-svc",
+            "client_namespace": "plain-client",
+        },
+        {
+            "pass": 1,
+            "execution_index": 3,
+            "condition_key": "mtls",
+            "resource_samples": str(mtls_pass1),
+            "service_namespace": "mtls-svc",
+            "client_namespace": "mtls-client",
+        },
+    ])
+
+    summary = runner.summarize_resource_samples()
+
+    plain = summary["by_condition"]["plain"]
+    mtls = summary["by_condition"]["mtls"]
+    comparison = summary["comparison"]
+
+    assert plain["available"] is True
+    assert plain["sample_count"] == 2
+    assert plain["passes_covered"] == [1, 2]
+    assert plain["sidecar_sample_row_count"] == 0
+    assert plain["sidecar_metrics_available"] is False
+    assert plain["service_app_cpu_mcores_mean"] == 200.0
+    assert plain["total_pod_cpu_mcores_mean"] == 200.0
+    assert plain["service_app_memory_mib_mean"] == 300.0
+    assert plain["total_pod_memory_mib_mean"] == 300.0
+
+    assert mtls["available"] is True
+    assert mtls["sample_count"] == 1
+    assert mtls["passes_covered"] == [1]
+    assert mtls["sidecar_sample_row_count"] == 1
+    assert mtls["sidecar_metrics_available"] is True
+    assert mtls["service_app_cpu_mcores_mean"] == 150.0
+    assert mtls["sidecar_cpu_mcores_mean"] == 25.0
+    assert mtls["total_pod_cpu_mcores_mean"] == 175.0
+    assert mtls["service_app_memory_mib_mean"] == 250.0
+    assert mtls["sidecar_memory_mib_mean"] == 50.0
+    assert mtls["total_pod_memory_mib_mean"] == 300.0
+
+    assert comparison["sidecar_cpu_mcores_mean_overhead"] == 25.0
+    assert comparison["total_pod_cpu_mcores_mean_overhead"] == -25.0
+    assert comparison["total_pod_memory_mib_mean_overhead"] == 0.0
+
+
+def test_summarize_resource_samples_fails_closed_on_missing_service_namespace_rows(tmp_path: Path):
+    missing_plain = tmp_path / "plain-missing.csv"
+    mtls_pass1 = tmp_path / "mtls-pass1.csv"
+    write_resource_csv(
+        missing_plain,
+        [
+            {"timestamp": "t1", "namespace": "plain-client", "container_name": "client", "cpu_usage": "10m", "memory_usage": "20Mi"},
+        ],
+    )
+    write_resource_csv(
+        mtls_pass1,
+        [
+            {"timestamp": "t1", "namespace": "mtls-svc", "container_name": "inference", "cpu_usage": "150m", "memory_usage": "250Mi"},
+            {"timestamp": "t1", "namespace": "mtls-svc", "container_name": "istio-proxy", "cpu_usage": "25m", "memory_usage": "50Mi"},
+        ],
+    )
+
+    runner = build_runner([
+        {
+            "pass": 1,
+            "execution_index": 1,
+            "condition_key": "plain",
+            "resource_samples": str(missing_plain),
+            "service_namespace": "plain-svc",
+            "client_namespace": "plain-client",
+        },
+        {
+            "pass": 1,
+            "execution_index": 2,
+            "condition_key": "mtls",
+            "resource_samples": str(mtls_pass1),
+            "service_namespace": "mtls-svc",
+            "client_namespace": "mtls-client",
+        },
+    ])
+
+    summary = runner.summarize_resource_samples()
+    blockers = runner.resource_summary_blockers(summary)
+
+    plain = summary["by_condition"]["plain"]
+    assert plain["available"] is False
+    assert plain["reason"] == "one or more required resource sample artifacts were incomplete"
+    assert plain["failures"][0]["reason"] == "resource sample CSV had no service-namespace rows for the benchmarked condition"
+    assert blockers == [
+        "plain: one or more required resource sample artifacts were incomplete",
+        "plain pass 1 exec 1: resource sample CSV had no service-namespace rows for the benchmarked condition",
+    ]
+
+
+def test_summarize_resource_samples_fails_mtls_when_sidecar_rows_are_missing(tmp_path: Path):
+    plain_pass = tmp_path / "plain.csv"
+    mtls_pass = tmp_path / "mtls-no-sidecar.csv"
+    write_resource_csv(
+        plain_pass,
+        [
+            {"timestamp": "t1", "namespace": "plain-svc", "container_name": "inference", "cpu_usage": "100m", "memory_usage": "200Mi"},
+        ],
+    )
+    write_resource_csv(
+        mtls_pass,
+        [
+            {"timestamp": "t1", "namespace": "mtls-svc", "container_name": "inference", "cpu_usage": "150m", "memory_usage": "250Mi"},
+        ],
+    )
+
+    runner = build_runner([
+        {
+            "pass": 1,
+            "execution_index": 1,
+            "condition_key": "plain",
+            "resource_samples": str(plain_pass),
+            "service_namespace": "plain-svc",
+            "client_namespace": "plain-client",
+        },
+        {
+            "pass": 1,
+            "execution_index": 2,
+            "condition_key": "mtls",
+            "resource_samples": str(mtls_pass),
+            "service_namespace": "mtls-svc",
+            "client_namespace": "mtls-client",
+        },
+    ])
+
+    summary = runner.summarize_resource_samples()
+    mtls = summary["by_condition"]["mtls"]
+
+    assert mtls["available"] is False
+    assert mtls["sidecar_sample_row_count"] == 0
+    assert mtls["sidecar_metrics_available"] is False
+    assert mtls["failures"][0]["reason"] == "mTLS resource sample CSV had zero istio-proxy rows"
+
+
+def test_summarize_resource_samples_fails_plain_when_sidecar_rows_appear(tmp_path: Path):
+    plain_pass = tmp_path / "plain-sidecar.csv"
+    mtls_pass = tmp_path / "mtls.csv"
+    write_resource_csv(
+        plain_pass,
+        [
+            {"timestamp": "t1", "namespace": "plain-svc", "container_name": "inference", "cpu_usage": "100m", "memory_usage": "200Mi"},
+            {"timestamp": "t1", "namespace": "plain-svc", "container_name": "istio-proxy", "cpu_usage": "20m", "memory_usage": "40Mi"},
+        ],
+    )
+    write_resource_csv(
+        mtls_pass,
+        [
+            {"timestamp": "t1", "namespace": "mtls-svc", "container_name": "inference", "cpu_usage": "150m", "memory_usage": "250Mi"},
+            {"timestamp": "t1", "namespace": "mtls-svc", "container_name": "istio-proxy", "cpu_usage": "25m", "memory_usage": "50Mi"},
+        ],
+    )
+
+    runner = build_runner([
+        {
+            "pass": 1,
+            "execution_index": 1,
+            "condition_key": "plain",
+            "resource_samples": str(plain_pass),
+            "service_namespace": "plain-svc",
+            "client_namespace": "plain-client",
+        },
+        {
+            "pass": 1,
+            "execution_index": 2,
+            "condition_key": "mtls",
+            "resource_samples": str(mtls_pass),
+            "service_namespace": "mtls-svc",
+            "client_namespace": "mtls-client",
+        },
+    ])
+
+    summary = runner.summarize_resource_samples()
+    plain = summary["by_condition"]["plain"]
+
+    assert plain["available"] is False
+    assert plain["sidecar_sample_row_count"] == 1
+    assert plain["sidecar_metrics_available"] is True
+    assert plain["failures"][0]["reason"] == "plain resource sample CSV contained istio-proxy rows"
+
+
+def test_run_condition_once_records_mtls_security_preflight_before_benchmark(tmp_path: Path):
+    runner = RQ21PairedBenchmarkRunner.__new__(RQ21PairedBenchmarkRunner)
+    runner.args = Namespace(
+        preserve_namespaces=True,
+        cleanup_on_failure=False,
+        disable_resource_sampling=False,
+    )
+    runner.completed_conditions = []
+    runner.resources_deployed = False
+    runner.current_context = None
+    context = build_condition_context(tmp_path, key="mtls")
+
+    preflight_artifact = tmp_path / "preflight"
+    preflight_artifact.mkdir()
+    (preflight_artifact / "rq21_preflight_metadata.json").write_text(
+        json.dumps(
+            {
+                "preflight_passed": True,
+                "enforcement_validation": {
+                    "passed": True,
+                    "authorization_policy_expected_principal": "cluster.local/ns/mtls-svc/sa/rq21-chain2-svc1",
+                    "full_chain_probe": {"succeeded": True},
+                    "non_mesh_direct_denial_probe": {"blocked_as_expected": True},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    calls: list[str] = []
+
+    runner.condition_context = lambda *_args: context
+    runner.generate_manifests = lambda _context: {"passed": True}
+    runner.apply_manifests = lambda _context: calls.append("apply")
+    runner.wait_for_ready = lambda _context: calls.append("ready")
+    runner.validate_mtls_runtime = lambda _context: {"passed": True}
+    runner.run_mtls_security_preflight = lambda _context: calls.append("security") or preflight_artifact
+    runner.capture_operational_overhead = lambda _context: {"summary": {}}
+    runner.run_condition_benchmark = lambda _context, _pass: calls.append("benchmark")
+    runner.gather_diagnostics = lambda _context: calls.append("diagnostics")
+
+    runner.run_condition_once("mtls", 1, 2)
+
+    assert calls.index("security") < calls.index("benchmark")
+    record = runner.completed_conditions[0]
+    assert record["security_preflight_artifact"] == str(preflight_artifact)
+    assert record["security_validation_passed"] is True
+    assert record["security_validation"]["full_chain_positive_probe_passed"] is True
+    assert record["security_validation"]["non_mesh_direct_denial_probe_passed"] is True
+
+
+def test_write_aggregated_results_merges_overall_passes_and_paired_deltas(tmp_path: Path):
+    runner = build_runner([])
+    runner.merged_dir = tmp_path
+    rows = [
+        {
+            "paired_pass": "1",
+            "condition_key": "plain",
+            "condition": "chain_2svc_plain",
+            "end_to_end_ms": "10",
+            "total_compute_ms": "8",
+            "non_compute_overhead_ms": "2",
+            "hop_1_forward_ms": "4",
+            "hop_2_forward_ms": "0",
+        },
+        {
+            "paired_pass": "1",
+            "condition_key": "plain",
+            "condition": "chain_2svc_plain",
+            "end_to_end_ms": "12",
+            "total_compute_ms": "9",
+            "non_compute_overhead_ms": "3",
+            "hop_1_forward_ms": "5",
+            "hop_2_forward_ms": "0",
+        },
+        {
+            "paired_pass": "1",
+            "condition_key": "mtls",
+            "condition": "chain_2svc_mtls",
+            "end_to_end_ms": "15",
+            "total_compute_ms": "9",
+            "non_compute_overhead_ms": "6",
+            "hop_1_forward_ms": "6",
+            "hop_2_forward_ms": "0",
+        },
+        {
+            "paired_pass": "1",
+            "condition_key": "mtls",
+            "condition": "chain_2svc_mtls",
+            "end_to_end_ms": "17",
+            "total_compute_ms": "10",
+            "non_compute_overhead_ms": "7",
+            "hop_1_forward_ms": "7",
+            "hop_2_forward_ms": "0",
+        },
+    ]
+    summary = {
+        "smoke": False,
+        "image_ref": "example.azurecr.io/thesis-inference@sha256:abc",
+        "mesh_revision": "asm-1-29",
+        "execution_plan": {"paired_passes": 1},
+        "conditions": [{"condition_key": "plain"}, {"condition_key": "mtls"}],
+        "requirements": {"resource_metrics_complete": True, "blocking_issues": []},
+        "latency": {
+            "comparison": {
+                "mean_latency_overhead_ms": 5.0,
+                "mean_latency_overhead_pct": 45.4545454545,
+                "p95_latency_overhead_ms": 5.0,
+            }
+        },
+        "resources": {
+            "by_condition": {
+                "plain": {"available": True, "sample_count": 1, "total_pod_cpu_mcores_mean": 100.0},
+                "mtls": {"available": True, "sample_count": 1, "total_pod_cpu_mcores_mean": 120.0},
+            },
+            "comparison": {"total_pod_cpu_mcores_mean_overhead": 20.0},
+        },
+        "operational": {
+            "by_condition": {
+                "plain": {"available": True, "deployment_complexity": {"kubernetes_object_count": 8}},
+                "mtls": {"available": True, "deployment_complexity": {"kubernetes_object_count": 13}},
+            },
+            "comparison": {"service_schedule_to_ready_seconds_overhead": 3.0},
+        },
+    }
+
+    aggregate = runner.write_aggregated_results(summary, rows)
+
+    assert aggregate["overall_by_condition"]["plain"]["latency"]["end_to_end_ms"]["mean"] == 11.0
+    assert aggregate["overall_by_condition"]["mtls"]["latency"]["end_to_end_ms"]["mean"] == 16.0
+    assert aggregate["paired_pass_deltas"][0]["mean_latency_overhead_ms"] == 5.0
+    assert aggregate["paired_pass_deltas"][0]["non_compute_overhead_delta_ms"] == 4.0
+    assert (tmp_path / "aggregated_results.json").exists()
+    assert (tmp_path / "aggregated_results.csv").exists()
+    assert (tmp_path / "aggregated_results.md").exists()
+    persisted = json.loads((tmp_path / "aggregated_results.json").read_text(encoding="utf-8"))
+    assert persisted["run"]["total_iteration_rows"] == 4
+
+
+def test_summarize_operational_overhead_computes_startup_and_complexity_deltas():
+    runner = build_runner([
+        {
+            "pass": 1,
+            "condition_key": "plain",
+            "operational_overhead": {
+                "summary": {
+                    "service_pod_count": 2,
+                    "service_scheduling_delay_seconds_mean": 1.0,
+                    "service_schedule_to_ready_seconds_mean": 4.0,
+                    "service_app_started_delay_seconds_mean": 2.0,
+                    "service_sidecar_started_delay_seconds_mean": None,
+                    "service_failed_scheduling_event_count": 0,
+                    "benchmark_requested_cpu_mcores_total": 3000.0,
+                    "benchmark_requested_memory_mib_total": 3072.0,
+                    "node_request_headroom_cpu_mcores": 5000.0,
+                    "node_request_headroom_memory_mib": 9000.0,
+                },
+                "deployment_complexity": {
+                    "aks_enablement_step_count": 0,
+                    "kubernetes_object_count": 5,
+                    "always_on_control_plane_pod_count": 0,
+                    "per_workload_injected_container_count": 0.0,
+                    "total_injected_container_count": 0,
+                },
+                "operational_complexity": {
+                    "mesh_revision": None,
+                    "sidecar_readiness_failure_count": 0,
+                    "sidecar_restart_total": 0,
+                },
+            },
+        },
+        {
+            "pass": 1,
+            "condition_key": "mtls",
+            "operational_overhead": {
+                "summary": {
+                    "service_pod_count": 2,
+                    "service_scheduling_delay_seconds_mean": 1.5,
+                    "service_schedule_to_ready_seconds_mean": 6.5,
+                    "service_app_started_delay_seconds_mean": 2.5,
+                    "service_sidecar_started_delay_seconds_mean": 3.0,
+                    "service_failed_scheduling_event_count": 1,
+                    "benchmark_requested_cpu_mcores_total": 3200.0,
+                    "benchmark_requested_memory_mib_total": 3584.0,
+                    "node_request_headroom_cpu_mcores": 4800.0,
+                    "node_request_headroom_memory_mib": 8488.0,
+                },
+                "deployment_complexity": {
+                    "aks_enablement_step_count": 1,
+                    "kubernetes_object_count": 9,
+                    "always_on_control_plane_pod_count": 4,
+                    "per_workload_injected_container_count": 1.0,
+                    "total_injected_container_count": 2,
+                },
+                "operational_complexity": {
+                    "mesh_revision": "asm-1-29",
+                    "sidecar_readiness_failure_count": 0,
+                    "sidecar_restart_total": 0,
+                },
+            },
+        },
+    ])
+
+    summary = runner.summarize_operational_overhead()
+    plain = summary["by_condition"]["plain"]
+    mtls = summary["by_condition"]["mtls"]
+    comparison = summary["comparison"]
+
+    assert plain["available"] is True
+    assert mtls["available"] is True
+    assert plain["service_schedule_to_ready_seconds_mean"] == 4.0
+    assert mtls["service_sidecar_started_delay_seconds_mean"] == 3.0
+    assert comparison["service_scheduling_delay_seconds_overhead"] == 0.5
+    assert comparison["service_schedule_to_ready_seconds_overhead"] == 2.5
+    assert comparison["benchmark_requested_cpu_mcores_overhead"] == 200.0
+    assert comparison["deployment_complexity_delta"] == {
+        "additional_aks_enablement_step_count": 1,
+        "additional_kubernetes_object_count": 4,
+        "additional_always_on_control_plane_pod_count": 4,
+        "additional_injected_container_count": 2,
+    }

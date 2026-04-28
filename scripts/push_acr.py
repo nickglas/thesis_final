@@ -38,32 +38,62 @@ Reproducibility requirement:
 
 import argparse
 import json
+import os
+import shutil
 import subprocess
 import sys
 
 
+WINDOWS_COMMAND_CANDIDATES = {
+    "az": [r"C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd"],
+    "docker": [r"C:\Program Files\Docker\Docker\resources\bin\docker.exe"],
+}
+
+
+def _resolve_command(command: str) -> list[str]:
+    resolved = shutil.which(command)
+    if not resolved and os.name == "nt":
+        for candidate in WINDOWS_COMMAND_CANDIDATES.get(command, []):
+            if os.path.exists(candidate):
+                resolved = candidate
+                break
+    if not resolved:
+        return [command]
+    if resolved.lower().endswith((".cmd", ".bat")):
+        return ["cmd", "/c", resolved]
+    return [resolved]
+
+
+def _prepare_args(args: list[str]) -> list[str]:
+    if not args:
+        return args
+    return _resolve_command(args[0]) + args[1:]
+
+
 def _run(args: list[str], dry_run: bool = False, capture: bool = False):
     """Run a shell command. Returns (returncode, stdout) if capture=True."""
-    cmd_str = " ".join(args)
+    resolved_args = _prepare_args(args)
+    cmd_str = " ".join(resolved_args)
     print(f"  $ {cmd_str}")
     if dry_run:
         print("  [dry-run: not executed]")
         return 0, ""
     if capture:
-        result = subprocess.run(args, capture_output=True, text=True)
+        result = subprocess.run(resolved_args, capture_output=True, text=True)
         if result.stdout:
             print(result.stdout.strip())
         if result.stderr:
             print(result.stderr.strip(), file=sys.stderr)
         return result.returncode, result.stdout.strip()
     else:
-        result = subprocess.run(args)
+        result = subprocess.run(resolved_args)
         return result.returncode, ""
 
 
 def _require_docker():
+    docker_info_cmd = _prepare_args(["docker", "info"])
     result = subprocess.run(
-        ["docker", "info"],
+        docker_info_cmd,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -73,8 +103,9 @@ def _require_docker():
 
 
 def _require_az():
+    az_version_cmd = _prepare_args(["az", "--version"])
     result = subprocess.run(
-        ["az", "--version"],
+        az_version_cmd,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )

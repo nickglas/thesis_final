@@ -75,6 +75,8 @@ def _collect_pod_placement(
     placement: dict[str, str] = {}
     colocated = True
     required_conditions = 0
+    observed_conditions = 0
+    observed_all_colocated = True
 
     for condition_meta in deployment_metadata.values():
         if not isinstance(condition_meta, dict):
@@ -87,15 +89,25 @@ def _collect_pod_placement(
             placement[str(client_name)] = str(client_node)
 
         service_nodes = set()
+        service_count = 0
+        unknown_service_node = False
         services = condition_meta.get("services") or []
         for service in services:
             if not isinstance(service, dict):
                 continue
+            service_count += 1
             service_name = service.get("service_name")
             node_name = service.get("node_name")
             if service_name and node_name and node_name != "unknown":
                 placement[str(service_name)] = str(node_name)
                 service_nodes.add(str(node_name))
+            else:
+                unknown_service_node = True
+
+        if service_count:
+            observed_conditions += 1
+            if unknown_service_node or len(service_nodes) != 1:
+                observed_all_colocated = False
 
         validation = condition_meta.get("placement_validation") or {}
         if bool(validation.get("required")):
@@ -103,7 +115,9 @@ def _collect_pod_placement(
             if str(validation.get("status")) != "pass":
                 colocated = False
 
-    return placement, colocated if required_conditions else False
+    if required_conditions:
+        return placement, colocated
+    return placement, observed_all_colocated if observed_conditions else False
 
 
 def _collect_condition_placement_validation(
@@ -218,6 +232,12 @@ def build_environment_deployment_section(
         "container_image_digest": digest,
         "acr_registry": registry,
     }
+    mesh = sample_meta.get("mesh") or {}
+    if mesh:
+        deployment["mesh"] = mesh
+    namespaces = sample_meta.get("namespaces") or {}
+    if namespaces:
+        deployment["namespaces"] = namespaces
 
     if cluster_type == "aks":
         if deployment.get("cluster_version") in (None, ""):

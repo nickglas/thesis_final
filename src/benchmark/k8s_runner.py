@@ -27,6 +27,7 @@ from typing import Optional
 
 import grpc
 import torch
+import yaml
 import numpy as np
 from datetime import datetime
 
@@ -58,6 +59,15 @@ def _read_json_file(path: str) -> Optional[dict]:
         return None
 
 
+def _read_yaml_file(path: str) -> Optional[dict]:
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = yaml.safe_load(handle)
+        return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
+
+
 def _container_resource_snapshot(container: dict) -> dict:
     resources = container.get("resources", {})
     return {
@@ -79,6 +89,13 @@ def _service_record_from_runtime(record: dict, default_address: str) -> dict:
         "image_pull_policy": record.get("image_pull_policy") or "unknown",
         "qos_class": record.get("qos_class") or "unknown",
         "resources": record.get("resources") or {"requests": {}, "limits": {}},
+        "service_account_name": record.get("service_account_name") or "unknown",
+        "containers": record.get("containers") or [],
+        "sidecar_present": bool(record.get("sidecar_present", False)),
+        "sidecars": record.get("sidecars") or [],
+        "sidecar_image_ids": record.get("sidecar_image_ids") or [],
+        "labels": record.get("labels") or {},
+        "annotations": record.get("annotations") or {},
     }
 
 
@@ -154,6 +171,13 @@ def _resolve_client_metadata(k8s_cfg: K8sConfig, runtime_meta: Optional[dict]) -
             "image_pull_policy": observed.get("image_pull_policy") or client_meta["image_pull_policy"],
             "qos_class": observed.get("qos_class") or client_meta["qos_class"],
             "resources": observed.get("resources") or client_meta["resources"],
+            "service_account_name": observed.get("service_account_name") or "unknown",
+            "containers": observed.get("containers") or [],
+            "sidecar_present": bool(observed.get("sidecar_present", False)),
+            "sidecars": observed.get("sidecars") or [],
+            "sidecar_image_ids": observed.get("sidecar_image_ids") or [],
+            "labels": observed.get("labels") or {},
+            "annotations": observed.get("annotations") or {},
         })
 
     return client_meta
@@ -292,6 +316,12 @@ def collect_k8s_metadata(cond, k8s_cfg: K8sConfig,
     meta["cluster_deployment"] = (
         runtime_meta.get("cluster_deployment") if runtime_meta else {}
     ) or {}
+    meta["namespaces"] = (
+        runtime_meta.get("namespaces") if runtime_meta else {}
+    ) or {}
+    meta["mesh"] = (
+        runtime_meta.get("mesh") if runtime_meta else {}
+    ) or {}
     meta["client"] = _resolve_client_metadata(k8s_cfg, runtime_meta)
 
     # --- Load service pod details from the injected metadata file ---
@@ -424,6 +454,7 @@ class K8sBenchmarkRunner:
                  output_dir: str = None):
         self.config = config
         self.config_path = config_path
+        self.raw_config = _read_yaml_file(config_path) or {}
 
         if config.kubernetes is None:
             raise ValueError(
@@ -531,10 +562,20 @@ class K8sBenchmarkRunner:
         for svc_name, addr in service_addresses:
             logger.info(f"      {svc_name} -> {addr}")
 
-        # Wait for ALL services in the chain to become gRPC-ready
-        logger.info("    Checking full-chain readiness...")
-        wait_for_all_services(service_addresses, timeout=k8s.readiness_timeout)
-        logger.info("    All services ready")
+        readiness_addresses = self._client_visible_readiness_addresses(
+            cond, service_addresses
+        )
+        if len(readiness_addresses) == len(service_addresses):
+            logger.info("    Checking full-chain readiness...")
+        else:
+            skipped = [svc_name for svc_name, _ in service_addresses[len(readiness_addresses):]]
+            logger.info(
+                "    Checking client-visible readiness only; downstream direct "
+                "readiness probes are intentionally blocked by RQ2.1 mTLS/authz: %s",
+                skipped,
+            )
+        wait_for_all_services(readiness_addresses, timeout=k8s.readiness_timeout)
+        logger.info("    Client-visible services ready")
 
         # Collect deployment metadata (once per condition, round 1)
         if round_num == 1:
@@ -581,6 +622,39 @@ class K8sBenchmarkRunner:
                 self.artifact_logger.append_raw_iterations([row])
         finally:
             client.close()
+
+    def _client_visible_readiness_addresses(self, cond, service_addresses: list) -> list:
+        """Return service addresses the benchmark client is allowed to probe.
+
+        RQ2.1 mTLS + AuthorizationPolicy intentionally denies direct client
+        access to downstream service2. The benchmark still calls service1 and
+        exercises the full service1->service2 chain; only the readiness gate is
+        narrowed so the runner does not fail on the intended denial path.
+        """
+        raw_k8s = self.raw_config.get("kubernetes") or {}
+        if not isinstance(raw_k8s, dict):
+            return service_addresses
+
+        mesh = raw_k8s.get("mesh") or {}
+        authz = mesh.get("authorization_policy") or {}
+        security_condition = str(raw_k8s.get("security_condition") or "").lower()
+        mesh_enabled = bool(mesh.get("enabled", False))
+        authz_enabled = bool(authz.get("enabled", False))
+        if not (
+            security_condition == "mtls"
+            and mesh_enabled
+            and authz_enabled
+            and cond.type == "chain"
+        ):
+            return service_addresses
+
+        try:
+            downstream_segment = int(authz.get("downstream_segment_index") or 2)
+        except (TypeError, ValueError):
+            downstream_segment = 2
+        if downstream_segment <= 1:
+            return service_addresses
+        return service_addresses[: max(1, downstream_segment - 1)]
 
     def _validate_chain_parity(self, client: ChainClient, cond):
         """Live chain parity validation: send test inputs through the deployed
