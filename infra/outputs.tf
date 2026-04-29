@@ -19,7 +19,32 @@ output "cluster_name" {
 }
 
 output "node_vm_size" {
-  description = "VM SKU used for the node pool."
+  description = "VM SKU used for the benchmark node pool."
+  value       = var.node_vm_size
+}
+
+output "benchmark_pool_enabled" {
+  description = "Whether the RQ2.1 isolated benchmark pool was enabled."
+  value       = var.enable_benchmark_pool
+}
+
+output "benchmark_nodepool_name" {
+  description = "Benchmark node pool name used by generated manifests."
+  value       = var.nodepool_name
+}
+
+output "benchmark_node_taint" {
+  description = "Taint applied to the benchmark-only node pool."
+  value       = var.benchmark_node_taint
+}
+
+output "system_nodepool_name" {
+  description = "System node pool name."
+  value       = azurerm_kubernetes_cluster.rq15.default_node_pool[0].name
+}
+
+output "system_node_vm_size" {
+  description = "VM SKU used for the system node pool."
   value       = azurerm_kubernetes_cluster.rq15.default_node_pool[0].vm_size
 }
 
@@ -35,5 +60,5 @@ output "push_image_command" {
 
 output "generate_manifests_command" {
   description = "Example generate_aks_manifests.py invocation (replace TAG with actual tag or digest)."
-  value       = "python k8s/aks/generate_aks_manifests.py --acr-image ${azurerm_container_registry.rq15.login_server}/thesis-inference:TAG --namespace rq15 --nodepool ${azurerm_kubernetes_cluster.rq15.default_node_pool[0].name}"
+  value       = "python k8s/aks/generate_aks_manifests.py --acr-image ${azurerm_container_registry.rq15.login_server}/thesis-inference:TAG --namespace rq15 --nodepool ${var.nodepool_name}"
 }

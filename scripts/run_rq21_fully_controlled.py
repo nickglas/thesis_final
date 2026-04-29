@@ -30,6 +30,10 @@ DEFAULT_CLUSTER_NAME = "thesis-rq15"
 DEFAULT_LOCATION = "swedencentral"
 DEFAULT_NODE_VM_SIZE = "Standard_D8s_v3"
 DEFAULT_NODE_COUNT = 1
+DEFAULT_SYSTEM_NODEPOOL = "systempool"
+DEFAULT_SYSTEM_NODE_VM_SIZE = "Standard_D2s_v3"
+DEFAULT_SYSTEM_NODE_COUNT = 1
+DEFAULT_BENCHMARK_NODE_TAINT = "workload=benchmark:NoSchedule"
 INFRA_DIR = REPO_ROOT / "infra"
 SUPPORTED_TOPOLOGIES = {
     2: {
@@ -249,6 +253,61 @@ def load_yaml(path: Path) -> dict[str, Any]:
     return payload
 
 
+def parse_node_taint(taint: str) -> dict[str, str]:
+    text = str(taint or "").strip()
+    if not text:
+        return {}
+    body, _, effect = text.partition(":")
+    key, sep, value = body.partition("=")
+    if not key or not sep or not effect:
+        return {}
+    return {"key": key, "value": value, "effect": effect}
+
+
+def toleration_matches_taint(toleration: dict[str, Any], taint: str) -> bool:
+    parsed = parse_node_taint(taint)
+    if not parsed:
+        return False
+    if str(toleration.get("key") or "") != parsed["key"]:
+        return False
+    effect = str(toleration.get("effect") or "")
+    if effect and effect != parsed["effect"]:
+        return False
+    operator = str(toleration.get("operator") or "Equal")
+    if operator == "Exists":
+        return True
+    return str(toleration.get("value") or "") == parsed["value"]
+
+
+def placement_tolerations(placement: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        item
+        for item in (placement.get("tolerations") or [])
+        if isinstance(item, dict)
+    ]
+
+
+def placement_requires_control_plane_isolation(placement: dict[str, Any]) -> bool:
+    return bool(placement.get("require_control_plane_isolation", False))
+
+
+def is_avoidable_istio_control_plane_pod(record: dict[str, Any]) -> bool:
+    namespace = str(record.get("namespace") or "")
+    if namespace not in {"aks-istio-system", "istio-system"}:
+        return False
+    owner_kinds = {
+        str(item.get("kind") or "")
+        for item in (record.get("owner_references") or [])
+        if isinstance(item, dict)
+    }
+    if "DaemonSet" in owner_kinds:
+        return False
+    labels = record.get("labels") or {}
+    label_blob = " ".join(f"{key}={value}" for key, value in labels.items()).lower()
+    identity_blob = f"{namespace} {record.get('pod_name') or ''} {label_blob}".lower()
+    return "istio" in identity_blob or "asm" in identity_blob or "pilot" in identity_blob
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -321,6 +380,40 @@ def parse_args() -> argparse.Namespace:
         "--node-vm-size",
         default=DEFAULT_NODE_VM_SIZE,
         help="VM SKU used when provisioning the AKS cluster",
+    )
+    parser.set_defaults(isolated_node_pools=True)
+    parser.add_argument(
+        "--isolated-node-pools",
+        dest="isolated_node_pools",
+        action="store_true",
+        help="Use the final RQ2.1 two-pool AKS contract. Enabled by default for this RQ2.1 runner.",
+    )
+    parser.add_argument(
+        "--single-node-pool",
+        dest="isolated_node_pools",
+        action="store_false",
+        help="Use the legacy single-pool AKS contract. Not for final thesis-facing RQ2.1 runs.",
+    )
+    parser.add_argument(
+        "--system-nodepool",
+        default=DEFAULT_SYSTEM_NODEPOOL,
+        help="System node pool name when --isolated-node-pools is active.",
+    )
+    parser.add_argument(
+        "--system-node-count",
+        type=int,
+        default=DEFAULT_SYSTEM_NODE_COUNT,
+        help="System node count when --isolated-node-pools is active.",
+    )
+    parser.add_argument(
+        "--system-node-vm-size",
+        default=DEFAULT_SYSTEM_NODE_VM_SIZE,
+        help="System node VM SKU when --isolated-node-pools is active.",
+    )
+    parser.add_argument(
+        "--benchmark-taint",
+        default=DEFAULT_BENCHMARK_NODE_TAINT,
+        help="Benchmark node-pool taint that RQ2.1 benchmark pods must tolerate.",
     )
     parser.add_argument(
         "--skip-mesh-enable",
@@ -524,6 +617,44 @@ class RQ21PreflightRunner:
         if self.client_namespace == self.service_namespace:
             errors.append("kubernetes.client_namespace must keep the benchmark client outside the mesh namespace")
 
+        placement = self.k8s.get("placement") or {}
+        configured_node_pool = str(placement.get("node_pool") or "").strip()
+        if configured_node_pool and configured_node_pool != str(self.args.nodepool):
+            errors.append(
+                f"kubernetes.placement.node_pool must match --nodepool ({self.args.nodepool}), found {configured_node_pool}"
+            )
+        if bool(getattr(self.args, "isolated_node_pools", False)):
+            if int(getattr(self.args, "node_count", DEFAULT_NODE_COUNT)) != 1:
+                errors.append("Final RQ2.1 isolated-pool runs must use benchmark node_count=1")
+            if int(getattr(self.args, "system_node_count", DEFAULT_SYSTEM_NODE_COUNT)) != 1:
+                errors.append("Final RQ2.1 isolated-pool runs must use system_node_count=1")
+            if str(getattr(self.args, "node_vm_size", DEFAULT_NODE_VM_SIZE)) != DEFAULT_NODE_VM_SIZE:
+                errors.append(f"Final RQ2.1 isolated-pool runs must use benchmark node VM {DEFAULT_NODE_VM_SIZE}")
+            if str(getattr(self.args, "system_node_vm_size", DEFAULT_SYSTEM_NODE_VM_SIZE)) != DEFAULT_SYSTEM_NODE_VM_SIZE:
+                errors.append(f"Final RQ2.1 isolated-pool runs must use system node VM {DEFAULT_SYSTEM_NODE_VM_SIZE}")
+            if not placement_requires_control_plane_isolation(placement):
+                errors.append(
+                    "Final RQ2.1 isolated-pool runs must set "
+                    "kubernetes.placement.require_control_plane_isolation=true"
+                )
+            if not any(
+                toleration_matches_taint(
+                    item,
+                    getattr(self.args, "benchmark_taint", DEFAULT_BENCHMARK_NODE_TAINT),
+                )
+                for item in placement_tolerations(placement)
+            ):
+                errors.append(
+                    "Final RQ2.1 isolated-pool runs must include a benchmark-pool toleration "
+                    f"matching {getattr(self.args, 'benchmark_taint', DEFAULT_BENCHMARK_NODE_TAINT)}"
+                )
+            explicit_selector = placement.get("node_selector") or {}
+            if str(explicit_selector.get("workload") or "") != "benchmark":
+                errors.append(
+                    "Final RQ2.1 isolated-pool runs must set "
+                    "kubernetes.placement.node_selector.workload=benchmark"
+                )
+
         service_accounts = self.mesh.get("service_accounts") or {}
         for index in [str(value) for value in range(1, self.service_count + 1)]:
             if not str(service_accounts.get(index) or "").strip():
@@ -611,12 +742,12 @@ class RQ21PreflightRunner:
             ensure_command("terraform")
             ensure_command("az")
 
-    def _requested_vm_profile(self) -> tuple[int, str]:
+    def _requested_vm_profile(self, vm_size: str) -> tuple[int, str]:
         result = run_command(
             [
                 "az", "vm", "list-skus",
                 "-l", self.args.location,
-                "--size", self.args.node_vm_size,
+                "--size", vm_size,
                 "-o", "json",
             ],
             capture_output=True,
@@ -624,11 +755,11 @@ class RQ21PreflightRunner:
         payload = json.loads(result.stdout or "[]")
         if not payload:
             raise PipelineError(
-                f"Azure SKU metadata lookup returned no records for {self.args.node_vm_size} in {self.args.location}"
+                f"Azure SKU metadata lookup returned no records for {vm_size} in {self.args.location}"
             )
 
         sku = next(
-            (item for item in payload if str(item.get("name")) == self.args.node_vm_size),
+            (item for item in payload if str(item.get("name")) == vm_size),
             payload[0],
         )
         family = str(sku.get("family") or "")
@@ -636,13 +767,40 @@ class RQ21PreflightRunner:
         vcpus_text = str(capabilities.get("vCPUs") or capabilities.get("vCPUsAvailable") or "")
         if not vcpus_text.isdigit():
             raise PipelineError(
-                f"Unable to determine vCPU count for {self.args.node_vm_size} from Azure SKU metadata"
+                f"Unable to determine vCPU count for {vm_size} from Azure SKU metadata"
             )
         return int(vcpus_text), family
 
     def azure_quota_preflight(self) -> None:
-        requested_vm_vcpus, requested_family = self._requested_vm_profile()
-        requested_total_vcpus = requested_vm_vcpus * self.args.node_count
+        requested_profiles = [
+            {
+                "role": "benchmark",
+                "vm_size": self.args.node_vm_size,
+                "count": self.args.node_count,
+            }
+        ]
+        if bool(getattr(self.args, "isolated_node_pools", False)):
+            requested_profiles.append(
+                {
+                    "role": "system",
+                    "vm_size": getattr(self.args, "system_node_vm_size", DEFAULT_SYSTEM_NODE_VM_SIZE),
+                    "count": getattr(self.args, "system_node_count", DEFAULT_SYSTEM_NODE_COUNT),
+                }
+            )
+
+        requested_total_vcpus = 0
+        requested_family_vcpus: dict[str, int] = {}
+        requested_description_parts = []
+        for profile in requested_profiles:
+            vm_size = str(profile["vm_size"])
+            count = int(profile["count"])
+            vm_vcpus, family = self._requested_vm_profile(vm_size)
+            profile_total = vm_vcpus * count
+            requested_total_vcpus += profile_total
+            if family:
+                requested_family_vcpus[family] = requested_family_vcpus.get(family, 0) + profile_total
+            requested_description_parts.append(f"{vm_size} x{count} ({profile['role']})")
+        requested_description = ", ".join(requested_description_parts)
 
         usage_result = run_command(
             ["az", "vm", "list-usage", "-l", self.args.location, "-o", "json"],
@@ -666,10 +824,10 @@ class RQ21PreflightRunner:
             raise PipelineError(
                 "Azure quota preflight failed before provisioning. "
                 f"Location {self.args.location} has only {regional_available} regional vCPUs available, "
-                f"but {self.args.node_vm_size} x{self.args.node_count} requires {requested_total_vcpus}."
+                f"but {requested_description} requires {requested_total_vcpus}."
             )
 
-        if requested_family:
+        for requested_family, family_requested_vcpus in sorted(requested_family_vcpus.items()):
             family_record = next(
                 (
                     item for item in usage_payload
@@ -681,11 +839,11 @@ class RQ21PreflightRunner:
                 family_limit = int(family_record.get("limit") or 0)
                 family_current = int(family_record.get("currentValue") or 0)
                 family_available = family_limit - family_current
-                if family_available < requested_total_vcpus:
+                if family_available < family_requested_vcpus:
                     raise PipelineError(
                         "Azure family quota preflight failed before provisioning. "
                         f"Family {requested_family} in {self.args.location} has only {family_available} vCPUs available, "
-                        f"but {self.args.node_vm_size} x{self.args.node_count} requires {requested_total_vcpus}."
+                        f"but {requested_description} requires {family_requested_vcpus} in that family."
                     )
 
     def _terraform_var_args(self) -> list[str]:
@@ -699,6 +857,11 @@ class RQ21PreflightRunner:
             f"-var=nodepool_name={self.args.nodepool}",
             f"-var=node_count={self.args.node_count}",
             f"-var=node_vm_size={self.args.node_vm_size}",
+            f"-var=enable_benchmark_pool={str(bool(getattr(self.args, 'isolated_node_pools', False))).lower()}",
+            f"-var=system_nodepool_name={getattr(self.args, 'system_nodepool', DEFAULT_SYSTEM_NODEPOOL)}",
+            f"-var=system_node_count={getattr(self.args, 'system_node_count', DEFAULT_SYSTEM_NODE_COUNT)}",
+            f"-var=system_node_vm_size={getattr(self.args, 'system_node_vm_size', DEFAULT_SYSTEM_NODE_VM_SIZE)}",
+            f"-var=benchmark_node_taint={getattr(self.args, 'benchmark_taint', DEFAULT_BENCHMARK_NODE_TAINT)}",
         ]
 
     def _terraform_output_value(self, name: str) -> Any:
@@ -711,6 +874,8 @@ class RQ21PreflightRunner:
         self.args.resource_group = str(self._terraform_output_value("resource_group_name"))
         self.acr_name = str(self._terraform_output_value("acr_name"))
         self.args.cluster_name = str(self._terraform_output_value("cluster_name"))
+        if "benchmark_nodepool_name" in self.terraform_outputs:
+            self.args.nodepool = str(self._terraform_output_value("benchmark_nodepool_name"))
         actual_vm_size = str(self._terraform_output_value("node_vm_size"))
         if actual_vm_size != self.args.node_vm_size:
             warn(
@@ -1376,6 +1541,7 @@ class RQ21PreflightRunner:
                 "node_name": (pod.get("spec") or {}).get("nodeName", "unknown"),
                 "phase": (pod.get("status") or {}).get("phase", "unknown"),
                 "labels": labels,
+                "owner_references": metadata.get("ownerReferences", []) or [],
             })
         return records
 
@@ -1587,6 +1753,19 @@ class RQ21PreflightRunner:
     ) -> dict[str, Any]:
         service_summaries = [self._pod_summary(pod) for pod in service_pods]
         client_summary = self._pod_summary(client_pod)
+        benchmark_nodes = {
+            item["node_name"]
+            for item in service_summaries
+            if item["node_name"] not in (None, "", "unknown")
+        }
+        if client_summary["node_name"] not in (None, "", "unknown"):
+            benchmark_nodes.add(client_summary["node_name"])
+        shared_avoidable_control_plane_pods = [
+            pod
+            for pod in control_plane_pods
+            if str(pod.get("node_name") or "") in benchmark_nodes
+            and is_avoidable_istio_control_plane_pod(pod)
+        ]
         return {
             "captured_at": datetime.now(timezone.utc).isoformat(),
             "config_path": str(self._active_config_path()),
@@ -1651,6 +1830,21 @@ class RQ21PreflightRunner:
             "service_pods": service_summaries,
             "client_pod": client_summary,
             "mesh_control_plane_system_pod_placement": control_plane_pods,
+            "control_plane_isolation": {
+                "required": (
+                    bool(getattr(self.args, "isolated_node_pools", False))
+                    or placement_requires_control_plane_isolation(self.k8s.get("placement") or {})
+                ),
+                "benchmark_node_names": sorted(benchmark_nodes),
+                "avoidable_istio_control_plane_pods_on_benchmark_node": shared_avoidable_control_plane_pods,
+                "violates_isolated_pool_contract": bool(
+                    shared_avoidable_control_plane_pods
+                    and (
+                        bool(getattr(self.args, "isolated_node_pools", False))
+                        or placement_requires_control_plane_isolation(self.k8s.get("placement") or {})
+                    )
+                ),
+            },
             "preflight_passed": not errors,
             "errors": errors,
             "warnings": warnings,
@@ -1730,6 +1924,12 @@ class RQ21PreflightRunner:
         service_nodes.discard("unknown")
         if len(service_nodes) != 1:
             errors.append(f"Inference service pods are not strictly colocated on one node: {sorted(service_nodes)}")
+
+        client_node = str((client_pod.get("spec") or {}).get("nodeName") or "unknown")
+        if len(service_nodes) == 1 and client_node not in service_nodes:
+            errors.append(
+                f"Benchmark client is not colocated with inference services: client={client_node}, services={sorted(service_nodes)}"
+            )
 
         client_container_names = self._app_container_names(client_pod)
         all_client_container_names = self._container_names(client_pod)
@@ -1812,6 +2012,25 @@ class RQ21PreflightRunner:
             if item.get("node_name") not in (None, "", "unknown")
         }
         shared_nodes = sorted(benchmark_nodes & control_plane_nodes)
+        shared_avoidable_control_plane_pods = [
+            pod
+            for pod in control_plane_pods
+            if str(pod.get("node_name") or "") in benchmark_nodes
+            and is_avoidable_istio_control_plane_pod(pod)
+        ]
+        isolation_required = (
+            bool(getattr(self.args, "isolated_node_pools", False))
+            or placement_requires_control_plane_isolation(self.k8s.get("placement") or {})
+        )
+        if isolation_required and shared_avoidable_control_plane_pods:
+            errors.append(
+                "Isolated-pool RQ2.1 contract violated: avoidable Istio control-plane pods share "
+                "benchmark node(s): "
+                + ", ".join(
+                    f"{pod.get('namespace')}/{pod.get('pod_name')}@{pod.get('node_name')}"
+                    for pod in shared_avoidable_control_plane_pods
+                )
+            )
         if shared_nodes:
             warnings.append(
                 "Mesh control-plane/system pods share benchmark node(s) "
@@ -1860,6 +2079,10 @@ class RQ21PreflightRunner:
         selector.update({str(key): str(value) for key, value in explicit.items()})
         return selector
 
+    def _debug_probe_tolerations(self) -> list[dict[str, Any]]:
+        placement = self.k8s.get("placement") or {}
+        return placement_tolerations(placement)
+
     def _debug_probe_manifest(self, pod_name: str) -> dict[str, Any]:
         container = {
             "name": "debug",
@@ -1886,6 +2109,9 @@ class RQ21PreflightRunner:
         node_selector = self._debug_probe_node_selector()
         if node_selector:
             spec["nodeSelector"] = node_selector
+        tolerations = self._debug_probe_tolerations()
+        if tolerations:
+            spec["tolerations"] = tolerations
         return {
             "apiVersion": "v1",
             "kind": "Pod",

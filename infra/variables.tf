@@ -36,11 +36,41 @@ variable "node_count" {
 
 variable "node_vm_size" {
   description = <<-EOT
-    VM SKU for AKS nodes.
+    VM SKU for the benchmark AKS node pool.
     Standard_D8s_v3 (8 vCPU, 32 GiB) — DSv3 family has 10 vCPU quota in swedencentral.
     Standard_D8s_v5 (8 vCPU, 32 GiB) is preferred but DSv5 family has 0 quota on this subscription.
     Do NOT use Spot or B-series (preemption/credit variance violate measurement stability).
   EOT
   type        = string
   default     = "Standard_D8s_v3"
+}
+
+variable "enable_benchmark_pool" {
+  description = "When true, provision a dedicated system pool plus a tainted benchmark pool for final RQ2.1 runs. Leave false for the original RQ1.5 single-pool contract."
+  type        = bool
+  default     = false
+}
+
+variable "system_nodepool_name" {
+  description = "System node pool name used when enable_benchmark_pool=true. Must fit AKS node-pool naming limits."
+  type        = string
+  default     = "systempool"
+}
+
+variable "system_node_count" {
+  description = "Number of nodes in the small system pool when enable_benchmark_pool=true."
+  type        = number
+  default     = 1
+}
+
+variable "system_node_vm_size" {
+  description = "VM SKU for the small system pool. Standard_D2s_v3 x1 plus Standard_D8s_v3 x1 keeps RQ2.1 within the documented 10 DSv3 vCPU quota."
+  type        = string
+  default     = "Standard_D2s_v3"
+}
+
+variable "benchmark_node_taint" {
+  description = "Taint applied to the benchmark-only pool so unrelated workloads do not schedule there."
+  type        = string
+  default     = "workload=benchmark:NoSchedule"
 }

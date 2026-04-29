@@ -10,4 +10,11 @@ acr_name = "thesisrq15acr"
 # cluster_name        = "thesis-rq15"
 # nodepool_name       = "rq15pool"
 # node_count          = 1
-# node_vm_size        = "Standard_D8s_v5"
+# node_vm_size        = "Standard_D8s_v3"
+
+# RQ2.1 final isolated-pool contract:
+# enable_benchmark_pool = true
+# system_nodepool_name  = "systempool"
+# system_node_count     = 1
+# system_node_vm_size   = "Standard_D2s_v3"
+# benchmark_node_taint  = "workload=benchmark:NoSchedule"

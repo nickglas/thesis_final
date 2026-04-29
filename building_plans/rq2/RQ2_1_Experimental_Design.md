@@ -374,9 +374,9 @@ The minimum thesis-facing RQ2.1 result table should report:
 
 ### Baseline
 
-**Baseline condition:** the non-secure AKS deployment inherited from RQ1.5 for `chain_2svc`.
+**Baseline condition:** the non-secure AKS deployment inherited from RQ1.5 for `chain_2svc`, rerun under the final RQ2.1 isolated-pool AKS contract.
 
-This is the direct reference point for RQ2.1. Same model image, same split point, same node pool, same node placement, same client-side measurement, same warmup policy, same iteration counts.
+This is the direct reference point for RQ2.1. Same model image, same split point, same benchmark node pool, same benchmark-node placement, same client-side measurement, same warmup policy, same iteration counts.
 
 ### Condition A
 
@@ -400,6 +400,20 @@ This should be executed only after the primary `chain_2svc_mtls` path passes the
 ### Why this set is correct
 
 This gives one clean primary pair and one optional stress pair. It answers the RQ without drifting back into a full-family re-evaluation.
+
+### Final RQ2.1 infrastructure contract
+
+Final thesis-facing RQ2.1 runs use an isolated two-pool AKS contract:
+
+- a small `Standard_D2s_v3` system pool for AKS system and managed-Istio control-plane workloads
+- a benchmark pool named `rq15pool` on `Standard_D8s_v3` with one node
+- a benchmark-only taint such as `workload=benchmark:NoSchedule`
+- benchmark client and inference service pods with matching tolerations and node selection for the benchmark pool
+- strict same-node placement within the benchmark pool
+
+This change is scoped to RQ2.1. It is not a mandatory rerun requirement for RQ1.5, whose role is Azure transfer and validation rather than attribution-sensitive mesh overhead. Existing single-pool RQ2.1 runs remain valid but limited evidence of the managed AKS deployment used at the time. They must not be mixed with the isolated-pool campaign in final thesis reporting. Only isolated-pool RQ2.1 results are final thesis numbers.
+
+`chain_2svc` remains the primary result. `chain_5svc` remains secondary stress evidence.
 
 ### Critical traffic-isolation decision
 
@@ -429,12 +443,14 @@ This is the right choice because a namespace-wide `STRICT` policy would force th
 Keep the following identical to RQ1.5 wherever possible:
 
 - Same AKS region.
-- Same AKS node size and count.
-- Same single-node same-hostname placement contract for service pods.
+- Same benchmark node SKU as the current Azure RQ1.5/RQ2.1 D8 profile.
+- Same strict same-hostname placement contract for benchmark client and service pods inside the benchmark pool.
 - Same image digest.
 - Same benchmark repetitions and warmup calibration.
 - Same gRPC settings and max message size.
 - Same client-side timing boundaries.
+
+The node-pool contract is intentionally different for final RQ2.1: the benchmark node is isolated from avoidable managed-Istio control-plane placement by using a separate system pool plus a tainted benchmark pool. With `Standard_D2s_v3` for the system pool and `Standard_D8s_v3` for the benchmark pool, the documented DSv3 quota assumption remains 10 vCPU total.
 
 ### Formal RQ2.1 infrastructure preflight gate
 
@@ -447,7 +463,8 @@ The preflight deployment must verify all of the following:
 - same-node placement still holds for the inference services
 - both application and `istio-proxy` containers become Ready
 - no obvious resource starvation or unschedulable pressure is introduced by the sidecars
-- mesh control-plane/system pod placement is recorded and, where feasible, isolated from the benchmark node
+- mesh control-plane/system pod placement is recorded
+- no avoidable managed-Istio control-plane deployment is colocated on the benchmark node under the isolated-pool contract
 - latency measurement pipeline still works end to end
 
 This is not an informal smoke check. It is a formal exit gate for the RQ2.1 experiment path.
@@ -461,7 +478,8 @@ The RQ2.1 experiment may proceed only if the `chain_2svc_mtls` preflight shows t
 - the secure chain still satisfies the same-node placement contract
 - both containers in each secure pod become Ready without prolonged pending or restart behavior
 - proxy resource reservations do not create unacceptable scheduling pressure on the selected node profile
-- mesh control-plane/system pod placement is known and either isolated from the benchmark node or explicitly recorded as a limitation
+- mesh control-plane/system pod placement is known
+- avoidable managed-Istio control-plane deployments are not colocated on the benchmark node under the isolated-pool contract
 - a short validation run produces usable latency artifacts with the existing measurement pipeline
 
 If any of these checks fail, the benchmark phase must not start until the issue is corrected.
@@ -490,8 +508,14 @@ This reduces drift from Azure background variance, time-of-day changes, and clus
 
 - Enable the AKS Istio add-on on the existing cluster or at cluster creation.
 - Pin an explicit supported mesh revision rather than relying on the moving default.
-- Keep the existing node-pool shape unless smoke tests show unavoidable capacity problems.
-- Where feasible, keep mesh control-plane and system pods off the benchmark node so that the experiment measures the service-mesh data-path cost rather than avoidable control-plane scheduling noise. A dedicated system node pool, taints/tolerations, or affinity rules may be used for this purpose. If this isolation is not feasible, record the control-plane pod placement in deployment metadata and discuss it as a limitation rather than silently accepting it.
+- For final RQ2.1 runs, use a dedicated system pool plus a separate benchmark pool.
+- System pool: `Standard_D2s_v3` x1, intended for AKS system and managed-Istio control-plane workloads.
+- Benchmark pool: `rq15pool` on `Standard_D8s_v3` x1, intended for the benchmark client and inference services.
+- Apply a benchmark-only taint such as `workload=benchmark:NoSchedule` to the benchmark pool.
+- Apply matching tolerations and benchmark-pool node selection to all RQ2.1 benchmark client and inference pods.
+- Keep strict same-node placement inside the benchmark pool.
+- Fail preflight or paired validation if avoidable managed-Istio control-plane deployments are colocated on the benchmark node under this isolated contract.
+- Continue recording mesh control-plane/system pod placement in deployment metadata. Standard Kubernetes daemonsets may still exist on the benchmark node; the isolation target is the avoidable managed-Istio control-plane deployment placement.
 
 #### Namespace layout
 
@@ -582,7 +606,7 @@ This keeps sidecar requests and limits reproducible, reviewable, and attributabl
 
 | Existing artifact                        | Reuse level | RQ2.1 delta                                                                                                      |
 | ---------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
-| `infra/main.tf`                          | High        | Reuse cluster and ACR foundation; add mesh-enable step instead of replacing infra                                |
+| `infra/main.tf`                          | High        | Reuse cluster and ACR foundation; add RQ2.1-only two-pool infrastructure switch plus mesh-enable step             |
 | `scripts/run_rq15_fully_controlled.py`   | High        | Reuse orchestration structure, provisioning, push, export, merge, analysis calls                                 |
 | `scripts/preflight_rq15_full.py`         | Medium-High | Reuse capacity checks; extend for sidecar resource headroom and same-node secure-deployment gating               |
 | `k8s/aks/generate_aks_manifests.py`      | High        | Extend to emit namespace revision labels, service accounts, proxy annotations, and optional `PeerAuthentication` |
@@ -627,6 +651,9 @@ That argues for a thin new RQ2.1 runner that reuses RQ1.5 building blocks rather
 
 This hardening patch does not require a redesign of the planned implementation. The minimum incremental changes are:
 
+- add an RQ2.1-only isolated system plus benchmark pool infrastructure contract
+- add benchmark-pool taints, benchmark workload tolerations, and benchmark-pool node selection
+- make final RQ2.1 preflight fail if avoidable managed-Istio control-plane deployments share the benchmark node
 - extend config and manifest generation to expose explicit `istio-proxy` CPU and memory requests plus limits
 - extend the planned resource sampler to report application container, proxy container, and total pod usage separately
 - extend the planned RQ2.1 runner with a formal `chain_2svc_mtls` preflight phase
@@ -649,7 +676,7 @@ No separate architecture path, no new benchmark topology, and no additional cond
 | Hidden proxy defaults                       | Uncontrolled sidecar requests and limits weaken reproducibility                                              | Pin explicit proxy CPU and memory requests plus limits in generated manifests and configs                                                                                                                                                                  |
 | Certificate rotation during run             | Can create transient latency or failure spikes                                                               | Keep benchmark windows short and record timing of any rotation event                                                                                                                                                                                       |
 | Azure background noise                      | Cloud variance can mask small overheads                                                                      | Interleave baseline and secure rounds and keep same-node placement                                                                                                                                                                                         |
-| Control-plane contention on experiment node | Mesh control-plane pods may share CPU with inference benchmark pods and introduce avoidable scheduling noise | Prefer isolating mesh control-plane/system pods away from the benchmark node using a system node pool, taints/tolerations, or affinity where feasible; if not feasible, record placement and treat residual contention as a documented platform limitation |
+| Control-plane contention on experiment node | Mesh control-plane pods may share CPU with inference benchmark pods and introduce avoidable scheduling noise | Final RQ2.1 uses a dedicated system pool plus tainted benchmark pool; fail preflight if avoidable managed-Istio control-plane deployments share the benchmark node |
 | Mesh misconfiguration                       | Failed or partial enforcement invalidates conclusions                                                        | Add fail-closed validation that checks sidecars, policies, and pod identities before measurement                                                                                                                                                           |
 
 ### Highest-risk implementation issue
@@ -700,22 +727,25 @@ Rejected because RQ2.1 is not trying to determine the globally best mesh. It is 
 
 ### Stage 2: Mesh smoke test
 
-1. Enable AKS managed Istio on the existing AKS cluster.
-2. Label a disposable test namespace with the selected revision.
-3. Deploy `chain_2svc` services with sidecars.
-4. Keep the benchmark client outside the mesh.
-5. Apply workload-scoped `PeerAuthentication` so only the downstream service requires mTLS.
-6. Apply explicit proxy CPU and memory requests plus limits.
-7. Record mesh control-plane/system pod placement and isolate it from the benchmark node where feasible.
-8. Run the formal `chain_2svc_mtls` infrastructure preflight gate.
+1. Provision the final RQ2.1 isolated-pool AKS contract: small system pool plus tainted `rq15pool` benchmark pool.
+2. Enable AKS managed Istio on the cluster.
+3. Label a disposable test namespace with the selected revision.
+4. Deploy `chain_2svc` services with sidecars.
+5. Keep the benchmark client outside the mesh.
+6. Apply workload-scoped `PeerAuthentication` so only the downstream service requires mTLS.
+7. Apply explicit proxy CPU and memory requests plus limits.
+8. Ensure benchmark client and inference service pods select the benchmark pool and tolerate the benchmark-only taint.
+9. Record mesh control-plane/system pod placement.
+10. Run the formal `chain_2svc_mtls` infrastructure preflight gate.
 
 **Exit criterion:**
 
 - Service pods show `istio-proxy` containers.
 - The client remains single-container and non-meshed.
-- Same-node placement still holds.
+- Same-node placement still holds inside the benchmark pool.
 - Both application and proxy containers become Ready.
 - No resource starvation or unschedulable pressure is observed.
+- No avoidable managed-Istio control-plane deployment is colocated on the benchmark node.
 - A short validation run proves that the latency pipeline still works.
 - The downstream hop is confirmed to be mesh-protected.
 
@@ -730,10 +760,11 @@ Rejected because RQ2.1 is not trying to determine the globally best mesh. It is 
 
 ### Stage 4: Primary paired experiment
 
-1. Run `chain_2svc_plain` and `chain_2svc_mtls` as interleaved rounds on the same cluster profile.
+1. Run `chain_2svc_plain` and `chain_2svc_mtls` as interleaved rounds under the same isolated-pool AKS contract.
 2. Keep same-node placement and the same image digest.
-3. Export and merge artifacts using the existing RQ1.5-style directory structure.
-4. Run the existing host-side latency analysis plus RQ2.1 supplemental summaries.
+3. Verify preflight evidence that no avoidable managed-Istio control-plane deployment shares the benchmark node.
+4. Export and merge artifacts using the existing RQ1.5-style directory structure.
+5. Run the existing host-side latency analysis plus RQ2.1 supplemental summaries.
 
 **Exit criterion:** primary pair produces stable matched results with interpretable latency and complexity deltas.
 
@@ -741,16 +772,19 @@ Stability here means not only that latency results are coherent, but also that t
 
 ### Stage 5: Optional stress pair
 
-1. Only if Stage 2 and Stage 4 both pass cleanly, repeat the paired design for `chain_5svc_plain` and `chain_5svc_mtls`.
-2. Treat the results as secondary stress evidence, not as the primary thesis claim.
+1. Only if Stage 2 and Stage 4 both pass cleanly, repeat the paired design for `chain_5svc_plain` and `chain_5svc_mtls` under the same isolated-pool AKS contract.
+2. Verify the same preflight condition: no avoidable managed-Istio control-plane deployment shares the benchmark node.
+3. Treat the results as secondary stress evidence, not as the primary thesis claim.
 
 **Exit criterion:** secondary stress data either confirms or bounds cumulative mesh-overhead behavior across deeper chains.
 
 ### Stage 6: Freeze and thesis integration
 
 1. Freeze configs, manifest generation path, and mesh revision.
-2. Export final artifacts into a thesis-facing results directory.
-3. Produce one concise summary table with:
+2. Treat only isolated-pool RQ2.1 artifacts as final thesis numbers.
+3. Do not mix old single-pool RQ2.1 numbers with new isolated-pool numbers in final reporting.
+4. Export final artifacts into a thesis-facing results directory.
+5. Produce one concise summary table with:
 
 - mean latency delta
 - p95 delta
@@ -762,7 +796,7 @@ Stability here means not only that latency results are coherent, but also that t
 
 Handshake overhead may be included only if the optional probe was run and produced interpretable results.
 
-4. Document threats-to-validity and out-of-scope attacker classes exactly as stated above.
+6. Document threats-to-validity and out-of-scope attacker classes exactly as stated above.
 
 **Exit criterion:** RQ2.1 can be written as a clean follow-on chapter to RQ1.5 without reopening any RQ1 architectural decision.
 
@@ -770,7 +804,7 @@ Handshake overhead may be included only if the optional probe was run and produc
 
 ## Final Recommendation
 
-If only one secure configuration is taken forward for RQ2.1, it should be **`chain_2svc` on AKS with the Azure-native Istio add-on and workload-scoped east-west mTLS**.
+If only one secure configuration is taken forward for RQ2.1, it should be **`chain_2svc` on AKS with the isolated two-pool contract, the Azure-native Istio add-on, and workload-scoped east-west mTLS**.
 
 That choice gives the strongest thesis story, the smallest engineering delta from RQ1.5, and the clearest methodological interpretation.
 

@@ -126,11 +126,13 @@ def _placement_policy(config) -> dict[str, Any]:
         "fail_if_not_colocated": bool(placement.fail_if_not_colocated),
         "node_selector": dict(placement.node_selector),
         "node_pool": placement.node_pool,
+        "tolerations": list(placement.tolerations),
+        "require_control_plane_isolation": bool(placement.require_control_plane_isolation),
     }
     return {
         key: value
         for key, value in policy.items()
-        if value not in (None, "") and not (isinstance(value, dict) and not value)
+        if value not in (None, "") and not (isinstance(value, (dict, list)) and not value)
     }
 
 

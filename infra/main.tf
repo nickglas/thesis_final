@@ -1,4 +1,4 @@
- # RQ1.5 AKS infrastructure — Terraform configuration
+# RQ1.5 AKS infrastructure — Terraform configuration
 #
 # Provisions:
 #   - Azure Resource Group
@@ -64,11 +64,13 @@ resource "azurerm_container_registry" "rq15" {
 # AKS Cluster
 #
 # Single node pool — all service pods run on the same node via pod affinity.
+# RQ2.1 final runs enable a small system pool plus a tainted benchmark pool.
 # SystemAssigned identity is the simplest approach for ACR attachment.
 #
-# Node SKU guidance (from RQ1.5 design D3):
-#   Standard_D8s_v5 (8 vCPU) — preferred; avoids CPU overcommit for 5 svc pods.
-#   Standard_D4s_v5 (4 vCPU) — minimum acceptable.
+# Node SKU guidance for current thesis runs:
+#   RQ1.5 default: Standard_D8s_v3 x1.
+#   RQ2.1 isolated: Standard_D2s_v3 system x1 + Standard_D8s_v3 benchmark x1.
+#   This keeps the documented DSv3 target at 10 vCPU total.
 #   Do NOT use Spot or B-series (preemption risk / CPU credit variance).
 # ---------------------------------------------------------------------------
 
@@ -82,9 +84,9 @@ resource "azurerm_kubernetes_cluster" "rq15" {
   # Record the actual version from `kubectl version` in environment.json.
 
   default_node_pool {
-    name       = var.nodepool_name
-    node_count = var.node_count
-    vm_size    = var.node_vm_size
+    name       = var.enable_benchmark_pool ? var.system_nodepool_name : var.nodepool_name
+    node_count = var.enable_benchmark_pool ? var.system_node_count : var.node_count
+    vm_size    = var.enable_benchmark_pool ? var.system_node_vm_size : var.node_vm_size
   }
 
   identity {
@@ -94,7 +96,7 @@ resource "azurerm_kubernetes_cluster" "rq15" {
   # Disable features not needed for this experiment.
   # Keeping the cluster footprint minimal reduces noise and cost.
   network_profile {
-    network_plugin = "kubenet"
+    network_plugin    = "kubenet"
     load_balancer_sku = "standard"
   }
 
@@ -104,8 +106,29 @@ resource "azurerm_kubernetes_cluster" "rq15" {
 
   tags = {
     project     = "thesis"
-    experiment  = "rq15"
+    experiment  = var.enable_benchmark_pool ? "rq21-isolated" : "rq15"
     environment = "research"
+  }
+}
+
+resource "azurerm_kubernetes_cluster_node_pool" "benchmark" {
+  count = var.enable_benchmark_pool ? 1 : 0
+
+  name                  = var.nodepool_name
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.rq15.id
+  vm_size               = var.node_vm_size
+  node_count            = var.node_count
+  mode                  = "User"
+  node_taints           = [var.benchmark_node_taint]
+  node_labels = {
+    workload = "benchmark"
+  }
+
+  tags = {
+    project     = "thesis"
+    experiment  = "rq21-isolated"
+    environment = "research"
+    workload    = "benchmark"
   }
 }
 

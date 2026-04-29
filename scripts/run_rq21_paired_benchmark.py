@@ -34,17 +34,25 @@ from scripts.run_rq21_fully_controlled import (  # noqa: E402
     DEFAULT_NODE_VM_SIZE,
     DEFAULT_NODEPOOL,
     DEFAULT_RESOURCE_GROUP,
+    DEFAULT_SYSTEM_NODE_COUNT,
+    DEFAULT_SYSTEM_NODE_VM_SIZE,
+    DEFAULT_SYSTEM_NODEPOOL,
+    DEFAULT_BENCHMARK_NODE_TAINT,
     INFRA_DIR,
     PipelineError,
     RQ21PreflightRunner,
     default_kubeconfig_path,
     ensure_command,
+    is_avoidable_istio_control_plane_pod,
     kubectl_json,
     kubectl_json_or_none,
     load_yaml,
     log,
+    placement_requires_control_plane_isolation,
+    placement_tolerations,
     run_command,
     timestamp,
+    toleration_matches_taint,
     utc_run_stamp,
     warn,
 )
@@ -484,6 +492,7 @@ def mesh_control_plane_pods() -> list[dict[str, Any]]:
             "node_name": (pod.get("spec") or {}).get("nodeName", "unknown"),
             "phase": (pod.get("status") or {}).get("phase", "unknown"),
             "labels": labels,
+            "owner_references": metadata.get("ownerReferences", []) or [],
         })
     return records
 
@@ -524,6 +533,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--location", default=DEFAULT_LOCATION)
     parser.add_argument("--node-count", type=int, default=DEFAULT_NODE_COUNT)
     parser.add_argument("--node-vm-size", default=DEFAULT_NODE_VM_SIZE)
+    parser.set_defaults(isolated_node_pools=True)
+    parser.add_argument(
+        "--isolated-node-pools",
+        dest="isolated_node_pools",
+        action="store_true",
+        help="Use the final RQ2.1 two-pool AKS contract. Enabled by default for this RQ2.1 runner.",
+    )
+    parser.add_argument(
+        "--single-node-pool",
+        dest="isolated_node_pools",
+        action="store_false",
+        help="Use the legacy single-pool AKS contract. Not for final thesis-facing RQ2.1 runs.",
+    )
+    parser.add_argument("--system-nodepool", default=DEFAULT_SYSTEM_NODEPOOL)
+    parser.add_argument("--system-node-count", type=int, default=DEFAULT_SYSTEM_NODE_COUNT)
+    parser.add_argument("--system-node-vm-size", default=DEFAULT_SYSTEM_NODE_VM_SIZE)
+    parser.add_argument("--benchmark-taint", default=DEFAULT_BENCHMARK_NODE_TAINT)
     parser.add_argument("--skip-mesh-enable", action="store_true")
     parser.add_argument(
         "--mesh-revision",
@@ -682,6 +708,11 @@ class RQ21PairedBenchmarkRunner:
             location=self.args.location,
             node_count=self.args.node_count,
             node_vm_size=self.args.node_vm_size,
+            isolated_node_pools=self.args.isolated_node_pools,
+            system_nodepool=self.args.system_nodepool,
+            system_node_count=self.args.system_node_count,
+            system_node_vm_size=self.args.system_node_vm_size,
+            benchmark_taint=self.args.benchmark_taint,
             skip_mesh_enable=self.args.skip_mesh_enable,
             mesh_revision=self.args.mesh_revision,
             manifest_output_dir=str(manifest_output_dir) if manifest_output_dir else None,
@@ -876,6 +907,54 @@ class RQ21PairedBenchmarkRunner:
             errors.append("Plain and mTLS service namespaces must be separate")
         if str(plain_k8s.get("client_namespace")) == str(mtls_k8s.get("client_namespace")):
             errors.append("Plain and mTLS client namespaces must be separate")
+
+        if bool(getattr(self.args, "isolated_node_pools", False)):
+            if int(getattr(self.args, "node_count", DEFAULT_NODE_COUNT)) != 1:
+                errors.append("Final isolated-pool RQ2.1 runs must use benchmark --node-count 1")
+            if int(getattr(self.args, "system_node_count", DEFAULT_SYSTEM_NODE_COUNT)) != 1:
+                errors.append("Final isolated-pool RQ2.1 runs must use --system-node-count 1")
+            if str(getattr(self.args, "node_vm_size", DEFAULT_NODE_VM_SIZE)) != DEFAULT_NODE_VM_SIZE:
+                errors.append(f"Final isolated-pool RQ2.1 runs must use benchmark --node-vm-size {DEFAULT_NODE_VM_SIZE}")
+            if str(getattr(self.args, "system_node_vm_size", DEFAULT_SYSTEM_NODE_VM_SIZE)) != DEFAULT_SYSTEM_NODE_VM_SIZE:
+                errors.append(
+                    f"Final isolated-pool RQ2.1 runs must use --system-node-vm-size {DEFAULT_SYSTEM_NODE_VM_SIZE}"
+                )
+            for key, raw_k8s in (("plain", plain_k8s), ("mtls", mtls_k8s)):
+                placement = raw_k8s.get("placement") or {}
+                configured_node_pool = str(placement.get("node_pool") or "").strip()
+                if configured_node_pool != str(self.args.nodepool):
+                    errors.append(
+                        f"{key} kubernetes.placement.node_pool must be {self.args.nodepool} "
+                        f"for the isolated RQ2.1 benchmark pool; found {configured_node_pool or '<unset>'}"
+                    )
+                if not placement_requires_control_plane_isolation(placement):
+                    errors.append(
+                        f"{key} kubernetes.placement.require_control_plane_isolation must be true "
+                        "for final isolated-pool RQ2.1 runs"
+                    )
+                if not any(
+                    toleration_matches_taint(item, self.args.benchmark_taint)
+                    for item in placement_tolerations(placement)
+                ):
+                    errors.append(
+                        f"{key} kubernetes.placement.tolerations must include a toleration for "
+                        f"{self.args.benchmark_taint}"
+                    )
+                explicit_selector = placement.get("node_selector") or {}
+                if str(explicit_selector.get("workload") or "") != "benchmark":
+                    errors.append(
+                        f"{key} kubernetes.placement.node_selector.workload must be benchmark "
+                        "for the isolated RQ2.1 benchmark pool"
+                    )
+        else:
+            requires_isolation = any(
+                placement_requires_control_plane_isolation((raw_k8s.get("placement") or {}))
+                for raw_k8s in (plain_k8s, mtls_k8s)
+            )
+            if requires_isolation and self.args.provision:
+                errors.append(
+                    "Configs request control-plane isolation, but --single-node-pool was selected with provisioning"
+                )
 
         if topology_spec is not None:
             service_count = int(topology_spec["service_count"])
@@ -1101,6 +1180,11 @@ class RQ21PairedBenchmarkRunner:
                     "nodepool": self.args.nodepool,
                     "node_count": self.args.node_count,
                     "node_vm_size": self.args.node_vm_size,
+                    "isolated_node_pools": bool(self.args.isolated_node_pools),
+                    "system_nodepool": self.args.system_nodepool,
+                    "system_node_count": self.args.system_node_count,
+                    "system_node_vm_size": self.args.system_node_vm_size,
+                    "benchmark_taint": self.args.benchmark_taint,
                     "mesh_revision": self.mesh_revision,
                 },
                 indent=2,
@@ -1143,6 +1227,11 @@ class RQ21PairedBenchmarkRunner:
                     "nodepool": self.args.nodepool,
                     "node_count": self.args.node_count,
                     "node_vm_size": self.args.node_vm_size,
+                    "isolated_node_pools": bool(self.args.isolated_node_pools),
+                    "system_nodepool": self.args.system_nodepool,
+                    "system_node_count": self.args.system_node_count,
+                    "system_node_vm_size": self.args.system_node_vm_size,
+                    "benchmark_taint": self.args.benchmark_taint,
                     "mesh_revision": self.mesh_revision,
                 },
                 indent=2,
@@ -1242,6 +1331,55 @@ class RQ21PairedBenchmarkRunner:
             if doc.get("kind") == "Namespace"
         }
         deployments = [doc for doc in docs if doc.get("kind") == "Deployment"]
+        pod_docs = [doc for doc in docs if doc.get("kind") == "Pod"]
+        raw_config = load_yaml(context.effective_config_path)
+        placement = (raw_config.get("kubernetes") or {}).get("placement") or {}
+        isolated_contract_required = (
+            bool(getattr(self.args, "isolated_node_pools", False))
+            or placement_requires_control_plane_isolation(placement)
+        )
+
+        if isolated_contract_required:
+            explicit_selector = {
+                str(key): str(value)
+                for key, value in (placement.get("node_selector") or {}).items()
+            }
+            expected_selector = {"agentpool": self.args.nodepool, **explicit_selector}
+            workload_specs: list[tuple[str, dict[str, Any]]] = []
+            for deployment in deployments:
+                name = str((deployment.get("metadata") or {}).get("name") or "unknown")
+                spec = (
+                    ((deployment.get("spec") or {}).get("template") or {})
+                    .get("spec", {})
+                    or {}
+                )
+                workload_specs.append((f"Deployment/{name}", spec))
+            for pod_doc in pod_docs:
+                name = str((pod_doc.get("metadata") or {}).get("name") or "unknown")
+                workload_specs.append((f"Pod/{name}", pod_doc.get("spec") or {}))
+            for workload_name, spec in workload_specs:
+                observed_selector = {
+                    str(key): str(value)
+                    for key, value in (spec.get("nodeSelector") or {}).items()
+                }
+                for key, expected_value in expected_selector.items():
+                    if observed_selector.get(key) != expected_value:
+                        errors.append(
+                            f"{workload_name} must select benchmark node {key}={expected_value}; "
+                            f"found {observed_selector.get(key)}"
+                        )
+                observed_tolerations = [
+                    item
+                    for item in (spec.get("tolerations") or [])
+                    if isinstance(item, dict)
+                ]
+                if not any(
+                    toleration_matches_taint(item, self.args.benchmark_taint)
+                    for item in observed_tolerations
+                ):
+                    errors.append(
+                        f"{workload_name} must tolerate benchmark taint {self.args.benchmark_taint}"
+                    )
 
         if context.key == "plain":
             forbidden = {"PeerAuthentication", "AuthorizationPolicy", "ServiceAccount"}
@@ -1533,6 +1671,12 @@ class RQ21PairedBenchmarkRunner:
         if len(nodes) != 1:
             errors.append(f"Plain service pods are not strictly colocated on one node: {sorted(nodes)}")
 
+        client_node = str((client_pod.get("spec") or {}).get("nodeName") or "unknown")
+        if len(nodes) == 1 and client_node not in nodes:
+            errors.append(
+                f"Plain benchmark client is not colocated with service pods: client={client_node}, services={sorted(nodes)}"
+            )
+
         client_container_names = [str(container.get("name")) for container in app_container_specs(client_pod)]
         all_client_names = [str(container.get("name")) for container in container_specs(client_pod)]
         if client_container_names != ["client"]:
@@ -1546,7 +1690,7 @@ class RQ21PairedBenchmarkRunner:
             "passed": not errors,
             "errors": errors,
             "service_pod_nodes": sorted(nodes),
-            "client_node": (client_pod.get("spec") or {}).get("nodeName"),
+            "client_node": client_node,
         }
         (context.diagnostics_dir / "plain_runtime_validation.json").write_text(
             json.dumps(result, indent=2),
@@ -1816,6 +1960,12 @@ class RQ21PairedBenchmarkRunner:
         if len(nodes) != 1:
             errors.append(f"mTLS service pods are not strictly colocated on one node: {sorted(nodes)}")
 
+        client_node = str((client_pod.get("spec") or {}).get("nodeName") or "unknown")
+        if len(nodes) == 1 and client_node not in nodes:
+            errors.append(
+                f"mTLS benchmark client is not colocated with service pods: client={client_node}, services={sorted(nodes)}"
+            )
+
         client_container_names = [str(container.get("name")) for container in app_container_specs(client_pod)]
         all_client_names = [str(container.get("name")) for container in container_specs(client_pod)]
         if client_container_names != ["client"]:
@@ -1831,7 +1981,7 @@ class RQ21PairedBenchmarkRunner:
             "passed": not errors,
             "errors": errors,
             "service_pod_nodes": sorted(nodes),
-            "client_node": (client_pod.get("spec") or {}).get("nodeName"),
+            "client_node": client_node,
             "peer_authentication_count": len(peer_items),
             "authorization_policy_count": len(authz_items),
             "peer_authentication_validation": peer_summary,
@@ -2259,8 +2409,23 @@ class RQ21PairedBenchmarkRunner:
             for pod in control_plane_pods
             if str(pod.get("node_name") or "") in benchmark_nodes
         ]
+        shared_avoidable_control_plane_pods = [
+            pod
+            for pod in shared_control_plane_pods
+            if is_avoidable_istio_control_plane_pod(pod)
+        ]
+        placement = (load_yaml(context.effective_config_path).get("kubernetes") or {}).get("placement") or {}
+        isolated_contract_required = (
+            bool(getattr(self.args, "isolated_node_pools", False))
+            or placement_requires_control_plane_isolation(placement)
+        )
         control_plane_colocation = {
             "shares_benchmark_node": bool(shared_control_plane_pods),
+            "shares_avoidable_istio_control_plane": bool(shared_avoidable_control_plane_pods),
+            "isolated_pool_contract_required": isolated_contract_required,
+            "violates_isolated_pool_contract": bool(
+                isolated_contract_required and shared_avoidable_control_plane_pods
+            ),
             "benchmark_node_names": sorted(benchmark_nodes),
             "shared_node_names": sorted(
                 {
@@ -2273,7 +2438,12 @@ class RQ21PairedBenchmarkRunner:
                 f"{pod.get('namespace')}/{pod.get('pod_name')}"
                 for pod in shared_control_plane_pods
             ],
+            "avoidable_istio_control_plane_pod_names": [
+                f"{pod.get('namespace')}/{pod.get('pod_name')}"
+                for pod in shared_avoidable_control_plane_pods
+            ],
             "control_plane_pods_on_shared_nodes": shared_control_plane_pods,
+            "avoidable_istio_control_plane_pods_on_shared_nodes": shared_avoidable_control_plane_pods,
         }
         sidecar_total = sum(
             1
@@ -2370,6 +2540,12 @@ class RQ21PairedBenchmarkRunner:
             json.dumps(payload, indent=2),
             encoding="utf-8",
         )
+        if control_plane_colocation["violates_isolated_pool_contract"]:
+            raise PipelineError(
+                "Isolated-pool RQ2.1 contract violated: avoidable Istio control-plane pods share "
+                "benchmark node(s): "
+                + ", ".join(control_plane_colocation["avoidable_istio_control_plane_pod_names"])
+            )
         return payload
 
     def run_mtls_security_preflight(self, context: ConditionContext) -> Path:
@@ -2437,6 +2613,7 @@ class RQ21PairedBenchmarkRunner:
             "non_mesh_direct_denial_target_results": direct_denial.get("target_results") or [],
             "authorization_policy_expected_principal": enforcement.get("authorization_policy_expected_principal"),
             "authorization_policy_expected_principals": enforcement.get("authorization_policy_expected_principals") or [],
+            "control_plane_isolation": metadata.get("control_plane_isolation") or {},
             "errors": metadata.get("errors") or enforcement.get("errors") or [],
             "limitations": metadata.get("limitations") or [],
         }
@@ -3406,13 +3583,34 @@ class RQ21PairedBenchmarkRunner:
                     if str(name).strip()
                 }
             )
+            avoidable_control_plane_pod_names = sorted(
+                {
+                    str(name)
+                    for item in colocation_records
+                    for name in (item.get("avoidable_istio_control_plane_pod_names") or [])
+                    if str(name).strip()
+                }
+            )
             control_plane_colocation = {
                 "shares_benchmark_node": any(
                     bool(item.get("shares_benchmark_node"))
                     for item in colocation_records
                 ),
+                "shares_avoidable_istio_control_plane": any(
+                    bool(item.get("shares_avoidable_istio_control_plane"))
+                    for item in colocation_records
+                ),
+                "isolated_pool_contract_required": any(
+                    bool(item.get("isolated_pool_contract_required"))
+                    for item in colocation_records
+                ),
+                "violates_isolated_pool_contract": any(
+                    bool(item.get("violates_isolated_pool_contract"))
+                    for item in colocation_records
+                ),
                 "shared_node_names": shared_node_names,
                 "control_plane_pod_names": control_plane_pod_names,
+                "avoidable_istio_control_plane_pod_names": avoidable_control_plane_pod_names,
             }
 
             summaries[key] = {
@@ -4011,6 +4209,14 @@ class RQ21PairedBenchmarkRunner:
         security_validation = self.summarize_security_validation()
         resource_requirement_blockers = self.resource_summary_blockers(resources)
         requirement_blockers = list(resource_requirement_blockers)
+        mtls_control_plane = (
+            ((operational.get("comparison") or {}).get("mtls_control_plane_colocation"))
+            or {}
+        )
+        if mtls_control_plane.get("violates_isolated_pool_contract"):
+            requirement_blockers.append(
+                "isolated RQ2.1 pool contract was violated by avoidable Istio control-plane colocation"
+            )
         if self.args.disable_resource_sampling:
             requirement_blockers.insert(
                 0,
@@ -4041,7 +4247,8 @@ class RQ21PairedBenchmarkRunner:
                 "blocking_issues": requirement_blockers,
             },
             "notes": [
-                "Plain and mTLS are measured on the same AKS cluster, image digest, nodepool, resources, and split topology.",
+                "Plain and mTLS are measured on the same AKS cluster, image digest, benchmark nodepool, resources, and split topology.",
+                "Final thesis-facing RQ2.1 runs use the isolated two-pool AKS contract; old single-pool RQ2.1 numbers must not be mixed into final reporting.",
                 "chain_2svc is the primary RQ2.1 one-boundary experiment; chain_5svc is optional maximum-depth stress validation only.",
                 "mTLS condition keeps the benchmark client outside the mesh and protects downstream services with STRICT PeerAuthentication plus AuthorizationPolicy.",
                 "The paired runner captures scheduling delay, schedule-to-ready delay, and deployment-complexity snapshots before each benchmark pass.",
@@ -4056,10 +4263,7 @@ class RQ21PairedBenchmarkRunner:
         self.write_summary_markdown(summary)
         self.write_aggregated_results(summary, rows)
 
-        if (
-            (resource_requirement_blockers and not self.args.disable_resource_sampling)
-            or not security_validation.get("passed")
-        ):
+        if requirement_blockers:
             raise PipelineError(
                 "RQ2.1 paired benchmark artifact set is incomplete:\n- "
                 + "\n- ".join(requirement_blockers)
@@ -4266,6 +4470,11 @@ class RQ21PairedBenchmarkRunner:
             "image_ref": self.effective_image_ref,
             "mesh_revision": self.mesh_revision,
             "nodepool": self.args.nodepool,
+            "isolated_node_pools": bool(self.args.isolated_node_pools),
+            "system_nodepool": self.args.system_nodepool,
+            "system_node_count": self.args.system_node_count,
+            "system_node_vm_size": self.args.system_node_vm_size,
+            "benchmark_taint": self.args.benchmark_taint,
             "provision_requested": bool(self.args.provision),
             "infrastructure_provisioned": self.infrastructure_provisioned,
             "destroy_infrastructure_on_success": bool(self.args.destroy_infrastructure_on_success),

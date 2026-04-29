@@ -3,7 +3,7 @@
 import re
 import yaml
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -83,6 +83,8 @@ class K8sPlacementConfig:
     fail_if_not_colocated: bool = False
     node_selector: Dict[str, str] = field(default_factory=dict)
     node_pool: Optional[str] = None
+    tolerations: List[Dict[str, Any]] = field(default_factory=list)
+    require_control_plane_isolation: bool = False
 
 
 @dataclass
@@ -262,6 +264,22 @@ def _parse_k8s_config(raw) -> Optional[K8sConfig]:
     )
     placement_raw = raw.get("placement", {}) or {}
     node_selector_raw = placement_raw.get("node_selector", {}) or {}
+    tolerations_raw = placement_raw.get("tolerations", []) or []
+    tolerations: List[Dict[str, Any]] = []
+    if isinstance(tolerations_raw, list):
+        for item in tolerations_raw:
+            if not isinstance(item, dict):
+                continue
+            toleration: Dict[str, Any] = {}
+            for key, value in item.items():
+                if value in (None, ""):
+                    continue
+                if key == "tolerationSeconds":
+                    toleration[str(key)] = value
+                else:
+                    toleration[str(key)] = str(value)
+            if toleration:
+                tolerations.append(toleration)
     placement = K8sPlacementConfig(
         strategy=str(placement_raw.get("strategy", "none")),
         require_same_node=bool(placement_raw.get("require_same_node", False)),
@@ -274,6 +292,10 @@ def _parse_k8s_config(raw) -> Optional[K8sConfig]:
             str(placement_raw.get("node_pool"))
             if placement_raw.get("node_pool") not in (None, "")
             else None
+        ),
+        tolerations=tolerations,
+        require_control_plane_isolation=bool(
+            placement_raw.get("require_control_plane_isolation", False)
         ),
     )
     return K8sConfig(

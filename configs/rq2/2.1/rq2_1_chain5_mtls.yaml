@@ -96,8 +96,15 @@ kubernetes:
     strategy: "strict_same_node"
     require_same_node: true
     fail_if_not_colocated: true
-    node_selector: {}
+    node_selector:
+      workload: "benchmark"
     node_pool: "rq15pool"
+    tolerations:
+      - key: "workload"
+        operator: "Equal"
+        value: "benchmark"
+        effect: "NoSchedule"
+    require_control_plane_isolation: true
   resource_sampling:
     enabled: true
     interval_seconds: 5

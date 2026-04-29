@@ -145,6 +145,11 @@ def default_runner_args(tmp_path: Path, **overrides) -> Namespace:
         "location": "swedencentral",
         "node_count": 1,
         "node_vm_size": "Standard_D8s_v3",
+        "isolated_node_pools": True,
+        "system_nodepool": "systempool",
+        "system_node_count": 1,
+        "system_node_vm_size": "Standard_D2s_v3",
+        "benchmark_taint": "workload=benchmark:NoSchedule",
         "skip_mesh_enable": False,
         "mesh_revision": "asm-1-29",
         "readiness_timeout": None,
@@ -374,6 +379,12 @@ def test_chain5_mtls_manifest_generation_emits_per_hop_identity_policies(tmp_pat
     service_accounts = [doc for doc in docs if doc.get("kind") == "ServiceAccount"]
     peer_auths = [doc for doc in docs if doc.get("kind") == "PeerAuthentication"]
     authz = [doc for doc in docs if doc.get("kind") == "AuthorizationPolicy"]
+    workload_specs = []
+    for doc in docs:
+        if doc.get("kind") == "Deployment":
+            workload_specs.append(((doc.get("spec") or {}).get("template") or {}).get("spec") or {})
+        if doc.get("kind") == "Pod":
+            workload_specs.append(doc.get("spec") or {})
 
     assert {
         (doc.get("metadata") or {}).get("name")
@@ -385,6 +396,16 @@ def test_chain5_mtls_manifest_generation_emits_per_hop_identity_policies(tmp_pat
         "rq21-chain5-svc4",
         "rq21-chain5-svc5",
     }
+    assert workload_specs
+    for spec in workload_specs:
+        assert (spec.get("nodeSelector") or {}) == {
+            "agentpool": "rq15pool",
+            "workload": "benchmark",
+        }
+        assert any(
+            paired.toleration_matches_taint(item, "workload=benchmark:NoSchedule")
+            for item in (spec.get("tolerations") or [])
+        )
     strict_segments = {
         ((doc.get("spec") or {}).get("selector") or {}).get("matchLabels", {}).get("segment-index")
         for doc in peer_auths
@@ -428,6 +449,71 @@ def test_parse_rejects_infrastructure_destroy_without_provision(monkeypatch: pyt
 
     with pytest.raises(SystemExit):
         paired.parse_args()
+
+
+def test_operational_capture_rejects_avoidable_istio_colocation_for_isolated_contract(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    context = build_condition_context(tmp_path, key="mtls")
+    context.diagnostics_dir.mkdir(parents=True)
+    context.manifest_dir.mkdir(parents=True)
+    context.effective_config_path.write_text(
+        """
+kubernetes:
+  placement:
+    require_control_plane_isolation: true
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    service_pod = {
+        "metadata": {
+            "name": "service-1",
+            "labels": {"condition": context.condition_name, "workload-role": "service"},
+        },
+        "spec": {
+            "nodeName": "benchmark-node",
+            "containers": [make_container("inference", "1", "1Gi")],
+        },
+        "status": {"phase": "Running", "conditions": []},
+    }
+    client_pod = {
+        "metadata": {"name": "benchmark-client"},
+        "spec": {
+            "nodeName": "benchmark-node",
+            "containers": [make_container("client", "100m", "1Gi")],
+        },
+        "status": {"phase": "Running", "conditions": []},
+    }
+
+    runner = RQ21PairedBenchmarkRunner.__new__(RQ21PairedBenchmarkRunner)
+    runner.args = Namespace(isolated_node_pools=True, benchmark_taint="workload=benchmark:NoSchedule")
+    runner.mesh_revision = "asm-1-29"
+    runner.service_pods = lambda _context: [service_pod]
+    runner.client_pod = lambda _context: client_pod
+    runner.namespace_pod_events = lambda _namespace: {}
+    runner.node_allocatable = lambda _node_name: {"cpu_mcores": 8000.0, "memory_mib": 32768.0}
+    monkeypatch.setattr(
+        paired,
+        "mesh_control_plane_pods",
+        lambda: [
+            {
+                "namespace": "aks-istio-system",
+                "pod_name": "istiod-asm-1-29-abc",
+                "node_name": "benchmark-node",
+                "phase": "Running",
+                "labels": {"app": "istiod"},
+                "owner_references": [{"kind": "ReplicaSet", "name": "istiod-asm-1-29"}],
+            }
+        ],
+    )
+
+    with pytest.raises(PipelineError, match="Isolated-pool RQ2.1 contract violated"):
+        runner.capture_operational_overhead(context)
+
+    payload = json.loads((context.diagnostics_dir / "operational_overhead.json").read_text(encoding="utf-8"))
+    assert payload["control_plane_colocation"]["violates_isolated_pool_contract"] is True
 
 
 def test_prepare_infrastructure_can_provision_push_enable_mesh_and_destroy(

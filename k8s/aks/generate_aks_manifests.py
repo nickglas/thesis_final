@@ -63,6 +63,8 @@ DEFAULTS = {
     "placement_require_same_node": False,
     "placement_fail_if_not_colocated": False,
     "placement_node_selector": {},
+    "placement_tolerations": [],
+    "placement_require_control_plane_isolation": False,
     "security_condition": "plain",
     "mesh_enabled": False,
     "mesh_implementation": None,
@@ -136,6 +138,21 @@ def _as_bool(value, default: bool = False) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in {"1", "true", "yes", "on"}
     return bool(value)
+
+
+def _normalize_tolerations(raw: list | None) -> list[dict]:
+    tolerations = []
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        toleration = {}
+        for key, value in item.items():
+            if value in (None, ""):
+                continue
+            toleration[str(key)] = value if key == "tolerationSeconds" else str(value)
+        if toleration:
+            tolerations.append(toleration)
+    return tolerations
 
 
 def _normalize_service_accounts(raw: dict) -> dict[str, str]:
@@ -331,6 +348,8 @@ def _config_overrides(config_path: str) -> tuple[dict, list[dict]]:
         "placement_require_same_node": placement.require_same_node,
         "placement_fail_if_not_colocated": placement.fail_if_not_colocated,
         "placement_node_selector": dict(placement.node_selector),
+        "placement_tolerations": _normalize_tolerations(placement.tolerations),
+        "placement_require_control_plane_isolation": placement.require_control_plane_isolation,
     }
     overrides.update(_mesh_overrides(raw_k8s, k8s.namespace))
     return overrides, _condition_specs_from_experiment(experiment)
@@ -352,6 +371,10 @@ def _base_node_selector(cfg: dict) -> dict[str, str]:
     explicit_selector = cfg.get("placement_node_selector") or {}
     selector.update({str(key): str(value) for key, value in explicit_selector.items()})
     return selector
+
+
+def _base_tolerations(cfg: dict) -> list[dict]:
+    return _normalize_tolerations(cfg.get("placement_tolerations") or [])
 
 
 def _mesh_label_value(cfg: dict) -> str:
@@ -585,6 +608,9 @@ def _generate_deployment_yaml(condition_spec: dict, index: int, cfg: dict) -> st
     node_selector = _base_node_selector(cfg)
     if node_selector:
         pod_spec["nodeSelector"] = node_selector
+    tolerations = _base_tolerations(cfg)
+    if tolerations:
+        pod_spec["tolerations"] = tolerations
     affinity = _service_affinity(condition_spec)
     if affinity:
         pod_spec["affinity"] = affinity
@@ -671,6 +697,9 @@ def _generate_client_pod_yaml(cfg: dict, condition_spec: dict | None = None) -> 
     node_selector = _base_node_selector(cfg)
     if node_selector:
         pod_spec["nodeSelector"] = node_selector
+    tolerations = _base_tolerations(cfg)
+    if tolerations:
+        pod_spec["tolerations"] = tolerations
     affinity = _client_affinity(condition_spec, cfg)
     if affinity:
         pod_spec["affinity"] = affinity
