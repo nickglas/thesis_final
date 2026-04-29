@@ -13,11 +13,40 @@ from scripts.run_rq21_paired_benchmark import ConditionContext, PipelineError, R
 
 def write_resource_csv(path: Path, rows: list[dict[str, str]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = ["timestamp", "namespace", "container_name", "cpu_usage", "memory_usage"]
+    fieldnames = [
+        "timestamp",
+        "namespace",
+        "pod_name",
+        "container_name",
+        "container_role",
+        "cpu_usage",
+        "memory_usage",
+    ]
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def build_cpu_counter_metrics(
+    *,
+    service_app_cpu_mcores: float,
+    sidecar_cpu_mcores: float = 0.0,
+    client_cpu_mcores: float = 0.0,
+    available: bool = True,
+    errors: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
+    return {
+        "available": available,
+        "duration_seconds": 10.0,
+        "summary": {
+            "service_app_cpu_mcores": service_app_cpu_mcores,
+            "sidecar_cpu_mcores": sidecar_cpu_mcores,
+            "total_pod_cpu_mcores": service_app_cpu_mcores + sidecar_cpu_mcores,
+            "client_cpu_mcores": client_cpu_mcores,
+        },
+        "errors": errors or [],
+    }
 
 
 def build_runner(records: list[dict[str, object]]) -> RQ21PairedBenchmarkRunner:
@@ -27,11 +56,15 @@ def build_runner(records: list[dict[str, object]]) -> RQ21PairedBenchmarkRunner:
         "plain": "chain_2svc_plain",
         "mtls": "chain_2svc_mtls",
     }
+    runner.service_counts = {
+        "plain": 2,
+        "mtls": 2,
+    }
     return runner
 
 
-def build_condition_context(tmp_path: Path, key: str = "plain") -> ConditionContext:
-    condition_name = f"chain_2svc_{key}"
+def build_condition_context(tmp_path: Path, key: str = "plain", service_count: int = 2) -> ConditionContext:
+    condition_name = f"chain_{service_count}svc_{key}"
     return ConditionContext(
         key=key,
         condition_name=condition_name,
@@ -39,7 +72,7 @@ def build_condition_context(tmp_path: Path, key: str = "plain") -> ConditionCont
         effective_config_path=tmp_path / "effective.yaml",
         service_namespace=f"{key}-svc",
         client_namespace=f"{key}-client",
-        service_count=2,
+        service_count=service_count,
         condition_dir=tmp_path / "condition",
         manifest_dir=tmp_path / "condition" / "manifests",
         benchmark_dir=tmp_path / "condition" / "benchmark",
@@ -94,6 +127,7 @@ def default_runner_args(tmp_path: Path, **overrides) -> Namespace:
     values = {
         "plain_config": "configs/rq2/2.1/rq2_1_chain2_plain.yaml",
         "mtls_config": "configs/rq2/2.1/rq2_1_chain2_mtls.yaml",
+        "topology": "auto",
         "results_root": str(tmp_path),
         "client_pod": "benchmark-client",
         "nodepool": "rq15pool",
@@ -131,6 +165,34 @@ def default_runner_args(tmp_path: Path, **overrides) -> Namespace:
     }
     values.update(overrides)
     return Namespace(**values)
+
+
+def test_default_chain2_configs_still_validate(tmp_path: Path):
+    runner = RQ21PairedBenchmarkRunner(default_runner_args(tmp_path))
+
+    runner.validate_configs()
+
+    assert runner.selected_topology() == "chain2"
+    assert runner.service_counts == {"plain": 2, "mtls": 2}
+
+
+def test_chain5_configs_validate_as_optional_stress_topology(tmp_path: Path):
+    runner = RQ21PairedBenchmarkRunner(
+        default_runner_args(
+            tmp_path,
+            plain_config="configs/rq2/2.1/rq2_1_chain5_plain.yaml",
+            mtls_config="configs/rq2/2.1/rq2_1_chain5_mtls.yaml",
+            topology="chain5",
+        )
+    )
+
+    runner.validate_configs()
+
+    assert runner.selected_topology() == "chain5"
+    assert runner.service_counts == {"plain": 5, "mtls": 5}
+    assert runner.raw_configs["plain"]["kubernetes"]["client_resources"] == runner.raw_configs["mtls"]["kubernetes"]["client_resources"]
+    assert runner.raw_configs["plain"]["kubernetes"]["client_resources"]["cpu_request"] == "100m"
+    assert runner.raw_configs["plain"]["kubernetes"]["client_resources"]["cpu_limit"] == "1"
 
 
 def test_wait_for_resource_metrics_ready_accepts_expected_service_and_client_containers(
@@ -201,6 +263,22 @@ def test_expected_resource_metric_containers_includes_native_istio_sidecar_for_m
     assert expected["mtls-client"]["benchmark-client"] == ["client"]
 
 
+def test_chain5_resource_metric_expectations_include_all_mtls_sidecars(tmp_path: Path):
+    runner = RQ21PairedBenchmarkRunner.__new__(RQ21PairedBenchmarkRunner)
+    context = build_condition_context(tmp_path, key="mtls", service_count=5)
+    runner.service_pods = lambda _context: [
+        make_pod(f"service-{index}", ["inference"], ["istio-proxy"])
+        for index in range(1, 6)
+    ]
+    runner.client_pod = lambda _context: make_pod("benchmark-client", ["client"])
+
+    expected = runner.expected_resource_metric_containers(context)
+
+    assert set(expected["mtls-svc"]) == {f"service-{index}" for index in range(1, 6)}
+    for index in range(1, 6):
+        assert expected["mtls-svc"][f"service-{index}"] == ["inference", "istio-proxy"]
+
+
 def test_pod_request_totals_counts_native_init_sidecar_requests():
     pod = {
         "metadata": {"name": "service-1"},
@@ -226,13 +304,14 @@ def test_mtls_authorization_policy_validation_requires_only_service1_principal(t
     config_path.write_text(
         """
 kubernetes:
-  mesh:
-    service_accounts:
-      "1": rq21-chain2-svc1
-    authorization_policy:
-      name: downstream-service1-only
-      source_segment_index: "1"
-      downstream_segment_index: "2"
+    mesh:
+      service_accounts:
+        "1": rq21-chain2-svc1
+      authorization_policy:
+        enabled: true
+        name: downstream-service1-only
+        source_segment_index: "1"
+        downstream_segment_index: "2"
 """.lstrip(),
         encoding="utf-8",
     )
@@ -272,6 +351,72 @@ kubernetes:
     assert errors
     assert summary["selects_downstream_service2"] is True
     assert summary["allows_only_service1_principal"] is False
+
+
+def test_chain5_mtls_manifest_generation_emits_per_hop_identity_policies(tmp_path: Path):
+    output_dir = tmp_path / "manifests"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "k8s/aks/generate_aks_manifests.py",
+            "--config",
+            "configs/rq2/2.1/rq2_1_chain5_mtls.yaml",
+            "--output-dir",
+            str(output_dir),
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    docs = paired.load_manifest_documents(output_dir)
+    service_accounts = [doc for doc in docs if doc.get("kind") == "ServiceAccount"]
+    peer_auths = [doc for doc in docs if doc.get("kind") == "PeerAuthentication"]
+    authz = [doc for doc in docs if doc.get("kind") == "AuthorizationPolicy"]
+
+    assert {
+        (doc.get("metadata") or {}).get("name")
+        for doc in service_accounts
+    } == {
+        "rq21-chain5-svc1",
+        "rq21-chain5-svc2",
+        "rq21-chain5-svc3",
+        "rq21-chain5-svc4",
+        "rq21-chain5-svc5",
+    }
+    strict_segments = {
+        ((doc.get("spec") or {}).get("selector") or {}).get("matchLabels", {}).get("segment-index")
+        for doc in peer_auths
+        if ((doc.get("spec") or {}).get("mtls") or {}).get("mode") == "STRICT"
+    }
+    assert strict_segments == {"2", "3", "4", "5"}
+
+    by_segment = {
+        ((doc.get("spec") or {}).get("selector") or {}).get("matchLabels", {}).get("segment-index"): doc
+        for doc in authz
+    }
+    assert set(by_segment) == {"2", "3", "4", "5"}
+    runner = RQ21PairedBenchmarkRunner.__new__(RQ21PairedBenchmarkRunner)
+    chain5_config = Path(__file__).resolve().parents[1] / "configs/rq2/2.1/rq2_1_chain5_mtls.yaml"
+    runner.source_paths = {"mtls": chain5_config}
+    runner.effective_config_paths = {"mtls": chain5_config}
+    context = build_condition_context(tmp_path, key="mtls", service_count=5)
+    context.service_namespace = "rq21-chain5-mtls"
+    authz_errors, authz_summary = runner.validate_mtls_authorization_policies(context, authz)
+    peer_errors, peer_summary = runner.validate_mtls_peer_authentications(context, peer_auths)
+    assert authz_errors == []
+    assert authz_summary["expected_policy_count"] == 4
+    assert peer_errors == []
+    assert peer_summary["observed_strict_segments"] == ["2", "3", "4", "5"]
+    for downstream in range(2, 6):
+        policy = by_segment[str(downstream)]
+        principals = paired.RQ21PairedBenchmarkRunner.__new__(
+            paired.RQ21PairedBenchmarkRunner
+        ).authorization_policy_principals(policy)
+        assert principals == [
+            f"cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc{downstream - 1}"
+        ]
 
 
 def test_parse_rejects_infrastructure_destroy_without_provision(monkeypatch: pytest.MonkeyPatch):
@@ -402,6 +547,10 @@ def test_summarize_resource_samples_aggregates_passes_and_total_pod_metrics(tmp_
             "resource_samples": str(plain_pass1),
             "service_namespace": "plain-svc",
             "client_namespace": "plain-client",
+            "cpu_counter_metrics": build_cpu_counter_metrics(
+                service_app_cpu_mcores=180.0,
+                client_cpu_mcores=10.0,
+            ),
         },
         {
             "pass": 2,
@@ -410,6 +559,10 @@ def test_summarize_resource_samples_aggregates_passes_and_total_pod_metrics(tmp_
             "resource_samples": str(plain_pass2),
             "service_namespace": "plain-svc",
             "client_namespace": "plain-client",
+            "cpu_counter_metrics": build_cpu_counter_metrics(
+                service_app_cpu_mcores=220.0,
+                client_cpu_mcores=30.0,
+            ),
         },
         {
             "pass": 1,
@@ -418,6 +571,11 @@ def test_summarize_resource_samples_aggregates_passes_and_total_pod_metrics(tmp_
             "resource_samples": str(mtls_pass1),
             "service_namespace": "mtls-svc",
             "client_namespace": "mtls-client",
+            "cpu_counter_metrics": build_cpu_counter_metrics(
+                service_app_cpu_mcores=190.0,
+                sidecar_cpu_mcores=25.0,
+                client_cpu_mcores=12.0,
+            ),
         },
     ])
 
@@ -429,6 +587,7 @@ def test_summarize_resource_samples_aggregates_passes_and_total_pod_metrics(tmp_
 
     assert plain["available"] is True
     assert plain["sample_count"] == 2
+    assert plain["cpu_measurement_count"] == 2
     assert plain["passes_covered"] == [1, 2]
     assert plain["sidecar_sample_row_count"] == 0
     assert plain["sidecar_metrics_available"] is False
@@ -439,19 +598,150 @@ def test_summarize_resource_samples_aggregates_passes_and_total_pod_metrics(tmp_
 
     assert mtls["available"] is True
     assert mtls["sample_count"] == 1
+    assert mtls["cpu_measurement_count"] == 1
     assert mtls["passes_covered"] == [1]
     assert mtls["sidecar_sample_row_count"] == 1
     assert mtls["sidecar_metrics_available"] is True
-    assert mtls["service_app_cpu_mcores_mean"] == 150.0
+    assert mtls["service_app_cpu_mcores_mean"] == 190.0
     assert mtls["sidecar_cpu_mcores_mean"] == 25.0
-    assert mtls["total_pod_cpu_mcores_mean"] == 175.0
+    assert mtls["total_pod_cpu_mcores_mean"] == 215.0
     assert mtls["service_app_memory_mib_mean"] == 250.0
     assert mtls["sidecar_memory_mib_mean"] == 50.0
     assert mtls["total_pod_memory_mib_mean"] == 300.0
 
     assert comparison["sidecar_cpu_mcores_mean_overhead"] == 25.0
-    assert comparison["total_pod_cpu_mcores_mean_overhead"] == -25.0
+    assert comparison["total_pod_cpu_mcores_mean_overhead"] == 15.0
     assert comparison["total_pod_memory_mib_mean_overhead"] == 0.0
+
+
+def test_summarize_resource_samples_fails_closed_when_cpu_counter_measurement_is_incomplete(tmp_path: Path):
+    plain_pass = tmp_path / "plain.csv"
+    mtls_pass = tmp_path / "mtls.csv"
+    write_resource_csv(
+        plain_pass,
+        [
+            {"timestamp": "t1", "namespace": "plain-svc", "container_name": "inference", "cpu_usage": "100m", "memory_usage": "200Mi"},
+        ],
+    )
+    write_resource_csv(
+        mtls_pass,
+        [
+            {"timestamp": "t1", "namespace": "mtls-svc", "container_name": "inference", "cpu_usage": "150m", "memory_usage": "250Mi"},
+            {"timestamp": "t1", "namespace": "mtls-svc", "container_name": "istio-proxy", "cpu_usage": "25m", "memory_usage": "50Mi"},
+        ],
+    )
+
+    runner = build_runner([
+        {
+            "pass": 1,
+            "execution_index": 1,
+            "condition_key": "plain",
+            "resource_samples": str(plain_pass),
+            "service_namespace": "plain-svc",
+            "client_namespace": "plain-client",
+            "resource_cpu_measurement": str(tmp_path / "plain-cpu.json"),
+            "cpu_counter_metrics": build_cpu_counter_metrics(
+                service_app_cpu_mcores=100.0,
+                available=False,
+                errors=[{"reason": "kubelet summary request failed"}],
+            ),
+        },
+        {
+            "pass": 1,
+            "execution_index": 2,
+            "condition_key": "mtls",
+            "resource_samples": str(mtls_pass),
+            "service_namespace": "mtls-svc",
+            "client_namespace": "mtls-client",
+            "cpu_counter_metrics": build_cpu_counter_metrics(
+                service_app_cpu_mcores=190.0,
+                sidecar_cpu_mcores=25.0,
+            ),
+        },
+    ])
+
+    summary = runner.summarize_resource_samples()
+    plain = summary["by_condition"]["plain"]
+
+    assert plain["available"] is False
+    assert plain["failures"][0]["reason"] == "container CPU counter measurement was incomplete"
+    assert plain["failures"][0]["cpu_counter_errors"] == [{"reason": "kubelet summary request failed"}]
+
+
+def test_summarize_cpu_counter_window_converts_container_deltas_to_mcores(tmp_path: Path):
+    runner = RQ21PairedBenchmarkRunner.__new__(RQ21PairedBenchmarkRunner)
+    context = build_condition_context(tmp_path, key="mtls")
+
+    start_snapshot = {
+        "captured_at": "2026-01-01T00:00:00+00:00",
+        "containers": [
+            {
+                "namespace": "mtls-svc",
+                "pod_name": "service-1",
+                "container_name": "inference",
+                "role": "service_app",
+                "usage_core_nanoseconds": 1_000_000_000,
+            },
+            {
+                "namespace": "mtls-svc",
+                "pod_name": "service-1",
+                "container_name": "istio-proxy",
+                "role": "sidecar",
+                "usage_core_nanoseconds": 500_000_000,
+            },
+            {
+                "namespace": "mtls-client",
+                "pod_name": "benchmark-client",
+                "container_name": "client",
+                "role": "client",
+                "usage_core_nanoseconds": 200_000_000,
+            },
+        ],
+        "errors": [],
+    }
+    end_snapshot = {
+        "captured_at": "2026-01-01T00:00:10+00:00",
+        "containers": [
+            {
+                "namespace": "mtls-svc",
+                "pod_name": "service-1",
+                "container_name": "inference",
+                "role": "service_app",
+                "usage_core_nanoseconds": 3_000_000_000,
+            },
+            {
+                "namespace": "mtls-svc",
+                "pod_name": "service-1",
+                "container_name": "istio-proxy",
+                "role": "sidecar",
+                "usage_core_nanoseconds": 750_000_000,
+            },
+            {
+                "namespace": "mtls-client",
+                "pod_name": "benchmark-client",
+                "container_name": "client",
+                "role": "client",
+                "usage_core_nanoseconds": 300_000_000,
+            },
+        ],
+        "errors": [],
+    }
+
+    measurement = runner.summarize_cpu_counter_window(
+        context,
+        paired.datetime(2026, 1, 1, tzinfo=paired.timezone.utc),
+        paired.datetime(2026, 1, 1, 0, 0, 10, tzinfo=paired.timezone.utc),
+        10.0,
+        start_snapshot,
+        end_snapshot,
+    )
+
+    assert measurement["available"] is True
+    assert measurement["summary"]["service_app_cpu_mcores"] == 200.0
+    assert measurement["summary"]["sidecar_cpu_mcores"] == 25.0
+    assert measurement["summary"]["total_pod_cpu_mcores"] == 225.0
+    assert measurement["summary"]["client_cpu_mcores"] == 10.0
+    assert (tmp_path / "condition" / "resource_cpu_measurement.json").exists()
 
 
 def test_summarize_resource_samples_fails_closed_on_missing_service_namespace_rows(tmp_path: Path):
@@ -547,6 +837,86 @@ def test_summarize_resource_samples_fails_mtls_when_sidecar_rows_are_missing(tmp
     assert mtls["failures"][0]["reason"] == "mTLS resource sample CSV had zero istio-proxy rows"
 
 
+def test_summarize_resource_samples_fails_chain5_mtls_when_any_service_sidecar_sample_is_missing(tmp_path: Path):
+    plain_pass = tmp_path / "plain.csv"
+    mtls_pass = tmp_path / "mtls-missing-one-sidecar.csv"
+    write_resource_csv(
+        plain_pass,
+        [
+            {
+                "timestamp": "t1",
+                "namespace": "plain-svc",
+                "pod_name": f"plain-service-{index}",
+                "container_name": "inference",
+                "cpu_usage": "100m",
+                "memory_usage": "200Mi",
+            }
+            for index in range(1, 6)
+        ],
+    )
+    mtls_rows = []
+    for index in range(1, 6):
+        mtls_rows.append(
+            {
+                "timestamp": "t1",
+                "namespace": "mtls-svc",
+                "pod_name": f"mtls-service-{index}",
+                "container_name": "inference",
+                "cpu_usage": "150m",
+                "memory_usage": "250Mi",
+            }
+        )
+        if index != 5:
+            mtls_rows.append(
+                {
+                    "timestamp": "t1",
+                    "namespace": "mtls-svc",
+                    "pod_name": f"mtls-service-{index}",
+                    "container_name": "istio-proxy",
+                    "cpu_usage": "25m",
+                    "memory_usage": "50Mi",
+                }
+            )
+    write_resource_csv(mtls_pass, mtls_rows)
+
+    runner = build_runner([
+        {
+            "pass": 1,
+            "execution_index": 1,
+            "condition_key": "plain",
+            "resource_samples": str(plain_pass),
+            "service_namespace": "plain-svc",
+            "client_namespace": "plain-client",
+        },
+        {
+            "pass": 1,
+            "execution_index": 2,
+            "condition_key": "mtls",
+            "resource_samples": str(mtls_pass),
+            "service_namespace": "mtls-svc",
+            "client_namespace": "mtls-client",
+            "operational_overhead": {
+                "service_pods": [
+                    {"pod_name": f"mtls-service-{index}", "sidecar_present": True}
+                    for index in range(1, 6)
+                ]
+            },
+        },
+    ])
+    runner.service_counts = {"plain": 5, "mtls": 5}
+    runner.condition_names = {"plain": "chain_5svc_plain", "mtls": "chain_5svc_mtls"}
+
+    summary = runner.summarize_resource_samples()
+    mtls = summary["by_condition"]["mtls"]
+
+    assert mtls["available"] is False
+    assert mtls["sidecar_sample_row_count"] == 4
+    assert mtls["failures"][0]["reason"] == (
+        "mTLS resource sample CSV missing istio-proxy rows for one or more service pods"
+    )
+    assert mtls["failures"][0]["missing_sidecar_pods"] == ["mtls-service-5"]
+
+
 def test_summarize_resource_samples_fails_plain_when_sidecar_rows_appear(tmp_path: Path):
     plain_pass = tmp_path / "plain-sidecar.csv"
     mtls_pass = tmp_path / "mtls.csv"
@@ -591,6 +961,90 @@ def test_summarize_resource_samples_fails_plain_when_sidecar_rows_appear(tmp_pat
     assert plain["sidecar_sample_row_count"] == 1
     assert plain["sidecar_metrics_available"] is True
     assert plain["failures"][0]["reason"] == "plain resource sample CSV contained istio-proxy rows"
+
+
+def test_summarize_resource_samples_fails_chain5_plain_when_sidecar_rows_appear(tmp_path: Path):
+    plain_pass = tmp_path / "chain5-plain-sidecar.csv"
+    mtls_pass = tmp_path / "chain5-mtls.csv"
+    write_resource_csv(
+        plain_pass,
+        [
+            {
+                "timestamp": "t1",
+                "namespace": "plain-svc",
+                "pod_name": "plain-service-1",
+                "container_name": "inference",
+                "cpu_usage": "100m",
+                "memory_usage": "200Mi",
+            },
+            {
+                "timestamp": "t1",
+                "namespace": "plain-svc",
+                "pod_name": "plain-service-1",
+                "container_name": "istio-proxy",
+                "cpu_usage": "20m",
+                "memory_usage": "40Mi",
+            },
+        ],
+    )
+    write_resource_csv(
+        mtls_pass,
+        [
+            {
+                "timestamp": "t1",
+                "namespace": "mtls-svc",
+                "pod_name": f"mtls-service-{index}",
+                "container_name": "inference",
+                "cpu_usage": "150m",
+                "memory_usage": "250Mi",
+            }
+            for index in range(1, 6)
+        ]
+        + [
+            {
+                "timestamp": "t1",
+                "namespace": "mtls-svc",
+                "pod_name": f"mtls-service-{index}",
+                "container_name": "istio-proxy",
+                "cpu_usage": "25m",
+                "memory_usage": "50Mi",
+            }
+            for index in range(1, 6)
+        ],
+    )
+    runner = build_runner([
+        {
+            "pass": 1,
+            "execution_index": 1,
+            "condition_key": "plain",
+            "resource_samples": str(plain_pass),
+            "service_namespace": "plain-svc",
+            "client_namespace": "plain-client",
+        },
+        {
+            "pass": 1,
+            "execution_index": 2,
+            "condition_key": "mtls",
+            "resource_samples": str(mtls_pass),
+            "service_namespace": "mtls-svc",
+            "client_namespace": "mtls-client",
+            "operational_overhead": {
+                "service_pods": [
+                    {"pod_name": f"mtls-service-{index}", "sidecar_present": True}
+                    for index in range(1, 6)
+                ]
+            },
+        },
+    ])
+    runner.service_counts = {"plain": 5, "mtls": 5}
+    runner.condition_names = {"plain": "chain_5svc_plain", "mtls": "chain_5svc_mtls"}
+
+    summary = runner.summarize_resource_samples()
+
+    assert summary["by_condition"]["plain"]["available"] is False
+    assert summary["by_condition"]["plain"]["failures"][0]["reason"] == (
+        "plain resource sample CSV contained istio-proxy rows"
+    )
 
 
 def test_run_condition_once_records_mtls_security_preflight_before_benchmark(tmp_path: Path):
@@ -731,6 +1185,36 @@ def test_write_aggregated_results_merges_overall_passes_and_paired_deltas(tmp_pa
     assert persisted["run"]["total_iteration_rows"] == 4
 
 
+def test_chain5_activation_and_forwarding_reporting_includes_all_five_hops():
+    runner = build_runner([])
+    runner.condition_names = {"plain": "chain_5svc_plain", "mtls": "chain_5svc_mtls"}
+    runner.service_counts = {"plain": 5, "mtls": 5}
+    rows = []
+    for key, offset in (("plain", 0), ("mtls", 100)):
+        row = {
+            "condition_key": key,
+            "condition": f"chain_5svc_{key}",
+            "end_to_end_ms": str(10 + offset),
+            "total_compute_ms": "8",
+            "non_compute_overhead_ms": "2",
+            "total_activation_bytes": str(1500 + offset),
+        }
+        for hop in range(1, 6):
+            row[f"hop_{hop}_activation_bytes"] = str((hop * 100) + offset)
+            row[f"hop_{hop}_forward_ms"] = str(hop + offset)
+        rows.append(row)
+
+    summary = runner.summarize_latency(rows)
+
+    mtls = summary["by_condition"]["mtls"]
+    comparison = summary["comparison"]
+    for hop in range(1, 6):
+        assert mtls[f"hop_{hop}_activation_bytes_mean"] == (hop * 100) + 100
+        assert mtls[f"hop_{hop}_forward_ms_mean"] == hop + 100
+        assert comparison[f"hop_{hop}_activation_bytes_mean_delta"] == 100
+        assert comparison[f"hop_{hop}_forward_ms_mean_delta"] == 100
+
+
 def test_summarize_operational_overhead_computes_startup_and_complexity_deltas():
     runner = build_runner([
         {
@@ -810,6 +1294,9 @@ def test_summarize_operational_overhead_computes_startup_and_complexity_deltas()
     assert comparison["deployment_complexity_delta"] == {
         "additional_aks_enablement_step_count": 1,
         "additional_kubernetes_object_count": 4,
+        "additional_service_account_count": 0,
+        "additional_peer_authentication_count": 0,
+        "additional_authorization_policy_count": 0,
         "additional_always_on_control_plane_pod_count": 4,
         "additional_injected_container_count": 2,
     }

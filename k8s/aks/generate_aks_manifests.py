@@ -77,6 +77,7 @@ DEFAULTS = {
     "mesh_authorization_policy_name": "downstream-service1-only",
     "mesh_authorization_policy_downstream_segment_index": "2",
     "mesh_authorization_policy_source_segment_index": "1",
+    "mesh_authorization_policy_policies": [],
     "metadata_capture_mesh": False,
     "metadata_record_control_plane_placement": False,
     "resource_sampling_enabled": False,
@@ -172,6 +173,28 @@ def _normalize_strict_workloads(raw: list | None) -> list[dict]:
     return workloads
 
 
+def _normalize_authorization_policies(raw: list | None) -> list[dict]:
+    policies = []
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        downstream_segment = item.get("downstream_segment_index")
+        source_segment = item.get("source_segment_index")
+        if downstream_segment in (None, "") or source_segment in (None, ""):
+            continue
+        downstream_text = str(downstream_segment)
+        source_text = str(source_segment)
+        policies.append({
+            "name": str(
+                item.get("name")
+                or f"service{downstream_text}-service{source_text}-only"
+            ),
+            "downstream_segment_index": downstream_text,
+            "source_segment_index": source_text,
+        })
+    return policies
+
+
 def _mesh_overrides(raw_k8s: dict, namespace: str) -> dict:
     mesh_raw = raw_k8s.get("mesh") or {}
     if not isinstance(mesh_raw, dict):
@@ -199,6 +222,26 @@ def _mesh_overrides(raw_k8s: dict, namespace: str) -> dict:
     mesh_revision = str(mesh_revision).strip() if mesh_revision not in (None, "") else None
     implementation = mesh_raw.get("implementation")
     implementation = str(implementation).strip() if implementation not in (None, "") else None
+    authorization_policies = _normalize_authorization_policies(authz_raw.get("policies") or [])
+    if not authorization_policies and _as_bool(authz_raw.get("enabled"), False):
+        downstream_segment = str(
+            authz_raw.get("downstream_segment_index")
+            or DEFAULTS["mesh_authorization_policy_downstream_segment_index"]
+        )
+        source_segment = str(
+            authz_raw.get("source_segment_index")
+            or DEFAULTS["mesh_authorization_policy_source_segment_index"]
+        )
+        authorization_policies = [
+            {
+                "name": str(
+                    authz_raw.get("name")
+                    or DEFAULTS["mesh_authorization_policy_name"]
+                ),
+                "downstream_segment_index": downstream_segment,
+                "source_segment_index": source_segment,
+            }
+        ]
 
     if mesh_enabled:
         if not mesh_revision:
@@ -238,6 +281,7 @@ def _mesh_overrides(raw_k8s: dict, namespace: str) -> dict:
             authz_raw.get("source_segment_index")
             or DEFAULTS["mesh_authorization_policy_source_segment_index"]
         ),
+        "mesh_authorization_policy_policies": authorization_policies,
         "metadata_capture_mesh": _as_bool(metadata_raw.get("capture_mesh"), mesh_enabled),
         "metadata_record_control_plane_placement": _as_bool(
             metadata_raw.get("record_control_plane_placement"),
@@ -786,22 +830,37 @@ def _authorization_policy_documents(condition_spec: dict, cfg: dict) -> list[dic
         return []
 
     namespace = cfg["namespace"]
-    downstream_segment = str(cfg.get("mesh_authorization_policy_downstream_segment_index") or "2")
-    source_segment = str(cfg.get("mesh_authorization_policy_source_segment_index") or "1")
-    source_service_account = (cfg.get("mesh_service_accounts") or {}).get(source_segment)
-    if not source_service_account:
-        raise ValueError(
-            "kubernetes.mesh.authorization_policy requires a service account for "
-            f"source_segment_index={source_segment}"
-        )
-
-    principal = f"cluster.local/ns/{namespace}/sa/{source_service_account}"
-    return [
+    policies = cfg.get("mesh_authorization_policy_policies") or [
         {
+            "name": str(cfg.get("mesh_authorization_policy_name") or "downstream-service1-only"),
+            "downstream_segment_index": str(
+                cfg.get("mesh_authorization_policy_downstream_segment_index") or "2"
+            ),
+            "source_segment_index": str(
+                cfg.get("mesh_authorization_policy_source_segment_index") or "1"
+            ),
+        }
+    ]
+    docs = []
+    for policy in policies:
+        downstream_segment = str(policy.get("downstream_segment_index") or "")
+        source_segment = str(policy.get("source_segment_index") or "")
+        source_service_account = (cfg.get("mesh_service_accounts") or {}).get(source_segment)
+        if not source_service_account:
+            raise ValueError(
+                "kubernetes.mesh.authorization_policy requires a service account for "
+                f"source_segment_index={source_segment}"
+            )
+
+        principal = f"cluster.local/ns/{namespace}/sa/{source_service_account}"
+        docs.append({
             "apiVersion": "security.istio.io/v1",
             "kind": "AuthorizationPolicy",
             "metadata": {
-                "name": str(cfg.get("mesh_authorization_policy_name") or "downstream-service1-only"),
+                "name": str(
+                    policy.get("name")
+                    or f"service{downstream_segment}-service{source_segment}-only"
+                ),
                 "namespace": namespace,
                 "labels": _common_labels(
                     condition_spec["name"],
@@ -831,8 +890,8 @@ def _authorization_policy_documents(condition_spec: dict, cfg: dict) -> list[dic
                     }
                 ],
             },
-        }
-    ]
+        })
+    return docs
 
 
 def generate_condition(condition_spec: dict, cfg: dict) -> str:

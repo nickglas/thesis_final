@@ -52,6 +52,21 @@ from scripts.run_rq21_fully_controlled import (  # noqa: E402
 
 DEFAULT_PLAIN_CONFIG = "configs/rq2/2.1/rq2_1_chain2_plain.yaml"
 DEFAULT_MTLS_CONFIG = "configs/rq2/2.1/rq2_1_chain2_mtls.yaml"
+MAX_CHAIN_HOPS = 5
+SUPPORTED_TOPOLOGIES = {
+    "chain2": {
+        "service_count": 2,
+        "split_points": ["layer2"],
+        "condition_prefix": "chain_2svc",
+        "framing": "primary one-boundary RQ2.1 experiment",
+    },
+    "chain5": {
+        "service_count": 5,
+        "split_points": ["layer1", "layer2", "layer3", "layer4"],
+        "condition_prefix": "chain_5svc",
+        "framing": "optional maximum-depth RQ2.1 stress validation",
+    },
+}
 
 RESOURCE_METRIC_CATEGORIES = (
     "service_app_cpu_mcores",
@@ -61,6 +76,20 @@ RESOURCE_METRIC_CATEGORIES = (
     "total_pod_cpu_mcores",
     "total_pod_memory_mib",
     "client_cpu_mcores",
+    "client_memory_mib",
+)
+
+RESOURCE_CPU_METRIC_CATEGORIES = (
+    "service_app_cpu_mcores",
+    "sidecar_cpu_mcores",
+    "total_pod_cpu_mcores",
+    "client_cpu_mcores",
+)
+
+RESOURCE_MEMORY_METRIC_CATEGORIES = (
+    "service_app_memory_mib",
+    "sidecar_memory_mib",
+    "total_pod_memory_mib",
     "client_memory_mib",
 )
 
@@ -205,6 +234,14 @@ def pod_name(pod: dict[str, Any]) -> str:
     return str((pod.get("metadata") or {}).get("name") or "unknown")
 
 
+def cpu_counter_role_for_container(namespace: str, service_namespace: str, container_name: str) -> str:
+    if namespace != service_namespace:
+        return "client"
+    if container_name == "istio-proxy":
+        return "sidecar"
+    return "service_app"
+
+
 def bad_pod_states(pod: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     name = pod_name(pod)
@@ -228,6 +265,15 @@ def bad_pod_states(pod: dict[str, Any]) -> list[str]:
         }:
             errors.append(f"{name}/{status.get('name')}: container waiting reason is {reason}")
     return errors
+
+
+def format_pod_state_errors(pods: list[dict[str, Any]]) -> str:
+    errors = [
+        error
+        for pod in pods
+        for error in bad_pod_states(pod)
+    ]
+    return "; ".join(errors)
 
 
 def percentile(values: list[float], pct: float) -> float:
@@ -337,6 +383,12 @@ def empty_resource_metric_sample() -> dict[str, float]:
     return {category: 0.0 for category in RESOURCE_METRIC_CATEGORIES}
 
 
+def cpu_mcores_from_core_nanoseconds(delta_core_nanoseconds: int, duration_seconds: float) -> float | None:
+    if duration_seconds <= 0:
+        return None
+    return float(delta_core_nanoseconds) / float(duration_seconds) / 1_000_000.0
+
+
 def parse_k8s_timestamp(value: Any) -> datetime | None:
     text = str(value or "").strip()
     if not text or text == "unknown":
@@ -439,12 +491,18 @@ def mesh_control_plane_pods() -> list[dict[str, Any]]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "RQ2.1 paired performance runner for chain_2svc_plain vs "
-            "chain_2svc_mtls. This does not run RQ2.2 and does not add chain_5svc."
+            "RQ2.1 paired performance runner for chain_2svc_plain vs chain_2svc_mtls, "
+            "with an optional chain_5svc stress validation. This does not run RQ2.2."
         )
     )
     parser.add_argument("--plain-config", default=DEFAULT_PLAIN_CONFIG)
     parser.add_argument("--mtls-config", default=DEFAULT_MTLS_CONFIG)
+    parser.add_argument(
+        "--topology",
+        choices=["auto", "chain2", "chain5"],
+        default="auto",
+        help="Expected paired topology. auto infers only supported chain2 or chain5 configs.",
+    )
     parser.add_argument("--results-root", default=str(REPO_ROOT / "results_exports"))
     parser.add_argument("--client-pod", default=DEFAULT_CLIENT_POD)
     parser.add_argument("--nodepool", default=DEFAULT_NODEPOOL)
@@ -655,19 +713,132 @@ class RQ21PairedBenchmarkRunner:
             "passes": passes,
         }
 
+    def inferred_topology(self) -> str | None:
+        counts = set(self.service_counts.values())
+        if len(counts) != 1:
+            return None
+        service_count = next(iter(counts))
+        for topology, spec in SUPPORTED_TOPOLOGIES.items():
+            if int(spec["service_count"]) == int(service_count):
+                return topology
+        return None
+
+    def selected_topology(self) -> str | None:
+        requested = str(getattr(self.args, "topology", "auto") or "auto")
+        if requested != "auto":
+            return requested
+        return self.inferred_topology()
+
+    def topology_spec(self) -> dict[str, Any] | None:
+        topology = self.selected_topology()
+        if topology is None:
+            return None
+        return SUPPORTED_TOPOLOGIES.get(topology)
+
+    def active_hop_indexes(self) -> list[int]:
+        service_count = 2
+        counts = [
+            int(value)
+            for value in getattr(self, "service_counts", {}).values()
+            if isinstance(value, int)
+        ]
+        if counts:
+            service_count = max(counts)
+        service_count = min(MAX_CHAIN_HOPS, max(1, service_count))
+        return list(range(1, service_count + 1))
+
+    def expected_downstream_segments(self, service_count: int | None = None) -> list[str]:
+        if service_count is None:
+            service_count = max(self.service_counts.values())
+        return [str(index) for index in range(2, int(service_count) + 1)]
+
+    def authorization_policy_configs(self, mesh: dict[str, Any] | None = None) -> list[dict[str, str]]:
+        mesh = mesh if mesh is not None else self.mtls_mesh_config()
+        authz = (mesh or {}).get("authorization_policy") or {}
+        if not isinstance(authz, dict) or not bool(authz.get("enabled", False)):
+            return []
+
+        raw_policies = authz.get("policies")
+        policies: list[dict[str, str]] = []
+        if isinstance(raw_policies, list) and raw_policies:
+            for item in raw_policies:
+                if not isinstance(item, dict):
+                    continue
+                source_segment = str(item.get("source_segment_index") or "").strip()
+                downstream_segment = str(item.get("downstream_segment_index") or "").strip()
+                if not source_segment or not downstream_segment:
+                    continue
+                policies.append({
+                    "name": str(
+                        item.get("name")
+                        or f"service{downstream_segment}-service{source_segment}-only"
+                    ),
+                    "source_segment_index": source_segment,
+                    "downstream_segment_index": downstream_segment,
+                })
+            return policies
+
+        source_segment = str(authz.get("source_segment_index") or "1")
+        downstream_segment = str(authz.get("downstream_segment_index") or "2")
+        return [
+            {
+                "name": str(authz.get("name") or "downstream-service1-only"),
+                "source_segment_index": source_segment,
+                "downstream_segment_index": downstream_segment,
+            }
+        ]
+
+    def expected_mtls_authorization_policies(self, context: ConditionContext) -> list[dict[str, str]]:
+        mesh = self.mtls_mesh_config()
+        service_accounts = mesh.get("service_accounts") or {}
+        expected: list[dict[str, str]] = []
+        for policy in self.authorization_policy_configs(mesh):
+            source_segment = str(policy["source_segment_index"])
+            source_service_account = str(service_accounts.get(source_segment) or "")
+            expected.append({
+                **policy,
+                "expected_principal": (
+                    f"cluster.local/ns/{context.service_namespace}/sa/{source_service_account}"
+                ),
+            })
+        return expected
+
     def validate_configs(self) -> None:
         errors: list[str] = []
-        if self.condition_names.get("plain") != "chain_2svc_plain":
-            errors.append("Plain config must contain condition chain_2svc_plain")
-        if self.condition_names.get("mtls") != "chain_2svc_mtls":
-            errors.append("mTLS config must contain condition chain_2svc_mtls")
-        if self.service_counts.get("plain") != 2 or self.service_counts.get("mtls") != 2:
-            errors.append("RQ2.1 paired runner supports only chain_2svc")
+        topology = self.selected_topology()
+        topology_spec = self.topology_spec()
+        if self.service_counts.get("plain") != self.service_counts.get("mtls"):
+            errors.append(
+                "Plain and mTLS configs must have the same service count; "
+                f"found plain={self.service_counts.get('plain')} mtls={self.service_counts.get('mtls')}"
+            )
+        if topology is None or topology_spec is None:
+            errors.append(
+                "RQ2.1 paired runner supports only chain2 and the optional chain5 stress topology"
+            )
+        else:
+            expected_count = int(topology_spec["service_count"])
+            if self.service_counts.get("plain") != expected_count:
+                errors.append(
+                    f"--topology {topology} expects {expected_count} services; "
+                    f"found {self.service_counts.get('plain')}"
+                )
+            expected_prefix = str(topology_spec["condition_prefix"])
+            if self.condition_names.get("plain") != f"{expected_prefix}_plain":
+                errors.append(f"Plain config must contain condition {expected_prefix}_plain")
+            if self.condition_names.get("mtls") != f"{expected_prefix}_mtls":
+                errors.append(f"mTLS config must contain condition {expected_prefix}_mtls")
 
         plain_condition = first_condition(self.raw_configs["plain"])
         mtls_condition = first_condition(self.raw_configs["mtls"])
-        if (plain_condition.get("chain_split_points") or []) != (mtls_condition.get("chain_split_points") or []):
+        plain_splits = list(plain_condition.get("chain_split_points") or [])
+        mtls_splits = list(mtls_condition.get("chain_split_points") or [])
+        if plain_splits != mtls_splits:
             errors.append("Plain and mTLS configs must use the same chain_split_points")
+        if topology_spec is not None and plain_splits != list(topology_spec["split_points"]):
+            errors.append(
+                f"{topology} must use chain_split_points={topology_spec['split_points']}; found {plain_splits}"
+            )
 
         for section in ("model", "benchmark", "grpc", "cpu_stabilisation", "carry_forward", "parity", "warmup_calibration"):
             if self.raw_configs["plain"].get(section) != self.raw_configs["mtls"].get(section):
@@ -684,6 +855,8 @@ class RQ21PairedBenchmarkRunner:
         for section in ("resources", "client_resources", "placement", "service_name_template", "grpc_port", "max_message_bytes"):
             if plain_k8s.get(section) != mtls_k8s.get(section):
                 errors.append(f"Plain and mTLS kubernetes.{section} must match")
+        if not self.args.image_ref and plain_k8s.get("image") != mtls_k8s.get("image"):
+            errors.append("Plain and mTLS kubernetes.image must match unless --image-ref overrides both configs")
         if plain_k8s.get("security_condition") != "plain":
             errors.append("Plain config must set kubernetes.security_condition=plain")
         if bool((plain_k8s.get("mesh") or {}).get("enabled", False)):
@@ -695,6 +868,75 @@ class RQ21PairedBenchmarkRunner:
             errors.append("mTLS config must set kubernetes.mesh.enabled=true")
         if not bool(((mtls_mesh.get("authorization_policy") or {}).get("enabled", False))):
             errors.append("mTLS config must enable kubernetes.mesh.authorization_policy.enabled")
+        if str(mtls_mesh.get("namespace") or mtls_k8s.get("namespace")) != str(mtls_k8s.get("namespace")):
+            errors.append("mTLS kubernetes.mesh.namespace must match kubernetes.namespace")
+        if str(mtls_k8s.get("client_namespace") or mtls_k8s.get("namespace")) == str(mtls_k8s.get("namespace")):
+            errors.append("mTLS kubernetes.client_namespace must keep the benchmark client outside the mesh namespace")
+        if str(plain_k8s.get("namespace")) == str(mtls_k8s.get("namespace")):
+            errors.append("Plain and mTLS service namespaces must be separate")
+        if str(plain_k8s.get("client_namespace")) == str(mtls_k8s.get("client_namespace")):
+            errors.append("Plain and mTLS client namespaces must be separate")
+
+        if topology_spec is not None:
+            service_count = int(topology_spec["service_count"])
+            expected_account_keys = {str(index) for index in range(1, service_count + 1)}
+            account_keys = {
+                str(key)
+                for key, value in (mtls_mesh.get("service_accounts") or {}).items()
+                if str(value or "").strip()
+            }
+            if account_keys != expected_account_keys:
+                errors.append(
+                    "mTLS config must define explicit ServiceAccounts for exactly segments "
+                    f"{sorted(expected_account_keys)}; found {sorted(account_keys)}"
+                )
+            proxy_resources = mtls_mesh.get("proxy_resources") or {}
+            for key in ("cpu_request", "cpu_limit", "memory_request", "memory_limit"):
+                if not str(proxy_resources.get(key) or "").strip():
+                    errors.append(f"mTLS config must set kubernetes.mesh.proxy_resources.{key}")
+
+            peer = mtls_mesh.get("peer_authentication") or {}
+            if not bool(peer.get("enabled", False)):
+                errors.append("mTLS config must enable kubernetes.mesh.peer_authentication.enabled")
+            if str(peer.get("namespace_mode") or "") != "PERMISSIVE":
+                errors.append("mTLS config must set kubernetes.mesh.peer_authentication.namespace_mode=PERMISSIVE")
+            strict_segments = {
+                str(item.get("segment_index"))
+                for item in peer.get("strict_workloads") or []
+                if isinstance(item, dict)
+            }
+            expected_strict_segments = set(self.expected_downstream_segments(service_count))
+            if strict_segments != expected_strict_segments:
+                errors.append(
+                    "mTLS PeerAuthentication strict_workloads must target only downstream segments "
+                    f"{sorted(expected_strict_segments)}; found {sorted(strict_segments)}"
+                )
+
+            policies = self.authorization_policy_configs(mtls_mesh)
+            observed_pairs = {
+                (
+                    str(policy.get("source_segment_index")),
+                    str(policy.get("downstream_segment_index")),
+                )
+                for policy in policies
+            }
+            expected_pairs = {
+                (str(index - 1), str(index))
+                for index in range(2, service_count + 1)
+            }
+            if observed_pairs != expected_pairs:
+                errors.append(
+                    "mTLS AuthorizationPolicy config must contain exactly immediate upstream->downstream pairs "
+                    f"{sorted(expected_pairs)}; found {sorted(observed_pairs)}"
+                )
+            if len(policies) != service_count - 1:
+                errors.append(
+                    f"mTLS AuthorizationPolicy config must define {service_count - 1} downstream policies; "
+                    f"found {len(policies)}"
+                )
+            for policy in policies:
+                if not str(policy.get("name") or "").strip():
+                    errors.append("mTLS AuthorizationPolicy config entries must have names")
 
         if errors:
             raise PipelineError("RQ2.1 paired config validation failed:\n- " + "\n- ".join(errors))
@@ -922,7 +1164,8 @@ class RQ21PairedBenchmarkRunner:
                 raw["kubernetes"]["mesh"]["revision"] = self.mesh_revision
             if self.args.smoke:
                 self._apply_smoke_profile(raw)
-            path = self.config_dir / f"rq2_1_chain2_{key}_effective.yaml"
+            condition_name = str(first_condition(raw).get("name") or f"condition_{key}")
+            path = self.config_dir / f"{condition_name}_effective.yaml"
             save_yaml(path, raw)
             self.effective_config_paths[key] = path
 
@@ -1037,10 +1280,16 @@ class RQ21PairedBenchmarkRunner:
             service_accounts = [doc for doc in docs if doc.get("kind") == "ServiceAccount"]
             if len(service_accounts) != context.service_count:
                 errors.append(f"mTLS manifests should include {context.service_count} explicit ServiceAccounts")
-            if "PeerAuthentication" not in kinds:
+            peer_items = [doc for doc in docs if doc.get("kind") == "PeerAuthentication"]
+            authz_items = [doc for doc in docs if doc.get("kind") == "AuthorizationPolicy"]
+            if not peer_items:
                 errors.append("mTLS manifests missing PeerAuthentication")
-            if "AuthorizationPolicy" not in kinds:
+            if not authz_items:
                 errors.append("mTLS manifests missing AuthorizationPolicy")
+            peer_errors, peer_summary = self.validate_mtls_peer_authentications(context, peer_items)
+            errors.extend(peer_errors)
+            authz_errors, authz_summary = self.validate_mtls_authorization_policies(context, authz_items)
+            errors.extend(authz_errors)
             required_annotations = {
                 "sidecar.istio.io/proxyCPU",
                 "sidecar.istio.io/proxyCPULimit",
@@ -1067,6 +1316,9 @@ class RQ21PairedBenchmarkRunner:
             "passed": not errors,
             "errors": errors,
         }
+        if context.key == "mtls":
+            summary["peer_authentication_validation"] = peer_summary if "peer_summary" in locals() else {}
+            summary["authorization_policy_validation"] = authz_summary if "authz_summary" in locals() else {}
         out_path = self.static_dir / f"{context.condition_name}.json"
         out_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
         if errors:
@@ -1146,37 +1398,58 @@ class RQ21PairedBenchmarkRunner:
             )
         for deployment in deployments:
             log(f"Waiting for deployment {deployment} rollout.")
+            try:
+                run_command([
+                    "kubectl",
+                    "rollout",
+                    "status",
+                    f"deployment/{deployment}",
+                    "-n",
+                    context.service_namespace,
+                    f"--timeout={deadline_seconds}s",
+                ])
+            except PipelineError as exc:
+                detail = format_pod_state_errors(self.service_pods(context))
+                raise PipelineError(
+                    f"Deployment {deployment} did not roll out for {context.condition_name}"
+                    + (f": {detail}" if detail else f": {exc}")
+                ) from exc
+        log(f"Waiting for service pods for {context.condition_name} to become Ready.")
+        try:
             run_command([
                 "kubectl",
-                "rollout",
-                "status",
-                f"deployment/{deployment}",
+                "wait",
+                "--for=condition=Ready",
+                "pod",
                 "-n",
                 context.service_namespace,
+                "-l",
+                f"condition={context.condition_name},workload-role=service",
                 f"--timeout={deadline_seconds}s",
             ])
-        log(f"Waiting for service pods for {context.condition_name} to become Ready.")
-        run_command([
-            "kubectl",
-            "wait",
-            "--for=condition=Ready",
-            "pod",
-            "-n",
-            context.service_namespace,
-            "-l",
-            f"condition={context.condition_name},workload-role=service",
-            f"--timeout={deadline_seconds}s",
-        ])
+        except PipelineError as exc:
+            detail = format_pod_state_errors(self.service_pods(context))
+            raise PipelineError(
+                f"Service pods did not become Ready for {context.condition_name}"
+                + (f": {detail}" if detail else f": {exc}")
+            ) from exc
         log(f"Waiting for benchmark client for {context.condition_name} to become Ready.")
-        run_command([
-            "kubectl",
-            "wait",
-            "--for=condition=Ready",
-            f"pod/{self.args.client_pod}",
-            "-n",
-            context.client_namespace,
-            f"--timeout={deadline_seconds}s",
-        ])
+        try:
+            run_command([
+                "kubectl",
+                "wait",
+                "--for=condition=Ready",
+                f"pod/{self.args.client_pod}",
+                "-n",
+                context.client_namespace,
+                f"--timeout={deadline_seconds}s",
+            ])
+        except PipelineError as exc:
+            detail = format_pod_state_errors([self.client_pod(context)])
+            raise PipelineError(
+                f"Benchmark client did not become Ready for {context.condition_name}"
+                + (f": {detail}" if detail else f": {exc}")
+            ) from exc
 
     def _deployment_names(self, context: ConditionContext) -> list[str]:
         result = run_command([
@@ -1290,12 +1563,8 @@ class RQ21PairedBenchmarkRunner:
         return mesh if isinstance(mesh, dict) else {}
 
     def expected_mtls_authorization_principal(self, context: ConditionContext) -> str:
-        mesh = self.mtls_mesh_config()
-        authz = mesh.get("authorization_policy") or {}
-        source_segment = str(authz.get("source_segment_index") or "1")
-        service_accounts = mesh.get("service_accounts") or {}
-        source_service_account = str(service_accounts.get(source_segment) or "")
-        return f"cluster.local/ns/{context.service_namespace}/sa/{source_service_account}"
+        expected = self.expected_mtls_authorization_policies(context)
+        return expected[0]["expected_principal"] if expected else ""
 
     def authorization_policy_principals(self, policy: dict[str, Any]) -> list[str]:
         principals: list[str] = []
@@ -1305,98 +1574,178 @@ class RQ21PairedBenchmarkRunner:
                 principals.extend(str(item) for item in source_block.get("principals") or [])
         return principals
 
-    def validate_mtls_authorization_policy(
+    def validate_mtls_peer_authentications(
+        self,
+        context: ConditionContext,
+        peer_items: list[dict[str, Any]],
+    ) -> tuple[list[str], dict[str, Any]]:
+        errors: list[str] = []
+        expected_segments = set(self.expected_downstream_segments(context.service_count))
+        default_peer = False
+        strict_by_segment: dict[str, list[dict[str, Any]]] = {}
+        for item in peer_items:
+            spec = item.get("spec") or {}
+            selector = (spec.get("selector") or {}).get("matchLabels") or {}
+            mode = str(((spec.get("mtls") or {}).get("mode") or "")).upper()
+            if not selector and mode == "PERMISSIVE":
+                default_peer = True
+            if mode == "STRICT":
+                segment = str(selector.get("segment-index") or "")
+                if selector.get("condition") == context.condition_name and selector.get("workload-role") == "service":
+                    strict_by_segment.setdefault(segment, []).append(item)
+
+        observed_segments = set(strict_by_segment)
+        expected_peer_count = 1 + len(expected_segments)
+        if len(peer_items) != expected_peer_count:
+            errors.append(
+                f"mTLS PeerAuthentication resources must contain exactly {expected_peer_count} items "
+                f"(namespace default plus downstream STRICT policies); found {len(peer_items)}"
+            )
+        if not default_peer:
+            errors.append("mTLS runtime missing namespace-default PERMISSIVE PeerAuthentication")
+        if observed_segments != expected_segments:
+            errors.append(
+                "mTLS runtime PeerAuthentication STRICT workloads must target exactly downstream segments "
+                f"{sorted(expected_segments)}; found {sorted(observed_segments)}"
+            )
+        for segment in sorted(expected_segments):
+            if len(strict_by_segment.get(segment) or []) != 1:
+                errors.append(
+                    f"mTLS runtime must have exactly one STRICT PeerAuthentication for segment {segment}; "
+                    f"found {len(strict_by_segment.get(segment) or [])}"
+                )
+
+        return errors, {
+            "namespace_default_permissive": default_peer,
+            "expected_peer_authentication_count": expected_peer_count,
+            "observed_peer_authentication_count": len(peer_items),
+            "expected_strict_segments": sorted(expected_segments),
+            "observed_strict_segments": sorted(observed_segments),
+            "strict_peer_count_by_segment": {
+                segment: len(items)
+                for segment, items in sorted(strict_by_segment.items())
+            },
+        }
+
+    def validate_mtls_authorization_policies(
         self,
         context: ConditionContext,
         authz_items: list[dict[str, Any]],
     ) -> tuple[list[str], dict[str, Any]]:
         errors: list[str] = []
-        mesh = self.mtls_mesh_config()
-        authz = mesh.get("authorization_policy") or {}
-        expected_name = str(authz.get("name") or "downstream-service1-only")
-        downstream_segment = str(authz.get("downstream_segment_index") or "2")
-        expected_principal = self.expected_mtls_authorization_principal(context)
-        policy = next(
-            (
-                item
-                for item in authz_items
-                if str((item.get("metadata") or {}).get("name") or "") == expected_name
-            ),
-            None,
-        )
+        expected_policies = self.expected_mtls_authorization_policies(context)
+        by_name = {
+            str((item.get("metadata") or {}).get("name") or ""): item
+            for item in authz_items
+        }
+        observed_names = sorted(name for name in by_name if name)
+        expected_names = sorted(policy["name"] for policy in expected_policies)
         summary = {
-            "expected_policy_name": expected_name,
-            "expected_downstream_segment_index": downstream_segment,
-            "expected_allowed_principal": expected_principal,
-            "observed_policy_names": [
-                str((item.get("metadata") or {}).get("name") or "")
-                for item in authz_items
-            ],
+            "expected_policy_count": len(expected_policies),
+            "expected_policy_names": expected_names,
+            "observed_policy_names": observed_names,
+            "policies": [],
             "selects_downstream_service2": False,
             "allows_only_service1_principal": False,
         }
-        if not policy:
-            errors.append(f"mTLS runtime missing AuthorizationPolicy {expected_name}")
-            return errors, summary
+        unexpected_names = sorted(set(observed_names) - set(expected_names))
+        if unexpected_names:
+            errors.append(f"mTLS runtime contains unexpected AuthorizationPolicy resources: {unexpected_names}")
+        if len(authz_items) != len(expected_policies):
+            errors.append(
+                f"mTLS runtime must contain exactly {len(expected_policies)} AuthorizationPolicies; "
+                f"found {len(authz_items)}"
+            )
 
-        spec = policy.get("spec") or {}
-        selector = (spec.get("selector") or {}).get("matchLabels") or {}
-        observed_principals = sorted(set(self.authorization_policy_principals(policy)))
-        rules = spec.get("rules") or []
-        unrestricted_source_rule = False
-        unexpected_source_constraints: list[dict[str, Any]] = []
-        for rule in rules:
-            from_entries = rule.get("from") or []
-            if not from_entries:
-                unrestricted_source_rule = True
+        for expected in expected_policies:
+            expected_name = expected["name"]
+            downstream_segment = expected["downstream_segment_index"]
+            expected_principal = expected["expected_principal"]
+            policy = by_name.get(expected_name)
+            policy_summary: dict[str, Any] = {
+                "expected_policy_name": expected_name,
+                "expected_source_segment_index": expected["source_segment_index"],
+                "expected_downstream_segment_index": downstream_segment,
+                "expected_allowed_principal": expected_principal,
+                "present": bool(policy),
+                "selects_downstream_service": False,
+                "allows_only_expected_principal": False,
+            }
+            if not policy:
+                errors.append(f"mTLS runtime missing AuthorizationPolicy {expected_name}")
+                summary["policies"].append(policy_summary)
                 continue
-            for source in from_entries:
-                source_block = source.get("source") or {}
-                principals = [str(item) for item in source_block.get("principals") or []]
-                unsupported_keys = sorted(
-                    key
-                    for key in source_block
-                    if key not in {"principals"}
+
+            spec = policy.get("spec") or {}
+            selector = (spec.get("selector") or {}).get("matchLabels") or {}
+            observed_principals = sorted(set(self.authorization_policy_principals(policy)))
+            rules = spec.get("rules") or []
+            unrestricted_source_rule = False
+            unexpected_source_constraints: list[dict[str, Any]] = []
+            for rule in rules:
+                from_entries = rule.get("from") or []
+                if not from_entries:
+                    unrestricted_source_rule = True
+                    continue
+                for source in from_entries:
+                    source_block = source.get("source") or {}
+                    principals = [str(item) for item in source_block.get("principals") or []]
+                    unsupported_keys = sorted(
+                        key
+                        for key in source_block
+                        if key not in {"principals"}
+                    )
+                    if principals != [expected_principal] or unsupported_keys:
+                        unexpected_source_constraints.append({
+                            "principals": principals,
+                            "unsupported_source_keys": unsupported_keys,
+                        })
+
+            selector_ok = (
+                selector.get("condition") == context.condition_name
+                and selector.get("segment-index") == downstream_segment
+                and selector.get("workload-role") == "service"
+            )
+            action_ok = str(spec.get("action") or "ALLOW") == "ALLOW"
+            principal_ok = (
+                observed_principals == [expected_principal]
+                and not unrestricted_source_rule
+                and not unexpected_source_constraints
+            )
+            policy_summary.update({
+                "observed_selector": selector,
+                "observed_action": str(spec.get("action") or "ALLOW"),
+                "observed_allowed_principals": observed_principals,
+                "unrestricted_source_rule": unrestricted_source_rule,
+                "unexpected_source_constraints": unexpected_source_constraints,
+                "selects_downstream_service": selector_ok,
+                "allows_only_expected_principal": principal_ok,
+            })
+            if downstream_segment == "2":
+                summary["selects_downstream_service2"] = selector_ok
+                summary["allows_only_service1_principal"] = principal_ok
+            if not selector_ok:
+                errors.append(
+                    f"AuthorizationPolicy {expected_name} must select condition={context.condition_name}, "
+                    f"segment-index={downstream_segment}, workload-role=service"
                 )
-                if principals != [expected_principal] or unsupported_keys:
-                    unexpected_source_constraints.append({
-                        "principals": principals,
-                        "unsupported_source_keys": unsupported_keys,
-                    })
-        summary.update({
-            "observed_selector": selector,
-            "observed_action": str(spec.get("action") or "ALLOW"),
-            "observed_allowed_principals": observed_principals,
-            "unrestricted_source_rule": unrestricted_source_rule,
-            "unexpected_source_constraints": unexpected_source_constraints,
-        })
-
-        selector_ok = (
-            selector.get("condition") == context.condition_name
-            and selector.get("segment-index") == downstream_segment
-            and selector.get("workload-role") == "service"
-        )
-        summary["selects_downstream_service2"] = selector_ok
-        if not selector_ok:
-            errors.append(
-                f"AuthorizationPolicy {expected_name} must select condition={context.condition_name}, "
-                f"segment-index={downstream_segment}, workload-role=service"
-            )
-        if str(spec.get("action") or "ALLOW") != "ALLOW":
-            errors.append(f"AuthorizationPolicy {expected_name} must use action=ALLOW")
-
-        principal_ok = (
-            observed_principals == [expected_principal]
-            and not unrestricted_source_rule
-            and not unexpected_source_constraints
-        )
-        summary["allows_only_service1_principal"] = principal_ok
-        if not principal_ok:
-            errors.append(
-                f"AuthorizationPolicy {expected_name} must allow only source principal {expected_principal}; "
-                f"observed {observed_principals}"
-            )
+            if not action_ok:
+                errors.append(f"AuthorizationPolicy {expected_name} must use action=ALLOW")
+            if not principal_ok:
+                errors.append(
+                    f"AuthorizationPolicy {expected_name} must allow only source principal {expected_principal}; "
+                    f"observed {observed_principals}"
+                )
+            summary["policies"].append(policy_summary)
+        summary["all_policies_valid"] = not errors
         return errors, summary
+
+    def validate_mtls_authorization_policy(
+        self,
+        context: ConditionContext,
+        authz_items: list[dict[str, Any]],
+    ) -> tuple[list[str], dict[str, Any]]:
+        return self.validate_mtls_authorization_policies(context, authz_items)
 
     def validate_mtls_runtime(self, context: ConditionContext) -> dict[str, Any]:
         errors: list[str] = []
@@ -1431,23 +1780,11 @@ class RQ21PairedBenchmarkRunner:
         ])
         peer_items = list((peer_auths or {}).get("items") or [])
         authz_items = list((authz or {}).get("items") or [])
-        default_peer = False
-        strict_peer = False
-        for item in peer_items:
-            spec = item.get("spec") or {}
-            selector = (spec.get("selector") or {}).get("matchLabels") or {}
-            mode = str(((spec.get("mtls") or {}).get("mode") or "")).upper()
-            if not selector and mode == "PERMISSIVE":
-                default_peer = True
-            if selector.get("segment-index") == "2" and selector.get("condition") == context.condition_name and mode == "STRICT":
-                strict_peer = True
-        if not default_peer:
-            errors.append("mTLS runtime missing namespace-default PERMISSIVE PeerAuthentication")
-        if not strict_peer:
-            errors.append("mTLS runtime missing downstream STRICT PeerAuthentication for segment 2")
         if not authz_items:
             errors.append("mTLS runtime missing AuthorizationPolicy")
-        authz_errors, authz_summary = self.validate_mtls_authorization_policy(context, authz_items)
+        peer_errors, peer_summary = self.validate_mtls_peer_authentications(context, peer_items)
+        errors.extend(peer_errors)
+        authz_errors, authz_summary = self.validate_mtls_authorization_policies(context, authz_items)
         errors.extend(authz_errors)
 
         nodes = set()
@@ -1497,6 +1834,7 @@ class RQ21PairedBenchmarkRunner:
             "client_node": (client_pod.get("spec") or {}).get("nodeName"),
             "peer_authentication_count": len(peer_items),
             "authorization_policy_count": len(authz_items),
+            "peer_authentication_validation": peer_summary,
             "authorization_policy_validation": authz_summary,
         }
         (context.diagnostics_dir / "mtls_runtime_validation.json").write_text(
@@ -1544,6 +1882,270 @@ class RQ21PairedBenchmarkRunner:
             "cpu_mcores": parse_cpu_mcores(str(allocatable.get("cpu") or "")),
             "memory_mib": parse_memory_mib(str(allocatable.get("memory") or "")),
         }
+
+    def resource_cpu_measurement_path(self, context: ConditionContext) -> Path:
+        return context.condition_dir / "resource_cpu_measurement.json"
+
+    def kubelet_stats_summary(self, node_name: str) -> tuple[dict[str, Any] | None, str | None]:
+        result = run_command(
+            [
+                "kubectl",
+                "get",
+                "--raw",
+                f"/api/v1/nodes/{node_name}/proxy/stats/summary",
+            ],
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()
+            return None, detail or f"kubectl returned {result.returncode}"
+        try:
+            return json.loads(result.stdout or "{}"), None
+        except json.JSONDecodeError as exc:
+            return None, f"invalid kubelet summary JSON: {exc}"
+
+    def expected_cpu_counter_targets(self, context: ConditionContext) -> list[dict[str, Any]]:
+        targets: list[dict[str, Any]] = []
+        for namespace, pod in [
+            (context.service_namespace, service_pod)
+            for service_pod in self.service_pods(context)
+        ] + [(context.client_namespace, self.client_pod(context))]:
+            node_name = str((pod.get("spec") or {}).get("nodeName") or "unknown")
+            targets.append(
+                {
+                    "namespace": namespace,
+                    "pod_name": pod_name(pod),
+                    "node_name": node_name,
+                    "containers": container_names(metric_container_specs(pod)),
+                }
+            )
+        return targets
+
+    def capture_cpu_counter_snapshot(self, context: ConditionContext) -> dict[str, Any]:
+        targets = self.expected_cpu_counter_targets(context)
+        grouped_targets: dict[str, list[dict[str, Any]]] = {}
+        for target in targets:
+            node_name = str(target.get("node_name") or "unknown")
+            grouped_targets.setdefault(node_name, []).append(target)
+
+        snapshot = {
+            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "containers": [],
+            "errors": [],
+        }
+        for node_name, node_targets in sorted(grouped_targets.items()):
+            if node_name in {"", "unknown"}:
+                snapshot["errors"].append(
+                    {
+                        "node_name": node_name,
+                        "reason": "pod is not scheduled onto a concrete node",
+                    }
+                )
+                continue
+            payload, error = self.kubelet_stats_summary(node_name)
+            if error or not isinstance(payload, dict):
+                snapshot["errors"].append(
+                    {
+                        "node_name": node_name,
+                        "reason": error or "kubelet summary did not return a JSON object",
+                    }
+                )
+                continue
+
+            pod_lookup: dict[tuple[str, str], dict[str, int]] = {}
+            for pod_entry in payload.get("pods") or []:
+                if not isinstance(pod_entry, dict):
+                    continue
+                pod_ref = pod_entry.get("podRef") or {}
+                namespace = str(pod_ref.get("namespace") or "")
+                pod_name_value = str(pod_ref.get("name") or "")
+                containers: dict[str, int] = {}
+                for container_entry in pod_entry.get("containers") or []:
+                    if not isinstance(container_entry, dict):
+                        continue
+                    container_name = str(container_entry.get("name") or "")
+                    usage = ((container_entry.get("cpu") or {}).get("usageCoreNanoSeconds"))
+                    try:
+                        if container_name and usage is not None:
+                            containers[container_name] = int(usage)
+                    except (TypeError, ValueError):
+                        continue
+                pod_lookup[(namespace, pod_name_value)] = containers
+
+            for target in node_targets:
+                namespace = str(target.get("namespace") or "")
+                pod_name_value = str(target.get("pod_name") or "")
+                container_usage = pod_lookup.get((namespace, pod_name_value))
+                if not container_usage:
+                    snapshot["errors"].append(
+                        {
+                            "node_name": node_name,
+                            "namespace": namespace,
+                            "pod_name": pod_name_value,
+                            "reason": "pod was missing from kubelet stats summary",
+                        }
+                    )
+                    continue
+                for container_name in target.get("containers") or []:
+                    usage = container_usage.get(str(container_name))
+                    if usage is None:
+                        snapshot["errors"].append(
+                            {
+                                "node_name": node_name,
+                                "namespace": namespace,
+                                "pod_name": pod_name_value,
+                                "container_name": str(container_name),
+                                "reason": "container was missing from kubelet stats summary",
+                            }
+                        )
+                        continue
+                    snapshot["containers"].append(
+                        {
+                            "node_name": node_name,
+                            "namespace": namespace,
+                            "pod_name": pod_name_value,
+                            "container_name": str(container_name),
+                            "role": cpu_counter_role_for_container(
+                                namespace,
+                                context.service_namespace,
+                                str(container_name),
+                            ),
+                            "usage_core_nanoseconds": usage,
+                        }
+                    )
+        return snapshot
+
+    def summarize_cpu_counter_window(
+        self,
+        context: ConditionContext,
+        started_at: datetime,
+        ended_at: datetime,
+        duration_seconds: float,
+        start_snapshot: dict[str, Any],
+        end_snapshot: dict[str, Any],
+    ) -> dict[str, Any]:
+        start_items = {
+            (
+                str(item.get("namespace") or ""),
+                str(item.get("pod_name") or ""),
+                str(item.get("container_name") or ""),
+            ): item
+            for item in start_snapshot.get("containers") or []
+            if isinstance(item, dict)
+        }
+        end_items = {
+            (
+                str(item.get("namespace") or ""),
+                str(item.get("pod_name") or ""),
+                str(item.get("container_name") or ""),
+            ): item
+            for item in end_snapshot.get("containers") or []
+            if isinstance(item, dict)
+        }
+        errors = [
+            *[dict(item) for item in (start_snapshot.get("errors") or []) if isinstance(item, dict)],
+            *[dict(item) for item in (end_snapshot.get("errors") or []) if isinstance(item, dict)],
+        ]
+        measurements: list[dict[str, Any]] = []
+        aggregates = {
+            "service_app_cpu_mcores": 0.0,
+            "sidecar_cpu_mcores": 0.0,
+            "client_cpu_mcores": 0.0,
+        }
+        for key, start_item in start_items.items():
+            end_item = end_items.get(key)
+            if not isinstance(end_item, dict):
+                errors.append(
+                    {
+                        "namespace": key[0],
+                        "pod_name": key[1],
+                        "container_name": key[2],
+                        "reason": "container CPU counter was missing from the end snapshot",
+                    }
+                )
+                continue
+            start_usage = maybe_float(start_item.get("usage_core_nanoseconds"))
+            end_usage = maybe_float(end_item.get("usage_core_nanoseconds"))
+            if start_usage is None or end_usage is None:
+                errors.append(
+                    {
+                        "namespace": key[0],
+                        "pod_name": key[1],
+                        "container_name": key[2],
+                        "reason": "container CPU counter snapshot did not contain numeric usage values",
+                    }
+                )
+                continue
+            delta_core_nanoseconds = int(round(end_usage - start_usage))
+            if delta_core_nanoseconds < 0:
+                errors.append(
+                    {
+                        "namespace": key[0],
+                        "pod_name": key[1],
+                        "container_name": key[2],
+                        "reason": "container CPU usage counter decreased across the benchmark window",
+                        "start_usage_core_nanoseconds": int(round(start_usage)),
+                        "end_usage_core_nanoseconds": int(round(end_usage)),
+                    }
+                )
+                continue
+            mcores = cpu_mcores_from_core_nanoseconds(delta_core_nanoseconds, duration_seconds)
+            if mcores is None:
+                errors.append(
+                    {
+                        "namespace": key[0],
+                        "pod_name": key[1],
+                        "container_name": key[2],
+                        "reason": "benchmark duration was not positive; CPU delta could not be normalised",
+                    }
+                )
+                continue
+            role = str(start_item.get("role") or "")
+            if role == "service_app":
+                aggregates["service_app_cpu_mcores"] += mcores
+            elif role == "sidecar":
+                aggregates["sidecar_cpu_mcores"] += mcores
+            elif role == "client":
+                aggregates["client_cpu_mcores"] += mcores
+            measurements.append(
+                {
+                    "namespace": key[0],
+                    "pod_name": key[1],
+                    "container_name": key[2],
+                    "role": role,
+                    "start_usage_core_nanoseconds": int(round(start_usage)),
+                    "end_usage_core_nanoseconds": int(round(end_usage)),
+                    "delta_core_nanoseconds": delta_core_nanoseconds,
+                    "cpu_mcores": mcores,
+                }
+            )
+
+        summary = {
+            **aggregates,
+            "total_pod_cpu_mcores": aggregates["service_app_cpu_mcores"] + aggregates["sidecar_cpu_mcores"],
+        }
+        payload = {
+            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "condition": context.condition_name,
+            "condition_key": context.key,
+            "started_at": started_at.isoformat(),
+            "ended_at": ended_at.isoformat(),
+            "duration_seconds": duration_seconds,
+            "available": bool(measurements) and not errors,
+            "summary": summary,
+            "measurements": measurements,
+            "start_snapshot": start_snapshot,
+            "end_snapshot": end_snapshot,
+            "errors": errors,
+        }
+        measurement_path = self.resource_cpu_measurement_path(context)
+        measurement_path.parent.mkdir(parents=True, exist_ok=True)
+        measurement_path.write_text(
+            json.dumps(payload, indent=2),
+            encoding="utf-8",
+        )
+        return payload
 
     def capture_operational_overhead(self, context: ConditionContext) -> dict[str, Any]:
         service_pods = self.service_pods(context)
@@ -1828,8 +2430,13 @@ class RQ21PairedBenchmarkRunner:
             "preflight_passed": bool(metadata.get("preflight_passed")),
             "enforcement_validation_passed": bool(enforcement.get("passed")),
             "full_chain_positive_probe_passed": bool(full_chain.get("succeeded")),
+            "full_chain_hop_count": full_chain.get("hop_count"),
+            "full_chain_hop_indexes": full_chain.get("hop_indexes"),
             "non_mesh_direct_denial_probe_passed": bool(direct_denial.get("blocked_as_expected")),
+            "non_mesh_direct_denial_blocked_segments": direct_denial.get("blocked_segments") or [],
+            "non_mesh_direct_denial_target_results": direct_denial.get("target_results") or [],
             "authorization_policy_expected_principal": enforcement.get("authorization_policy_expected_principal"),
+            "authorization_policy_expected_principals": enforcement.get("authorization_policy_expected_principals") or [],
             "errors": metadata.get("errors") or enforcement.get("errors") or [],
             "limitations": metadata.get("limitations") or [],
         }
@@ -2144,7 +2751,7 @@ class RQ21PairedBenchmarkRunner:
         if extracted_path.exists() and extracted_path != destination_path:
             shutil.move(str(extracted_path), str(destination_path))
 
-    def run_condition_benchmark(self, context: ConditionContext, pass_index: int) -> None:
+    def run_condition_benchmark(self, context: ConditionContext, pass_index: int) -> dict[str, Any]:
         log(f"Running benchmark for {context.condition_name}.")
         self.inject_runtime_metadata(context)
         remote_config = f"/tmp/rq21_paired/{context.condition_name}_config.yaml"
@@ -2168,6 +2775,9 @@ class RQ21PairedBenchmarkRunner:
 
         self.wait_for_resource_metrics_ready(context)
         sampler = self.start_resource_sampler(context)
+        start_snapshot = self.capture_cpu_counter_snapshot(context)
+        benchmark_started_at = datetime.now(timezone.utc)
+        benchmark_started_monotonic = time.monotonic()
         try:
             stream_command(
                 [
@@ -2190,7 +2800,19 @@ class RQ21PairedBenchmarkRunner:
                 cwd=self.repo_root,
             )
         finally:
+            benchmark_duration_seconds = time.monotonic() - benchmark_started_monotonic
+            benchmark_ended_at = datetime.now(timezone.utc)
+            end_snapshot = self.capture_cpu_counter_snapshot(context)
             self.stop_resource_sampler(context, sampler)
+
+        cpu_counter_metrics = self.summarize_cpu_counter_window(
+            context,
+            benchmark_started_at,
+            benchmark_ended_at,
+            benchmark_duration_seconds,
+            start_snapshot,
+            end_snapshot,
+        )
 
         run_command([
             "kubectl",
@@ -2219,6 +2841,7 @@ class RQ21PairedBenchmarkRunner:
             "-rf",
             remote_output,
         ], check=False)
+        return cpu_counter_metrics
 
     def gather_diagnostics(self, context: ConditionContext) -> None:
         context.diagnostics_dir.mkdir(parents=True, exist_ok=True)
@@ -2313,7 +2936,7 @@ class RQ21PairedBenchmarkRunner:
                         )
                     )
             operational_overhead = self.capture_operational_overhead(context)
-            self.run_condition_benchmark(context, pass_index)
+            cpu_counter_metrics = self.run_condition_benchmark(context, pass_index)
             self.gather_diagnostics(context)
             self.completed_conditions.append({
                 "pass": pass_index,
@@ -2326,11 +2949,13 @@ class RQ21PairedBenchmarkRunner:
                 "static_manifest_validation": static_summary,
                 "runtime_validation": validation_artifact,
                 "operational_overhead": operational_overhead,
+                "cpu_counter_metrics": cpu_counter_metrics,
                 "security_preflight_artifact": str(security_preflight_artifact) if security_preflight_artifact else None,
                 "security_validation": security_validation,
                 "security_validation_passed": security_validation_passed,
                 "service_namespace": context.service_namespace,
                 "client_namespace": context.client_namespace,
+                "resource_cpu_measurement": str(self.resource_cpu_measurement_path(context)),
                 "resource_metric_prime": str(self.resource_metric_prime_status_path(context))
                 if not self.args.disable_resource_sampling
                 else None,
@@ -2399,11 +3024,11 @@ class RQ21PairedBenchmarkRunner:
                 if values:
                     hop_forward_means[f"hop_{hop}_forward_ms_mean"] = mean_or_none(values)
             activation_means = {}
-            for metric in (
-                "total_activation_bytes",
-                "hop_1_activation_bytes",
-                "hop_2_activation_bytes",
-            ):
+            activation_metrics = ["total_activation_bytes"] + [
+                f"hop_{hop}_activation_bytes"
+                for hop in self.active_hop_indexes()
+            ]
+            for metric in activation_metrics:
                 values = [
                     value
                     for value in (maybe_float(row.get(metric)) for row in key_rows)
@@ -2448,11 +3073,13 @@ class RQ21PairedBenchmarkRunner:
                 else None
             ),
         }
-        for metric in (
-            "total_activation_bytes_mean",
-            "hop_1_activation_bytes_mean",
-            "hop_2_activation_bytes_mean",
-        ):
+        for metric in ["total_activation_bytes_mean"] + [
+            f"hop_{hop}_activation_bytes_mean"
+            for hop in self.active_hop_indexes()
+        ] + [
+            f"hop_{hop}_forward_ms_mean"
+            for hop in self.active_hop_indexes()
+        ]:
             plain_value = plain.get(metric)
             mtls_value = mtls.get(metric)
             comparison[f"{metric}_delta"] = (
@@ -2477,8 +3104,11 @@ class RQ21PairedBenchmarkRunner:
                 }
                 continue
 
-            aggregated: dict[str, list[float]] = {
-                category: [] for category in RESOURCE_METRIC_CATEGORIES
+            aggregated_cpu: dict[str, list[float]] = {
+                category: [] for category in RESOURCE_CPU_METRIC_CATEGORIES
+            }
+            aggregated_memory: dict[str, list[float]] = {
+                category: [] for category in RESOURCE_MEMORY_METRIC_CATEGORIES
             }
             failures: list[dict[str, Any]] = []
             passes_covered: set[int] = set()
@@ -2497,12 +3127,47 @@ class RQ21PairedBenchmarkRunner:
                     })
                     continue
 
+                cpu_counter_metrics = record.get("cpu_counter_metrics")
+                cpu_metrics_for_record: dict[str, float] | None = None
+                cpu_metrics_source = "kubectl_top"
+                if isinstance(cpu_counter_metrics, dict) and cpu_counter_metrics:
+                    cpu_metrics_source = "kubelet_summary_delta"
+                    if not bool(cpu_counter_metrics.get("available")):
+                        failures.append({
+                            "pass": int(record["pass"]),
+                            "execution_index": int(record["execution_index"]),
+                            "resource_cpu_measurement": str(record.get("resource_cpu_measurement") or ""),
+                            "reason": "container CPU counter measurement was incomplete",
+                            "cpu_counter_errors": cpu_counter_metrics.get("errors") or [],
+                        })
+                        continue
+                    cpu_summary = cpu_counter_metrics.get("summary") or {}
+                    missing_cpu_metrics = [
+                        category
+                        for category in RESOURCE_CPU_METRIC_CATEGORIES
+                        if not isinstance(cpu_summary.get(category), (int, float))
+                    ]
+                    if missing_cpu_metrics:
+                        failures.append({
+                            "pass": int(record["pass"]),
+                            "execution_index": int(record["execution_index"]),
+                            "resource_cpu_measurement": str(record.get("resource_cpu_measurement") or ""),
+                            "reason": "container CPU counter measurement summary was missing one or more CPU metrics",
+                            "missing_cpu_metrics": missing_cpu_metrics,
+                        })
+                        continue
+                    cpu_metrics_for_record = {
+                        category: float(cpu_summary[category])
+                        for category in RESOURCE_CPU_METRIC_CATEGORIES
+                    }
+
                 per_timestamp: dict[str, dict[str, float]] = {}
                 observed_namespaces: set[str] = set()
                 service_namespace_rows = 0
                 service_app_rows = 0
                 sidecar_rows = 0
                 observed_sidecar_rows = 0
+                observed_sidecar_pods: set[str] = set()
                 client_namespace_rows = 0
                 with path.open("r", encoding="utf-8", newline="") as handle:
                     reader = csv.DictReader(handle)
@@ -2515,6 +3180,9 @@ class RQ21PairedBenchmarkRunner:
                         container_name = str(row.get("container_name") or "")
                         if namespace == record["service_namespace"] and container_name == "istio-proxy":
                             observed_sidecar_rows += 1
+                            pod_value = str(row.get("pod_name") or "").strip()
+                            if pod_value:
+                                observed_sidecar_pods.add(pod_value)
                         timestamp_value = str(row.get("timestamp") or "unknown")
                         bucket = per_timestamp.setdefault(timestamp_value, empty_resource_metric_sample())
                         cpu = parse_cpu_mcores(str(row.get("cpu_usage") or ""))
@@ -2525,20 +3193,23 @@ class RQ21PairedBenchmarkRunner:
                         if namespace == record["client_namespace"]:
                             client_namespace_rows += 1
                             client_sample_row_count += 1
-                            bucket["client_cpu_mcores"] += cpu
                             bucket["client_memory_mib"] += memory
+                            if cpu_metrics_source == "kubectl_top":
+                                bucket["client_cpu_mcores"] += cpu
                         elif container_name == "istio-proxy":
                             service_namespace_rows += 1
                             sidecar_rows += 1
                             sidecar_sample_row_count += 1
-                            bucket["sidecar_cpu_mcores"] += cpu
                             bucket["sidecar_memory_mib"] += memory
+                            if cpu_metrics_source == "kubectl_top":
+                                bucket["sidecar_cpu_mcores"] += cpu
                         else:
                             service_namespace_rows += 1
                             service_app_rows += 1
                             service_app_sample_row_count += 1
-                            bucket["service_app_cpu_mcores"] += cpu
                             bucket["service_app_memory_mib"] += memory
+                            if cpu_metrics_source == "kubectl_top":
+                                bucket["service_app_cpu_mcores"] += cpu
 
                 if not per_timestamp:
                     failures.append({
@@ -2583,24 +3254,53 @@ class RQ21PairedBenchmarkRunner:
                         "client_namespace_rows": client_namespace_rows,
                     })
                     continue
+                operational_overhead = record.get("operational_overhead") or {}
+                service_records = operational_overhead.get("service_pods") or []
+                expected_sidecar_pods = {
+                    str(item.get("pod_name") or "").strip()
+                    for item in service_records
+                    if isinstance(item, dict) and bool(item.get("sidecar_present", key == "mtls"))
+                }
+                expected_sidecar_pods.discard("")
+                if key == "mtls" and expected_sidecar_pods and observed_sidecar_pods:
+                    missing_sidecar_pods = sorted(expected_sidecar_pods - observed_sidecar_pods)
+                    if missing_sidecar_pods:
+                        failures.append({
+                            "pass": int(record["pass"]),
+                            "execution_index": int(record["execution_index"]),
+                            "resource_samples": str(path),
+                            "reason": "mTLS resource sample CSV missing istio-proxy rows for one or more service pods",
+                            "missing_sidecar_pods": missing_sidecar_pods,
+                            "observed_sidecar_pods": sorted(observed_sidecar_pods),
+                            "expected_sidecar_pods": sorted(expected_sidecar_pods),
+                        })
+                        continue
 
                 passes_covered.add(int(record["pass"]))
+                if cpu_metrics_for_record is not None:
+                    for category, value in cpu_metrics_for_record.items():
+                        aggregated_cpu[category].append(value)
                 for sample in per_timestamp.values():
-                    sample["total_pod_cpu_mcores"] = (
-                        sample["service_app_cpu_mcores"] + sample["sidecar_cpu_mcores"]
-                    )
                     sample["total_pod_memory_mib"] = (
                         sample["service_app_memory_mib"] + sample["sidecar_memory_mib"]
                     )
-                    for category in RESOURCE_METRIC_CATEGORIES:
-                        aggregated[category].append(sample[category])
+                    if cpu_metrics_source == "kubectl_top":
+                        sample["total_pod_cpu_mcores"] = (
+                            sample["service_app_cpu_mcores"] + sample["sidecar_cpu_mcores"]
+                        )
+                        for category in RESOURCE_CPU_METRIC_CATEGORIES:
+                            aggregated_cpu[category].append(sample[category])
+                    for category in RESOURCE_MEMORY_METRIC_CATEGORIES:
+                        aggregated_memory[category].append(sample[category])
 
-            sample_count = len(aggregated["service_app_cpu_mcores"])
+            sample_count = len(aggregated_memory["service_app_memory_mib"])
+            cpu_measurement_count = len(aggregated_cpu["service_app_cpu_mcores"])
             if failures:
                 summaries[key] = {
                     "available": False,
                     "reason": "one or more required resource sample artifacts were incomplete",
                     "sample_count": sample_count,
+                    "cpu_measurement_count": cpu_measurement_count,
                     "passes_covered": sorted(passes_covered),
                     "service_app_sample_row_count": service_app_sample_row_count,
                     "sidecar_sample_row_count": sidecar_sample_row_count,
@@ -2609,16 +3309,17 @@ class RQ21PairedBenchmarkRunner:
                     "failures": failures,
                 }
                 continue
-            if sample_count == 0:
+            if sample_count == 0 or cpu_measurement_count == 0:
                 summaries[key] = {
                     "available": False,
-                    "reason": "resource sample aggregation produced no usable steady-state samples",
+                    "reason": "resource metric aggregation produced no usable CPU or memory measurements",
                 }
                 continue
 
             summaries[key] = {
                 "available": True,
                 "sample_count": sample_count,
+                "cpu_measurement_count": cpu_measurement_count,
                 "passes_covered": sorted(passes_covered),
                 "service_app_sample_row_count": service_app_sample_row_count,
                 "sidecar_sample_row_count": sidecar_sample_row_count,
@@ -2626,7 +3327,11 @@ class RQ21PairedBenchmarkRunner:
                 "sidecar_metrics_available": sidecar_sample_row_count > 0,
                 **{
                     f"{category}_mean": mean_or_none(values)
-                    for category, values in aggregated.items()
+                    for category, values in aggregated_cpu.items()
+                },
+                **{
+                    f"{category}_mean": mean_or_none(values)
+                    for category, values in aggregated_memory.items()
                 },
             }
 
@@ -2751,6 +3456,12 @@ class RQ21PairedBenchmarkRunner:
 
         plain_complexity = plain.get("deployment_complexity") or {}
         mtls_complexity = mtls.get("deployment_complexity") or {}
+        plain_kind_counts = plain_complexity.get("kubernetes_object_counts_by_kind") or {}
+        mtls_kind_counts = mtls_complexity.get("kubernetes_object_counts_by_kind") or {}
+
+        def kind_delta(kind: str) -> int:
+            return int(mtls_kind_counts.get(kind) or 0) - int(plain_kind_counts.get(kind) or 0)
+
         comparison = {
             "service_scheduling_delay_seconds_overhead": overhead("service_scheduling_delay_seconds_mean"),
             "service_schedule_to_ready_seconds_overhead": overhead("service_schedule_to_ready_seconds_mean"),
@@ -2773,6 +3484,9 @@ class RQ21PairedBenchmarkRunner:
                 - int(plain_complexity.get("aks_enablement_step_count") or 0),
                 "additional_kubernetes_object_count": int(mtls_complexity.get("kubernetes_object_count") or 0)
                 - int(plain_complexity.get("kubernetes_object_count") or 0),
+                "additional_service_account_count": kind_delta("ServiceAccount"),
+                "additional_peer_authentication_count": kind_delta("PeerAuthentication"),
+                "additional_authorization_policy_count": kind_delta("AuthorizationPolicy"),
                 "additional_always_on_control_plane_pod_count": int(mtls_complexity.get("always_on_control_plane_pod_count") or 0)
                 - int(plain_complexity.get("always_on_control_plane_pod_count") or 0),
                 "additional_injected_container_count": int(mtls_complexity.get("total_injected_container_count") or 0)
@@ -2813,7 +3527,10 @@ class RQ21PairedBenchmarkRunner:
                 "metadata_path": security.get("metadata_path"),
                 "passed": bool(record.get("security_validation_passed")),
                 "full_chain_positive_probe_passed": security.get("full_chain_positive_probe_passed"),
+                "full_chain_hop_count": security.get("full_chain_hop_count"),
+                "full_chain_hop_indexes": security.get("full_chain_hop_indexes"),
                 "non_mesh_direct_denial_probe_passed": security.get("non_mesh_direct_denial_probe_passed"),
+                "non_mesh_direct_denial_blocked_segments": security.get("non_mesh_direct_denial_blocked_segments"),
             })
             if not record.get("security_validation_passed"):
                 failures.append({
@@ -2834,11 +3551,9 @@ class RQ21PairedBenchmarkRunner:
             "end_to_end_ms",
             "total_compute_ms",
             "non_compute_overhead_ms",
-            "hop_1_forward_ms",
-            "hop_2_forward_ms",
             "total_activation_bytes",
-            "hop_1_activation_bytes",
-            "hop_2_activation_bytes",
+            *[f"hop_{hop}_forward_ms" for hop in range(1, MAX_CHAIN_HOPS + 1)],
+            *[f"hop_{hop}_activation_bytes" for hop in range(1, MAX_CHAIN_HOPS + 1)],
         )
         return {
             metric: numeric_summary(
@@ -2965,6 +3680,7 @@ class RQ21PairedBenchmarkRunner:
             },
             "run": {
                 "smoke": bool(summary.get("smoke")),
+                "topology": summary.get("topology"),
                 "image_ref": summary.get("image_ref"),
                 "mesh_revision": summary.get("mesh_revision"),
                 "execution_plan": summary.get("execution_plan"),
@@ -2998,6 +3714,14 @@ class RQ21PairedBenchmarkRunner:
             "total_activation_bytes_mean",
             "hop_1_activation_bytes_mean",
             "hop_2_activation_bytes_mean",
+            "hop_3_activation_bytes_mean",
+            "hop_4_activation_bytes_mean",
+            "hop_5_activation_bytes_mean",
+            "hop_1_forward_ms_mean",
+            "hop_2_forward_ms_mean",
+            "hop_3_forward_ms_mean",
+            "hop_4_forward_ms_mean",
+            "hop_5_forward_ms_mean",
             "mean_latency_overhead_ms",
             "mean_latency_overhead_pct",
             "p95_latency_overhead_ms",
@@ -3029,12 +3753,10 @@ class RQ21PairedBenchmarkRunner:
             compute = latency.get("total_compute_ms") or {}
             non_compute = latency.get("non_compute_overhead_ms") or {}
             activation_total = latency.get("total_activation_bytes") or {}
-            activation_hop1 = latency.get("hop_1_activation_bytes") or {}
-            activation_hop2 = latency.get("hop_2_activation_bytes") or {}
             resources = payload.get("resources") or {}
             operational = payload.get("operational") or {}
             deployment = operational.get("deployment_complexity") or {}
-            rows.append({
+            row = {
                 "row_type": "condition_overall",
                 "condition_key": key,
                 "condition": payload.get("condition"),
@@ -3047,8 +3769,6 @@ class RQ21PairedBenchmarkRunner:
                 "total_compute_ms_mean": compute.get("mean"),
                 "non_compute_overhead_ms_mean": non_compute.get("mean"),
                 "total_activation_bytes_mean": activation_total.get("mean"),
-                "hop_1_activation_bytes_mean": activation_hop1.get("mean"),
-                "hop_2_activation_bytes_mean": activation_hop2.get("mean"),
                 "security_validation_passed": run.get("security_validation_passed") if key == "mtls" else None,
                 "resource_metrics_available": resources.get("available"),
                 "resource_sample_count": resources.get("sample_count"),
@@ -3065,7 +3785,15 @@ class RQ21PairedBenchmarkRunner:
                 "deployment_kubernetes_object_count": deployment.get("kubernetes_object_count"),
                 "deployment_control_plane_pod_count": deployment.get("always_on_control_plane_pod_count"),
                 "deployment_injected_container_count": deployment.get("total_injected_container_count"),
-            })
+            }
+            for hop in range(1, MAX_CHAIN_HOPS + 1):
+                row[f"hop_{hop}_activation_bytes_mean"] = (
+                    (latency.get(f"hop_{hop}_activation_bytes") or {}).get("mean")
+                )
+                row[f"hop_{hop}_forward_ms_mean"] = (
+                    (latency.get(f"hop_{hop}_forward_ms") or {}).get("mean")
+                )
+            rows.append(row)
 
         for pass_value, by_condition in (aggregated.get("per_pass_by_condition") or {}).items():
             for key, payload in by_condition.items():
@@ -3074,9 +3802,7 @@ class RQ21PairedBenchmarkRunner:
                 compute = latency.get("total_compute_ms") or {}
                 non_compute = latency.get("non_compute_overhead_ms") or {}
                 activation_total = latency.get("total_activation_bytes") or {}
-                activation_hop1 = latency.get("hop_1_activation_bytes") or {}
-                activation_hop2 = latency.get("hop_2_activation_bytes") or {}
-                rows.append({
+                row = {
                     "row_type": "condition_pass",
                     "condition_key": key,
                     "condition": payload.get("condition"),
@@ -3090,10 +3816,16 @@ class RQ21PairedBenchmarkRunner:
                     "total_compute_ms_mean": compute.get("mean"),
                     "non_compute_overhead_ms_mean": non_compute.get("mean"),
                     "total_activation_bytes_mean": activation_total.get("mean"),
-                    "hop_1_activation_bytes_mean": activation_hop1.get("mean"),
-                    "hop_2_activation_bytes_mean": activation_hop2.get("mean"),
                     "security_validation_passed": run.get("security_validation_passed") if key == "mtls" else None,
-                })
+                }
+                for hop in range(1, MAX_CHAIN_HOPS + 1):
+                    row[f"hop_{hop}_activation_bytes_mean"] = (
+                        (latency.get(f"hop_{hop}_activation_bytes") or {}).get("mean")
+                    )
+                    row[f"hop_{hop}_forward_ms_mean"] = (
+                        (latency.get(f"hop_{hop}_forward_ms") or {}).get("mean")
+                    )
+                rows.append(row)
 
         for payload in aggregated.get("paired_pass_deltas") or []:
             rows.append({
@@ -3110,14 +3842,12 @@ class RQ21PairedBenchmarkRunner:
         latency = comparison.get("latency") or {}
         resources = comparison.get("resources") or {}
         operational = comparison.get("operational") or {}
-        rows.append({
+        comparison_row = {
             "row_type": "comparison_overall",
             "mean_latency_overhead_ms": latency.get("mean_latency_overhead_ms"),
             "mean_latency_overhead_pct": latency.get("mean_latency_overhead_pct"),
             "p95_latency_overhead_ms": latency.get("p95_latency_overhead_ms"),
             "total_activation_bytes_mean": latency.get("total_activation_bytes_mean_delta"),
-            "hop_1_activation_bytes_mean": latency.get("hop_1_activation_bytes_mean_delta"),
-            "hop_2_activation_bytes_mean": latency.get("hop_2_activation_bytes_mean_delta"),
             "security_validation_passed": run.get("security_validation_passed"),
             "sidecar_cpu_mcores_mean": resources.get("sidecar_cpu_mcores_mean_overhead"),
             "total_pod_cpu_mcores_mean": resources.get("total_pod_cpu_mcores_mean_overhead"),
@@ -3125,7 +3855,15 @@ class RQ21PairedBenchmarkRunner:
             "total_pod_memory_mib_mean": resources.get("total_pod_memory_mib_mean_overhead"),
             "service_schedule_to_ready_seconds_mean": operational.get("service_schedule_to_ready_seconds_overhead"),
             "service_sidecar_started_delay_seconds_mean": operational.get("service_sidecar_started_delay_seconds_mean"),
-        })
+        }
+        for hop in range(1, MAX_CHAIN_HOPS + 1):
+            comparison_row[f"hop_{hop}_activation_bytes_mean"] = latency.get(
+                f"hop_{hop}_activation_bytes_mean_delta"
+            )
+            comparison_row[f"hop_{hop}_forward_ms_mean"] = latency.get(
+                f"hop_{hop}_forward_ms_mean_delta"
+            )
+        rows.append(comparison_row)
 
         with out_path.open("w", encoding="utf-8", newline="") as handle:
             writer = csv.DictWriter(handle, fieldnames=fieldnames)
@@ -3143,6 +3881,7 @@ class RQ21PairedBenchmarkRunner:
         lines = [
             "# RQ2.1 Aggregated Results",
             "",
+            f"- Topology: `{run.get('topology')}`",
             f"- Image: `{run.get('image_ref')}`",
             f"- Mesh revision: `{run.get('mesh_revision')}`",
             f"- Completed executions: `{run.get('completed_condition_executions')}`",
@@ -3169,19 +3908,40 @@ class RQ21PairedBenchmarkRunner:
             "",
             "## Activation Sanity",
             "",
-            "| Condition | Total activation bytes mean | Hop 1 bytes mean | Hop 2 bytes mean |",
-            "| --- | ---: | ---: | ---: |",
         ])
+        active_hops = self.active_hop_indexes()
+        activation_header = ["Condition", "Total activation bytes mean"] + [
+            f"Hop {hop} bytes mean" for hop in active_hops
+        ]
+        lines.append("| " + " | ".join(activation_header) + " |")
+        lines.append("| --- | " + " | ".join(["---:"] * (len(activation_header) - 1)) + " |")
         for key in ("plain", "mtls"):
             payload = (aggregated.get("overall_by_condition") or {}).get(key) or {}
             latency_payload = payload.get("latency") or {}
             total_activation = latency_payload.get("total_activation_bytes") or {}
-            hop_1_activation = latency_payload.get("hop_1_activation_bytes") or {}
-            hop_2_activation = latency_payload.get("hop_2_activation_bytes") or {}
-            lines.append(
-                f"| {key} | {total_activation.get('mean')} | "
-                f"{hop_1_activation.get('mean')} | {hop_2_activation.get('mean')} |"
+            values = [key, str(total_activation.get("mean"))]
+            values.extend(
+                str((latency_payload.get(f"hop_{hop}_activation_bytes") or {}).get("mean"))
+                for hop in active_hops
             )
+            lines.append("| " + " | ".join(values) + " |")
+        lines.extend([
+            "",
+            "## Hop Forwarding",
+            "",
+        ])
+        forward_header = ["Condition"] + [f"Hop {hop} forward ms mean" for hop in active_hops]
+        lines.append("| " + " | ".join(forward_header) + " |")
+        lines.append("| --- | " + " | ".join(["---:"] * (len(forward_header) - 1)) + " |")
+        for key in ("plain", "mtls"):
+            payload = (aggregated.get("overall_by_condition") or {}).get(key) or {}
+            latency_payload = payload.get("latency") or {}
+            values = [key]
+            values.extend(
+                str((latency_payload.get(f"hop_{hop}_forward_ms") or {}).get("mean"))
+                for hop in active_hops
+            )
+            lines.append("| " + " | ".join(values) + " |")
         lines.extend([
             "",
             "## Paired Pass Deltas",
@@ -3265,6 +4025,7 @@ class RQ21PairedBenchmarkRunner:
         summary = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "smoke": bool(self.args.smoke),
+            "topology": self.selected_topology(),
             "image_ref": self.effective_image_ref,
             "mesh_revision": self.mesh_revision,
             "execution_plan": self.execution_plan,
@@ -3281,8 +4042,10 @@ class RQ21PairedBenchmarkRunner:
             },
             "notes": [
                 "Plain and mTLS are measured on the same AKS cluster, image digest, nodepool, resources, and split topology.",
-                "mTLS condition keeps the benchmark client outside the mesh and protects the downstream service with STRICT PeerAuthentication plus AuthorizationPolicy.",
+                "chain_2svc is the primary RQ2.1 one-boundary experiment; chain_5svc is optional maximum-depth stress validation only.",
+                "mTLS condition keeps the benchmark client outside the mesh and protects downstream services with STRICT PeerAuthentication plus AuthorizationPolicy.",
                 "The paired runner captures scheduling delay, schedule-to-ready delay, and deployment-complexity snapshots before each benchmark pass.",
+                "CPU metrics are computed from kubelet container CPU counters across the benchmark window; memory metrics are aggregated from kubectl top samples.",
                 "Resource metrics are aggregated across all completed passes for each condition.",
                 "RQ2.1 resource metrics are blocking: missing service-namespace samples leave the paired artifact set incomplete.",
             ],
@@ -3323,6 +4086,14 @@ class RQ21PairedBenchmarkRunner:
             "total_activation_bytes_mean",
             "hop_1_activation_bytes_mean",
             "hop_2_activation_bytes_mean",
+            "hop_3_activation_bytes_mean",
+            "hop_4_activation_bytes_mean",
+            "hop_5_activation_bytes_mean",
+            "hop_1_forward_ms_mean",
+            "hop_2_forward_ms_mean",
+            "hop_3_forward_ms_mean",
+            "hop_4_forward_ms_mean",
+            "hop_5_forward_ms_mean",
             "security_validation_passed",
             "resource_metrics_available",
             "resource_metrics_reason",
@@ -3355,6 +4126,9 @@ class RQ21PairedBenchmarkRunner:
             "node_request_headroom_cpu_mcores",
             "node_request_headroom_memory_mib",
             "deployment_kubernetes_object_count",
+            "deployment_service_account_count",
+            "deployment_peer_authentication_count",
+            "deployment_authorization_policy_count",
             "deployment_control_plane_pod_count",
             "deployment_injected_container_count",
             "control_plane_shares_benchmark_node",
@@ -3379,8 +4153,15 @@ class RQ21PairedBenchmarkRunner:
                 row["resource_passes_covered"] = json.dumps(resource_row.get("passes_covered") or [])
                 row["operational_passes_covered"] = json.dumps(operational_row.get("passes_covered") or [])
                 row["security_validation_passed"] = summary.get("security_validation_passed") if key == "mtls" else None
+                for hop in range(1, MAX_CHAIN_HOPS + 1):
+                    row[f"hop_{hop}_activation_bytes_mean"] = row.get(f"hop_{hop}_activation_bytes_mean")
+                    row[f"hop_{hop}_forward_ms_mean"] = row.get(f"hop_{hop}_forward_ms_mean")
                 deployment_complexity = operational_row.get("deployment_complexity") or {}
+                kind_counts = deployment_complexity.get("kubernetes_object_counts_by_kind") or {}
                 row["deployment_kubernetes_object_count"] = deployment_complexity.get("kubernetes_object_count")
+                row["deployment_service_account_count"] = kind_counts.get("ServiceAccount")
+                row["deployment_peer_authentication_count"] = kind_counts.get("PeerAuthentication")
+                row["deployment_authorization_policy_count"] = kind_counts.get("AuthorizationPolicy")
                 row["deployment_control_plane_pod_count"] = deployment_complexity.get("always_on_control_plane_pod_count")
                 row["deployment_injected_container_count"] = deployment_complexity.get("total_injected_container_count")
                 control_plane = operational_row.get("control_plane_colocation") or {}
@@ -3401,6 +4182,7 @@ class RQ21PairedBenchmarkRunner:
         lines = [
             "# RQ2.1 Paired Benchmark Summary",
             "",
+            f"- Topology: `{summary.get('topology')}`",
             f"- Smoke mode: `{summary['smoke']}`",
             f"- Image: `{summary['image_ref']}`",
             f"- Mesh revision: `{summary['mesh_revision']}`",
@@ -3425,6 +4207,9 @@ class RQ21PairedBenchmarkRunner:
             f"| Schedule-to-ready overhead (s mean) | {operational.get('service_schedule_to_ready_seconds_overhead')} |",
             f"| mTLS sidecar start delay (s mean) | {operational.get('service_sidecar_started_delay_seconds_mean')} |",
             f"| Additional Kubernetes objects | {deployment_delta.get('additional_kubernetes_object_count')} |",
+            f"| Additional ServiceAccounts | {deployment_delta.get('additional_service_account_count')} |",
+            f"| Additional PeerAuthentications | {deployment_delta.get('additional_peer_authentication_count')} |",
+            f"| Additional AuthorizationPolicies | {deployment_delta.get('additional_authorization_policy_count')} |",
             f"| Additional control-plane pods | {deployment_delta.get('additional_always_on_control_plane_pod_count')} |",
             f"| Additional injected containers | {deployment_delta.get('additional_injected_container_count')} |",
             "",
@@ -3432,16 +4217,18 @@ class RQ21PairedBenchmarkRunner:
         lines.extend([
             "## Activation Sanity",
             "",
-            "| Condition | Total activation bytes mean | Hop 1 bytes mean | Hop 2 bytes mean |",
-            "| --- | ---: | ---: | ---: |",
         ])
+        active_hops = self.active_hop_indexes()
+        activation_header = ["Condition", "Total activation bytes mean"] + [
+            f"Hop {hop} bytes mean" for hop in active_hops
+        ]
+        lines.append("| " + " | ".join(activation_header) + " |")
+        lines.append("| --- | " + " | ".join(["---:"] * (len(activation_header) - 1)) + " |")
         for key in ("plain", "mtls"):
             payload = latency_by_condition.get(key) or {}
-            lines.append(
-                f"| {key} | {payload.get('total_activation_bytes_mean')} | "
-                f"{payload.get('hop_1_activation_bytes_mean')} | "
-                f"{payload.get('hop_2_activation_bytes_mean')} |"
-            )
+            values = [key, str(payload.get("total_activation_bytes_mean"))]
+            values.extend(str(payload.get(f"hop_{hop}_activation_bytes_mean")) for hop in active_hops)
+            lines.append("| " + " | ".join(values) + " |")
         lines.append("")
         if mtls_control_plane.get("shares_benchmark_node"):
             lines.extend([
@@ -3471,6 +4258,7 @@ class RQ21PairedBenchmarkRunner:
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "completed": completed,
             "smoke": bool(self.args.smoke),
+            "topology": self.selected_topology(),
             "artifact_dir": str(self.artifact_dir),
             "plain_config": str(self.source_paths["plain"]),
             "mtls_config": str(self.source_paths["mtls"]),
@@ -3494,9 +4282,12 @@ class RQ21PairedBenchmarkRunner:
 
     def run(self) -> None:
         self.validate_configs()
+        topology = self.selected_topology()
+        topology_spec = self.topology_spec() or {}
         log(
-            "RQ2.1 paired benchmark scope: chain_2svc_plain vs chain_2svc_mtls only; "
-            "RQ2.2 and chain_5svc are intentionally not run."
+            f"RQ2.1 paired benchmark scope: {self.condition_names['plain']} vs "
+            f"{self.condition_names['mtls']} ({topology_spec.get('framing', topology)}). "
+            "RQ2.2 is intentionally not run."
         )
         self.prepare_artifact_dirs()
         self.verify_required_files()

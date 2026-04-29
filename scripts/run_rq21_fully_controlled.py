@@ -31,6 +31,18 @@ DEFAULT_LOCATION = "swedencentral"
 DEFAULT_NODE_VM_SIZE = "Standard_D8s_v3"
 DEFAULT_NODE_COUNT = 1
 INFRA_DIR = REPO_ROOT / "infra"
+SUPPORTED_TOPOLOGIES = {
+    2: {
+        "name": "chain_2svc",
+        "split_points": ["layer2"],
+        "framing": "primary one-boundary RQ2.1 preflight",
+    },
+    5: {
+        "name": "chain_5svc",
+        "split_points": ["layer1", "layer2", "layer3", "layer4"],
+        "framing": "optional maximum-depth RQ2.1 stress preflight",
+    },
+}
 
 
 class PipelineError(RuntimeError):
@@ -241,14 +253,14 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Stage 1/2 RQ2.1 runner: generate and optionally apply the managed-Istio "
-            "chain_2svc_mtls manifests, then run a fail-closed mTLS/service-identity preflight. "
+            "chain_2svc_mtls or optional chain_5svc_mtls manifests, then run a fail-closed mTLS/service-identity preflight. "
             "This does not run the paired plain-vs-mTLS benchmark."
         )
     )
     parser.add_argument(
         "--config",
         default=DEFAULT_CONFIG_REL,
-        help="RQ2.1 chain_2svc_mtls preflight config YAML; plain baseline configs are generated separately.",
+        help="RQ2.1 mTLS preflight config YAML; plain baseline configs are generated separately.",
     )
     parser.add_argument(
         "--results-root",
@@ -357,7 +369,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--smoke-benchmark",
         action="store_true",
-        help="After the mTLS preflight, run the tiny chain_2svc_mtls benchmark profile inside the client pod.",
+        help="After the mTLS preflight, run the tiny selected-condition benchmark profile inside the client pod.",
     )
     args = parser.parse_args()
     if args.build and not args.push:
@@ -434,18 +446,72 @@ class RQ21PreflightRunner:
             return self.state.effective_config_path
         return self.source_config_path
 
+    def _expected_downstream_segments(self) -> list[str]:
+        return [str(index) for index in range(2, self.service_count + 1)]
+
+    def _authorization_policy_configs(self) -> list[dict[str, str]]:
+        authz = self.mesh.get("authorization_policy") or {}
+        if not isinstance(authz, dict) or not bool(authz.get("enabled", False)):
+            return []
+        raw_policies = authz.get("policies")
+        policies: list[dict[str, str]] = []
+        if isinstance(raw_policies, list) and raw_policies:
+            for item in raw_policies:
+                if not isinstance(item, dict):
+                    continue
+                source_segment = str(item.get("source_segment_index") or "").strip()
+                downstream_segment = str(item.get("downstream_segment_index") or "").strip()
+                if not source_segment or not downstream_segment:
+                    continue
+                policies.append({
+                    "name": str(
+                        item.get("name")
+                        or f"service{downstream_segment}-service{source_segment}-only"
+                    ),
+                    "source_segment_index": source_segment,
+                    "downstream_segment_index": downstream_segment,
+                })
+            return policies
+        source_segment = str(authz.get("source_segment_index") or "1")
+        downstream_segment = str(authz.get("downstream_segment_index") or "2")
+        return [
+            {
+                "name": str(authz.get("name") or "downstream-service1-only"),
+                "source_segment_index": source_segment,
+                "downstream_segment_index": downstream_segment,
+            }
+        ]
+
+    def _expected_authorization_policies(self) -> list[dict[str, str]]:
+        accounts = self.mesh.get("service_accounts") or {}
+        expected: list[dict[str, str]] = []
+        for policy in self._authorization_policy_configs():
+            source_segment = str(policy["source_segment_index"])
+            source_service_account = str(accounts.get(source_segment) or "")
+            expected.append({
+                **policy,
+                "expected_principal": f"cluster.local/ns/{self.service_namespace}/sa/{source_service_account}",
+            })
+        return expected
+
     def validate_config(self) -> None:
         errors: list[str] = []
         if self.condition.get("type") != "chain":
             errors.append("RQ2.1 Stage 1/2 condition must be type=chain")
-        if self.service_count != 2:
+        topology_spec = SUPPORTED_TOPOLOGIES.get(self.service_count)
+        if topology_spec is None:
             errors.append(
-                f"RQ2.1 Stage 1/2 supports only chain_2svc; found {self.service_count} services"
+                f"RQ2.1 Stage 1/2 supports only chain_2svc and optional chain_5svc; found {self.service_count} services"
             )
-        if self.condition_name != "chain_2svc_mtls":
-            errors.append(
-                "This preflight runner is intentionally scoped to condition chain_2svc_mtls"
-            )
+        else:
+            expected_name = f"{topology_spec['name']}_mtls"
+            if self.condition_name != expected_name:
+                errors.append(f"This preflight runner expected condition {expected_name}")
+            split_points = list(self.condition.get("chain_split_points") or [])
+            if split_points != list(topology_spec["split_points"]):
+                errors.append(
+                    f"{expected_name} must use chain_split_points={topology_spec['split_points']}; found {split_points}"
+                )
         if not bool(self.mesh.get("enabled", False)):
             errors.append("kubernetes.mesh.enabled must be true for the mTLS preflight")
         if str(self.mesh.get("implementation") or "") != "managed AKS Istio add-on":
@@ -459,7 +525,7 @@ class RQ21PreflightRunner:
             errors.append("kubernetes.client_namespace must keep the benchmark client outside the mesh namespace")
 
         service_accounts = self.mesh.get("service_accounts") or {}
-        for index in ("1", "2"):
+        for index in [str(value) for value in range(1, self.service_count + 1)]:
             if not str(service_accounts.get(index) or "").strip():
                 errors.append(f"kubernetes.mesh.service_accounts.{index} must be set")
 
@@ -478,18 +544,36 @@ class RQ21PreflightRunner:
             for item in peer.get("strict_workloads") or []
             if isinstance(item, dict)
         }
-        if strict_segments != {"2"}:
-            errors.append("kubernetes.mesh.peer_authentication.strict_workloads must target only segment_index 2")
+        expected_strict_segments = set(self._expected_downstream_segments())
+        if strict_segments != expected_strict_segments:
+            errors.append(
+                "kubernetes.mesh.peer_authentication.strict_workloads must target only downstream segment indexes "
+                f"{sorted(expected_strict_segments)}"
+            )
 
         authorization_policy = self.mesh.get("authorization_policy") or {}
         if not bool(authorization_policy.get("enabled", False)):
             errors.append("kubernetes.mesh.authorization_policy.enabled must be true")
-        if str(authorization_policy.get("source_segment_index") or "1") != "1":
-            errors.append("kubernetes.mesh.authorization_policy.source_segment_index must be 1")
-        if str(authorization_policy.get("downstream_segment_index") or "2") != "2":
-            errors.append("kubernetes.mesh.authorization_policy.downstream_segment_index must be 2")
-        if not str(authorization_policy.get("name") or "").strip():
-            errors.append("kubernetes.mesh.authorization_policy.name must be set")
+        policies = self._authorization_policy_configs()
+        expected_pairs = {
+            (str(index - 1), str(index))
+            for index in range(2, self.service_count + 1)
+        }
+        observed_pairs = {
+            (
+                str(policy.get("source_segment_index")),
+                str(policy.get("downstream_segment_index")),
+            )
+            for policy in policies
+        }
+        if observed_pairs != expected_pairs:
+            errors.append(
+                "kubernetes.mesh.authorization_policy must contain exactly immediate upstream->downstream pairs "
+                f"{sorted(expected_pairs)}; found {sorted(observed_pairs)}"
+            )
+        for policy in policies:
+            if not str(policy.get("name") or "").strip():
+                errors.append("kubernetes.mesh.authorization_policy policy names must be set")
 
         if errors:
             raise PipelineError("RQ2.1 config validation failed:\n- " + "\n- ".join(errors))
@@ -1251,17 +1335,14 @@ class RQ21PreflightRunner:
         return authz if isinstance(authz, dict) else {}
 
     def _authorization_policy_name(self) -> str:
-        return str(
-            self._authorization_policy_config().get("name")
-            or "downstream-service1-only"
-        )
+        expected = self._expected_authorization_policies()
+        return expected[0]["name"] if expected else "downstream-service1-only"
 
-    def _authorization_policy_expected_principal(self) -> str:
-        authz = self._authorization_policy_config()
-        source_segment = str(authz.get("source_segment_index") or "1")
-        accounts = self.mesh.get("service_accounts") or {}
-        source_service_account = str(accounts.get(source_segment) or "")
-        return f"cluster.local/ns/{self.service_namespace}/sa/{source_service_account}"
+    def _authorization_policy_expected_principal(self, policy: dict[str, str] | None = None) -> str:
+        if policy is not None:
+            return str(policy.get("expected_principal") or "")
+        expected = self._expected_authorization_policies()
+        return expected[0]["expected_principal"] if expected else ""
 
     def _condition_service_name(self, segment_index: int) -> str:
         template = str(self.k8s.get("service_name_template") or "{condition}-svc-{index}")
@@ -1446,37 +1527,50 @@ class RQ21PreflightRunner:
 
     def _validate_authorization_policy(self, policies: list[dict[str, Any]]) -> list[str]:
         errors: list[str] = []
-        expected_name = self._authorization_policy_name()
-        expected_principal = self._authorization_policy_expected_principal()
+        expected_policies = self._expected_authorization_policies()
         by_name = {
             str((item.get("metadata") or {}).get("name") or ""): item
             for item in policies
         }
-        policy = by_name.get(expected_name)
-        if not policy:
-            errors.append(f"Missing AuthorizationPolicy {expected_name}")
-            return errors
-
-        spec = policy.get("spec") or {}
-        selector = (spec.get("selector") or {}).get("matchLabels") or {}
-        if (
-            selector.get("condition") != self.condition_name
-            or selector.get("segment-index") != "2"
-            or selector.get("workload-role") != "service"
-        ):
+        expected_names = {policy["name"] for policy in expected_policies}
+        observed_names = {name for name in by_name if name}
+        unexpected_names = sorted(observed_names - expected_names)
+        if unexpected_names:
+            errors.append(f"Unexpected AuthorizationPolicy resources: {unexpected_names}")
+        if len(policies) != len(expected_policies):
             errors.append(
-                f"AuthorizationPolicy {expected_name} must select condition={self.condition_name}, "
-                "segment-index=2, workload-role=service"
+                f"Expected exactly {len(expected_policies)} AuthorizationPolicy resources; found {len(policies)}"
             )
-        if str(spec.get("action") or "ALLOW") != "ALLOW":
-            errors.append(f"AuthorizationPolicy {expected_name} must use action=ALLOW")
 
-        observed_principals = self._authorization_policy_principals(policy)
-        if expected_principal not in observed_principals:
-            errors.append(
-                f"AuthorizationPolicy {expected_name} must allow source principal {expected_principal}; "
-                f"observed {observed_principals}"
-            )
+        for expected in expected_policies:
+            expected_name = expected["name"]
+            expected_principal = self._authorization_policy_expected_principal(expected)
+            downstream_segment = expected["downstream_segment_index"]
+            policy = by_name.get(expected_name)
+            if not policy:
+                errors.append(f"Missing AuthorizationPolicy {expected_name}")
+                continue
+
+            spec = policy.get("spec") or {}
+            selector = (spec.get("selector") or {}).get("matchLabels") or {}
+            if (
+                selector.get("condition") != self.condition_name
+                or selector.get("segment-index") != downstream_segment
+                or selector.get("workload-role") != "service"
+            ):
+                errors.append(
+                    f"AuthorizationPolicy {expected_name} must select condition={self.condition_name}, "
+                    f"segment-index={downstream_segment}, workload-role=service"
+                )
+            if str(spec.get("action") or "ALLOW") != "ALLOW":
+                errors.append(f"AuthorizationPolicy {expected_name} must use action=ALLOW")
+
+            observed_principals = sorted(set(self._authorization_policy_principals(policy)))
+            if observed_principals != [expected_principal]:
+                errors.append(
+                    f"AuthorizationPolicy {expected_name} must allow only source principal {expected_principal}; "
+                    f"observed {observed_principals}"
+                )
         return errors
 
     def collect_preflight_metadata(
@@ -1497,7 +1591,8 @@ class RQ21PreflightRunner:
             "captured_at": datetime.now(timezone.utc).isoformat(),
             "config_path": str(self._active_config_path()),
             "condition": self.condition_name,
-            "topology": "chain_2svc",
+            "topology": (SUPPORTED_TOPOLOGIES.get(self.service_count) or {}).get("name"),
+            "service_count": self.service_count,
             "mesh": {
                 "enabled": bool(self.mesh.get("enabled", False)),
                 "implementation": self.mesh.get("implementation"),
@@ -1674,17 +1769,35 @@ class RQ21PreflightRunner:
             if default_spec.get("selector"):
                 errors.append("Namespace default PeerAuthentication must not have a workload selector")
 
-        strict_peer = peer_by_name.get("downstream-strict")
-        if not strict_peer:
-            errors.append("Missing downstream-strict PeerAuthentication")
-        else:
-            strict_spec = strict_peer.get("spec") or {}
-            selector = (strict_spec.get("selector") or {}).get("matchLabels") or {}
-            if (strict_spec.get("mtls") or {}).get("mode") != "STRICT":
-                errors.append("downstream-strict PeerAuthentication must set mtls.mode=STRICT")
-            if selector.get("condition") != self.condition_name or selector.get("segment-index") != "2":
+        strict_by_segment: dict[str, list[dict[str, Any]]] = {}
+        for peer_auth in peer_auths:
+            spec = peer_auth.get("spec") or {}
+            selector = (spec.get("selector") or {}).get("matchLabels") or {}
+            mode = str((spec.get("mtls") or {}).get("mode") or "").upper()
+            if (
+                mode == "STRICT"
+                and selector.get("condition") == self.condition_name
+                and selector.get("workload-role") == "service"
+            ):
+                strict_by_segment.setdefault(str(selector.get("segment-index") or ""), []).append(peer_auth)
+        expected_strict_segments = set(self._expected_downstream_segments())
+        observed_strict_segments = set(strict_by_segment)
+        expected_peer_count = 1 + len(expected_strict_segments)
+        if len(peer_auths) != expected_peer_count:
+            errors.append(
+                f"Expected exactly {expected_peer_count} PeerAuthentication resources "
+                f"(namespace default plus downstream STRICT policies); found {len(peer_auths)}"
+            )
+        if observed_strict_segments != expected_strict_segments:
+            errors.append(
+                "STRICT PeerAuthentication resources must select exactly downstream service segments "
+                f"{sorted(expected_strict_segments)}; found {sorted(observed_strict_segments)}"
+            )
+        for segment in sorted(expected_strict_segments):
+            if len(strict_by_segment.get(segment) or []) != 1:
                 errors.append(
-                    "downstream-strict PeerAuthentication must select the downstream service workload with condition and segment-index=2"
+                    f"Expected exactly one STRICT PeerAuthentication for segment {segment}; "
+                    f"found {len(strict_by_segment.get(segment) or [])}"
                 )
 
         errors.extend(self._validate_authorization_policy(authorization_policies))
@@ -1809,9 +1922,11 @@ class RQ21PreflightRunner:
         result_payload: dict[str, Any] = {
             "description": (
                 "Positive chain probe: non-meshed benchmark client calls service1 only; "
-                "service1 must reach service2 through the mesh and return two hop timings."
+                f"the mesh-protected chain must return {self.service_count} hop timings."
             ),
             "target": first_target,
+            "expected_hop_count": self.service_count,
+            "expected_hop_indexes": list(range(1, self.service_count + 1)),
             "output_file": str(output_path),
         }
 
@@ -1848,8 +1963,10 @@ class RQ21PreflightRunner:
                 "        'hop_timings': hops,\n"
                 "    }\n"
                 "    print(json.dumps(payload, indent=2))\n"
-                "    if len(hops) != 2 or sorted(hop['hop_index'] for hop in hops) != [1, 2]:\n"
-                "        print('UNEXPECTED_HOPS: service1 did not return both chain hop timings', file=sys.stderr)\n"
+                "    expected_hops = int(sys.argv[3])\n"
+                "    expected_indexes = list(range(1, expected_hops + 1))\n"
+                "    if len(hops) != expected_hops or sorted(hop['hop_index'] for hop in hops) != expected_indexes:\n"
+                "        print('UNEXPECTED_HOPS: service1 did not return the expected chain hop timings', file=sys.stderr)\n"
                 "        sys.exit(43)\n"
                 "finally:\n"
                 "    client.close()\n"
@@ -1866,6 +1983,7 @@ class RQ21PreflightRunner:
                 probe_code,
                 first_target,
                 str(self.k8s.get("max_message_bytes", 16 * 1024 * 1024)),
+                str(self.service_count),
             ]
             completed = run_command(
                 command,
@@ -1879,9 +1997,20 @@ class RQ21PreflightRunner:
                 "returncode": completed.returncode,
                 "succeeded": completed.returncode == 0,
             })
+            try:
+                probe_payload = json.loads(completed.stdout or "{}")
+                if isinstance(probe_payload, dict):
+                    result_payload.update({
+                        "hop_count": probe_payload.get("hop_count"),
+                        "hop_indexes": probe_payload.get("hop_indexes"),
+                        "hop_timings": probe_payload.get("hop_timings"),
+                        "response_shape": probe_payload.get("response_shape"),
+                    })
+            except json.JSONDecodeError:
+                pass
             if completed.returncode != 0:
                 errors.append(
-                    "Positive service1-to-service2 chain probe failed; see diagnostics/full_chain_probe_output.txt"
+                    "Positive service1 chain probe failed; see diagnostics/full_chain_probe_output.txt"
                 )
         except Exception as exc:
             output_path.write_text(str(exc), encoding="utf-8")
@@ -1890,25 +2019,32 @@ class RQ21PreflightRunner:
                 "succeeded": False,
                 "exception": str(exc),
             })
-            errors.append(f"Positive service1-to-service2 chain probe failed: {exc}")
+            errors.append(f"Positive service1 chain probe failed: {exc}")
         return result_payload, errors
 
     def _run_non_mesh_direct_denial_probe(self) -> tuple[dict[str, Any], list[str]]:
         errors: list[str] = []
         pod_name = "rq21-direct-deny-" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-        target = (
-            f"{self._condition_service_name(2)}."
-            f"{self.service_namespace}.svc.cluster.local:{self.k8s.get('grpc_port', 50051)}"
-        )
+        targets = [
+            {
+                "segment_index": index,
+                "target": (
+                    f"{self._condition_service_name(index)}."
+                    f"{self.service_namespace}.svc.cluster.local:{self.k8s.get('grpc_port', 50051)}"
+                ),
+            }
+            for index in range(2, self.service_count + 1)
+        ]
         manifest = self._debug_probe_manifest(pod_name)
         manifest_path = self.state.diagnostics_dir / "negative_direct_probe_pod.yaml"
         output_path = self.state.diagnostics_dir / "negative_direct_probe_output.txt"
         manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
         result_payload: dict[str, Any] = {
-            "description": "Non-meshed debug pod direct gRPC readiness probe to downstream service2.",
+            "description": "Non-meshed debug pod direct gRPC readiness probes to downstream services.",
             "pod_name": pod_name,
             "namespace": self.client_namespace,
-            "target": target,
+            "target": targets[0]["target"] if targets else None,
+            "targets": targets,
             "expected_failure": True,
             "manifest_file": str(manifest_path),
             "output_file": str(output_path),
@@ -1943,38 +2079,59 @@ class RQ21PreflightRunner:
                 "finally:\n"
                 "    channel.close()\n"
             )
-            completed = run_command([
-                "kubectl",
-                "exec",
-                "-n",
-                self.client_namespace,
-                pod_name,
-                "--",
-                "python",
-                "-c",
-                probe_code,
-                target,
-                "8",
-            ], capture_output=True, check=False, timeout_seconds=60)
-            combined_output = (completed.stdout or "") + (completed.stderr or "")
-            output_path.write_text(combined_output, encoding="utf-8")
-            blocked_as_expected = completed.returncode == 42
+            output_chunks: list[str] = []
+            target_results = []
+            for target_record in targets:
+                completed = run_command([
+                    "kubectl",
+                    "exec",
+                    "-n",
+                    self.client_namespace,
+                    pod_name,
+                    "--",
+                    "python",
+                    "-c",
+                    probe_code,
+                    target_record["target"],
+                    "8",
+                ], capture_output=True, check=False, timeout_seconds=60)
+                combined_output = (completed.stdout or "") + (completed.stderr or "")
+                output_chunks.append(
+                    f"## segment {target_record['segment_index']} -> {target_record['target']}\n"
+                    + combined_output
+                )
+                blocked_as_expected = completed.returncode == 42
+                target_result = {
+                    **target_record,
+                    "returncode": completed.returncode,
+                    "blocked_as_expected": blocked_as_expected,
+                    "succeeded_unexpectedly": completed.returncode == 0,
+                }
+                target_results.append(target_result)
+                if completed.returncode == 0:
+                    errors.append(
+                        f"Non-meshed debug pod unexpectedly reached downstream service{target_record['segment_index']} directly; "
+                        "STRICT mTLS/AuthorizationPolicy enforcement did not fail closed"
+                    )
+                elif completed.returncode != 42:
+                    errors.append(
+                        f"Non-meshed debug pod denial probe for service{target_record['segment_index']} did not complete cleanly; "
+                        "see diagnostics/negative_direct_probe_output.txt"
+                    )
+            output_path.write_text("\n".join(output_chunks), encoding="utf-8")
+            all_blocked = bool(target_results) and all(item["blocked_as_expected"] for item in target_results)
             result_payload.update({
-                "returncode": completed.returncode,
-                "blocked_as_expected": blocked_as_expected,
-                "succeeded_unexpectedly": completed.returncode == 0,
+                "returncode": 42 if all_blocked else None,
+                "blocked_as_expected": all_blocked,
+                "succeeded_unexpectedly": any(item["succeeded_unexpectedly"] for item in target_results),
+                "target_results": target_results,
+                "blocked_segments": [
+                    item["segment_index"]
+                    for item in target_results
+                    if item["blocked_as_expected"]
+                ],
             })
-            if completed.returncode == 0:
-                errors.append(
-                    "Non-meshed debug pod unexpectedly reached downstream service2 directly; "
-                    "STRICT mTLS/AuthorizationPolicy enforcement did not fail closed"
-                )
-            elif completed.returncode != 42:
-                errors.append(
-                    "Non-meshed debug pod denial probe did not complete cleanly; "
-                    "see diagnostics/negative_direct_probe_output.txt"
-                )
-            else:
+            if all_blocked:
                 run_command([
                     "kubectl",
                     "delete",
@@ -2003,6 +2160,10 @@ class RQ21PreflightRunner:
             "ran": True,
             "expected_non_mesh_direct_failure": True,
             "authorization_policy_expected_principal": self._authorization_policy_expected_principal(),
+            "authorization_policy_expected_principals": [
+                policy["expected_principal"]
+                for policy in self._expected_authorization_policies()
+            ],
         }
         errors: list[str] = []
 
@@ -2220,8 +2381,10 @@ class RQ21PreflightRunner:
 
     def run(self) -> None:
         self.validate_config()
+        topology_spec = SUPPORTED_TOPOLOGIES.get(self.service_count) or {}
         log(
-            "RQ2.1 runner scope: chain_2svc_mtls preflight only; "
+            f"RQ2.1 runner scope: {self.condition_name} preflight "
+            f"({topology_spec.get('framing', 'supported RQ2.1 topology')}); "
             "the paired plain-vs-mTLS benchmark is intentionally not run here."
         )
         self.prepare_artifact_dirs()
