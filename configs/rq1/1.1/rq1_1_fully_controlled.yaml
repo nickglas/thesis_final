@@ -116,6 +116,7 @@ carry_forward:
 # produces the same output as monolithic ResNet-18 within tolerance.
 parity:
   # Maximum allowed absolute difference between monolithic and split outputs.
+  # value  1.0e-5 means 0.00001
   atol: 1.0e-5
   # Number of deterministic random inputs used for parity validation.
   num_inputs: 5

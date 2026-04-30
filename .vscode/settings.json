@@ -1,0 +1,27 @@
+{
+  "latex-workshop.latex.tools": [
+    {
+      "name": "lualatex",
+      "command": "lualatex",
+      "args": [
+        "-shell-escape",
+        "-synctex=1",
+        "-interaction=nonstopmode",
+        "-file-line-error",
+        "%DOC%"
+      ]
+    },
+    {
+      "name": "biber",
+      "command": "biber",
+      "args": ["%DOCFILE%"]
+    }
+  ],
+
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "lualatex -> biber -> lualatex x2",
+      "tools": ["lualatex", "biber", "lualatex", "lualatex"]
+    }
+  ]
+}
