@@ -6,40 +6,23 @@
 
 ## Design Recommendation
 
-**Decision: RQ2.2 should evaluate VM-level confidential execution as an incremental extension of the completed RQ2.1 secure AKS path, not as a new architecture study.**
+**Decision:** RQ2.2 evaluates VM-level confidential execution as an incremental extension of the completed RQ2.1 secure AKS path.
 
-**Primary configuration: `chain_2svc`.**
+**Primary configuration:** `chain_2svc`.
 
-**Security baseline carried forward: the final RQ2.1 `chain_2svc_mtls` contract: managed Istio / Azure Service Mesh mTLS, service identity, and AuthorizationPolicy for the downstream service.**
+**Security baseline carried forward:** the final RQ2.1 `chain_2svc_mtls` contract: managed Istio / Azure Service Mesh mTLS, service identity, and AuthorizationPolicy for the downstream service.
 
-**TEE mechanism recommendation: Azure Confidential VM / AKS confidential node execution using AMD SEV-SNP. This is a VM-level TEE, not Intel SGX and not an application-level enclave design.**
+**Confidential execution mechanism:** Azure Confidential VM / AKS confidential node execution using AMD SEV-SNP.
 
-**Initial protected workload: service2 only.**
+**Only approved region:** West Europe.
 
-**Do not use the old RQ2.1 `Standard_D8s_v3` result as the primary RQ2.2 baseline. RQ2.2 requires a new paired comparison.**
+**Only approved standard comparator:** `Standard_D8as_v5`.
 
-**`chain_5svc` is not part of the initial RQ2.2 experiment. It can only be considered later as optional stress evidence after `chain_2svc` is stable.**
+**Only approved confidential service2 node:** `Standard_DC8as_v5`.
 
-### Why this is the right RQ2.2 shape
+**Initial protected workload:** service2 only.
 
-RQ2.2 should answer a narrow question: what additional cost is paid when the selected protected downstream inference service is moved into a VM-level confidential execution environment while preserving the communication-level protections introduced in RQ2.1?
-
-It should not reopen:
-
-- split-point selection
-- chain-topology selection
-- service-mesh mechanism choice
-- mixed-ownership orchestration design
-- application-level trusted-code partitioning
-- Intel SGX packaging, EPC memory management, or SGX attestation plumbing
-
-The strongest thesis story is:
-
-1. RQ1 selected and transferred the deployment path.
-2. RQ2.1 hardened that path with service identity, mTLS, and AuthorizationPolicy.
-3. RQ2.2 adds VM-level confidential execution to the already protected downstream service and measures the incremental cost.
-
-That means the primary RQ2.2 comparison is not plain AKS versus secure AKS, and not old RQ2.1 standard-node results versus new confidential-node results. It is a new paired comparison between the same secure `chain_2svc_mtls` deployment with service2 on a standard node and with service2 on an AMD SEV-SNP confidential node.
+**The approved AMD SEV-SNP path is the only RQ2.2 plan.** If it cannot be used, RQ2.2 stops at feasibility/provisioning evidence and the thesis reports the platform limitation rather than switching to a different confidential-computing path or VM shape.
 
 ---
 
@@ -47,21 +30,21 @@ That means the primary RQ2.2 comparison is not plain AKS versus secure AKS, and 
 
 > **RQ2.2:** What additional performance and operational overhead is introduced when the protected downstream inference service is moved into an AMD SEV-SNP VM-level confidential execution environment while preserving the mTLS, service identity, and AuthorizationPolicy protections from RQ2.1?
 
-### Thesis-facing interpretation
+### Thesis-Facing Interpretation
 
 RQ2.1 measured communication-level hardening: service identity, managed-Istio mTLS, and AuthorizationPolicy for microservice-based ResNet-18 inference on AKS.
 
 RQ2.2 measures VM-level confidential execution as an additional protection layer on top of that completed RQ2.1 contract.
 
-RQ2.2 is therefore an incremental confidential-execution overhead study. It does not repeat the RQ2.1 plain-versus-mTLS comparison, and it does not treat the old RQ2.1 `Standard_D8s_v3` run as the primary standard baseline.
+RQ2.2 is therefore an incremental confidential-execution overhead study. It does not repeat the RQ2.1 plain-versus-mTLS comparison, and it does not use old RQ2.1 benchmark artifacts as the primary standard baseline. The standard baseline must be newly collected as part of the RQ2.2 pair.
 
-### Protected service selection
+### Protected Service Selection
 
-The initial protected workload is `service2` in `chain_2svc_mtls`.
+The protected workload is `service2` in `chain_2svc_mtls`.
 
 This is the natural RQ2.2 target because RQ2.1 already treats service2 as the downstream protected hop: service2 receives intermediate activations from service1, executes the later ResNet-18 segment after the split after `layer2`, and is protected by workload-scoped STRICT mTLS plus AuthorizationPolicy that allows only the service1 principal.
 
-### What RQ2.2 should explicitly measure
+### What RQ2.2 Measures
 
 1. Additional end-to-end latency when service2 runs on an AMD SEV-SNP confidential node.
 2. Additional tail-latency effects.
@@ -69,102 +52,81 @@ This is the natural RQ2.2 target because RQ2.1 already treats service2 as the do
 4. Resource effects for service2, service1, and their sidecars.
 5. Whether the RQ2.1 secure chain remains deployable and measurable when the protected downstream service is placed in a VM-level confidential execution environment.
 
-### What RQ2.2 should not become
+### Scope Boundaries
 
 RQ2.2 is not:
 
 - a new service-mesh study
 - a new partition-selection study
 - a mixed-cloud or cross-cluster deployment study
-- an Intel SGX or Gramine exercise
 - an application-level trusted-code isolation study
-- a comparison of all Azure confidential-computing products
+- a comparison of Azure confidential-computing products
 - a `chain_5svc` first-pass experiment
 
 ---
 
-## 2. Platform Recommendation
+## 2. Platform and Quota Contract
 
-### Recommended primary platform
+### Required Azure Platform
 
-**Use AKS confidential VM node pools backed by AMD SEV-SNP as the primary RQ2.2 mechanism.**
+RQ2.2 uses one AKS cluster in **West Europe** with heterogeneous node pools.
 
-This is the best thesis-facing choice because it:
+The only valid VM pair for the thesis-facing run is:
 
-1. keeps RQ2.2 inside the AKS deployment path already established in RQ1.5 and RQ2.1
-2. supports heterogeneous node pools, allowing service1 and service2 to run on different execution environments inside one cluster
-3. provides VM-level confidential computing without requiring Python, PyTorch, gRPC, or model-code rewrites
-4. preserves the RQ2.1 service-mesh and AuthorizationPolicy model
-5. gives a reproducible implementation path through Kubernetes placement, Azure node-pool metadata, and runtime validation
+| Role | Azure SKU | Azure quota family | Azure series | vCPUs |
+| --- | --- | --- | --- | ---: |
+| Standard service1 and standard service2 baseline | `Standard_D8as_v5` | `Standard DASv5 Family vCPUs` | `Dasv5` | 8 |
+| Confidential service2 | `Standard_DC8as_v5` | `Standard DCASv5 Family vCPUs` | `DCasv5` | 8 |
 
-### Recommended VM family and sizes
+### Confirmed Quota Requests
 
-Primary target:
+The accepted quota envelope for the full RQ2.2 experiment is:
 
-- standard baseline service2 node: `Standard_D8as_v5`, if available
-- confidential service2 node: `Standard_DC8as_v5`
+```text
+Region: West Europe
+Quota: Standard DCASv5 Family vCPUs
+Requested new limit: 16
+Reason: AKS confidential VM node pool for thesis benchmarking using Standard_DC8as_v5 / AMD SEV-SNP.
+```
 
-Reason:
+```text
+Region: West Europe
+Quota: Standard DASv5 Family vCPUs
+Requested new limit: 16
+Reason: matched non-confidential baseline using Standard_D8as_v5.
+```
 
-`Standard_D8as_v5` and `Standard_DC8as_v5` are much closer in generation, processor family, vCPU count, and memory shape than the old RQ2.1 `Standard_D8s_v3` baseline versus a new `Standard_DC8as_v5` confidential node. This makes the RQ2.2 comparison more defensible.
+### Quota Interpretation
 
-Recommended confidential family:
+The `DASv5` quota supports the standard RQ2.2 baseline with:
 
-- family: `DC`
-- series: `DCasv5`
-- preferred size: `Standard_DC8as_v5`
-- quota-limited fallbacks:
-  - `Standard_DC4as_v5`
-  - `Standard_DC2as_v5`
+- service1 on `Standard_D8as_v5`
+- service2 on `Standard_D8as_v5`
 
-Preferred standard baseline family:
+The `DCASv5` quota supports the confidential RQ2.2 condition with:
 
-- series: `Dasv5`
-- preferred size: `Standard_D8as_v5`
+- service2 on `Standard_DC8as_v5`
 
-Fallback standard baseline:
+The runner should use a rolling service2 strategy when needed so the standard service2 pool and confidential service2 pool do not need to coexist. The planned thesis-facing pair remains the same either way: `Standard_D8as_v5` versus `Standard_DC8as_v5`.
 
-- `Standard_D8s_v3`, only if `Standard_D8as_v5` is unavailable or quota-blocked
+### Hard Gate
 
-If the fallback baseline is used, the thesis must explicitly frame the result as the overhead of moving to the selected confidential Azure deployment path, not as a hardware-identical measurement of pure SEV-SNP overhead.
+The benchmark runner and preflight must fail closed if the selected standard/confidential pair is not:
 
-### Azure series to avoid for this RQ2.2 plan
+- region: `westeurope`
+- standard size: `Standard_D8as_v5`
+- confidential size: `Standard_DC8as_v5`
+- confidential backend: AMD SEV-SNP
+- standard quota family: `Standard DASv5 Family vCPUs`
+- confidential quota family: `Standard DCASv5 Family vCPUs`
 
-Avoid:
-
-- `DCsv2` / `DCsv3` as the AMD SEV-SNP path, because those are associated with Intel SGX-style confidential-computing nodes and imply a different threat model and implementation path
-- `DCesv6` / `DCedsv6` unless the project intentionally switches to Intel TDX
-- any wording that describes AMD SEV-SNP Confidential VMs as application-level enclaves
-
-### Why not AKS Confidential Containers preview
-
-Do not use AKS Confidential Containers as the primary RQ2.2 path.
-
-This RQ2.2 plan needs a stable thesis anchor. Confidential VM node pools are the cleaner fit because they preserve the existing container, service mesh, and AKS workflow while changing the node execution environment.
-
-### Why not Intel SGX-first
-
-Intel SGX would push RQ2.2 toward application-level trusted-code packaging, EPC memory constraints, SGX-specific attestation, and possible application rewrites. That is a legitimate future extension, but it is not the lowest-risk way to answer the current thesis question.
-
-### RQ2.2 platform decision
-
-**Primary mechanism:** AMD SEV-SNP Azure Confidential VM / AKS confidential node.
-
-**Primary series:** `DCasv5`.
-
-**Primary confidential size:** `Standard_DC8as_v5`.
-
-**Preferred standard comparator:** `Standard_D8as_v5`.
-
-**Not primary:** AKS Confidential Containers preview.
-
-**Not primary:** Intel SGX / DCsv2 / DCsv3.
+Only this approved AMD SEV-SNP SKU pair and newly collected RQ2.2 baseline are valid for the primary RQ2.2 result.
 
 ---
 
 ## 3. Baseline and Condition Set
 
-### Baseline principle
+### Baseline Principle
 
 RQ2.2 must isolate confidential-execution overhead from:
 
@@ -172,69 +134,52 @@ RQ2.2 must isolate confidential-execution overhead from:
 2. VM generation and CPU-family differences
 3. temporal cloud noise
 
-Therefore RQ2.2 needs a new paired comparison. The old RQ2.1 `Standard_D8s_v3` artifacts may be used as context, but not as the primary baseline.
+Therefore RQ2.2 needs a new paired comparison collected close in time.
 
-### Primary condition pair
+### Primary Condition Pair
 
 | Condition | Meaning | Status |
 | --- | --- | --- |
-| `chain_2svc_mtls_standard` | `chain_2svc` with RQ2.1 mTLS/service identity/Authz active; client outside mesh; service1 on standard node; service2 on standard node | Required |
-| `chain_2svc_mtls_confidential_service2` | Same secure deployment and benchmark protocol, but service2 runs on an AMD SEV-SNP confidential node | Required |
+| `chain_2svc_mtls_standard` | `chain_2svc` with RQ2.1 mTLS/service identity/Authz active; client outside mesh; service1 on `Standard_D8as_v5`; service2 on `Standard_D8as_v5` | Required |
+| `chain_2svc_mtls_confidential_service2` | Same secure deployment and benchmark protocol; service1 on `Standard_D8as_v5`; service2 on `Standard_DC8as_v5` AMD SEV-SNP confidential infrastructure | Required |
 
 ### Condition A: `chain_2svc_mtls_standard`
 
 - benchmark client remains outside the mesh
 - service namespace remains meshed
-- service1 runs on a standard Azure/AKS node
-- service2 runs on a standard Azure/AKS node
+- service1 runs on `Standard_D8as_v5`
+- service2 runs on `Standard_D8as_v5`
 - service1 to service2 remains protected by mTLS
 - service2 AuthorizationPolicy allows only the service1 principal
-- preferred service2 node SKU: `Standard_D8as_v5`
-- fallback service2 node SKU: `Standard_D8s_v3`, only if `Standard_D8as_v5` is unavailable or quota-blocked
 
 ### Condition B: `chain_2svc_mtls_confidential_service2`
 
 - benchmark client remains outside the mesh
 - service namespace remains meshed
-- service1 runs on a standard Azure/AKS node
-- service2 runs on an AMD SEV-SNP confidential node
+- service1 runs on `Standard_D8as_v5`
+- service2 runs on `Standard_DC8as_v5`
 - service1 to service2 uses the same mTLS policy as condition A
 - service2 uses the same AuthorizationPolicy as condition A
-- service2 placement on confidential hardware must be validated before benchmarking
-- preferred service2 node SKU: `Standard_DC8as_v5`
-- quota-limited service2 fallbacks: `Standard_DC4as_v5`, then `Standard_DC2as_v5`
+- service2 placement on confidential AMD SEV-SNP infrastructure must be validated before benchmarking
 
-### Why this pair is correct
-
-This pair keeps the comparison narrow:
-
-- same ResNet-18 model
-- same split after `layer2`
-- same service1 to service2 topology
-- same mTLS and service identity policy
-- same service2 AuthorizationPolicy
-- same service image digest where possible
-- same benchmark client process and benchmark protocol
-- new paired standard baseline collected close in time to the confidential condition
+### Intended Changed Variable
 
 The intended changed variable is:
 
-- service2 execution environment: standard node versus AMD SEV-SNP confidential node
+- service2 execution environment: standard Azure/AKS node versus AMD SEV-SNP confidential Azure/AKS node
 
-### Optional stress evidence
-
-`chain_5svc` should not be included in the initial RQ2.2 experiment. It can be treated only as later optional stress evidence after the `chain_2svc` service2-only path is stable and the thesis has enough time and quota.
+Everything else should remain identical or be recorded as a validity limitation.
 
 ---
 
 ## 4. Controlled Variables
 
-The following should remain identical, or as close as Azure availability permits:
+The following should remain identical across the paired conditions:
 
 - ResNet-18 model
 - split after `layer2`
 - `chain_2svc` service1 to service2 topology
-- image digest, if possible
+- image digest
 - benchmark protocol
 - warmup iterations
 - measured iterations
@@ -243,28 +188,24 @@ The following should remain identical, or as close as Azure availability permits
 - mTLS policy
 - service accounts and service identity assumptions
 - AuthorizationPolicy for service2
-- resource requests and limits where possible
+- resource requests and limits
 - security validation logic
 - activation-transfer size
 - result aggregation and reporting format
 
-The intended changed variable is:
-
-- service2 execution environment: standard Azure/AKS node versus AMD SEV-SNP confidential Azure/AKS node
-
-If the standard and confidential VM sizes cannot be closely matched, the mismatch must be recorded as an experimental limitation and reflected in the wording of the result.
+If any value differs, the artifact must record the difference explicitly.
 
 ---
 
 ## 5. Deployment Contract
 
-### Core idea
+### Core Idea
 
-RQ2.2 should move from the RQ2.1 same-node benchmark contract to a service2-aware placement contract.
+RQ2.2 moves from the RQ2.1 same-node benchmark contract to a service2-aware placement contract.
 
-The benchmark should keep service1 in the standard execution environment and move only service2 between a standard node and a confidential node.
+The benchmark keeps service1 in the standard execution environment and moves only service2 between a standard node and a confidential node.
 
-### Critical comparison rule
+### Critical Comparison Rule
 
 The standard and confidential conditions must have matched topology.
 
@@ -275,29 +216,28 @@ That means:
 - service count stays at two
 - service-to-service topology stays the same
 - service2 is the only intended placement difference
-- the standard condition should be rerun as part of RQ2.2, not imported from old RQ2.1 artifacts
+- the standard condition is rerun as part of RQ2.2
 
-### Recommended infrastructure contract
+### Infrastructure Contract
 
 Use one AKS cluster with heterogeneous pools:
 
 - `systempool`: standard small system pool for AKS system workloads
-- `clientpool`: standard pool for the non-meshed benchmark client, if separated from service1
-- `service1pool`: standard pool for service1, or the same standard pool as the benchmark client if the design intentionally chooses that simplification
+- `service1-standard-pool`: standard pool for service1
 - `service2-standard-pool`: standard pool for service2 in `chain_2svc_mtls_standard`
 - `service2-confidential-pool`: AMD SEV-SNP confidential pool for service2 in `chain_2svc_mtls_confidential_service2`
 
-### Placement contract
+The benchmark client may share a standard pool if the runner records and validates that placement consistently across conditions.
+
+### Placement Contract
 
 - benchmark client pod remains outside mesh injection
-- service1 pod remains on a standard node in both conditions
-- service2 pod runs on a standard node in condition A
-- service2 pod runs on an AMD SEV-SNP confidential node in condition B
+- service1 pod remains on `Standard_D8as_v5` infrastructure in both conditions
+- service2 pod runs on `Standard_D8as_v5` in condition A
+- service2 pod runs on `Standard_DC8as_v5` in condition B
 - service2 placement must be validated from pod placement, node labels, node pool, VM SKU, and node image metadata
-- service1 must not accidentally run on the confidential node unless the experiment is explicitly changed
+- service1 must not accidentally run on the confidential node
 - if service1 and service2 are on different nodes, the cross-node path must be matched in the standard baseline and reported as part of the deployment contract
-
-This is a deliberate break from the RQ2.1 same-node client-plus-service contract. The break is necessary because service2-only confidential placement changes the service-hosting node trust model.
 
 ---
 
@@ -310,31 +250,30 @@ Use a paired/interleaved design like RQ2.1:
 - 1000 measured iterations per condition in the full run
 - same warmup settings as RQ2.1 unless a smoke test explicitly uses fewer iterations
 - alternating or seeded interleaved condition order
-- same pinned image digest where possible
+- same pinned image digest
 - same RQ2.1 mTLS/Authz security validation before benchmarking
 - merged artifacts and summaries exported for the pair
 
 Do not compare against old RQ2.1 artifacts as the primary baseline.
 
-The old RQ2.1 result remains useful context for the thesis narrative: it shows the cost of adding communication-level hardening. RQ2.2 should report its primary overhead relative to the new RQ2.2 `chain_2svc_mtls_standard` baseline.
+The old RQ2.1 result remains useful context for the thesis narrative: it shows the cost of adding communication-level hardening. RQ2.2 reports its primary overhead relative to the new RQ2.2 `chain_2svc_mtls_standard` baseline.
 
 ---
 
 ## 7. Azure Infrastructure Plan
 
-### Required Azure checks
+### Required Azure Checks
 
-Before implementing the benchmark pipeline, verify:
+Before running the benchmark pipeline, verify:
 
-1. regional availability for `Standard_DC8as_v5`
-2. quota for `Standard_DC8as_v5`
-3. regional availability for `Standard_D8as_v5`
-4. quota for `Standard_D8as_v5`
-5. fallback availability for `Standard_DC4as_v5` and `Standard_DC2as_v5`
-6. whether the target AKS version and OS image support the desired confidential node-pool configuration
-7. whether the Terraform AzureRM provider version in use supports the required node-pool fields, or whether a controlled Azure CLI step is needed
+1. regional availability for `Standard_DC8as_v5` in West Europe
+2. regional availability for `Standard_D8as_v5` in West Europe
+3. approved `Standard DCASv5 Family vCPUs` quota is visible as 16
+4. approved `Standard DASv5 Family vCPUs` quota is visible as 16
+5. the selected AKS version and OS image support the required confidential node-pool configuration
+6. whether the Terraform AzureRM provider version in use supports the required node-pool fields, or whether a controlled Azure CLI step is needed
 
-### AKS node-pool requirements
+### AKS Node-Pool Requirements
 
 The implementation plan should add:
 
@@ -347,7 +286,7 @@ The implementation plan should add:
 - validation that service1 remains on a standard node
 - validation that the benchmark client remains outside mesh injection
 
-### Metadata to record
+### Metadata to Record
 
 Each RQ2.2 run should record:
 
@@ -367,14 +306,14 @@ Each RQ2.2 run should record:
 - PeerAuthentication and AuthorizationPolicy resources
 - attestation artifact path or explicit note that attestation was not collected
 
-### Expected verification commands
+### Expected Verification Commands
 
-Examples of checks to preserve in the implementation notes or preflight artifacts:
+Examples of checks to preserve in implementation notes or preflight artifacts:
 
 ```powershell
-az vm list-skus -l <region> --size Standard_DC8as_v5 -o table
-az vm list-skus -l <region> --size Standard_D8as_v5 -o table
-az vm list-usage -l <region> -o table
+az vm list-skus -l westeurope --size Standard_DC8as_v5 -o table
+az vm list-skus -l westeurope --size Standard_D8as_v5 -o table
+az vm list-usage -l westeurope -o table
 az aks nodepool show -g <resource-group> --cluster-name <cluster> -n <pool> --query "{name:name,vmSize:vmSize,nodeImageVersion:nodeImageVersion,osSKU:osSKU,mode:mode}"
 kubectl get nodes -L agentpool,node.kubernetes.io/instance-type,kubernetes.azure.com/mode
 kubectl get pod -n <service-namespace> -o wide -l condition=chain_2svc_mtls_confidential_service2,segment-index=2
@@ -411,7 +350,7 @@ RQ2.2 should report:
 - direct-denial probe against protected service2 from a non-meshed pod
 - service2 confidential node/VM validation
 
-### Resource and operation
+### Resource and Operation
 
 RQ2.2 should report:
 
@@ -426,13 +365,13 @@ RQ2.2 should report:
 - additional Kubernetes and Azure resources
 - cost/runtime notes if available
 
-### Validity checks
+### Validity Checks
 
 RQ2.2 should report:
 
 - activation bytes identical across conditions
 - same split topology
-- same image digest, or a documented image difference
+- same image digest
 - service2 placement validated
 - service1 placement validated
 - benchmark client outside mesh
@@ -443,7 +382,7 @@ RQ2.2 should report:
 
 ## 9. Threat Model and Limitations
 
-AMD SEV-SNP Confidential VM support is a VM-level TEE / confidential-computing environment. It is not Intel SGX and should not be described as application-level enclave execution.
+AMD SEV-SNP Confidential VM support is a VM-level TEE / confidential-computing environment.
 
 The guest OS, Python runtime, PyTorch process, Istio sidecar, and service code remain inside the confidential VM trust boundary. RQ2.2 does not isolate one Python function, one model layer, or one model segment from the guest OS.
 
@@ -460,32 +399,26 @@ The invalid security claims are:
 - RQ2.2 does not protect against malicious code already running inside the guest.
 - RQ2.2 does not protect against compromised credentials inside the VM.
 - RQ2.2 does not eliminate all side channels.
-- RQ2.2 is not generalizable to Intel SGX or Intel TDX without a separate experiment.
+- RQ2.2 is not generalizable beyond the approved AMD SEV-SNP AKS confidential-node path without a separate experiment design.
 
-### Istio sidecar and plaintext handling
+### Istio Sidecar and Plaintext Handling
 
 Istio sidecar placement affects where plaintext exists.
 
 If the service2 sidecar runs on the same confidential node and pod environment as service2, the sidecar and service process are inside the confidential VM boundary. Nevertheless, plaintext exists inside the guest runtime after TLS termination.
 
-If the sidecar cannot run on the confidential node, the RQ2.2 design must be revisited because the RQ2.1 security contract would no longer be preserved in the intended form.
+If the sidecar cannot run on the confidential node, the RQ2.2 design must stop and be revisited because the RQ2.1 security contract would no longer be preserved in the intended form.
 
-### Hardware matching limitation
+### Hardware Matching Limitation
 
-The preferred comparison is:
+The approved comparison is:
 
 - standard service2: `Standard_D8as_v5`
 - confidential service2: `Standard_DC8as_v5`
 
-If `Standard_D8as_v5` is unavailable and `Standard_D8s_v3` is used as the standard baseline, the comparison is not hardware-identical. In that case, the result must be framed as:
+If this exact pair cannot be used, preserve the feasibility artifacts and report the platform limitation instead of changing the thesis-facing benchmark path.
 
-> overhead of moving the protected downstream service to the selected confidential Azure deployment path
-
-not as:
-
-> pure SEV-SNP overhead under matched hardware
-
-### Placement limitation
+### Placement Limitation
 
 Single-node versus cross-node placement can affect latency. If service1 and service2 are on different nodes, the standard and confidential conditions must use matched cross-node topology where possible, and the network-path change must be reported.
 
@@ -493,32 +426,33 @@ Single-node versus cross-node placement can affect latency. If service1 and serv
 
 ## 10. Staged Implementation Plan
 
-### Stage 0: Azure feasibility
+### Stage 0: Azure Feasibility
 
-Objective: prove that the target Azure platform is available before changing code.
+Objective: prove that the approved AMD SEV-SNP AKS platform is available before running the benchmark.
 
 Tasks:
 
-1. Verify `DCasv5` availability in the target region.
-2. Verify `Standard_DC8as_v5` quota.
-3. Verify `Standard_D8as_v5` quota.
-4. Identify fallback SKUs: `Standard_DC4as_v5`, `Standard_DC2as_v5`, and `Standard_D8s_v3`.
+1. Verify `Standard_DC8as_v5` availability in West Europe.
+2. Verify `Standard_D8as_v5` availability in West Europe.
+3. Verify `Standard DCASv5 Family vCPUs` quota limit is 16.
+4. Verify `Standard DASv5 Family vCPUs` quota limit is 16.
 5. Check whether AKS confidential node pools support the required cluster, OS image, and node-pool configuration.
 6. Decide whether Terraform alone is sufficient or whether an Azure CLI node-pool step is required.
 
 Exit criteria:
 
-- target confidential and standard SKUs are confirmed, or fallback strategy is selected
+- the approved standard and confidential SKUs are confirmed
+- the approved quotas are visible in Azure
 - no blocking AKS confidential node-pool limitation is discovered
-- the selected SKU pair is recorded before implementation begins
+- the selected SKU pair is recorded before benchmarking begins
 
-### Stage 1: Manifest and provisioning design
+### Stage 1: Manifest and Provisioning Design
 
 Objective: design the placement/provisioning model without running the full benchmark.
 
 Tasks:
 
-1. Add planned config fields for service2 confidential placement.
+1. Add config fields for service2 confidential placement.
 2. Add Terraform/node-pool plan for standard service1, standard service2 baseline, and confidential service2 placement.
 3. Add manifest-generation plan for `chain_2svc_mtls_standard`.
 4. Add manifest-generation plan for `chain_2svc_mtls_confidential_service2`.
@@ -529,15 +463,15 @@ Exit criteria:
 - generated manifests can express service1 standard placement and service2 standard/confidential placement
 - no ad hoc manifest editing is required
 
-### Stage 2: Smoke deployment
+### Stage 2: Smoke Deployment
 
-Objective: prove the secure chain works with service2 on a confidential node.
+Objective: prove the secure chain works with service2 on the approved confidential node.
 
 Tasks:
 
 1. Deploy `chain_2svc_mtls_confidential_service2`.
-2. Validate service2 placement on the confidential node.
-3. Validate service1 placement on a standard node.
+2. Validate service2 placement on `Standard_DC8as_v5`.
+3. Validate service1 placement on `Standard_D8as_v5`.
 4. Validate benchmark client remains outside mesh injection.
 5. Validate mTLS and AuthorizationPolicy.
 6. Validate direct-denial probe against protected service2.
@@ -551,7 +485,7 @@ Exit criteria:
 - RQ2.1 mTLS/Authz behavior still passes
 - a small smoke benchmark completes
 
-### Stage 3: Paired RQ2.2 benchmark
+### Stage 3: Paired RQ2.2 Benchmark
 
 Objective: run the thesis-facing RQ2.2 pair.
 
@@ -568,7 +502,7 @@ Exit criteria:
 - one complete paired `chain_2svc` RQ2.2 run succeeds
 - merged artifacts contain enough metadata to defend the placement and platform claims
 
-### Stage 4: Thesis interpretation
+### Stage 4: Thesis Interpretation
 
 Objective: write the result without overstating the security claim.
 
@@ -577,44 +511,39 @@ Tasks:
 1. Report incremental confidential-execution overhead.
 2. Compare only against the newly paired RQ2.2 standard baseline.
 3. Treat old RQ2.1 results as context, not the primary baseline.
-4. Explain whether the preferred `D8as_v5` versus `DC8as_v5` comparison was achieved.
-5. If a fallback baseline was used, state the hardware-matching limitation directly.
-6. Discuss sidecar/plaintext and VM-level TEE limitations carefully.
+4. State that the benchmark used the approved `Standard_D8as_v5` versus `Standard_DC8as_v5` pair in West Europe.
+5. Discuss sidecar/plaintext and VM-level TEE limitations carefully.
 
 Exit criteria:
 
 - thesis wording distinguishes RQ2.1 communication-level hardening from RQ2.2 VM-level confidential execution
-- the result does not claim AMD SEV-SNP application-level isolation
+- the result does not claim application-level isolation
 
 ---
 
 ## 11. Risks and Mitigations
 
-### Risk 1: Confidential SKU quota or regional availability mismatch
+### Risk 1: Approved Quotas Are Not Visible to the Active Subscription
 
-**Mitigation:** Treat Stage 0 Azure feasibility as a formal gate before implementation work.
+**Mitigation:** Treat Stage 0 Azure feasibility as a formal gate. Record `az vm list-usage -l westeurope` in the artifact before provisioning.
 
-### Risk 2: Standard comparator SKU unavailable
+### Risk 2: AKS Rejects the Approved Confidential Node Pool
 
-**Mitigation:** Prefer `Standard_D8as_v5`; fall back to `Standard_D8s_v3` only with explicit limitation wording.
+**Mitigation:** Validate live creation of a temporary `Standard_DC8as_v5` node pool before running any benchmark. If AKS rejects the node pool, stop and preserve the failure artifact.
 
-### Risk 3: Confounding confidential execution with VM generation or CPU differences
-
-**Mitigation:** Use the closest available standard/non-confidential comparator and record exact VM SKUs, node images, and region.
-
-### Risk 4: Confounding confidential execution with network topology
+### Risk 3: Confounding Confidential Execution With Network Topology
 
 **Mitigation:** Match service1/service2 placement topology across the standard and confidential conditions. If cross-node placement is used, use it in both conditions and report it.
 
-### Risk 5: Mesh sidecar behavior differs on confidential nodes
+### Risk 4: Mesh Sidecar Behavior Differs on Confidential Nodes
 
 **Mitigation:** Treat sidecar readiness and mTLS/Authz validation as required preflight gates.
 
-### Risk 6: RQ2.2 grows into a broader confidential-computing comparison
+### Risk 5: RQ2.2 Grows Beyond the Approved AMD Path
 
-**Mitigation:** Keep the initial experiment service2-only, `chain_2svc`-only, and AMD SEV-SNP-only.
+**Mitigation:** Keep the initial experiment service2-only, `chain_2svc`-only, West Europe-only, `DASv5`/`DCASv5`-only, and AMD SEV-SNP-only.
 
-### Risk 7: Intro and abstract wording lag behind the implemented RQ2 structure
+### Risk 6: Intro and Abstract Wording Lag Behind the Implemented RQ2 Structure
 
 **Mitigation:** Once RQ2.2 is accepted, update thesis framing so RQ2.1 is described as communication-level hardening and RQ2.2 as VM-level confidential execution.
 
@@ -622,14 +551,15 @@ Exit criteria:
 
 ## 12. Final Recommendation
 
-The next step should be a narrow, platform-first RQ2.2:
+The next step is a narrow, platform-first RQ2.2:
 
 - keep `chain_2svc` as the only initial topology
 - keep the RQ2.1 secure mesh contract
 - protect service2 first, not the full chain
 - use AMD SEV-SNP Azure Confidential VM / AKS confidential node execution
-- prefer `Standard_D8as_v5` versus `Standard_DC8as_v5`
-- fall back to `Standard_D8s_v3` versus `Standard_DC8as_v5` only with explicit limitation wording
+- use West Europe only
+- use `Standard_D8as_v5` versus `Standard_DC8as_v5` only
+- rely on the approved 16-vCPU `Standard DASv5 Family vCPUs` and 16-vCPU `Standard DCASv5 Family vCPUs` quotas
 - compare only against a newly collected RQ2.2 standard baseline
 - treat old RQ2.1 results as context
 - defer `chain_5svc` until the primary service2-only path is stable
