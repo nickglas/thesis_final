@@ -84,6 +84,15 @@ DEFAULTS = {
     "metadata_record_control_plane_placement": False,
     "resource_sampling_enabled": False,
     "rq2_manifest_labels": False,
+    "rq22_enabled": False,
+    "rq22_backend": None,
+    "rq22_target_service_index": "2",
+    "rq22_standard_condition": "chain_2svc_mtls_standard",
+    "rq22_confidential_condition": "chain_2svc_mtls_confidential_service2",
+    "rq22_standard_size": None,
+    "rq22_confidential_size": None,
+    "rq22_node_pools": {},
+    "rq22_node_selectors": {},
 }
 
 
@@ -322,6 +331,12 @@ def _config_overrides(config_path: str) -> tuple[dict, list[dict]]:
     k8s = experiment.kubernetes
     threading = experiment.cpu_stabilisation.threading
     placement = k8s.placement
+    placement_raw = raw_k8s.get("placement") or {}
+    if not isinstance(placement_raw, dict):
+        raise ValueError("kubernetes.placement must be a mapping when provided")
+    confidential_raw = raw_config.get("confidential_compute") or {}
+    if confidential_raw and not isinstance(confidential_raw, dict):
+        raise ValueError("confidential_compute must be a mapping when provided")
     overrides = {
         "service_name_template": k8s.service_name_template,
         "namespace": k8s.namespace,
@@ -352,6 +367,23 @@ def _config_overrides(config_path: str) -> tuple[dict, list[dict]]:
         "placement_require_control_plane_isolation": placement.require_control_plane_isolation,
     }
     overrides.update(_mesh_overrides(raw_k8s, k8s.namespace))
+    if confidential_raw:
+        overrides.update({
+            "rq22_enabled": True,
+            "rq22_backend": str(confidential_raw.get("backend") or ""),
+            "rq22_target_service_index": str(confidential_raw.get("target_service_index") or "2"),
+            "rq22_standard_size": str(confidential_raw.get("standard_size") or ""),
+            "rq22_confidential_size": str(confidential_raw.get("confidential_size") or ""),
+            "rq22_node_pools": {
+                str(key): str(value)
+                for key, value in (placement_raw.get("node_pools") or {}).items()
+            },
+            "rq22_node_selectors": {
+                str(key): {str(item_key): str(item_value) for item_key, item_value in (item_value or {}).items()}
+                for key, item_value in (placement_raw.get("node_selectors") or {}).items()
+                if isinstance(item_value, dict)
+            },
+        })
     return overrides, _condition_specs_from_experiment(experiment)
 
 
@@ -371,6 +403,43 @@ def _base_node_selector(cfg: dict) -> dict[str, str]:
     explicit_selector = cfg.get("placement_node_selector") or {}
     selector.update({str(key): str(value) for key, value in explicit_selector.items()})
     return selector
+
+
+def _rq22_role_for_segment(condition: str, index: int, cfg: dict) -> str | None:
+    if not cfg.get("rq22_enabled"):
+        return None
+    target_index = str(cfg.get("rq22_target_service_index") or "2")
+    if str(index) == "1":
+        return "service1_standard"
+    if str(index) != target_index:
+        return None
+    if condition == str(cfg.get("rq22_standard_condition")):
+        return "service2_standard"
+    if condition == str(cfg.get("rq22_confidential_condition")):
+        return "service2_confidential"
+    return None
+
+
+def _rq22_node_selector(condition: str, index: int, cfg: dict) -> dict[str, str] | None:
+    role = _rq22_role_for_segment(condition, index, cfg)
+    if role is None:
+        return None
+    selector: dict[str, str] = {}
+    node_pool = (cfg.get("rq22_node_pools") or {}).get(role)
+    if node_pool:
+        selector["agentpool"] = str(node_pool)
+    selector.update({
+        str(key): str(value)
+        for key, value in ((cfg.get("rq22_node_selectors") or {}).get(role) or {}).items()
+    })
+    return selector
+
+
+def _deployment_node_selector(condition: str, index: int, cfg: dict) -> dict[str, str]:
+    rq22_selector = _rq22_node_selector(condition, index, cfg)
+    if rq22_selector is not None:
+        return rq22_selector
+    return _base_node_selector(cfg)
 
 
 def _base_tolerations(cfg: dict) -> list[dict]:
@@ -406,6 +475,24 @@ def _common_labels(
     return labels
 
 
+def _rq22_segment_labels(condition: str, index: int, cfg: dict) -> dict[str, str]:
+    role = _rq22_role_for_segment(condition, index, cfg)
+    if role is None:
+        return {}
+    confidential = role == "service2_confidential"
+    vm_size = cfg.get("rq22_confidential_size") if confidential else cfg.get("rq22_standard_size")
+    labels = {
+        "rq": "2.2",
+        "rq22-placement-role": role.replace("_", "-"),
+        "confidential-compute": "true" if confidential else "false",
+    }
+    if vm_size:
+        labels["rq22-vm-size"] = str(vm_size)
+    if confidential and cfg.get("rq22_backend"):
+        labels["confidential-backend"] = str(cfg["rq22_backend"])
+    return labels
+
+
 def _proxy_resource_annotations(cfg: dict) -> dict[str, str]:
     if not cfg.get("mesh_enabled"):
         return {}
@@ -433,7 +520,9 @@ def _service_account_name(condition: str, index: int, cfg: dict) -> str | None:
     return accounts.get(str(index))
 
 
-def _service_affinity(condition_spec: dict) -> dict | None:
+def _service_affinity(condition_spec: dict, cfg: dict | None = None) -> dict | None:
+    if cfg and cfg.get("rq22_enabled"):
+        return None
     split_points = condition_spec["split_points"]
     n_segments = len(split_points) + 1
     if condition_spec["type"] != "chain" or n_segments <= 1:
@@ -605,13 +694,13 @@ def _generate_deployment_yaml(condition_spec: dict, index: int, cfg: dict) -> st
         )
     if service_account_name:
         pod_spec["serviceAccountName"] = service_account_name
-    node_selector = _base_node_selector(cfg)
+    node_selector = _deployment_node_selector(condition, index, cfg)
     if node_selector:
         pod_spec["nodeSelector"] = node_selector
     tolerations = _base_tolerations(cfg)
     if tolerations:
         pod_spec["tolerations"] = tolerations
-    affinity = _service_affinity(condition_spec)
+    affinity = _service_affinity(condition_spec, cfg)
     if affinity:
         pod_spec["affinity"] = affinity
 
@@ -623,6 +712,8 @@ def _generate_deployment_yaml(condition_spec: dict, index: int, cfg: dict) -> st
         include_experiment_condition=False,
     )
     pod_labels = _common_labels(condition, cfg, role="service", segment_index=index)
+    deployment_labels.update(_rq22_segment_labels(condition, index, cfg))
+    pod_labels.update(_rq22_segment_labels(condition, index, cfg))
     annotations = _proxy_resource_annotations(cfg)
     template_metadata = {"labels": pod_labels}
     if annotations:

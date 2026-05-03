@@ -37,6 +37,10 @@ provider "azurerm" {
   features {}
 }
 
+locals {
+  experiment_tag = var.experiment_tag != "" ? var.experiment_tag : (var.enable_benchmark_pool ? "rq21-isolated" : "rq15")
+}
+
 # ---------------------------------------------------------------------------
 # Resource Group
 # ---------------------------------------------------------------------------
@@ -106,7 +110,7 @@ resource "azurerm_kubernetes_cluster" "rq15" {
 
   tags = {
     project     = "thesis"
-    experiment  = var.enable_benchmark_pool ? "rq21-isolated" : "rq15"
+    experiment  = local.experiment_tag
     environment = "research"
   }
 }
@@ -119,14 +123,12 @@ resource "azurerm_kubernetes_cluster_node_pool" "benchmark" {
   vm_size               = var.node_vm_size
   node_count            = var.node_count
   mode                  = "User"
-  node_taints           = [var.benchmark_node_taint]
-  node_labels = {
-    workload = "benchmark"
-  }
+  node_taints           = var.benchmark_node_taint != "" ? [var.benchmark_node_taint] : []
+  node_labels           = var.benchmark_node_labels
 
   tags = {
     project     = "thesis"
-    experiment  = "rq21-isolated"
+    experiment  = local.experiment_tag
     environment = "research"
     workload    = "benchmark"
   }

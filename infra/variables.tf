@@ -74,3 +74,17 @@ variable "benchmark_node_taint" {
   type        = string
   default     = "workload=benchmark:NoSchedule"
 }
+
+variable "benchmark_node_labels" {
+  description = "Labels applied to the benchmark/user node pool."
+  type        = map(string)
+  default = {
+    workload = "benchmark"
+  }
+}
+
+variable "experiment_tag" {
+  description = "Tag value used to identify the experiment family. Defaults preserve the original RQ1.5/RQ2.1 behavior."
+  type        = string
+  default     = ""
+}
