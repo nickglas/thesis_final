@@ -29,6 +29,7 @@ def default_args(tmp_path: Path, **overrides) -> Namespace:
         "system_node_count": 1,
         "system_node_vm_size": "Standard_D2s_v3",
         "service1_nodepool": "r22s1std",
+        "service1_confidential_nodepool": "r22s1cvm",
         "service1_size": "Standard_D8as_v5",
         "service2_standard_nodepool": "r22s2std",
         "service2_confidential_nodepool": "r22s2cvm",
@@ -93,9 +94,28 @@ def test_condition_config_filters_single_rq22_condition(tmp_path: Path, key: str
     placement = config["kubernetes"]["placement"]
     assert placement["node_pools"] == {
         "service1_standard": "r22s1std",
+        "service1_confidential": "r22s1cvm",
         "service2_standard": "r22s2std",
         "service2_confidential": "r22s2cvm",
     }
+
+
+def test_full_tee_condition_config_places_both_segments_on_confidential_roles(tmp_path: Path):
+    runner = rq22.RQ22ConfidentialRunner(
+        default_args(
+            tmp_path,
+            config="configs/rq2/2.2/rq2_2_full_tee_amd_sev_snp.yaml",
+            image_ref="acr.azurecr.io/app@sha256:abc",
+        )
+    )
+
+    assert runner.tee_scope() == "full_2svc"
+    config = runner.condition_config("confidential")
+
+    assert [condition["name"] for condition in config["conditions"]] == ["chain_2svc_mtls_confidential_full"]
+    placement = config["kubernetes"]["placement"]
+    assert placement["node_pools"]["service1_confidential"] == "r22s1cvm"
+    assert placement["node_pools"]["service2_confidential"] == "r22s2cvm"
 
 
 def test_condition_config_uses_pushed_image_digest(tmp_path: Path):
@@ -257,6 +277,61 @@ def test_rolling_service2_adds_and_deletes_standard_then_confidential_pools(
     assert all("--yes" not in args for args in deletes)
     confidential_labels = adds[1][adds[1].index("--labels") + 1 : adds[1].index("--output")]
     assert "confidential-compute=amd-sev-snp" in confidential_labels
+
+
+def test_full_tee_adds_and_deletes_service1_and_service2_confidential_pools(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    runner = rq22.RQ22ConfidentialRunner(
+        default_args(tmp_path, config="configs/rq2/2.2/rq2_2_full_tee_amd_sev_snp.yaml")
+    )
+    live_commands: list[list[str]] = []
+
+    def fake_run_command(args, **_kwargs):
+        live_commands.append(args)
+        if args[:4] == ["az", "aks", "nodepool", "add"]:
+            name = args[args.index("--name") + 1]
+            size = args[args.index("--node-vm-size") + 1]
+            return subprocess.CompletedProcess(
+                args,
+                0,
+                stdout=json.dumps(
+                    {
+                        "name": name,
+                        "vmSize": size,
+                        "provisioningState": "Succeeded",
+                        "availabilityZones": ["1"],
+                        "nodeLabels": {},
+                    }
+                ),
+                stderr="",
+            )
+        if args[:4] == ["az", "aks", "nodepool", "delete"]:
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        raise AssertionError(f"unexpected live command: {args}")
+
+    monkeypatch.setattr(rq22, "run_command", fake_run_command)
+    monkeypatch.setattr(runner, "generate_manifests", lambda context: context.manifest_dir.mkdir(parents=True, exist_ok=True))
+    monkeypatch.setattr(runner, "apply_manifests", lambda context: None)
+    monkeypatch.setattr(runner, "wait_for_ready", lambda context: None)
+    monkeypatch.setattr(runner, "run_benchmark", lambda context: "/tmp/rq22/fake")
+    monkeypatch.setattr(runner, "cleanup_namespaces", lambda context: None)
+
+    record = runner.run_condition("confidential", 1, 1)
+
+    assert record["status"] == "completed"
+    assert record["tee_scope"] == "full_2svc"
+    assert record["service1_confidential"] is True
+    assert record["service2_confidential"] is True
+    adds = [args for args in live_commands if args[:4] == ["az", "aks", "nodepool", "add"]]
+    deletes = [args for args in live_commands if args[:4] == ["az", "aks", "nodepool", "delete"]]
+    assert [args[args.index("--name") + 1] for args in adds] == ["r22s1cvm", "r22s2cvm"]
+    assert [args[args.index("--node-vm-size") + 1] for args in adds] == [
+        "Standard_DC8as_v5",
+        "Standard_DC8as_v5",
+    ]
+    assert [args[args.index("--name") + 1] for args in deletes] == ["r22s2cvm", "r22s1cvm"]
 
 
 def test_parse_rejects_destroy_without_provision(monkeypatch: pytest.MonkeyPatch):

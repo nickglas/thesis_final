@@ -1,0 +1,147 @@
+# -----------------------------------------------------------------------------
+# RQ1.4 fully controlled benchmark profile
+#
+# Intended for: Thesis-facing primary RQ1.4 benchmark.
+#
+# Properties:
+#   - 5 rounds × 200 measured iterations × 5 conditions = 5,000 iterations
+#   - Single-threaded PyTorch execution (1 intra-op thread)
+#   - Strict warmup calibration (window=10, cv=0.02)
+#   - CPU affinity requested (1 physical core, SMT avoided)
+#   - Process priority requested (nice=-5)
+#   - CPU governor requested (performance mode) — will be skipped gracefully
+#     inside containers without sysfs access
+#   - Turbo boost disable requested — same graceful fallback
+#   - Full parity validation (5 inputs, atol=1e-5)
+#
+# Thesis status: PRIMARY.
+#   This is the RQ1.4 analogue of the RQ1.1/RQ1.2 fully controlled profile.
+#   Results from this config are intended to be frozen and reported.
+#
+# Kubernetes resource expectations:
+#   - Service pods: resource requests/limits should be set to cpu=1, memory≥512Mi
+#     in manifests for Guaranteed QoS class with exclusive CPU allocation.
+#   - Client pod: same cpu=1 single-core setting, but allow higher memory because
+#     it also runs local full-model parity validation before the in-cluster phase.
+#   - Static CPU manager policy on node(s) strongly recommended for exclusive
+#     core allocation to match the single-core philosophy.
+#   - Without static CPU manager, Guaranteed QoS still prevents preemption
+#     but does not guarantee a fixed physical core.
+#
+# Kubernetes stabilisation transfer notes (from RQ1.4 design S6):
+#   Thread counts        -> Pod env vars + config     -> Fully transferable
+#   CPU affinity         -> K8s resource limits +      -> Best-effort (node config)
+#                           static CPU manager
+#   Process priority     -> Guaranteed QoS class       -> Best-effort
+#   CPU governor         -> Node-level tuning only     -> Cannot set from pod
+#   Turbo boost          -> Node-level tuning only     -> Cannot set from pod
+#   ASLR                 -> Node-level tuning only     -> Detection only
+#   The thesis should explicitly note which controls were active vs best-effort.
+#
+# Usage:
+#   kubectl exec -it -n rq14 benchmark-client -- \
+#     python run_k8s_experiment.py --config configs/rq1/1.4/rq1_4_fully_controlled.yaml --run-analysis
+#
+# Manifest generation (must regenerate with 1-thread settings):
+#   python k8s/generate_manifests.py --config configs/rq1/1.4/rq1_4_fully_controlled.yaml --all
+# -----------------------------------------------------------------------------
+experiment:
+  name: "RQ1.4 fully controlled"
+  description: "Single-threaded Kubernetes chain benchmark with maximum reproducibility controls"
+
+model:
+  name: "resnet18"
+  pretrained: true
+  device: "cpu"
+  input_shape: [1, 3, 224, 224]
+  precision: "fp32"
+
+conditions:
+  - name: "monolithic_k8s_1svc"
+    type: "chain"
+    chain_split_points: []
+
+  - name: "chain_2svc"
+    type: "chain"
+    chain_split_points: ["layer2"]
+
+  - name: "chain_3svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer3"]
+
+  - name: "chain_4svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer2", "layer3"]
+
+  - name: "chain_5svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer2", "layer3", "layer4"]
+
+benchmark:
+  rounds: 5
+  warmup_iterations: 50
+  measured_iterations: 200
+  cooldown_seconds: 5
+  seed: 42
+
+# Local gRPC settings (unused in K8s mode; retained for config schema compatibility).
+# Kept aligned with the RQ1.1 and RQ1.2 fully controlled YAMLs so all shared
+# fully controlled parameters remain identical across the thesis-facing runs.
+grpc:
+  host: "127.0.0.1"
+  port: 50051
+  max_message_bytes: 16777216
+
+# Carry-forward (not applicable to RQ1.4; retained for config schema compatibility)
+carry_forward:
+  near_best_window_pct: 5.0
+  degeneracy_threshold_pct: 10.0
+
+parity:
+  atol: 1.0e-5
+  num_inputs: 5
+
+warmup_calibration:
+  window: 10
+  cv_threshold: 0.02
+  max_extra_iterations: -1  # -1 = unlimited (safety cap: 10 000 iterations)
+
+cpu_stabilisation:
+  threading:
+    pytorch_intra_op: 1
+    pytorch_inter_op: 1
+    omp_num_threads: 1
+    mkl_num_threads: 1
+    openblas_num_threads: 1
+  affinity:
+    enabled: true
+    num_cores: 1
+    avoid_smt: true
+    explicit_cpus: null
+  priority:
+    enabled: true
+    nice_value: -5
+  governor:
+    set_governor: true
+    requested_mode: "performance"
+  turbo:
+    disable_turbo: true
+
+kubernetes:
+  namespace: "rq14"
+  service_name_template: "{condition}-svc-{index}"
+  grpc_port: 50051
+  max_message_bytes: 16777216
+  readiness_timeout: 120.0
+  image: "thesis-inference:latest"
+  image_pull_policy: "IfNotPresent"
+  resources:
+    cpu_request: "1"
+    cpu_limit: "1"
+    memory_request: "512Mi"
+    memory_limit: "512Mi"
+  client_resources:
+    cpu_request: "1"
+    cpu_limit: "1"
+    memory_request: "1Gi"
+    memory_limit: "1Gi"

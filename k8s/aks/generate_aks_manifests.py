@@ -87,6 +87,7 @@ DEFAULTS = {
     "rq22_enabled": False,
     "rq22_backend": None,
     "rq22_target_service_index": "2",
+    "rq22_target_service_indices": ["2"],
     "rq22_standard_condition": "chain_2svc_mtls_standard",
     "rq22_confidential_condition": "chain_2svc_mtls_confidential_service2",
     "rq22_standard_size": None,
@@ -368,10 +369,22 @@ def _config_overrides(config_path: str) -> tuple[dict, list[dict]]:
     }
     overrides.update(_mesh_overrides(raw_k8s, k8s.namespace))
     if confidential_raw:
+        target_indices_raw = confidential_raw.get("target_service_indices")
+        if target_indices_raw in (None, ""):
+            target_indices = [str(confidential_raw.get("target_service_index") or "2")]
+        elif isinstance(target_indices_raw, list):
+            target_indices = [str(item) for item in target_indices_raw if item not in (None, "")]
+        else:
+            target_indices = [str(target_indices_raw)]
         overrides.update({
             "rq22_enabled": True,
             "rq22_backend": str(confidential_raw.get("backend") or ""),
             "rq22_target_service_index": str(confidential_raw.get("target_service_index") or "2"),
+            "rq22_target_service_indices": target_indices,
+            "rq22_standard_condition": str(confidential_raw.get("standard_condition") or DEFAULTS["rq22_standard_condition"]),
+            "rq22_confidential_condition": str(
+                confidential_raw.get("confidential_condition") or DEFAULTS["rq22_confidential_condition"]
+            ),
             "rq22_standard_size": str(confidential_raw.get("standard_size") or ""),
             "rq22_confidential_size": str(confidential_raw.get("confidential_size") or ""),
             "rq22_node_pools": {
@@ -408,15 +421,15 @@ def _base_node_selector(cfg: dict) -> dict[str, str]:
 def _rq22_role_for_segment(condition: str, index: int, cfg: dict) -> str | None:
     if not cfg.get("rq22_enabled"):
         return None
-    target_index = str(cfg.get("rq22_target_service_index") or "2")
-    if str(index) == "1":
-        return "service1_standard"
-    if str(index) != target_index:
-        return None
     if condition == str(cfg.get("rq22_standard_condition")):
-        return "service2_standard"
+        return f"service{index}_standard"
     if condition == str(cfg.get("rq22_confidential_condition")):
-        return "service2_confidential"
+        target_indices = {str(item) for item in (cfg.get("rq22_target_service_indices") or [])}
+        if not target_indices:
+            target_indices = {str(cfg.get("rq22_target_service_index") or "2")}
+        if str(index) in target_indices:
+            return f"service{index}_confidential"
+        return f"service{index}_standard"
     return None
 
 
@@ -479,7 +492,7 @@ def _rq22_segment_labels(condition: str, index: int, cfg: dict) -> dict[str, str
     role = _rq22_role_for_segment(condition, index, cfg)
     if role is None:
         return {}
-    confidential = role == "service2_confidential"
+    confidential = role.endswith("_confidential")
     vm_size = cfg.get("rq22_confidential_size") if confidential else cfg.get("rq22_standard_size")
     labels = {
         "rq": "2.2",

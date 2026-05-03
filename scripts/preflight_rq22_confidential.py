@@ -369,12 +369,21 @@ def config_hard_gate(raw_config: dict[str, Any]) -> tuple[dict[str, Any], list[s
         errors.append("confidential_compute must be a mapping")
         cc = {}
 
+    target_indices_raw = cc.get("target_service_indices")
+    if isinstance(target_indices_raw, list):
+        target_service_indices = [str(item) for item in target_indices_raw if item not in (None, "")]
+    elif target_indices_raw not in (None, ""):
+        target_service_indices = [str(target_indices_raw)]
+    else:
+        target_service_indices = [str(cc.get("target_service_index") or "")]
+
     checks = {
         "region": str(cc.get("region") or ""),
         "backend": str(cc.get("backend") or ""),
         "standard_size": str(cc.get("standard_size") or ""),
         "confidential_size": str(cc.get("confidential_size") or ""),
         "target_service_index": str(cc.get("target_service_index") or ""),
+        "target_service_indices": target_service_indices,
         "standard_quota_family": str((cc.get("standard_quota") or {}).get("family") or ""),
         "confidential_quota_family": str((cc.get("confidential_quota") or {}).get("family") or ""),
         "standard_quota_required_limit": int((cc.get("standard_quota") or {}).get("required_limit") or 0),
@@ -385,7 +394,6 @@ def config_hard_gate(raw_config: dict[str, Any]) -> tuple[dict[str, Any], list[s
         "backend": APPROVED_BACKEND,
         "standard_size": APPROVED_STANDARD_SIZE,
         "confidential_size": APPROVED_CONFIDENTIAL_SIZE,
-        "target_service_index": "2",
         "standard_quota_family": APPROVED_STANDARD_FAMILY,
         "confidential_quota_family": APPROVED_CONFIDENTIAL_FAMILY,
         "standard_quota_required_limit": APPROVED_STANDARD_QUOTA_LIMIT,
@@ -394,13 +402,16 @@ def config_hard_gate(raw_config: dict[str, Any]) -> tuple[dict[str, Any], list[s
     for key, expected_value in expected.items():
         if checks.get(key) != expected_value:
             errors.append(f"RQ2.2 approved-plan gate failed for {key}: expected={expected_value} observed={checks.get(key)}")
+    if target_service_indices not in (["2"], ["1", "2"]):
+        errors.append(
+            "RQ2.2 approved-plan gate failed for target_service_indices: "
+            f"expected ['2'] or ['1', '2'] observed={target_service_indices}"
+        )
 
     conditions = raw_config.get("conditions") or []
     names = [str(condition.get("name") or "") for condition in conditions if isinstance(condition, dict)]
-    expected_conditions = [
-        "chain_2svc_mtls_standard",
-        "chain_2svc_mtls_confidential_service2",
-    ]
+    confidential_condition = str(cc.get("confidential_condition") or "chain_2svc_mtls_confidential_service2")
+    expected_conditions = ["chain_2svc_mtls_standard", confidential_condition]
     if names != expected_conditions:
         errors.append(f"RQ2.2 conditions must be exactly {expected_conditions}, observed={names}")
     for condition in conditions:
@@ -464,10 +475,18 @@ def validate_generated_manifests(manifest_dir: Path) -> tuple[bool, list[str]]:
         ("chain_2svc_mtls_standard", "2"): ("r22s2std", "false"),
         ("chain_2svc_mtls_confidential_service2", "1"): ("r22s1std", "false"),
         ("chain_2svc_mtls_confidential_service2", "2"): ("r22s2cvm", "true"),
+        ("chain_2svc_mtls_confidential_full", "1"): ("r22s1cvm", "true"),
+        ("chain_2svc_mtls_confidential_full", "2"): ("r22s2cvm", "true"),
     }
     for (condition, segment), (nodepool, confidential) in expected.items():
         deployment = deployment_for(docs, condition, segment)
         if not deployment:
+            if condition == "chain_2svc_mtls_confidential_full":
+                continue
+            if condition == "chain_2svc_mtls_confidential_service2" and deployment_for(
+                docs, "chain_2svc_mtls_confidential_full", segment
+            ):
+                continue
             errors.append(f"Missing deployment for {condition} segment {segment}")
             continue
         labels = (deployment.get("metadata") or {}).get("labels") or {}

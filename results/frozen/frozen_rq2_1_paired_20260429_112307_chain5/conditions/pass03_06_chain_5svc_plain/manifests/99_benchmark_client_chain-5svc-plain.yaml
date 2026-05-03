@@ -1,0 +1,64 @@
+# Generated benchmark client pod.
+# Regenerate from the experiment config before applying.
+# Condition-specific placement manifest for chain_5svc_plain.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: benchmark-client
+  namespace: rq21-client-chain5-plain
+  labels:
+    app: thesis-inference
+    experiment: rq21-chain5-plain
+    workload-role: client
+    security-condition: plain
+    mesh-enabled: 'false'
+    role: client
+    condition: chain_5svc_plain
+    experiment-condition: chain_5svc_plain
+spec:
+  restartPolicy: Never
+  containers:
+  - name: client
+    image: thesisrq21acr26.azurecr.io/thesis-inference@sha256:524e8618c61d97f466b647cdc408e836256a94807790ad66321ae724f975a221
+    imagePullPolicy: Always
+    command:
+    - sleep
+    - infinity
+    env:
+    - name: PYTORCH_INTRA_OP_THREADS
+      value: '1'
+    - name: PYTORCH_INTER_OP_THREADS
+      value: '1'
+    - name: OMP_NUM_THREADS
+      value: '1'
+    - name: MKL_NUM_THREADS
+      value: '1'
+    - name: OPENBLAS_NUM_THREADS
+      value: '1'
+    - name: MY_POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: MY_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: MY_POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+    resources:
+      requests:
+        cpu: 100m
+        memory: 1Gi
+      limits:
+        cpu: '1'
+        memory: 1Gi
+  nodeSelector:
+    agentpool: rq15pool
+    workload: benchmark
+  tolerations:
+  - key: workload
+    operator: Equal
+    value: benchmark
+    effect: NoSchedule

@@ -1,0 +1,42 @@
+{
+  "condition": "chain_2svc_plain",
+  "started_at": "2026-04-29T10:54:17.959532+00:00",
+  "updated_at": "2026-04-29T10:54:30.938539+00:00",
+  "ready": true,
+  "attempts": 3,
+  "elapsed_seconds": 12.979,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21-chain2-plain": {
+      "chain-2svc-plain-svc-1-565f7bb887-5c9jb": [
+        "inference"
+      ],
+      "chain-2svc-plain-svc-2-6d79bc4459-dxzmh": [
+        "inference"
+      ]
+    },
+    "rq21-client-plain": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21-chain2-plain": {
+      "chain-2svc-plain-svc-1-565f7bb887-5c9jb": [
+        "inference"
+      ],
+      "chain-2svc-plain-svc-2-6d79bc4459-dxzmh": [
+        "inference"
+      ]
+    },
+    "rq21-client-plain": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

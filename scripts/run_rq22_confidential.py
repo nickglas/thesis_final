@@ -46,6 +46,7 @@ from scripts.run_rq21_fully_controlled import (  # noqa: E402
 
 DEFAULT_CONFIG = "configs/rq2/2.2/rq2_2_confidential_amd_sev_snp.yaml"
 DEFAULT_SERVICE1_NODEPOOL = "r22s1std"
+DEFAULT_SERVICE1_CONFIDENTIAL_NODEPOOL = "r22s1cvm"
 DEFAULT_SERVICE2_STANDARD_NODEPOOL = "r22s2std"
 DEFAULT_SERVICE2_CONFIDENTIAL_NODEPOOL = "r22s2cvm"
 DEFAULT_RESULTS_ROOT = str(REPO_ROOT / "results_exports")
@@ -57,12 +58,24 @@ CONFIDENTIAL_CONDITION = "chain_2svc_mtls_confidential_service2"
 
 
 @dataclass(frozen=True)
-class Service2PoolSpec:
-    key: str
-    condition_name: str
+class RollingNodePoolSpec:
+    role: str
     nodepool: str
     vm_size: str
     labels: dict[str, str]
+
+
+@dataclass(frozen=True)
+class RQ22ConditionSpec:
+    key: str
+    condition_name: str
+    rolling_nodepools: tuple[RollingNodePoolSpec, ...]
+    service1_nodepool: str
+    service1_vm_size: str
+    service1_confidential: bool
+    service2_nodepool: str
+    service2_vm_size: str
+    service2_confidential: bool
 
 
 @dataclass
@@ -119,8 +132,8 @@ def stream_command(args: list[str], log_path: Path, *, cwd: Path | None = None) 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "RQ2.2 AMD SEV-SNP rolling service2 runner. Provisions the shared service1 AKS foundation, "
-            "then alternates service2 standard and confidential node pools so quota stays bounded."
+            "RQ2.2 AMD SEV-SNP rolling runner. Provisions the shared service1 AKS foundation, "
+            "then alternates standard and confidential node pools so quota stays bounded."
         )
     )
     parser.add_argument("--config", default=DEFAULT_CONFIG)
@@ -152,6 +165,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--system-node-count", type=int, default=DEFAULT_SYSTEM_NODE_COUNT)
     parser.add_argument("--system-node-vm-size", default=DEFAULT_SYSTEM_NODE_VM_SIZE)
     parser.add_argument("--service1-nodepool", default=DEFAULT_SERVICE1_NODEPOOL)
+    parser.add_argument("--service1-confidential-nodepool", default=DEFAULT_SERVICE1_CONFIDENTIAL_NODEPOOL)
     parser.add_argument("--service1-size", default=DEFAULT_STANDARD_SIZE)
     parser.add_argument("--service2-standard-nodepool", default=DEFAULT_SERVICE2_STANDARD_NODEPOOL)
     parser.add_argument("--service2-confidential-nodepool", default=DEFAULT_SERVICE2_CONFIDENTIAL_NODEPOOL)
@@ -209,13 +223,49 @@ class RQ22ConfidentialRunner:
         self.infrastructure_provisioned = False
         self.infrastructure_destroyed = False
         self.active_service2_pool: str | None = None
+        self.active_rolling_pools: list[str] = []
         self.effective_pinned_image_ref = ""
 
-    def service2_specs(self) -> dict[str, Service2PoolSpec]:
+    def standard_condition_name(self) -> str:
+        cc = self.raw_config.get("confidential_compute") or {}
+        return str(cc.get("standard_condition") or STANDARD_CONDITION)
+
+    def confidential_condition_name(self) -> str:
+        cc = self.raw_config.get("confidential_compute") or {}
+        return str(cc.get("confidential_condition") or CONFIDENTIAL_CONDITION)
+
+    def confidential_target_indices(self) -> set[str]:
+        cc = self.raw_config.get("confidential_compute") or {}
+        target_indices = cc.get("target_service_indices")
+        if isinstance(target_indices, list):
+            return {str(item) for item in target_indices if item not in (None, "")}
+        if target_indices not in (None, ""):
+            return {str(target_indices)}
+        return {str(cc.get("target_service_index") or "2")}
+
+    def tee_scope(self) -> str:
+        targets = self.confidential_target_indices()
+        if targets == {"1", "2"}:
+            return "full_2svc"
+        if targets == {"2"}:
+            return "service2_only"
+        return "selected_segments_" + "_".join(sorted(targets))
+
+    def rolling_nodepool_specs(self) -> dict[str, RollingNodePoolSpec]:
         return {
-            "standard": Service2PoolSpec(
-                key="standard",
-                condition_name=STANDARD_CONDITION,
+            "service1_confidential": RollingNodePoolSpec(
+                role="service1_confidential",
+                nodepool=self.args.service1_confidential_nodepool,
+                vm_size=self.args.confidential_size,
+                labels={
+                    "rq": "2.2",
+                    "rq22-role": "service1-confidential",
+                    "confidential-compute": "amd-sev-snp",
+                    "purpose": "rq22",
+                },
+            ),
+            "service2_standard": RollingNodePoolSpec(
+                role="service2_standard",
                 nodepool=self.args.service2_standard_nodepool,
                 vm_size=self.args.standard_size,
                 labels={
@@ -224,9 +274,8 @@ class RQ22ConfidentialRunner:
                     "purpose": "rq22",
                 },
             ),
-            "confidential": Service2PoolSpec(
-                key="confidential",
-                condition_name=CONFIDENTIAL_CONDITION,
+            "service2_confidential": RollingNodePoolSpec(
+                role="service2_confidential",
                 nodepool=self.args.service2_confidential_nodepool,
                 vm_size=self.args.confidential_size,
                 labels={
@@ -237,6 +286,58 @@ class RQ22ConfidentialRunner:
                 },
             ),
         }
+
+    def condition_specs(self) -> dict[str, RQ22ConditionSpec]:
+        rolling = self.rolling_nodepool_specs()
+        confidential_targets = self.confidential_target_indices()
+        confidential_nodepools: list[RollingNodePoolSpec] = []
+        if "1" in confidential_targets:
+            confidential_nodepools.append(rolling["service1_confidential"])
+        if "2" in confidential_targets:
+            confidential_nodepools.append(rolling["service2_confidential"])
+        return {
+            "standard": RQ22ConditionSpec(
+                key="standard",
+                condition_name=self.standard_condition_name(),
+                rolling_nodepools=(rolling["service2_standard"],),
+                service1_nodepool=self.args.service1_nodepool,
+                service1_vm_size=self.args.service1_size,
+                service1_confidential=False,
+                service2_nodepool=self.args.service2_standard_nodepool,
+                service2_vm_size=self.args.standard_size,
+                service2_confidential=False,
+            ),
+            "confidential": RQ22ConditionSpec(
+                key="confidential",
+                condition_name=self.confidential_condition_name(),
+                rolling_nodepools=tuple(confidential_nodepools),
+                service1_nodepool=(
+                    self.args.service1_confidential_nodepool
+                    if "1" in confidential_targets
+                    else self.args.service1_nodepool
+                ),
+                service1_vm_size=(
+                    self.args.confidential_size
+                    if "1" in confidential_targets
+                    else self.args.service1_size
+                ),
+                service1_confidential="1" in confidential_targets,
+                service2_nodepool=(
+                    self.args.service2_confidential_nodepool
+                    if "2" in confidential_targets
+                    else self.args.service2_standard_nodepool
+                ),
+                service2_vm_size=(
+                    self.args.confidential_size
+                    if "2" in confidential_targets
+                    else self.args.standard_size
+                ),
+                service2_confidential="2" in confidential_targets,
+            ),
+        }
+
+    def service2_specs(self) -> dict[str, RQ22ConditionSpec]:
+        return self.condition_specs()
 
     def execution_plan(self) -> dict[str, Any]:
         if self.args.order == "standard-first":
@@ -438,10 +539,12 @@ class RQ22ConfidentialRunner:
             "acr_name": self.args.acr_name,
             "region": self.args.region,
             "service1_nodepool": self.args.service1_nodepool,
+            "service1_confidential_nodepool": self.args.service1_confidential_nodepool,
             "service1_size": self.args.service1_size,
             "service2_standard_nodepool": self.args.service2_standard_nodepool,
             "service2_confidential_nodepool": self.args.service2_confidential_nodepool,
             "service2_zone": self.args.service2_zone,
+            "tee_scope": self.tee_scope(),
             "effective_image_ref": self.effective_pinned_image_ref,
         }
         if extra:
@@ -714,11 +817,17 @@ class RQ22ConfidentialRunner:
         placement = raw["kubernetes"]["placement"]
         placement["node_pools"] = {
             "service1_standard": self.args.service1_nodepool,
+            "service1_confidential": self.args.service1_confidential_nodepool,
             "service2_standard": self.args.service2_standard_nodepool,
             "service2_confidential": self.args.service2_confidential_nodepool,
         }
         placement["node_selectors"] = {
             "service1_standard": {"rq": "2.2", "rq22-role": "service1-standard"},
+            "service1_confidential": {
+                "rq": "2.2",
+                "rq22-role": "service1-confidential",
+                "confidential-compute": "amd-sev-snp",
+            },
             "service2_standard": {"rq": "2.2", "rq22-role": "service2-standard"},
             "service2_confidential": {
                 "rq": "2.2",
@@ -733,7 +842,7 @@ class RQ22ConfidentialRunner:
         return raw
 
     def condition_config(self, key: str) -> dict[str, Any]:
-        specs = self.service2_specs()
+        specs = self.condition_specs()
         if key not in specs:
             raise PipelineError(f"Unknown RQ2.2 condition key: {key}")
         raw = self.effective_base_config()
@@ -747,7 +856,7 @@ class RQ22ConfidentialRunner:
         return raw
 
     def condition_context(self, key: str, pass_index: int, execution_index: int) -> ConditionContext:
-        spec = self.service2_specs()[key]
+        spec = self.condition_specs()[key]
         condition_dir = self.conditions_root / f"pass{pass_index:02d}_{execution_index:02d}_{spec.condition_name}"
         effective_path = self.config_dir / f"{spec.condition_name}_pass{pass_index:02d}_effective.yaml"
         config = self.condition_config(key)
@@ -766,7 +875,7 @@ class RQ22ConfidentialRunner:
             client_namespace=str(k8s.get("client_namespace") or k8s.get("namespace")),
         )
 
-    def add_service2_nodepool(self, spec: Service2PoolSpec) -> dict[str, Any]:
+    def add_rolling_nodepool(self, spec: RollingNodePoolSpec) -> dict[str, Any]:
         args = [
             "az",
             "aks",
@@ -793,9 +902,11 @@ class RQ22ConfidentialRunner:
         args.extend(["--output", "json"])
         result = self.run_logged(args, capture_output=True, timeout_seconds=1800)
         self.active_service2_pool = spec.nodepool
+        if spec.nodepool not in self.active_rolling_pools:
+            self.active_rolling_pools.append(spec.nodepool)
         return json.loads(result.stdout or "{}")
 
-    def delete_service2_nodepool(self, nodepool: str) -> None:
+    def delete_rolling_nodepool(self, nodepool: str) -> None:
         self.run_logged(
             [
                 "az",
@@ -815,6 +926,14 @@ class RQ22ConfidentialRunner:
         )
         if self.active_service2_pool == nodepool:
             self.active_service2_pool = None
+        if nodepool in self.active_rolling_pools:
+            self.active_rolling_pools.remove(nodepool)
+
+    def add_service2_nodepool(self, spec: RollingNodePoolSpec) -> dict[str, Any]:
+        return self.add_rolling_nodepool(spec)
+
+    def delete_service2_nodepool(self, nodepool: str) -> None:
+        self.delete_rolling_nodepool(nodepool)
 
     def generate_manifests(self, context: ConditionContext) -> None:
         context.manifest_dir.mkdir(parents=True, exist_ok=True)
@@ -987,7 +1106,7 @@ class RQ22ConfidentialRunner:
         return remote_output
 
     def run_condition(self, key: str, pass_index: int, execution_index: int) -> dict[str, Any]:
-        spec = self.service2_specs()[key]
+        spec = self.condition_specs()[key]
         context = self.condition_context(key, pass_index, execution_index)
         self.generate_manifests(context)
         record = {
@@ -995,9 +1114,23 @@ class RQ22ConfidentialRunner:
             "execution_index": execution_index,
             "condition_key": key,
             "condition_name": context.condition_name,
-            "service2_nodepool": spec.nodepool,
-            "service2_vm_size": spec.vm_size,
+            "tee_scope": self.tee_scope(),
+            "service1_nodepool": spec.service1_nodepool,
+            "service1_vm_size": spec.service1_vm_size,
+            "service1_confidential": spec.service1_confidential,
+            "service2_nodepool": spec.service2_nodepool,
+            "service2_vm_size": spec.service2_vm_size,
+            "service2_confidential": spec.service2_confidential,
             "service2_zone": self.args.service2_zone,
+            "rolling_nodepools": [
+                {
+                    "role": pool.role,
+                    "nodepool": pool.nodepool,
+                    "vm_size": pool.vm_size,
+                    "labels": pool.labels,
+                }
+                for pool in spec.rolling_nodepools
+            ],
             "effective_config": str(context.effective_config_path),
             "manifest_dir": str(context.manifest_dir),
             "benchmark_dir": str(context.benchmark_dir),
@@ -1006,16 +1139,21 @@ class RQ22ConfidentialRunner:
         if self.args.generate_only:
             return record
 
-        add_payload: dict[str, Any] = {}
+        nodepool_payloads: list[dict[str, Any]] = []
         try:
-            add_payload = self.add_service2_nodepool(spec)
-            record["nodepool_create_response"] = {
-                "name": add_payload.get("name"),
-                "vm_size": add_payload.get("vmSize"),
-                "provisioning_state": add_payload.get("provisioningState"),
-                "availability_zones": add_payload.get("availabilityZones"),
-                "node_labels": add_payload.get("nodeLabels"),
-            }
+            for pool in spec.rolling_nodepools:
+                add_payload = self.add_rolling_nodepool(pool)
+                nodepool_payloads.append(
+                    {
+                        "role": pool.role,
+                        "name": add_payload.get("name"),
+                        "vm_size": add_payload.get("vmSize"),
+                        "provisioning_state": add_payload.get("provisioningState"),
+                        "availability_zones": add_payload.get("availabilityZones"),
+                        "node_labels": add_payload.get("nodeLabels"),
+                    }
+                )
+            record["nodepool_create_response"] = nodepool_payloads
             self.apply_manifests(context)
             self.wait_for_ready(context)
             remote_output = self.run_benchmark(context)
@@ -1029,7 +1167,8 @@ class RQ22ConfidentialRunner:
                 except Exception as exc:  # noqa: BLE001 - preserve cleanup issue in summary.
                     record.setdefault("cleanup_errors", []).append(str(exc))
             if not self.args.keep_service2_nodepools:
-                self.delete_service2_nodepool(spec.nodepool)
+                for pool in reversed(spec.rolling_nodepools):
+                    self.delete_rolling_nodepool(pool.nodepool)
 
     def write_summary(self, status: str, error: str | None = None) -> None:
         payload = {
@@ -1079,11 +1218,12 @@ class RQ22ConfidentialRunner:
                 self.write_summary("completed")
         except Exception as exc:  # noqa: BLE001 - top-level artifact capture.
             self.write_summary("failed", str(exc))
-            if self.active_service2_pool and not self.args.keep_service2_nodepools:
-                try:
-                    self.delete_service2_nodepool(self.active_service2_pool)
-                except Exception as cleanup_exc:  # noqa: BLE001
-                    warn(f"Failed to delete active service2 nodepool after failure: {cleanup_exc}")
+            if self.active_rolling_pools and not self.args.keep_service2_nodepools:
+                for nodepool in reversed(list(self.active_rolling_pools)):
+                    try:
+                        self.delete_rolling_nodepool(nodepool)
+                    except Exception as cleanup_exc:  # noqa: BLE001
+                        warn(f"Failed to delete active rolling nodepool {nodepool} after failure: {cleanup_exc}")
             if self.args.destroy_infrastructure_on_failure:
                 try:
                     self.destroy_infrastructure("failed RQ2.2 rolling run")

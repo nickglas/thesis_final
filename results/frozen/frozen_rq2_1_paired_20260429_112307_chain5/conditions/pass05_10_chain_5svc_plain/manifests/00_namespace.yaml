@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rq21-chain5-plain
+  labels:
+    experiment: rq21-chain5-plain
+    workload-role: inference
+    security-condition: plain
+    mesh-enabled: 'false'
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rq21-client-chain5-plain
+  labels:
+    experiment: rq21-chain5-plain
+    workload-role: benchmark-client
+    security-condition: plain
+    mesh-enabled: 'false'

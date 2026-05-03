@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rq21-direct-deny-20260429110529
+  namespace: rq21-client-mtls
+  labels:
+    app: thesis-inference
+    condition: chain_2svc_mtls
+    experiment-condition: chain_2svc_mtls
+    workload-role: debug-client
+    role: debug-client
+    mesh-enabled: 'false'
+    security-condition: mtls
+  annotations:
+    sidecar.istio.io/inject: 'false'
+spec:
+  restartPolicy: Never
+  containers:
+  - name: debug
+    image: thesisrq21acr26.azurecr.io/thesis-inference@sha256:524e8618c61d97f466b647cdc408e836256a94807790ad66321ae724f975a221
+    imagePullPolicy: Always
+    command:
+    - sleep
+    - infinity
+    resources:
+      requests:
+        cpu: 100m
+        memory: 1Gi
+      limits:
+        cpu: '1'
+        memory: 1Gi
+  nodeSelector:
+    agentpool: rq15pool
+    workload: benchmark
+  tolerations:
+  - key: workload
+    operator: Equal
+    value: benchmark
+    effect: NoSchedule

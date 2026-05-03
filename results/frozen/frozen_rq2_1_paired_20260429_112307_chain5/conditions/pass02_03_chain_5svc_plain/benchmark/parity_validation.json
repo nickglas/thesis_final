@@ -1,0 +1,27 @@
+{
+  "local_validation": {
+    "chain_5svc_plain": {
+      "match": true,
+      "max_abs_diff": 0.0,
+      "atol": 1e-05,
+      "num_inputs": 5,
+      "split_points": [
+        "layer1",
+        "layer2",
+        "layer3",
+        "layer4"
+      ],
+      "num_segments": 5,
+      "method": "local_chain_segments"
+    }
+  },
+  "grpc_validation": {
+    "chain_5svc_plain": {
+      "match": true,
+      "max_abs_diff": 0.0,
+      "atol": 1e-05,
+      "num_inputs": 5,
+      "method": "live_chain_grpc"
+    }
+  }
+}

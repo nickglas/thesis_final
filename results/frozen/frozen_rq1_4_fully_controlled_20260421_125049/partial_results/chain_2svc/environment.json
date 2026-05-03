@@ -1,0 +1,89 @@
+{
+  "timestamp": "2026-04-21T12:56:50.895153",
+  "platform": "Linux-6.17.0-22-generic-x86_64-with-glibc2.41",
+  "processor": "",
+  "python_version": "3.10.20",
+  "torch_version": "2.11.0+cu130",
+  "cpu_count": 16,
+  "git_commit": "unknown",
+  "cpu_stabilisation": {
+    "threading": {
+      "requested": {
+        "pytorch_intra_op": 1,
+        "pytorch_inter_op": 1,
+        "omp_num_threads": 1,
+        "mkl_num_threads": 1,
+        "openblas_num_threads": 1
+      },
+      "applied": {
+        "pytorch_intra_op": 1,
+        "pytorch_inter_op": 1,
+        "omp_num_threads": "1",
+        "mkl_num_threads": "1",
+        "openblas_num_threads": "1"
+      }
+    },
+    "affinity": {
+      "requested": {
+        "enabled": true,
+        "num_cores": 1,
+        "avoid_smt": true,
+        "explicit_cpus": null
+      },
+      "detected": {
+        "physical_cores_available": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14
+        ],
+        "total_cpus": 16
+      },
+      "applied": true,
+      "applied_cores": [
+        0
+      ],
+      "method": "auto-detected physical cores (SMT excluded), first 1"
+    },
+    "priority": {
+      "requested": {
+        "enabled": true,
+        "nice_value": -5
+      },
+      "detected": {
+        "current_nice": 0
+      },
+      "applied": true,
+      "applied_nice": -5
+    },
+    "governor": {
+      "requested": {
+        "set_governor": true,
+        "requested_mode": "performance"
+      },
+      "detected": "performance",
+      "applied": false,
+      "error": "OS error writing to /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor: [Errno 30] Read-only file system: '/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'"
+    },
+    "turbo": {
+      "requested": {
+        "disable_turbo": true
+      },
+      "detected": {
+        "interface": "cpufreq_boost",
+        "boost": "0",
+        "turbo_enabled": false
+      },
+      "applied": false,
+      "error": "OS error writing to /sys/devices/system/cpu/cpufreq/boost: [Errno 30] Read-only file system: '/sys/devices/system/cpu/cpufreq/boost'"
+    },
+    "aslr": {
+      "detected": "2",
+      "note": "Detection only; disabling requires root and has negligible impact on wall-clock inference latency."
+    }
+  }
+}

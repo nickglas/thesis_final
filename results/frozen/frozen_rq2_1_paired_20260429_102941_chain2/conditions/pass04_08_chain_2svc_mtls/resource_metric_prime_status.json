@@ -1,0 +1,46 @@
+{
+  "condition": "chain_2svc_mtls",
+  "started_at": "2026-04-29T11:05:51.541687+00:00",
+  "updated_at": "2026-04-29T11:05:52.438537+00:00",
+  "ready": true,
+  "attempts": 1,
+  "elapsed_seconds": 0.897,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21-chain2-mtls": {
+      "chain-2svc-mtls-svc-1-5c7f6c8646-s7xd4": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-2svc-mtls-svc-2-b47b87694-wmvvn": [
+        "inference",
+        "istio-proxy"
+      ]
+    },
+    "rq21-client-mtls": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21-chain2-mtls": {
+      "chain-2svc-mtls-svc-1-5c7f6c8646-s7xd4": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-2svc-mtls-svc-2-b47b87694-wmvvn": [
+        "inference",
+        "istio-proxy"
+      ]
+    },
+    "rq21-client-mtls": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

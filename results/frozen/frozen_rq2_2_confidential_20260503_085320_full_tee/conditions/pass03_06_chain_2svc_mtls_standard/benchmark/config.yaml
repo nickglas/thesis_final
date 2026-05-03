@@ -1,0 +1,161 @@
+experiment:
+  name: RQ2.2 chain_2svc mTLS AMD SEV-SNP full TEE
+  description: RQ2.2 managed AKS Istio mTLS deployment with both service1 and service2
+    on AMD SEV-SNP confidential VM infrastructure
+model:
+  name: resnet18
+  pretrained: true
+  device: cpu
+  input_shape:
+  - 1
+  - 3
+  - 224
+  - 224
+  precision: fp32
+conditions:
+- name: chain_2svc_mtls_standard
+  type: chain
+  chain_split_points:
+  - layer2
+benchmark:
+  rounds: 1
+  warmup_iterations: 50
+  measured_iterations: 200
+  cooldown_seconds: 5
+  seed: 42
+grpc:
+  host: 127.0.0.1
+  port: 50051
+  max_message_bytes: 16777216
+carry_forward:
+  near_best_window_pct: 5.0
+  degeneracy_threshold_pct: 10.0
+parity:
+  atol: 1.0e-05
+  num_inputs: 5
+warmup_calibration:
+  window: 10
+  cv_threshold: 0.02
+  max_extra_iterations: -1
+cpu_stabilisation:
+  threading:
+    pytorch_intra_op: 1
+    pytorch_inter_op: 1
+    omp_num_threads: 1
+    mkl_num_threads: 1
+    openblas_num_threads: 1
+  affinity:
+    enabled: true
+    num_cores: 1
+    avoid_smt: true
+    explicit_cpus: null
+  priority:
+    enabled: true
+    nice_value: -5
+  governor:
+    set_governor: false
+    requested_mode: performance
+  turbo:
+    disable_turbo: false
+confidential_compute:
+  backend: amd_sev_snp
+  region: westeurope
+  standard_condition: chain_2svc_mtls_standard
+  confidential_condition: chain_2svc_mtls_confidential_full
+  target_service_indices:
+  - '1'
+  - '2'
+  standard_size: Standard_D8as_v5
+  confidential_size: Standard_DC8as_v5
+  standard_quota:
+    family: standardDASv5Family
+    local_name: Standard DASv5 Family vCPUs
+    required_limit: 16
+  confidential_quota:
+    family: standardDCASv5Family
+    local_name: Standard DCASv5 Family vCPUs
+    required_limit: 16
+  service2_pool_strategy: rolling_full_tee
+kubernetes:
+  namespace: rq22-chain2-mtls
+  client_namespace: rq22-client-mtls
+  client_pod_name: benchmark-client
+  security_condition: mtls
+  service_name_template: '{condition}-svc-{index}'
+  grpc_port: 50051
+  max_message_bytes: 16777216
+  readiness_timeout: 120.0
+  image: rq22thesis2servicestee.azurecr.io/thesis-inference@sha256:c5f8e1fd41f9f016b77176bd02a0657833f74b86f5647e47a70eab4b648dd898
+  image_pull_policy: Always
+  resources:
+    cpu_request: '1'
+    cpu_limit: '1'
+    memory_request: 1Gi
+    memory_limit: 1Gi
+  client_resources:
+    cpu_request: 100m
+    cpu_limit: '1'
+    memory_request: 1Gi
+    memory_limit: 1Gi
+  placement:
+    strategy: rq22_full_tee_amd_sev_snp
+    require_same_node: false
+    fail_if_not_colocated: false
+    require_control_plane_isolation: true
+    node_pool: r22s1std
+    node_selector:
+      rq: '2.2'
+      rq22-role: service1-standard
+    node_pools:
+      service1_standard: r22s1std
+      service1_confidential: r22s1cvm
+      service2_standard: r22s2std
+      service2_confidential: r22s2cvm
+    node_selectors:
+      service1_standard:
+        rq: '2.2'
+        rq22-role: service1-standard
+      service1_confidential:
+        rq: '2.2'
+        rq22-role: service1-confidential
+        confidential-compute: amd-sev-snp
+      service2_standard:
+        rq: '2.2'
+        rq22-role: service2-standard
+      service2_confidential:
+        rq: '2.2'
+        rq22-role: service2-confidential
+        confidential-compute: amd-sev-snp
+  resource_sampling:
+    enabled: true
+    interval_seconds: 5
+    source: kubectl_top
+    require_metrics_server: false
+  metadata:
+    capture_mesh: true
+    record_control_plane_placement: true
+  mesh:
+    enabled: true
+    implementation: managed AKS Istio add-on
+    namespace: rq22-chain2-mtls
+    revision: asm-1-29
+    service_accounts:
+      '1': rq22-chain2-svc1
+      '2': rq22-chain2-svc2
+    proxy_resources:
+      cpu_request: 100m
+      cpu_limit: 500m
+      memory_request: 128Mi
+      memory_limit: 512Mi
+    peer_authentication:
+      enabled: true
+      namespace_mode: PERMISSIVE
+      strict_workloads:
+      - name: downstream-strict
+        segment_index: '2'
+        mode: STRICT
+    authorization_policy:
+      enabled: true
+      name: downstream-service1-only
+      source_segment_index: '1'
+      downstream_segment_index: '2'

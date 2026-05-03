@@ -1,0 +1,176 @@
+{
+  "monolithic_k8s_1svc": {
+    "namespace": "rq14",
+    "condition": "monolithic_k8s_1svc",
+    "num_services": 1,
+    "split_points": [],
+    "services": [
+      {
+        "service_name": "monolithic-k8s-1svc-svc-1",
+        "address": "monolithic-k8s-1svc-svc-1.rq14.svc.cluster.local:50051",
+        "pod_name": "monolithic-k8s-1svc-svc-1-7f56dddbbf-c6k6k",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.49"
+      }
+    ],
+    "cluster_context": "kind-thesis-rq14",
+    "cluster_info": "Kubernetes control plane is running at https://127.0.0.1:37169",
+    "collected_at": "2026-04-21T12:53:50.901083"
+  },
+  "chain_2svc": {
+    "namespace": "rq14",
+    "condition": "chain_2svc",
+    "num_services": 2,
+    "split_points": [
+      "layer2"
+    ],
+    "services": [
+      {
+        "service_name": "chain-2svc-svc-1",
+        "address": "chain-2svc-svc-1.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-2svc-svc-1-84c4bc8bfc-7hnv6",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.50"
+      },
+      {
+        "service_name": "chain-2svc-svc-2",
+        "address": "chain-2svc-svc-2.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-2svc-svc-2-67969b4c5f-r9wz8",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.51"
+      }
+    ],
+    "cluster_context": "kind-thesis-rq14",
+    "cluster_info": "Kubernetes control plane is running at https://127.0.0.1:37169",
+    "collected_at": "2026-04-21T12:56:51.342295"
+  },
+  "chain_3svc": {
+    "namespace": "rq14",
+    "condition": "chain_3svc",
+    "num_services": 3,
+    "split_points": [
+      "layer1",
+      "layer3"
+    ],
+    "services": [
+      {
+        "service_name": "chain-3svc-svc-1",
+        "address": "chain-3svc-svc-1.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-3svc-svc-1-5b59c9b84b-gdqh8",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.52"
+      },
+      {
+        "service_name": "chain-3svc-svc-2",
+        "address": "chain-3svc-svc-2.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-3svc-svc-2-57676dc6f7-pvr95",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.53"
+      },
+      {
+        "service_name": "chain-3svc-svc-3",
+        "address": "chain-3svc-svc-3.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-3svc-svc-3-6675cf4669-mvjwh",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.54"
+      }
+    ],
+    "cluster_context": "kind-thesis-rq14",
+    "cluster_info": "Kubernetes control plane is running at https://127.0.0.1:37169",
+    "collected_at": "2026-04-21T12:59:55.364614"
+  },
+  "chain_4svc": {
+    "namespace": "rq14",
+    "condition": "chain_4svc",
+    "num_services": 4,
+    "split_points": [
+      "layer1",
+      "layer2",
+      "layer3"
+    ],
+    "services": [
+      {
+        "service_name": "chain-4svc-svc-1",
+        "address": "chain-4svc-svc-1.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-4svc-svc-1-79d9bb874f-s6cc8",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.55"
+      },
+      {
+        "service_name": "chain-4svc-svc-2",
+        "address": "chain-4svc-svc-2.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-4svc-svc-2-6b78cc4c4b-p7fxs",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.56"
+      },
+      {
+        "service_name": "chain-4svc-svc-3",
+        "address": "chain-4svc-svc-3.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-4svc-svc-3-9756756c9-ggq6n",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.57"
+      },
+      {
+        "service_name": "chain-4svc-svc-4",
+        "address": "chain-4svc-svc-4.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-4svc-svc-4-65658fc49-zsj9h",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.58"
+      }
+    ],
+    "cluster_context": "kind-thesis-rq14",
+    "cluster_info": "Kubernetes control plane is running at https://127.0.0.1:37169",
+    "collected_at": "2026-04-21T13:03:04.186867"
+  },
+  "chain_5svc": {
+    "namespace": "rq14",
+    "condition": "chain_5svc",
+    "num_services": 5,
+    "split_points": [
+      "layer1",
+      "layer2",
+      "layer3",
+      "layer4"
+    ],
+    "services": [
+      {
+        "service_name": "chain-5svc-svc-1",
+        "address": "chain-5svc-svc-1.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-5svc-svc-1-659d5b5b-6kdkb",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.59"
+      },
+      {
+        "service_name": "chain-5svc-svc-2",
+        "address": "chain-5svc-svc-2.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-5svc-svc-2-77cf56f575-r5x55",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.60"
+      },
+      {
+        "service_name": "chain-5svc-svc-3",
+        "address": "chain-5svc-svc-3.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-5svc-svc-3-5964454786-zpqsq",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.61"
+      },
+      {
+        "service_name": "chain-5svc-svc-4",
+        "address": "chain-5svc-svc-4.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-5svc-svc-4-65c8c95db9-hmbrc",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.62"
+      },
+      {
+        "service_name": "chain-5svc-svc-5",
+        "address": "chain-5svc-svc-5.rq14.svc.cluster.local:50051",
+        "pod_name": "chain-5svc-svc-5-769d487f57-9jctp",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.63"
+      }
+    ],
+    "cluster_context": "kind-thesis-rq14",
+    "cluster_info": "Kubernetes control plane is running at https://127.0.0.1:37169",
+    "collected_at": "2026-04-21T13:06:19.352794"
+  }
+}

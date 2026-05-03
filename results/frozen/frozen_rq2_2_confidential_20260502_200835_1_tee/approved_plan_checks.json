@@ -1,0 +1,14 @@
+{
+  "config_checks": {
+    "region": "westeurope",
+    "backend": "amd_sev_snp",
+    "standard_size": "Standard_D8as_v5",
+    "confidential_size": "Standard_DC8as_v5",
+    "target_service_index": "2",
+    "standard_quota_family": "standardDASv5Family",
+    "confidential_quota_family": "standardDCASv5Family",
+    "standard_quota_required_limit": 16,
+    "confidential_quota_required_limit": 16
+  },
+  "rq21_mtls_authz_preserved": true
+}

@@ -1,0 +1,8 @@
+{
+  "reason": "explicit --push",
+  "acr_name": "thesisrq21acr26",
+  "local_image": "thesis-inference:latest",
+  "pushed_tag": "rq21-paired-20260429_112306",
+  "pinned_ref": "thesisrq21acr26.azurecr.io/thesis-inference@sha256:524e8618c61d97f466b647cdc408e836256a94807790ad66321ae724f975a221",
+  "paired_artifact_dir": "/mnt/c/Users/Nick/Desktop/opus/results_exports/rq2_1_paired_20260429_112307"
+}

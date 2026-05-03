@@ -98,8 +98,15 @@ def load_rows(summary: dict[str, Any], artifact_dir: Path) -> list[dict[str, Any
                         "execution_index": int(record["execution_index"]),
                         "condition_key": str(record["condition_key"]),
                         "condition_name": str(record["condition_name"]),
+                        "tee_scope": str(record.get("tee_scope") or "service2_only"),
+                        "service1_nodepool": str(record.get("service1_nodepool") or "r22s1std"),
+                        "service1_vm_size": str(record.get("service1_vm_size") or "Standard_D8as_v5"),
+                        "service1_confidential": bool(record.get("service1_confidential", False)),
                         "service2_nodepool": str(record["service2_nodepool"]),
                         "service2_vm_size": str(record["service2_vm_size"]),
+                        "service2_confidential": bool(
+                            record.get("service2_confidential", str(record.get("condition_key")) == CONFIDENTIAL_KEY)
+                        ),
                         "service2_zone": str(record["service2_zone"]),
                         "source_raw_iterations": str(raw_path),
                     }
@@ -187,8 +194,13 @@ def condition_summaries(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]
         summaries[key] = {
             "condition_key": key,
             "condition_name": group[0]["condition_name"],
+            "tee_scope": group[0].get("tee_scope") or "service2_only",
+            "service1_vm_size": group[0].get("service1_vm_size") or "",
+            "service1_nodepool": group[0].get("service1_nodepool") or "",
+            "service1_confidential": bool(group[0].get("service1_confidential")),
             "service2_vm_size": group[0]["service2_vm_size"],
             "service2_nodepool": group[0]["service2_nodepool"],
+            "service2_confidential": bool(group[0].get("service2_confidential")),
             "service2_zone": group[0]["service2_zone"],
             "iteration_count": len(group),
             "passes_covered": sorted({int(row["paired_pass"]) for row in group}),
@@ -368,16 +380,27 @@ def format_float(value: Any, digits: int = 3) -> str:
 def write_markdown(path: Path, summary: dict[str, Any]) -> None:
     condition_summaries_payload = summary["conditions"]
     comparison = summary["comparison"]
+    confidential_summary = condition_summaries_payload.get(CONFIDENTIAL_KEY) or {}
+    tee_scope = confidential_summary.get("tee_scope") or "service2_only"
+    if tee_scope == "full_2svc":
+        variant_label = "full TEE"
+        variant_description = "both service1 and service2 on standard AMD VMs vs both services on AMD SEV-SNP"
+        guardrail = "Both service1 and service2 move to AMD SEV-SNP confidential nodes in the confidential condition."
+    else:
+        variant_label = "confidential service2"
+        variant_description = "service2 standard vs service2 AMD SEV-SNP"
+        guardrail = "Service1 stayed on the standard AMD pool; the measured variable is service2 standard vs service2 AMD SEV-SNP."
     lines = [
-        "# RQ2.2 Confidential Service2 Analysis",
+        "# RQ2.2 Confidential Analysis",
         "",
         f"Artifact: `{summary['artifact_dir']}`",
         f"Generated: `{summary['generated_at']}`",
+        f"TEE scope: `{tee_scope}`",
         "",
         "## Condition Summary",
         "",
-        "| Condition | Service2 VM | n | Mean ms | Median ms | p95 ms | Throughput req/s |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "| Condition | Service1 VM | Service2 VM | n | Mean ms | Median ms | p95 ms | Throughput req/s |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for key in [STANDARD_KEY, CONFIDENTIAL_KEY]:
         cond = condition_summaries_payload.get(key)
@@ -386,10 +409,11 @@ def write_markdown(path: Path, summary: dict[str, Any]) -> None:
         lines.append(
             "| "
             + " | ".join(
-                [
-                    key,
-                    cond["service2_vm_size"],
-                    str(cond["iteration_count"]),
+                    [
+                        key,
+                        cond.get("service1_vm_size") or "n/a",
+                        cond["service2_vm_size"],
+                        str(cond["iteration_count"]),
                     format_float(cond["mean_latency_ms"]),
                     format_float(cond["median_latency_ms"]),
                     format_float(cond["p95_latency_ms"]),
@@ -438,7 +462,8 @@ def write_markdown(path: Path, summary: dict[str, Any]) -> None:
             "",
             "## Interpretation Guardrails",
             "",
-            "- Service1 stayed on the standard AMD pool; the measured variable is service2 standard vs service2 AMD SEV-SNP.",
+            f"- {guardrail}",
+            f"- The measured variable is {variant_description}.",
             "- Both conditions used the same pushed image digest and managed AKS Istio mTLS/AuthZ semantics.",
             "- Throughput is computed as sequential client request rate: `1000 / mean_latency_ms`.",
         ]
@@ -460,7 +485,15 @@ def generate_plots(output_dir: Path, rows: list[dict[str, Any]], deltas: list[di
     plots_dir = output_dir / "plots"
     plots_dir.mkdir(parents=True, exist_ok=True)
 
-    label_map = {STANDARD_KEY: "Standard service2", CONFIDENTIAL_KEY: "TEE service2"}
+    tee_scope = ""
+    for row in rows:
+        if row.get("condition_key") == CONFIDENTIAL_KEY:
+            tee_scope = str(row.get("tee_scope") or "")
+            break
+    label_map = {
+        STANDARD_KEY: "Standard",
+        CONFIDENTIAL_KEY: "Full TEE" if tee_scope == "full_2svc" else "TEE service2",
+    }
     data = [
         finite_values([row for row in rows if row["condition_key"] == key], "end_to_end_ms")
         for key in [STANDARD_KEY, CONFIDENTIAL_KEY]
@@ -468,7 +501,7 @@ def generate_plots(output_dir: Path, rows: list[dict[str, Any]], deltas: list[di
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.boxplot(data, labels=[label_map[STANDARD_KEY], label_map[CONFIDENTIAL_KEY]], patch_artist=True)
     ax.set_ylabel("End-to-end latency (ms)")
-    ax.set_title("RQ2.2 Latency: Standard vs TEE Service2")
+    ax.set_title("RQ2.2 Latency: Standard vs " + label_map[CONFIDENTIAL_KEY])
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
     out = plots_dir / "latency_boxplot.png"
@@ -482,7 +515,7 @@ def generate_plots(output_dir: Path, rows: list[dict[str, Any]], deltas: list[di
     ax.axhline(0, color="black", linewidth=0.8)
     ax.plot(x, y, marker="o")
     ax.set_xlabel("Paired pass")
-    ax.set_ylabel("TEE mean latency delta (%)")
+    ax.set_ylabel(f"{label_map[CONFIDENTIAL_KEY]} mean latency delta (%)")
     ax.set_title("RQ2.2 Paired-Pass Confidential Delta")
     ax.grid(alpha=0.3)
     fig.tight_layout()
@@ -497,8 +530,8 @@ def generate_plots(output_dir: Path, rows: list[dict[str, Any]], deltas: list[di
     std_means = [row["standard_mean_ms"] for row in deltas]
     conf_means = [row["confidential_mean_ms"] for row in deltas]
     positions = np.arange(len(passes))
-    ax.bar(positions - width / 2, std_means, width, label="Standard service2")
-    ax.bar(positions + width / 2, conf_means, width, label="TEE service2")
+    ax.bar(positions - width / 2, std_means, width, label="Standard")
+    ax.bar(positions + width / 2, conf_means, width, label=label_map[CONFIDENTIAL_KEY])
     ax.set_xticks(positions)
     ax.set_xticklabels([str(item) for item in passes])
     ax.set_xlabel("Paired pass")
@@ -532,8 +565,13 @@ def analyze(artifact_dir: Path, output_dir: Path) -> dict[str, Any]:
         "execution_index",
         "condition_key",
         "condition_name",
+        "tee_scope",
+        "service1_vm_size",
+        "service1_nodepool",
+        "service1_confidential",
         "service2_vm_size",
         "service2_nodepool",
+        "service2_confidential",
         "service2_zone",
         "round",
         "iteration",
@@ -573,10 +611,23 @@ def analyze(artifact_dir: Path, output_dir: Path) -> dict[str, Any]:
             "paired_pass_count": len(deltas),
         },
         "interpretation": {
-            "measured_variable": "service2 standard AMD VM vs service2 AMD SEV-SNP confidential VM",
-            "fixed_segment": "service1 remained on Standard_D8as_v5",
-            "baseline": "standard service2",
-            "variant": "confidential service2",
+            "tee_scope": summaries.get(CONFIDENTIAL_KEY, {}).get("tee_scope"),
+            "measured_variable": (
+                "both services standard AMD VMs vs both services AMD SEV-SNP confidential VMs"
+                if summaries.get(CONFIDENTIAL_KEY, {}).get("tee_scope") == "full_2svc"
+                else "service2 standard AMD VM vs service2 AMD SEV-SNP confidential VM"
+            ),
+            "fixed_segment": (
+                None
+                if summaries.get(CONFIDENTIAL_KEY, {}).get("tee_scope") == "full_2svc"
+                else "service1 remained on Standard_D8as_v5"
+            ),
+            "baseline": (
+                "standard two-service chain"
+                if summaries.get(CONFIDENTIAL_KEY, {}).get("tee_scope") == "full_2svc"
+                else "standard service2"
+            ),
+            "variant": "full TEE" if summaries.get(CONFIDENTIAL_KEY, {}).get("tee_scope") == "full_2svc" else "confidential service2",
         },
     }
     (output_dir / "rq22_analysis_summary.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -598,8 +649,13 @@ def main() -> int:
     print(f"Wrote RQ2.2 analysis artifacts to {output_dir}")
     comparison = payload.get("comparison") or {}
     if comparison.get("available"):
+        label = (
+            "Full-TEE"
+            if (payload.get("conditions") or {}).get(CONFIDENTIAL_KEY, {}).get("tee_scope") == "full_2svc"
+            else "Confidential service2"
+        )
         print(
-            "Confidential service2 mean latency delta: "
+            f"{label} mean latency delta: "
             f"{format_float(comparison.get('mean_latency_delta_ms'))} ms "
             f"({format_float(comparison.get('mean_latency_delta_pct'))}%)"
         )

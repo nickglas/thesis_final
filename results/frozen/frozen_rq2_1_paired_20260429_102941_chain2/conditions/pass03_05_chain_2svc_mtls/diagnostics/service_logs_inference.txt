@@ -1,0 +1,2 @@
+[pod/chain-2svc-mtls-svc-1-5c7f6c8646-5r6tr/inference] READY
+[pod/chain-2svc-mtls-svc-2-b47b87694-2rl26/inference] READY

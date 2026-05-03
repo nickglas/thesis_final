@@ -1,0 +1,30 @@
+{
+  "num_inputs": 5,
+  "atol": 1e-06,
+  "seed": 42,
+  "level": "full",
+  "passed": true,
+  "max_abs_diff": 0.0,
+  "per_input": [
+    {
+      "input_idx": 0,
+      "max_abs_diff": 0.0
+    },
+    {
+      "input_idx": 1,
+      "max_abs_diff": 0.0
+    },
+    {
+      "input_idx": 2,
+      "max_abs_diff": 0.0
+    },
+    {
+      "input_idx": 3,
+      "max_abs_diff": 0.0
+    },
+    {
+      "input_idx": 4,
+      "max_abs_diff": 0.0
+    }
+  ]
+}

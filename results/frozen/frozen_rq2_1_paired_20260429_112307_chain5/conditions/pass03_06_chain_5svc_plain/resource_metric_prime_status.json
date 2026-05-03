@@ -1,0 +1,60 @@
+{
+  "condition": "chain_5svc_plain",
+  "started_at": "2026-04-29T11:58:33.303009+00:00",
+  "updated_at": "2026-04-29T11:58:46.129708+00:00",
+  "ready": true,
+  "attempts": 3,
+  "elapsed_seconds": 12.828,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21-chain5-plain": {
+      "chain-5svc-plain-svc-1-5547df97bd-lvvk2": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-2-dc4b7b74f-d4b47": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-3-869fcf9dd6-nf27z": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-4-769b867475-mnqbc": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-5-b7495b95b-87js5": [
+        "inference"
+      ]
+    },
+    "rq21-client-chain5-plain": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21-chain5-plain": {
+      "chain-5svc-plain-svc-1-5547df97bd-lvvk2": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-2-dc4b7b74f-d4b47": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-3-869fcf9dd6-nf27z": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-4-769b867475-mnqbc": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-5-b7495b95b-87js5": [
+        "inference"
+      ]
+    },
+    "rq21-client-chain5-plain": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

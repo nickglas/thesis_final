@@ -1,0 +1,20 @@
+{
+  "monolithic_k8s_1svc": {
+    "namespace": "rq14",
+    "condition": "monolithic_k8s_1svc",
+    "num_services": 1,
+    "split_points": [],
+    "services": [
+      {
+        "service_name": "monolithic-k8s-1svc-svc-1",
+        "address": "monolithic-k8s-1svc-svc-1.rq14.svc.cluster.local:50051",
+        "pod_name": "monolithic-k8s-1svc-svc-1-7f56dddbbf-c6k6k",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.49"
+      }
+    ],
+    "cluster_context": "kind-thesis-rq14",
+    "cluster_info": "Kubernetes control plane is running at https://127.0.0.1:37169",
+    "collected_at": "2026-04-21T12:53:50.901083"
+  }
+}

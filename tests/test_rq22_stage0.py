@@ -12,6 +12,7 @@ from src.benchmark.config import load_config
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RQ22_CONFIG = REPO_ROOT / "configs" / "rq2" / "2.2" / "rq2_2_confidential_amd_sev_snp.yaml"
+RQ22_FULL_TEE_CONFIG = REPO_ROOT / "configs" / "rq2" / "2.2" / "rq2_2_full_tee_amd_sev_snp.yaml"
 
 
 def load_yaml(path: Path) -> dict:
@@ -72,6 +73,27 @@ def test_rq22_config_still_loads_through_base_config_parser():
     assert [condition.name for condition in config.conditions] == [
         "chain_2svc_mtls_standard",
         "chain_2svc_mtls_confidential_service2",
+    ]
+    assert config.kubernetes is not None
+    assert config.kubernetes.namespace == "rq22-chain2-mtls"
+
+
+def test_rq22_full_tee_config_matches_approved_amd_gate():
+    raw = load_yaml(RQ22_FULL_TEE_CONFIG)
+    checks, errors = preflight.config_hard_gate(raw)
+
+    assert errors == []
+    assert checks["region"] == "westeurope"
+    assert checks["backend"] == "amd_sev_snp"
+    assert checks["target_service_indices"] == ["1", "2"]
+
+
+def test_rq22_full_tee_config_still_loads_through_base_config_parser():
+    config = load_config(str(RQ22_FULL_TEE_CONFIG))
+
+    assert [condition.name for condition in config.conditions] == [
+        "chain_2svc_mtls_standard",
+        "chain_2svc_mtls_confidential_full",
     ]
     assert config.kubernetes is not None
     assert config.kubernetes.namespace == "rq22-chain2-mtls"
@@ -138,6 +160,46 @@ def test_rq22_manifest_generation_places_service2_by_condition(tmp_path: Path):
 
     assert "affinity" not in (((standard_svc2.get("spec") or {}).get("template") or {}).get("spec") or {})
     assert "affinity" not in (((confidential_svc2.get("spec") or {}).get("template") or {}).get("spec") or {})
+
+    passed, errors = preflight.validate_generated_manifests(output_dir)
+    assert passed, errors
+
+
+def test_rq22_full_tee_manifest_generation_places_both_segments_on_confidential_nodes(tmp_path: Path):
+    output_dir = tmp_path / "manifests"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "k8s/aks/generate_aks_manifests.py",
+            "--config",
+            str(RQ22_FULL_TEE_CONFIG),
+            "--output-dir",
+            str(output_dir),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    docs = load_manifest_documents(output_dir)
+
+    standard_svc1 = matching_deployment(docs, "chain_2svc_mtls_standard", "1")
+    standard_svc2 = matching_deployment(docs, "chain_2svc_mtls_standard", "2")
+    confidential_svc1 = matching_deployment(docs, "chain_2svc_mtls_confidential_full", "1")
+    confidential_svc2 = matching_deployment(docs, "chain_2svc_mtls_confidential_full", "2")
+
+    assert node_selector(standard_svc1)["agentpool"] == "r22s1std"
+    assert node_selector(standard_svc2)["agentpool"] == "r22s2std"
+    assert node_selector(confidential_svc1)["agentpool"] == "r22s1cvm"
+    assert node_selector(confidential_svc2)["agentpool"] == "r22s2cvm"
+
+    assert deployment_labels(confidential_svc1)["confidential-compute"] == "true"
+    assert deployment_labels(confidential_svc1)["confidential-backend"] == "amd_sev_snp"
+    assert deployment_labels(confidential_svc1)["rq22-vm-size"] == "Standard_DC8as_v5"
+    assert deployment_labels(confidential_svc2)["confidential-compute"] == "true"
+    assert deployment_labels(confidential_svc2)["confidential-backend"] == "amd_sev_snp"
+    assert deployment_labels(confidential_svc2)["rq22-vm-size"] == "Standard_DC8as_v5"
 
     passed, errors = preflight.validate_generated_manifests(output_dir)
     assert passed, errors

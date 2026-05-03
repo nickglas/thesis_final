@@ -1,0 +1,9 @@
+{
+  "n_samples": 50,
+  "n_warmup": 20,
+  "plain_mean_ms": 72.9672,
+  "instrumented_mean_ms": 73.6125,
+  "overhead_ms": 0.6453,
+  "overhead_pct": 0.88,
+  "method": "interleaved_outer_timing"
+}

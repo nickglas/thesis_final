@@ -1,0 +1,89 @@
+{
+  "timestamp": "2026-04-17T16:51:28.567036",
+  "platform": "Linux-6.17.0-20-generic-x86_64-with-glibc2.39",
+  "processor": "x86_64",
+  "python_version": "3.12.3",
+  "torch_version": "2.11.0+cu130",
+  "cpu_count": 16,
+  "git_commit": "0df2ac36e4b8b803cfd8e75952cabcbe63355975",
+  "cpu_stabilisation": {
+    "threading": {
+      "requested": {
+        "pytorch_intra_op": 1,
+        "pytorch_inter_op": 1,
+        "omp_num_threads": 1,
+        "mkl_num_threads": 1,
+        "openblas_num_threads": 1
+      },
+      "applied": {
+        "pytorch_intra_op": 1,
+        "pytorch_inter_op": 1,
+        "omp_num_threads": "1",
+        "mkl_num_threads": "1",
+        "openblas_num_threads": "1"
+      }
+    },
+    "affinity": {
+      "requested": {
+        "enabled": true,
+        "num_cores": 1,
+        "avoid_smt": true,
+        "explicit_cpus": null
+      },
+      "detected": {
+        "physical_cores_available": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14
+        ],
+        "total_cpus": 16
+      },
+      "applied": true,
+      "applied_cores": [
+        0
+      ],
+      "method": "auto-detected physical cores (SMT excluded), first 1"
+    },
+    "priority": {
+      "requested": {
+        "enabled": true,
+        "nice_value": -5
+      },
+      "detected": {
+        "current_nice": 0
+      },
+      "applied": true,
+      "applied_nice": -5
+    },
+    "governor": {
+      "requested": {
+        "set_governor": true,
+        "requested_mode": "performance"
+      },
+      "detected": "schedutil",
+      "applied": true,
+      "applied_mode": "performance"
+    },
+    "turbo": {
+      "requested": {
+        "disable_turbo": true
+      },
+      "detected": {
+        "interface": "cpufreq_boost",
+        "boost": "1",
+        "turbo_enabled": true
+      },
+      "applied": true,
+      "applied_value": "0"
+    },
+    "aslr": {
+      "detected": "2",
+      "note": "Detection only; disabling requires root and has negligible impact on wall-clock inference latency."
+    }
+  }
+}

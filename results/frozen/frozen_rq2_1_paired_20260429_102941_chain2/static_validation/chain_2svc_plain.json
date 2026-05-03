@@ -1,0 +1,16 @@
+{
+  "condition": "chain_2svc_plain",
+  "manifest_dir": "/mnt/c/Users/Nick/Desktop/opus/results_exports/rq2_1_paired_20260429_102941/conditions/pass05_10_chain_2svc_plain/manifests",
+  "kinds": [
+    "Namespace",
+    "Namespace",
+    "Pod",
+    "Pod",
+    "Service",
+    "Deployment",
+    "Service",
+    "Deployment"
+  ],
+  "passed": true,
+  "errors": []
+}

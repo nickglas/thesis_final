@@ -1,0 +1,7 @@
+{
+  "reason": "explicit --push",
+  "acr_name": "rq22thesis2servicestee",
+  "local_image": "thesis-inference:latest",
+  "pushed_tag": "rq22-20260503_085319",
+  "pinned_ref": "rq22thesis2servicestee.azurecr.io/thesis-inference@sha256:c5f8e1fd41f9f016b77176bd02a0657833f74b86f5647e47a70eab4b648dd898"
+}

@@ -1,0 +1,30 @@
+{
+  "target": "chain-2svc-mtls-svc-1.rq21-chain2-mtls.svc.cluster.local:50051",
+  "response_shape": [
+    1,
+    1000
+  ],
+  "hop_count": 2,
+  "hop_indexes": [
+    1,
+    2
+  ],
+  "hop_timings": [
+    {
+      "hop_index": 1,
+      "deserialize_ms": 0.8446889996776008,
+      "compute_ms": 40.20955200030585,
+      "serialize_ms": 0.08119899985103984,
+      "forward_ms": 86.90981600011582,
+      "activation_bytes": 602112
+    },
+    {
+      "hop_index": 2,
+      "deserialize_ms": 0.5994909997752984,
+      "compute_ms": 39.412163000179135,
+      "serialize_ms": 0.05319899992173305,
+      "forward_ms": 0.0,
+      "activation_bytes": 401408
+    }
+  ]
+}
