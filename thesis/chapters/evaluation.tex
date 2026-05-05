@@ -1,9 +1,96 @@
 \chapter{Analysis}%
 \label{ch:analysis}
-With the design and experiments done, and the results presented, now comes the most important part of your research: analysis.
-In this chapter you discuss the implications of your results, and how they answer your research questions.
-Be sure to cover in your analysis:
-\begin{itemize}
-    \item \emph{Validation:} how do you know that the results you got (and the conclusions you drawing from them) are true,
-    \item \emph{Evaluation:} how well is your system performing.
-\end{itemize}
+
+This chapter synthesises the empirical results across the staged pipeline. The
+individual RQ chapters report the detailed measurements; the purpose here is to connect
+those results into a single interpretation of what happens when ResNet-18 inference is
+decomposed into microservices, moved through Kubernetes and AKS, and then hardened with
+communication-level and VM-level security mechanisms.
+
+\section{Architectural Split Choice}
+
+The local split-selection stages show that the position of the model boundary matters
+before Kubernetes or cloud effects are introduced. RQ1.1 found that coarse residual-stage
+boundaries are not interchangeable: early boundaries carry high activation-transfer cost,
+while the very late \texttt{layer4} boundary becomes compute-degenerate. The strongest
+carry-forward region is therefore the mid-to-late part of the network around
+\texttt{layer2} and \texttt{layer3}, as shown in \cref{tab:rq11-results}. This matches
+the broader split-computing literature, which treats partitioning as a trade-off among
+activation size, compute allocation, and deployment conditions~\cite{neurosurgeon,dnnsplit,deeperthings,survey_partitioning}.
+
+RQ1.2 refined this region and showed that a finer boundary can change behavior even when
+activation size is held constant. The comparison between
+\texttt{split\_after\_layer3\_block0} and \texttt{split\_after\_layer3} is the important
+case: both transfer the same approximate activation size, but their boundary-crossing
+intervals differ. This supports the RQ1.3 interpretation that activation-transfer burden
+and compute placement are complementary explanations rather than competing ones
+~\cite{fine_grained_partitioning,hierarchical_partitioning,pareto_split}.
+
+\section{Deployment Context}
+
+RQ1.4 and RQ1.5 show that the architectural pattern remains visible after the workload is
+moved into Kubernetes-style service chains. In local \texttt{kind}, latency increases
+from the monolithic Kubernetes baseline through the four-service chain, while the final
+five-service increment is small because the added late-stage boundary transfers a much
+smaller activation tensor. In AKS, the same condition ordering is preserved:
+\texttt{monolithic\_k8s\_1svc}, \texttt{chain\_2svc}, \texttt{chain\_3svc},
+\texttt{chain\_4svc}, and \texttt{chain\_5svc}. The absolute millisecond values differ
+between local Kubernetes and AKS, but the within-environment overhead trend transfers
+directionally, as summarised in \cref{tab:rq15_transfer}.
+
+This distinction is important. The thesis does not claim that local Kubernetes predicts
+AKS latency numerically. Cloud and Kubernetes performance studies show that container
+runtime, virtualization, CNI, managed-cluster implementation, and cloud variability can
+change absolute measurements~\cite{managed_k8s_perf,virtualization_costs,cni_k8s_ic2e21,noise_in_clouds}.
+The stronger supported claim is architectural: when the same ResNet-18 chain family is
+run in AKS, the relative ordering remains interpretable even though the platform changes.
+
+\section{Security Hardening}
+
+The security stages show that hardening is feasible for the selected AKS deployment, but
+it is not free. RQ2.1 adds managed-Istio mTLS, service identity, and authorization
+policy. For the selected \texttt{chain\_2svc} topology, the measured mean overhead is
+3.122~ms, or 4.5\%; for the \texttt{chain\_5svc} stress topology, the overhead grows to
+9.008~ms, or 11.7\% (\cref{tab:rq21_latency,tab:rq21_paired_deltas}). This is consistent
+with service-mesh studies showing that sidecar-based mTLS adds latency and resource cost
+through additional critical-path processing~\cite{meshinsight_socc23,bremlerbarr2025mtls}.
+
+RQ2.2 adds VM-level confidential execution on AMD SEV-SNP nodes while keeping the mTLS
+contract fixed. Selective confidential execution for only the downstream service adds
+2.059~ms, or 3.420\%, over its paired standard-node mTLS baseline. Full two-service
+confidential execution adds 4.904~ms, or 8.156\%, over its paired standard-node mTLS
+baseline. These results match the confidential-computing literature's expectation that
+overhead is workload- and scope-dependent~\cite{yan2023_cvm_overheads,misono2024_cvm_explained,mo2024_ml_confidential_computing}.
+
+\section{Overall Interpretation}
+
+The main engineering lesson is that partitioning, deployment, and hardening cannot be
+optimised independently. The split point determines activation-transfer size and compute
+placement. Kubernetes and AKS add platform-specific communication and scheduling
+effects. Security hardening then compounds the cost of the selected service topology.
+This means that a decomposition that is acceptable without mTLS or confidential
+execution may become less attractive once every service boundary is protected.
+
+For the evaluated workload, \texttt{chain\_2svc} is the most defensible non-monolithic
+deployment point. It avoids the excessive boundary count of deeper chains, preserves a
+meaningful architectural split, and remains the lowest-overhead chained condition in both
+local Kubernetes and AKS. It also provides the practical base for RQ2: mTLS/AuthZ is
+measurable but bounded on this topology, and selective TEE can protect the downstream
+service at a lower cost than full-chain confidential execution.
+
+\section{Threats to Validity}
+
+The strongest validity support is internal consistency. The experiments use fixed model
+weights, fixed input shape, functional parity validation, repeated rounds, and a shared
+benchmark contract. The local and Kubernetes stages also use CPU-affinity and
+single-threading controls where the runtime permits. These choices follow systems
+benchmarking guidance that stresses controlled comparisons, explicit measurement
+context, and caution when interpreting performance numbers~\cite{benchmarking_sc15}.
+
+The main limitation is external validity. The workload is one ResNet-18 inference
+pipeline, the request pattern is sequential batch-size-one inference, and the Kubernetes
+and AKS runs use same-node placement. Multi-node clusters, concurrent clients, GPUs,
+larger models, feature compression, autoscaling, and different service-mesh
+configurations could change the absolute overheads and possibly the preferred topology.
+The thesis therefore supports bounded claims about the evaluated system rather than a
+universal rule for all microservice inference deployments.

@@ -182,7 +182,8 @@ The Netherlands
 \appendix
 
 \import{appendix/}{appendix.tex}
-\import{appendix/}{showcase.tex}
+% Template showcase appendix removed from the thesis build; it contains dummy citation keys.
+% \import{appendix/}{showcase.tex}
 
 %
 % BACKMATTER
@@ -191,7 +192,7 @@ The Netherlands
 \backmatter
 
 % Bibliography
-\printbibliography{}
+\printbibliography[heading=bibintoc,title={References}]
 \cleardoublepage{}
 
 % Acronyms

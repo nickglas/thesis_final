@@ -1,26 +1,56 @@
 \chapter{Conclusion}%
 \label{ch:conclusion}
 
-The Conclusion chapter is typically the last chapter you write, though most often it will be the first chapter others will read (after the abstract).
-Make sure to be concise and complete, and make it not too detailed.
-No new information is presented or derived, all information should have been presented in other chapters.
-
 \section{Summary \& Findings}
-Here you summarise your work (the context, questions, approach), and present the findings in context with the research questions.
+
+This thesis evaluated ResNet-18 inference as a staged microservice system. The study
+started with controlled local split selection, moved the selected chain family into
+local Kubernetes and AKS, and then measured the additional cost of service-mesh mTLS,
+authorization policy, and AMD SEV-SNP confidential VM execution.
+
+The main finding is that microservice inference cost is shaped by three linked factors:
+where the neural network is split, where the resulting services are deployed, and how
+strongly the communication and execution path are hardened. RQ1 showed that suitable
+ResNet-18 boundaries lie in the mid-to-late region around \texttt{layer2} and
+\texttt{layer3}, because early boundaries transfer larger activations and overly late
+boundaries become compute-degenerate. RQ1.4 and RQ1.5 then showed that the same
+service-count ordering remains visible in Kubernetes and AKS, although absolute latency
+is environment-specific. RQ2 showed that mTLS/AuthZ and confidential VM execution are
+feasible for the selected AKS chain, but each protection layer adds measurable overhead.
 
 \section{Contributions}
-Highlight the contributions your thesis provides.
-These are tangible results, which can live outside the context of this thesis.
-Examples are new methods, frameworks, software.
-Make sure to provide links to Git repos or datasets if applicable.
+
+The thesis makes three contributions. First, it provides a staged empirical evaluation
+method for neural-network microservice decomposition, moving from local split selection
+to Kubernetes, AKS, and security hardening without changing the model or benchmark
+contract. Second, it shows that activation-transfer size and compute placement must be
+considered together when selecting ResNet-18 service boundaries. Third, it quantifies a
+security-performance trade-off for the selected Azure deployment path: mTLS/AuthZ is a
+practical communication-hardening baseline, selective TEE protects the downstream
+service at lower cost, and full-chain TEE broadens VM-level runtime protection at higher
+latency cost.
 
 \section{Limitations \& Threats to Validity}
-No work is perfect.
-Discuss the limitations of your study.
-A research study can only be as unbiased as the researcher and the circumstances they are working with.
-The threats to validity offers insights into the variables that were encountered and how you compensated for them.
+
+The conclusions are bounded by the evaluated workload and deployment setup. The thesis
+uses ResNet-18, CPU-only FP32 inference, batch size one, synchronous gRPC calls, and
+same-node Kubernetes and AKS placement. The results should therefore not be generalized
+directly to GPU inference, concurrent serving, multi-node clusters, larger models,
+feature-compressed split computing, or different service-mesh configurations.
+
+The benchmark design reduces internal validity risks through repeated rounds, fixed
+inputs and weights, functional parity checks, and a shared measurement contract. Still,
+cloud measurements remain sensitive to platform conditions, and the AKS and confidential
+VM results should be read as measured evidence for this deployment path rather than as
+provider-independent constants.
 
 \section{Future Work}
-This is the moment to highlight all the work you wanted to do if you had more time.
-Or any new ideas you did not have the time to explore.
-This is also where you can give an idea how to address any limitations mentioned in the previous section.
+
+Future work should extend the evaluation to larger and more diverse models, including
+transformer-based inference workloads and models with different activation profiles.
+The same staged method could also be applied under concurrent load, GPU execution,
+multi-node Kubernetes placement, and autoscaling conditions. Another useful extension is
+to combine architectural partitioning with feature compression, since compression may
+change the cost of early split points. Finally, the security evaluation could be expanded
+to compare sidecar and sidecarless meshes, application-layer encryption, attestation
+workflow integration, and different confidential-computing platforms.

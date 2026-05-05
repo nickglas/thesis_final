@@ -1,8 +1,8 @@
 \chapter{Methods}
-\label{chap:methods}
+\label{ch:methods}
 
 This chapter describes the research design used to answer the research questions
-defined in Chapter~\ref{chap:introduction}.
+defined in Chapter~\ref{ch:introduction}.
 It explains which methods and procedures are used at each stage, why those methods
 are appropriate, and what the known limitations and pitfalls of the chosen approach
 are.
@@ -56,7 +56,7 @@ operational complexity, and protection scope, without collecting any new benchma
 The common design principle across all stages is to change one layer of the system at a
 time.
 This principle follows benchmarking guidance that treats isolation of variables as the
-primary condition for interpretable systems performance results~\cite{Hoefler2015}.
+primary condition for interpretable systems performance results~\cite{benchmarking_sc15}.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{System Under Study}
@@ -65,7 +65,7 @@ primary condition for interpretable systems performance results~\cite{Hoefler201
 \subsection{Model}
 
 The neural network used in all stages is ResNet-18 with pretrained ImageNet
-weights~\cite{He2016}.
+weights~\cite{resnet}.
 ResNet-18 is organised into four residual stages (\texttt{layer1} through
 \texttt{layer4}), each of which doubles the number of channels and halves the spatial
 resolution of the intermediate feature maps.
@@ -78,7 +78,7 @@ First, its stage structure supports a principled coarse-to-fine screening method
 Second, its size enables CPU-only inference at latencies realistic enough for measurement
 while avoiding the confounds of GPU scheduling variance in the early controlled stages.
 Third, as a standard reference architecture, its behaviour under partition is directly
-relatable to prior split-computing and DNN-partitioning work~\cite{Kang2017,Stahl2021,Xu2023survey}.
+relatable to prior split-computing and DNN-partitioning work~\cite{neurosurgeon,deeperthings,survey_partitioning}.
 
 All experiments use FP32 precision with a fixed input shape of
 $1 \times 3 \times 224 \times 224$ and a batch size of one.
@@ -282,7 +282,7 @@ The justification for screening at the coarse architectural level before conduct
 any finer search is that moving directly into an exhaustive layer-by-layer search would
 risk over-fitting the selection to incidental local-execution noise and would not
 align with the partitioning literature, which typically evaluates architecturally
-meaningful boundaries rather than arbitrary layers~\cite{Kayal2024,Stahl2021,Xu2023survey}.
+meaningful boundaries rather than arbitrary layers~\cite{dnnsplit,deeperthings,survey_partitioning}.
 
 The output of this stage is one main carry-forward candidate and one reference
 candidate, selected using the degeneracy and near-best-window rules defined in
@@ -304,7 +304,7 @@ placement, creating a controlled comparison that can isolate the role of compute
 distribution independently of communication burden.
 This comparison is grounded in the DNN-partitioning literature, which treats compute
 distribution as a first-class criterion alongside activation-transfer
-cost~\cite{Kayal2024,Ren2022}.
+cost~\cite{dnnsplit,fine_grained_partitioning}.
 
 The experimental setup and measurement protocol are identical to RQ1.1, ensuring that
 the two stages remain directly comparable.
@@ -374,7 +374,7 @@ virtualisation layers, container runtimes, and networking paths.
 The transfer claim is therefore directional rather than numerical: if the same
 architectural chain ordering is preserved in AKS, that constitutes evidence that the
 ordering reflects the architecture of the model partition rather than incidental
-local-cluster noise~\cite{Hoefler2015}.
+local-cluster noise~\cite{benchmarking_sc15}.
 Within-environment normalised overhead is used as the primary comparison metric for
 this reason.
 
@@ -420,7 +420,7 @@ A known limitation of sidecar-based mTLS is that it protects the inter-proxy
 communication path but does not prevent plaintext from existing inside the pod boundary
 after TLS termination.
 This limitation is acknowledged explicitly: RQ2.1 is claimed as a communication-level
-hardening layer, not as a complete inter-service secrecy mechanism~\cite{Poudel2025}.
+hardening layer, not as a complete inter-service secrecy mechanism~\cite{poudel2025mazu}.
 
 \subsection{RQ2.2 -- Confidential VM Execution Hardening}
 \label{sec:methods-rq22}

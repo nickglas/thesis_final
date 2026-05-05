@@ -1,10 +1,11 @@
 \chapter{Background}%
 \label{ch:background}
 
-In this chapter, you provide information that has a benefit for an informed audience.
-Often, you use this to explain a technique or a concept you use, referring to the literature.
-This is different from Related Work (\cref{ch:related}), where you show the relation of literature to your contributions (to ground, compare, or inform).
-A good rule of thumb is that your thesis should still make sense if the background chapter is removed.
+This chapter introduces the technical concepts needed to interpret the staged
+experiments. It focuses on three pieces of background: the ResNet-18 architecture used
+as the inference workload, the meaning of a split boundary in distributed DNN
+inference, and the Kubernetes-style service chain used in the later deployment stages.
+The more comparative discussion of prior work appears in \cref{ch:related}.
 
 \begin{figure}[htbp]
 \centering
@@ -21,7 +22,9 @@ the first feature extraction and spatial downsampling through convolution,
 normalisation, activation, and max pooling. The four residual stages, denoted
 \texttt{layer1} through \texttt{layer4}, contain the main residual-block computation
 of the network. The classification head then reduces the final feature map through
-average pooling and applies the final fully connected classifier.
+average pooling and applies the final fully connected classifier. This stage-based
+view follows the residual-network design introduced by He~et~al., where successive
+stages reduce spatial resolution while increasing channel depth~\cite{resnet}.
 
 This structure motivates the coarse split choices used later in RQ1.1. The thesis
 does not treat every primitive operation as an equally meaningful split candidate.
@@ -33,7 +36,10 @@ Splits inside the stem are excluded from the primary coarse sweep because they
 would place boundaries between tightly coupled primitive operations before
 substantial activation-size reduction. Splits inside the classification head are also
 excluded because the head contains only the final pooling and linear classification
-operations, leaving one side of the partition with negligible computation.
+operations, leaving one side of the partition with negligible computation. This choice
+matches the broader partitioning literature, which treats split selection as a
+trade-off among activation-transfer cost, compute placement, and deployment context
+rather than as a search over depth alone~\cite{dnnsplit,deeperthings,survey_partitioning}.
 
 %%split point image
 \begin{figure}[htbp]
@@ -60,6 +66,9 @@ classification head.
 \end{figure}
 A split boundary creates two execution segments, as illustrated for
 \texttt{split\_after\_layer2} in \cref{fig:split_after_layer2_two_segments}.
+Prior split-inference systems use the same basic abstraction: an upstream segment
+computes an intermediate activation, transfers it to another execution environment, and
+the downstream segment completes the forward pass~\cite{neurosurgeon,jointdnn}.
 
 %% service-boundary / RPC cost figure
 \begin{figure}[htbp]
@@ -76,6 +85,14 @@ includes serialization, RPC transport, remote execution, and response
 reconstruction.}
 \label{fig:service_boundary_rpc_cost}
 \end{figure}
+
+The boundary-crossing interval used later in the thesis should therefore be read as a
+compound systems cost rather than as network transfer alone. It includes tensor
+serialization, RPC handling, transport through the service interface, downstream
+deserialization, remote computation after the boundary, and response handling. Recent
+microservice systems work shows that RPC paths can accumulate overhead through protocol
+processing, memory copies, socket operations, and network-stack traversal, even before
+the application-specific computation is considered~\cite{rpc_overhead_hotos25,notnets_apsys24}.
 
 %%split inside layer3 image
 \begin{figure}[htbp]
@@ -107,6 +124,14 @@ reconstruction.}
 \label{fig:resnet18_detailed_basicblock_containers}
 \end{figure}
 
+The block-level view matters because two boundaries with the same activation tensor can
+still assign different amounts of computation to the upstream and downstream services.
+This is why the thesis later evaluates a refined boundary inside \texttt{layer3} rather
+than treating activation size as the only explanatory variable. Prior work on
+fine-grained and hierarchical DNN partitioning similarly argues that useful split
+selection requires awareness of the model's internal computational structure
+~\cite{fine_grained_partitioning,hierarchical_partitioning,pareto_split}.
+
 %% RQ1.4 Kubernetes 5-service pod/service placement figure
 \begin{figure}[htbp]
 \centering
@@ -116,3 +141,12 @@ reconstruction.}
 \caption{Kubernetes pod and service placement for the RQ1.4 five-service chain. The benchmark client and all inference pods are placed on the same Kubernetes node, while each model segment is exposed through a Kubernetes Service and communicates using synchronous gRPC forwarding. The labels above the arrows show the activation-transfer size at each coarse ResNet-18 boundary.}
 \label{fig:rq14_chain5_kubernetes_placement}
 \end{figure}
+
+In the Kubernetes and AKS stages, each model segment is packaged as a separate service
+and communicates through synchronous gRPC forwarding. This makes the inference pipeline
+closer to a cloud-native microservice deployment, but it also introduces platform
+effects from container execution, service networking, CNI behavior, and managed-cluster
+infrastructure. Prior Kubernetes and cloud-performance studies show that these layers
+can affect measured latency and variability, which is why this thesis separates local
+process benchmarks, local Kubernetes benchmarks, and managed AKS benchmarks into
+distinct stages~\cite{managed_k8s_perf,cni_k8s_ic2e21,noise_in_clouds}.

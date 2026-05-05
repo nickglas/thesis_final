@@ -1,31 +1,118 @@
 \chapter{Related Work}\label{ch:related}
 
-In this chapter, you describe how other people have dealt with similar problems that you are dealing with.
-What were their techniques?
-What were their results?
-What observations did they make that you have used?
-In what way is your work different?
+This chapter positions the thesis within prior work on split neural-network inference,
+cloud-native deployment overhead, and security hardening for microservice systems. The
+central distinction is that most prior partitioning work focuses on selecting or
+optimising split points, while this thesis follows one workload through a staged
+software-engineering evaluation: local split screening, Kubernetes deployment, managed
+AKS transfer validation, and security hardening.
 
-The role of the related work is threefold:
-\begin{enumerate}
-\item Your work is grounded in earlier work done by other researchers.
-That means you use techniques and methods, ways of measuring and evaluating, datasets and terminology used by others working on the same or a related problem before you.
-\item You want to compare your results with those of others.
-This is especially true for key papers with respect to your research, \ie{}~\ac{SOTA}.
-Those papers need to be referred to in this chapter.
-This could also lead to a hypothesis, which is the answer that you expect based on previous literature.
-\item The previous two points mentioned cover the main function of this chapter.
-In addition with related work, you inform the reader on the \ac{SOTA}, the state of the problem, and the
-existing solutions.
-You also show that you know what you are talking about, that you know what is ``for sale'', and that you use the best there is.
-\end{enumerate}
+\section{Split Computing and DNN Partitioning}
 
-Depending on your story, you may want to put this chapter at the end of your thesis (before the Conclusions chapter) or at the beginning of your thesis (after the Introduction chapter).
-Typically, when your work is a direct extension or modification of existing work, you want to put this at the beginning to compare and contrast your research.
-This helps in showing the reader the context and demonstrating the novelty of your approach.
+Early split-computing systems established that neural-network inference can be divided
+between execution environments, but that the split point determines whether the
+distributed design is useful. Neurosurgeon models the latency trade-off between mobile
+and cloud execution and shows that different layers have different computation and data
+transfer profiles~\cite{neurosurgeon}. JointDNN frames partitioning as an optimisation
+problem in which upload and download costs depend on the intermediate tensor at the
+chosen boundary~\cite{jointdnn}. DeeperThings extends this line of work to fully
+distributed CNN inference on constrained edge devices and reinforces the observation
+that early feature maps can be expensive to move because they remain spatially large
+~\cite{deeperthings}.
 
-When your research is in a very new area where you explore a novel concept, you may want to put the Related Work at the end.
-It is beneficial to first get the reader comfortable with your research before showing how it fits within the wider research area.
-Showing the related work first may distract the reader and make them lose interest in the rest of the thesis.
+More recent work broadens the partitioning objective beyond a single latency value.
+DNNSplit selects split points by jointly considering latency and cost in multi-tier
+settings~\cite{dnnsplit}. Genetic-algorithm and delay-aware approaches likewise treat
+the split point as dependent on device capability, bandwidth, throughput, and parallelism
+constraints~\cite{ga_partitioning,delay_aware_inference}. Survey work on DNN
+partitioning and split computing summarizes this literature as a multi-objective problem
+involving activation size, compute allocation, deployment tier, and runtime conditions
+~\cite{survey_partitioning,split_computing_survey}. This thesis adopts that view but
+keeps the optimisation scope deliberately narrow: it studies a fixed ResNet-18 workload
+and evaluates how a small number of architecturally meaningful split choices behave
+across deployment layers.
 
-In the end, think about the story you want to tell and discuss this with your academic supervisor.
+\section{Granularity and Internal Model Structure}
+
+Several studies show that coarse layer depth is not enough to explain split performance.
+Fine-grained elastic partitioning demonstrates that more detailed placement decisions
+can improve distributed DNN inference when the placement is aware of both computation
+and communication conditions~\cite{fine_grained_partitioning}. Hierarchical
+partitioning similarly combines coarse global structure with local refinement, showing
+that the useful split region can be narrowed before it is refined~\cite{hierarchical_partitioning}.
+Pareto-front analysis of DNN partitioning further shows that execution time can vary
+across blocks inside the same model, so boundaries with similar activation sizes may
+still differ in compute distribution~\cite{pareto_split}. BottleFit and BottleNet++
+approach the problem from the feature-compression side, showing that intermediate
+representations can be compressed or shaped to reduce communication cost, but that the
+position of the boundary remains central to the latency and accuracy trade-off
+~\cite{bottlefit,bottlenet_pp}.
+
+The experiments in this thesis use these findings to justify a coarse-to-fine design.
+RQ1.1 evaluates residual-stage boundaries in ResNet-18, and RQ1.2 adds a block-level
+boundary inside the carried-forward region. The goal is not to claim that the selected
+boundaries are globally optimal for all DNNs. Instead, the goal is to show how
+activation-transfer size and compute placement interact in a reproducible microservice
+setting.
+
+\section{Kubernetes and Cloud-Native Inference}
+
+Moving from local split inference to Kubernetes changes the systems context. A
+microservice boundary is not only a model partition; it is also an RPC path with
+serialization, protocol handling, socket operations, scheduling effects, and service
+networking. Recent RPC and microservice studies show that communication overhead can
+come from layered protocol processing and network-stack traversal, not only from the
+application payload itself~\cite{rpc_overhead_hotos25,notnets_apsys24}. Service-mesh
+work reaches a similar conclusion for proxied microservices: sidecars and data-plane
+components add workload-dependent overhead through additional critical-path processing
+~\cite{meshinsight_socc23}.
+
+Kubernetes and cloud studies also show why local and managed-cluster results should be
+compared carefully. Managed Kubernetes performance varies across services and
+configurations~\cite{managed_k8s_perf}. Container and VM layers can differ from
+bare-metal execution~\cite{virtualization_costs}. CNI plugins and edge-oriented
+Kubernetes networking can affect communication cost~\cite{cni_k8s_ic2e21}. Cloud
+environments also exhibit network-performance variability that can change application
+scalability and measurement stability~\cite{noise_in_clouds}. For this reason, this
+thesis does not treat the local Kubernetes and AKS stages as numerical replicas.
+Instead, RQ1.5 asks whether the ordering and relative overhead trends from local
+Kubernetes transfer directionally to managed AKS.
+
+\section{Security Hardening}
+
+The security stages build on prior work in service identity, mTLS, service meshes, and
+confidential computing. Policy-driven Kubernetes security work motivates combining
+encrypted communication with explicit authorization policy rather than treating TLS
+alone as the complete protection mechanism~\cite{ashraf2025policy_workflow}. Service
+mesh studies show that sidecar-based mTLS can improve service-to-service trust
+boundaries, but also that it adds latency, CPU, memory, and operational complexity
+~\cite{meshinsight_socc23,bremlerbarr2025mtls}. Work on service-mesh control-plane
+trust further cautions that mesh CAs and control planes remain security-critical
+components~\cite{poudel2025mazu}. RQ2.1 therefore treats mTLS and authorization as a
+bounded communication-hardening layer, not as a complete security solution.
+
+Confidential-computing work motivates the second hardening layer. AMD SEV-SNP provides
+VM-level memory encryption and integrity protection against parts of the host platform
+~\cite{amd_sevsnp_whitepaper,kaplan2023_hardware_vm}. Comparative studies of
+virtualization-based confidential-computing platforms emphasize that these systems have
+specific attacker models, attestation mechanisms, and residual limitations
+~\cite{guanciale2022_confidential_quartet,misono2024_cvm_explained}. Performance
+studies show that confidential VM overhead is workload-dependent, with CPU-bound,
+memory-intensive, and I/O-heavy workloads affected differently
+~\cite{yan2023_cvm_overheads,akram2021_hpc_tees}. Machine-learning confidential
+computing surveys identify protected model execution and data privacy as important
+motivations, while also emphasizing deployment and performance trade-offs
+~\cite{mo2024_ml_confidential_computing}. RQ2.2 follows this bounded framing by
+measuring VM-level confidential execution on AKS rather than claiming application-level
+enclave isolation.
+
+\section{Positioning of This Thesis}
+
+The related literature establishes the individual concerns that motivate this thesis:
+split points affect activation-transfer and compute costs, microservice and Kubernetes
+deployment add platform overhead, and security hardening strengthens protection while
+introducing additional cost. The contribution of this thesis is to connect those
+concerns in one staged empirical pipeline. Instead of evaluating partitioning,
+orchestration, and hardening as separate problems, the thesis tracks the same ResNet-18
+microservice inference workload from local split selection through Kubernetes, AKS,
+mTLS/AuthZ, and confidential VM execution.
