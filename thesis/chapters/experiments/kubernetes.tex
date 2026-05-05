@@ -1,0 +1,266 @@
+\section{RQ1.4 Multi-Microservice Kubernetes Inference Chain}
+\label{sec:rq14}
+
+\subsection{Research Question}
+
+\begin{quote}
+\textit{How does increasing the number of microservices affect end-to-end inference
+cost when ResNet-18 is decomposed into synchronously chained coarse architectural stages
+under in-cluster Kubernetes execution?}
+\end{quote}
+
+RQ1.4 moves from the local split-selection stages of RQ1.1--RQ1.3 to the final
+thesis-facing local Kubernetes benchmark for the coarse-stage ResNet-18 chain family.
+Rather than selecting a boundary through carry-forward, this stage benchmarks a
+predefined set of five in-cluster conditions from \texttt{monolithic\_k8s\_1svc} to
+\texttt{chain\_5svc} to measure how end-to-end latency changes as synchronous service
+boundaries are added under controlled local Kubernetes execution.
+
+\subsection{Literature Context}
+
+Prior work on split computing and distributed DNN inference consistently establishes that
+each additional service boundary introduces serialisation, transport, and coordination
+overhead. Neurosurgeon, JointDNN, and DeeperThings all report that partition quality
+depends jointly on compute placement and the activation transferred across each boundary,
+with early and spatially large feature maps making communication especially expensive
+~\cite{neurosurgeon,jointdnn,deeperthings}. Survey and optimisation-oriented work
+similarly frames boundary selection as a joint problem over transfer volume, compute
+balance, and deployment constraints rather than a simple function of network depth
+~\cite{survey_partitioning,dnnsplit,split_computing_survey}.
+
+For multi-stage chains, this literature implies that end-to-end cost should generally
+rise as more boundaries are inserted, but that the size of each increment still depends
+on where those boundaries occur. ParetoPipe and DADS both show that pipeline latency is
+sensitive to boundary count and boundary placement, while hierarchical partitioning and
+containerised inference studies indicate that deployment context can add fixed
+coordination cost beyond raw model computation
+~\cite{pareto_split,dads,hierarchical_partitioning,k8s_genai_inference}. RQ1.4
+therefore evaluates a fixed coarse-stage chain family in Kubernetes and measures the
+resulting cost directly rather than assuming a uniform per-boundary penalty.
+
+\subsection{Experimental Setup}
+
+The thesis-facing RQ1.4 benchmark used the frozen controlled local Kubernetes run
+exported on 2026-04-21. The environment snapshot records an Ubuntu/Linux runtime
+(\texttt{Linux-6.17.0-22-generic-x86\_64-with-glibc2.41}), Python~3.10.20, and
+PyTorch~2.11.0+cu130. Deployment metadata shows that the benchmark ran in namespace
+\texttt{rq14} on a single-node \texttt{kind} cluster
+(\texttt{kind-thesis-rq14}); for every condition, all service pods were scheduled on the
+same node, \texttt{thesis-rq14-control-plane}. The evaluated model was pretrained
+ResNet-18 with CPU-only FP32 execution and input shape
+$1 \times 3 \times 224 \times 224$.
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.4 benchmark configuration}
+\label{tab:rq14_config}
+\begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Runtime & Local Ubuntu/Linux Kubernetes benchmark \\
+Cluster & Single-node \texttt{kind} cluster (\texttt{kind-thesis-rq14}) \\
+Namespace & \texttt{rq14} \\
+Conditions & Five predefined configurations from \texttt{monolithic\_k8s\_1svc} to \texttt{chain\_5svc} \\
+Execution mode & Local in-cluster rolling orchestration over the predefined condition set \\
+Model & ResNet-18 (pretrained) \\
+Device & CPU \\
+Precision & FP32 \\
+Input shape & $1 \times 3 \times 224 \times 224$ \\
+Rounds & 5 \\
+Warmup iterations & 50 \\
+Measured iterations & 200 \\
+Cooldown between conditions & 5 seconds \\
+Random seed & 42 \\
+Communication & gRPC (in-cluster Kubernetes) \\
+gRPC port & 50051 \\
+Maximum message size & 16~MB \\
+Service pod CPU request / limit & 1 core / 1 core \\
+Service pod memory request / limit & 512~MiB / 512~MiB \\
+Client CPU request / limit & 1 core / 1 core \\
+Client memory request / limit & 1~GiB / 1~GiB \\
+Image pull policy & \texttt{IfNotPresent} \\
+Carry-forward & Not applicable; RQ1.4 benchmarks a predefined configuration set \\
+Parity validation & Local segment validation and live gRPC chain validation; \texttt{num\_inputs} $= 5$, \texttt{atol} $= 1 \times 10^{-5}$ \\
+Warmup calibration & Trailing window $= 10$, CV threshold $= 0.02$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+CPU stabilisation controls were requested for the benchmark processes and applied where
+the runtime allowed. Threading controls for PyTorch, OpenMP, MKL, and OpenBLAS were all
+requested at one thread and observed at one thread. CPU affinity to one physical core
+with SMT excluded was requested and applied; the observed affinity set was core~0.
+Process priority \texttt{nice~-5} was requested and applied. Governor and turbo controls
+were also requested, but writes to \texttt{/sys} failed because the containerised
+environment exposed those paths as read-only. The detected governor was already
+\texttt{performance}, and turbo was already disabled. ASLR remained at the detected
+value~2 and was not modified.
+
+Methodological validity was established before timing. For all five conditions, local
+segment validation against the monolithic model and live gRPC chain validation against
+the deployed services both passed with \texttt{max\_abs\_diff} $= 0.0$,
+\texttt{atol} $= 1 \times 10^{-5}$, and \texttt{num\_inputs} $= 5$.
+
+\subsection{Conditions}
+
+Five conditions were evaluated in a rolling orchestration sweep:
+
+\begin{itemize}
+    \item \textbf{\texttt{monolithic\_k8s\_1svc}}: Full ResNet-18 inference in a single Kubernetes service. This is the Kubernetes-native monolithic baseline.
+    \item \textbf{\texttt{chain\_2svc}}: Two services with a split after \texttt{layer2}. Cumulative transferred activation per request: 980~KB.
+    \item \textbf{\texttt{chain\_3svc}}: Three services with splits after \texttt{layer1} and \texttt{layer3}. Cumulative transferred activation per request: 1568~KB.
+    \item \textbf{\texttt{chain\_4svc}}: Four services with splits after \texttt{layer1}, \texttt{layer2}, and \texttt{layer3}. Cumulative transferred activation per request: 1960~KB.
+    \item \textbf{\texttt{chain\_5svc}}: Five services with splits after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. Cumulative transferred activation per request: 2058~KB.
+\end{itemize}
+
+Carry-forward is not applicable in RQ1.4. The frozen \texttt{carry\_forward.json}
+states that carry-forward is defined only for the two-service split-selection experiments
+(RQ1.1 and RQ1.2), whereas RQ1.4 benchmarks this predefined Kubernetes chain set.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.4 summary of mean latency and overhead vs.\ Kubernetes monolithic baseline}
+\label{tab:rq14_results}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 81.447 & 79.648 & 4.061 & 89.444 & --- \\
+\texttt{chain\_2svc}           & 84.189 & 82.880 & 3.294 & 90.538 & +2.742 / +3.4\% \\
+\texttt{chain\_3svc}           & 87.608 & 85.487 & 4.274 & 96.083 & +6.161 / +7.6\% \\
+\texttt{chain\_4svc}           & 92.312 & 90.594 & 4.942 & 101.223 & +10.865 / +13.3\% \\
+\texttt{chain\_5svc}           & 92.624 & 90.312 & 4.318 & 99.398 & +11.177 / +13.7\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\input{figures/tikz/results/rq14_kubernetes_chain_latency}
+}
+\caption{Mean end-to-end latency for the RQ1.4 local Kubernetes chain family. Latency increases as additional synchronous service boundaries are introduced, but the increase is not strictly linear. The smallest marginal increase occurs between the four-service and five-service chains, where the added late-stage boundary contributes comparatively little additional activation-transfer burden.}
+\label{fig:rq14_kubernetes_chain_latency}
+\end{figure}
+
+\Cref{fig:rq14_kubernetes_chain_latency} visualises the same latency trend reported in
+\cref{tab:rq14_results}, showing that most of the increase occurs before the
+five-service configuration.
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.4 overhead and inferred non-compute/platform cost breakdown}
+\label{tab:rq14_overhead}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Overhead (ms)} & \textbf{Overhead (\%)} & \textbf{Cumul.\ Activation (KB)} & \textbf{Inferred Non-Compute / Platform (ms)} \\
+\midrule
+\texttt{chain\_2svc} & 2.742  & 3.4  & 980  & 6.285 \\
+\texttt{chain\_3svc} & 6.161  & 7.6  & 1568 & 9.646 \\
+\texttt{chain\_4svc} & 10.865 & 13.3 & 1960 & 12.231 \\
+\texttt{chain\_5svc} & 11.177 & 13.7 & 2058 & 13.893 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.4 effect sizes relative to monolithic baseline}
+\label{tab:rq14_effects}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Condition} & \textbf{Cohen's $d$} & \textbf{Interpretation} & \textbf{Mann-Whitney $p$} \\
+\midrule
+\texttt{chain\_2svc} & 0.742 & medium & $2.38 \times 10^{-81}$ \\
+\texttt{chain\_3svc} & 1.478 & large  & $6.82 \times 10^{-150}$ \\
+\texttt{chain\_4svc} & 2.402 & large  & $3.03 \times 10^{-282}$ \\
+\texttt{chain\_5svc} & 2.667 & large  & $3.50 \times 10^{-291}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+\textit{Methodological note.} Effect sizes are computed from pooled per-iteration data
+($N = 1{,}000$ iterations per condition). With large $N$, Mann-Whitney $p$-values are
+near-zero for any non-trivial difference and should not be over-interpreted as evidence of
+strong practical significance. Cohen's $d$ provides a more informative measure of effect
+magnitude. Cross-round consistency and parity validation are the primary indicators of
+result stability and methodological validity.
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.4 cross-round consistency}
+\label{tab:rq14_rounds}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 81.447 & 1.3193 & 3.0408 & 0.0162 \\
+\texttt{chain\_2svc}           & 84.189 & 1.1876 & 3.0546 & 0.0141 \\
+\texttt{chain\_3svc}           & 87.608 & 1.4250 & 3.7465 & 0.0163 \\
+\texttt{chain\_4svc}           & 92.312 & 1.6107 & 3.7851 & 0.0174 \\
+\texttt{chain\_5svc}           & 92.624 & 0.6942 & 1.7056 & 0.0075 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The frozen controlled local Kubernetes run was stable across rounds. Round CVs remained low for all
+five conditions: 0.0162 for \texttt{monolithic\_k8s\_1svc}, 0.0141 for
+\texttt{chain\_2svc}, 0.0163 for \texttt{chain\_3svc}, 0.0174 for
+\texttt{chain\_4svc}, and 0.0075 for \texttt{chain\_5svc}. Together with the parity
+checks above, this supports treating the reported condition means as representative of
+the local in-cluster benchmark.
+
+\subsection{Interpretation}
+
+The results reveal four bounded findings for this controlled local Kubernetes
+benchmark.
+
+\paragraph{Finding 1: Latency rises from one service to four services.}
+Mean end-to-end latency increases from 81.447~ms for \texttt{monolithic\_k8s\_1svc} to
+84.189~ms, 87.608~ms, and 92.312~ms for \texttt{chain\_2svc}, \texttt{chain\_3svc}, and
+\texttt{chain\_4svc}, respectively. Relative to the Kubernetes monolithic baseline, the
+added overhead therefore grows from +2.742~ms (3.4\%) to +10.865~ms (13.3\%). Under
+this controlled local Kubernetes setup, the evaluated coarse-stage ResNet-18 family
+shows a clear accumulation of cost as synchronous service boundaries are added.
+
+\paragraph{Finding 2: The increment from four to five services is small.}
+The final step from \texttt{chain\_4svc} to \texttt{chain\_5svc} increases mean latency
+by only 0.312~ms, even though it adds one more boundary. This is consistent with the
+activation profile of the evaluated chain family: cumulative transferred activation rises
+from 1960~KB to 2058~KB, so the added late-stage boundary contributes only 98~KB. In
+this setup, later boundaries can therefore add less overhead when the additional
+transferred activation is small. This should be read as a property of the evaluated
+coarse-stage ResNet-18 chain family under this local benchmark, not as a universal law
+about microservice depth.
+
+\paragraph{Finding 3: \texttt{chain\_2svc} is the lowest-overhead non-monolithic condition.}
+Among the chained deployments, \texttt{chain\_2svc} remains the smallest non-monolithic
+overhead point at +2.742~ms (3.4\%). Within the evaluated family, it is therefore the
+least expensive way to move from a single service to a chained deployment while
+preserving exact parity in the benchmarked workload. Because RQ1.4 uses a predefined
+condition set, this is an empirical summary of the final Kubernetes family rather than a
+carry-forward decision.
+
+\paragraph{Finding 4: Scope of validity.}
+Deployment metadata shows that all services ran on the same node of the local
+\texttt{kind} cluster. The result is therefore a valid local in-cluster Kubernetes
+benchmark, but it is still a single-node local cluster result. Broader cloud validation
+is deferred to RQ1.5.
+
+\subsection{Answer to RQ1.4}
+
+Under the final controlled local Kubernetes setup on the Ubuntu/Linux runtime,
+increasing the number of synchronously chained coarse-stage ResNet-18 services raises
+end-to-end latency from \texttt{monolithic\_k8s\_1svc} through
+\texttt{chain\_4svc}, with mean latency increasing from 81.447~ms to 84.189~ms,
+87.608~ms, and 92.312~ms. The smallest non-monolithic overhead is
+\texttt{chain\_2svc} at +2.742~ms (3.4\%), while \texttt{chain\_5svc} reaches
+92.624~ms, only 0.312~ms above \texttt{chain\_4svc}. In this single-node local
+\texttt{kind} cluster, added boundaries therefore impose measurable but bounded
+overhead, and later boundaries can contribute less when the additional transferred
+activation is small. Carry-forward is not applicable in this stage because the
+Kubernetes condition set was predefined rather than selected.

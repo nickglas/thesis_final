@@ -1,0 +1,95 @@
+\begin{tikzpicture}[
+    font=\small,
+    axis/.style={
+        thick,
+        draw=black!70,
+        -{Latex[length=2mm]}
+    },
+    grid/.style={
+        draw=black!12,
+        thin
+    },
+    point/.style={
+        circle,
+        draw=blue!65!black,
+        fill=blue!20,
+        thick,
+        minimum size=5.5pt,
+        inner sep=0pt
+    },
+    pointlabel/.style={
+        font=\scriptsize\bfseries,
+        text=blue!65!black,
+        align=center
+    },
+    xlabel/.style={
+        font=\scriptsize,
+        text=black!75,
+        align=center
+    },
+    ylabel/.style={
+        font=\small,
+        text=black!75
+    },
+    transferlabel/.style={
+        font=\scriptsize,
+        text=black!60,
+        align=center
+    },
+    note/.style={
+        font=\scriptsize,
+        text=black!65,
+        align=center
+    }
+]
+
+\foreach \lat/\y in {80/0,82/0.9,84/1.8,86/2.7,88/3.6,90/4.5,92/5.4,94/6.3} {
+    \draw[grid] (0,\y) -- (10,\y);
+    \node[anchor=east, font=\scriptsize, text=black!65] at (-0.18,\y) {\lat};
+}
+
+\draw[axis] (0,0) -- (10.45,0);
+\draw[axis] (0,0) -- (0,6.7);
+
+\node[ylabel, rotate=90] at (-1.05,3.35) {Mean end-to-end latency (ms)};
+\node[ylabel] at (5,-1.35) {Number of Kubernetes inference services};
+
+\coordinate (p1) at (1,0.651);
+\coordinate (p2) at (3,1.885);
+\coordinate (p3) at (5,3.424);
+\coordinate (p4) at (7,5.540);
+\coordinate (p5) at (9,5.681);
+
+\draw[very thick, draw=blue!65!black]
+    (p1) -- (p2) -- (p3) -- (p4) -- (p5);
+
+\node[point] at (p1) {};
+\node[point] at (p2) {};
+\node[point] at (p3) {};
+\node[point] at (p4) {};
+\node[point] at (p5) {};
+
+\node[pointlabel, above=0.18cm of p1] {81.447 ms};
+\node[pointlabel, above=0.18cm of p2] {84.189 ms};
+\node[pointlabel, above=0.18cm of p3] {87.608 ms};
+\node[pointlabel, above=0.18cm of p4] {92.312 ms};
+\node[pointlabel, above=0.18cm of p5] {92.624 ms};
+
+\node[xlabel] at (1,-0.45) {\texttt{1svc}\\monolithic};
+\node[xlabel] at (3,-0.45) {\texttt{2svc}};
+\node[xlabel] at (5,-0.45) {\texttt{3svc}};
+\node[xlabel] at (7,-0.45) {\texttt{4svc}};
+\node[xlabel] at (9,-0.45) {\texttt{5svc}};
+
+\node[transferlabel] at (1,-0.95) {0 KiB};
+\node[transferlabel] at (3,-0.95) {980 KiB};
+\node[transferlabel] at (5,-0.95) {1568 KiB};
+\node[transferlabel] at (7,-0.95) {1960 KiB};
+\node[transferlabel] at (9,-0.95) {2058 KiB};
+
+\node[transferlabel, anchor=east] at (-0.25,-0.95) {cumulative\\transfer};
+
+\node[note] at (5,-1.85)
+    {Latency increases with service count, but the final added boundary contributes only a small marginal increase.};
+
+\end{tikzpicture}

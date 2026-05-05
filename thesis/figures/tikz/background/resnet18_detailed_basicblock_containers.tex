@@ -1,0 +1,180 @@
+\begin{tikzpicture}[
+    font=\scriptsize,
+    stem/.style={
+        draw=black!65,
+        fill=red!18,
+        rounded corners=2pt,
+        minimum width=0.72cm,
+        minimum height=2.1cm,
+        align=center,
+        thick
+    },
+    pool/.style={
+        draw=black!65,
+        fill=black!8,
+        rounded corners=2pt,
+        minimum width=0.72cm,
+        minimum height=2.1cm,
+        align=center,
+        thick
+    },
+    lone/.style={
+        draw=cyan!60!black,
+        fill=cyan!20,
+        rounded corners=2pt,
+        minimum width=0.72cm,
+        minimum height=2.1cm,
+        align=center,
+        thick
+    },
+    ltwo/.style={
+        draw=orange!65!black,
+        fill=orange!18,
+        rounded corners=2pt,
+        minimum width=0.72cm,
+        minimum height=2.1cm,
+        align=center,
+        thick
+    },
+    lthree/.style={
+        draw=yellow!55!black,
+        fill=yellow!25,
+        rounded corners=2pt,
+        minimum width=0.72cm,
+        minimum height=2.1cm,
+        align=center,
+        thick
+    },
+    lfour/.style={
+        draw=green!45!black,
+        fill=green!18,
+        rounded corners=2pt,
+        minimum width=0.72cm,
+        minimum height=2.1cm,
+        align=center,
+        thick
+    },
+    head/.style={
+        draw=black!65,
+        fill=black!12,
+        rounded corners=2pt,
+        minimum width=0.78cm,
+        minimum height=2.1cm,
+        align=center,
+        thick
+    },
+    basicblockbox/.style={
+        draw=black!45,
+        fill=white,
+        rounded corners=5pt,
+        thick,
+        inner xsep=10pt,
+        inner ysep=16pt
+    },
+    basicblocklabel/.style={
+        font=\scriptsize\bfseries,
+        text=black!70
+    },
+    arrow/.style={
+        -{Latex[length=1.8mm]},
+        thick,
+        draw=black!75
+    },
+    node distance=0.40cm
+]
+
+% Input and stem
+\node[head] (input) {\rotatebox{90}{Image}};
+\node[stem, right=of input] (conv1) {\rotatebox{90}{$7{\times}7$ conv, 64, /2}};
+\node[pool, right=of conv1] (pool1) {\rotatebox{90}{MaxPool, /2}};
+
+% Layer 1: two BasicBlocks
+\node[lone, right=1.10cm of pool1] (l10c1) {\rotatebox{90}{$3{\times}3$ conv, 64}};
+\node[lone, right=of l10c1]        (l10c2) {\rotatebox{90}{$3{\times}3$ conv, 64}};
+\node[lone, right=1.10cm of l10c2] (l11c1) {\rotatebox{90}{$3{\times}3$ conv, 64}};
+\node[lone, right=of l11c1]        (l11c2) {\rotatebox{90}{$3{\times}3$ conv, 64}};
+
+% Layer 2
+\node[ltwo, right=1.60cm of l11c2] (l20c1) {\rotatebox{90}{$3{\times}3$ conv, 128, /2}};
+\node[ltwo, right=of l20c1]        (l20c2) {\rotatebox{90}{$3{\times}3$ conv, 128}};
+\node[ltwo, right=1.10cm of l20c2] (l21c1) {\rotatebox{90}{$3{\times}3$ conv, 128}};
+\node[ltwo, right=of l21c1]        (l21c2) {\rotatebox{90}{$3{\times}3$ conv, 128}};
+
+% Layer 3
+\node[lthree, right=1.60cm of l21c2] (l30c1) {\rotatebox{90}{$3{\times}3$ conv, 256, /2}};
+\node[lthree, right=of l30c1]         (l30c2) {\rotatebox{90}{$3{\times}3$ conv, 256}};
+\node[lthree, right=1.10cm of l30c2]  (l31c1) {\rotatebox{90}{$3{\times}3$ conv, 256}};
+\node[lthree, right=of l31c1]         (l31c2) {\rotatebox{90}{$3{\times}3$ conv, 256}};
+
+% Layer 4
+\node[lfour, right=1.60cm of l31c2] (l40c1) {\rotatebox{90}{$3{\times}3$ conv, 512, /2}};
+\node[lfour, right=of l40c1]         (l40c2) {\rotatebox{90}{$3{\times}3$ conv, 512}};
+\node[lfour, right=1.10cm of l40c2]  (l41c1) {\rotatebox{90}{$3{\times}3$ conv, 512}};
+\node[lfour, right=of l41c1]         (l41c2) {\rotatebox{90}{$3{\times}3$ conv, 512}};
+
+% Head
+\node[head, right=1.60cm of l41c2] (avg) {\rotatebox{90}{AvgPool}};
+\node[head, right=of avg]           (fc)  {\rotatebox{90}{FC}};
+
+% BasicBlock containers
+\begin{pgfonlayer}{background}
+
+\node[basicblockbox, fit=(l10c1)(l10c2), label={[basicblocklabel]below:Block 1}] (bb10) {};
+\node[basicblockbox, fit=(l11c1)(l11c2), label={[basicblocklabel]below:Block 2}] (bb11) {};
+
+\node[basicblockbox, fit=(l20c1)(l20c2), label={[basicblocklabel]below:Block 1}] (bb20) {};
+\node[basicblockbox, fit=(l21c1)(l21c2), label={[basicblocklabel]below:Block 2}] (bb21) {};
+
+\node[basicblockbox, fit=(l30c1)(l30c2), label={[basicblocklabel]below:Block 1}] (bb30) {};
+\node[basicblockbox, fit=(l31c1)(l31c2), label={[basicblocklabel]below:Block 2}] (bb31) {};
+
+\node[basicblockbox, fit=(l40c1)(l40c2), label={[basicblocklabel]below:Block 1}] (bb40) {};
+\node[basicblockbox, fit=(l41c1)(l41c2), label={[basicblocklabel]below:Block 2}] (bb41) {};
+
+\end{pgfonlayer}
+
+% Main arrows
+\draw[arrow] (input)  -- (conv1);
+\draw[arrow] (conv1)  -- (pool1);
+
+\draw[arrow] (pool1)  -- (l10c1);
+\draw[arrow] (l10c1)  -- (l10c2);
+\draw[arrow] (l10c2)  -- (l11c1);
+\draw[arrow] (l11c1)  -- (l11c2);
+
+\draw[arrow] (l11c2)  -- (l20c1);
+\draw[arrow] (l20c1)  -- (l20c2);
+\draw[arrow] (l20c2)  -- (l21c1);
+\draw[arrow] (l21c1)  -- (l21c2);
+
+\draw[arrow] (l21c2)  -- (l30c1);
+\draw[arrow] (l30c1)  -- (l30c2);
+\draw[arrow] (l30c2)  -- (l31c1);
+\draw[arrow] (l31c1)  -- (l31c2);
+
+\draw[arrow] (l31c2)  -- (l40c1);
+\draw[arrow] (l40c1)  -- (l40c2);
+\draw[arrow] (l40c2)  -- (l41c1);
+\draw[arrow] (l41c1)  -- (l41c2);
+
+\draw[arrow] (l41c2)  -- (avg);
+\draw[arrow] (avg)    -- (fc);
+
+% Stage braces and labels
+\draw[decorate, decoration={brace, amplitude=5pt}]
+    ($(bb10.north west)+(0,0.25)$) -- ($(bb11.north east)+(0,0.25)$)
+    node[midway, yshift=0.48cm] {\small Layer 1};
+
+\draw[decorate, decoration={brace, amplitude=5pt}]
+    ($(bb20.north west)+(0,0.25)$) -- ($(bb21.north east)+(0,0.25)$)
+    node[midway, yshift=0.48cm] {\small Layer 2};
+
+\draw[decorate, decoration={brace, amplitude=5pt}]
+    ($(bb30.north west)+(0,0.25)$) -- ($(bb31.north east)+(0,0.25)$)
+    node[midway, yshift=0.48cm] {\small Layer 3};
+
+\draw[decorate, decoration={brace, amplitude=5pt}]
+    ($(bb40.north west)+(0,0.25)$) -- ($(bb41.north east)+(0,0.25)$)
+    node[midway, yshift=0.48cm] {\small Layer 4};
+
+\end{tikzpicture}%

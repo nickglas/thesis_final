@@ -1,0 +1,104 @@
+\begin{tikzpicture}[
+    font=\small,
+    image/.style={
+        draw=black!55,
+        fill=black!5,
+        rounded corners=3pt,
+        minimum width=1.25cm,
+        minimum height=0.85cm,
+        align=center,
+        thick
+    },
+    stem/.style={
+        draw=orange!75!black,
+        fill=orange!15,
+        rounded corners=3pt,
+        minimum width=1.35cm,
+        minimum height=0.85cm,
+        align=center,
+        thick
+    },
+    block/.style={
+        draw=blue!65!black,
+        fill=blue!14,
+        rounded corners=3pt,
+        minimum width=1.25cm,
+        minimum height=0.85cm,
+        align=center,
+        thick
+    },
+    head/.style={
+        draw=green!45!black,
+        fill=green!12,
+        rounded corners=3pt,
+        minimum width=1.65cm,
+        minimum height=0.85cm,
+        align=center,
+        thick
+    },
+    arrow/.style={
+        -{Latex[length=2mm]},
+        thick,
+        draw=black!70
+    },
+    layerbrace/.style={
+        decorate,
+        decoration={brace, amplitude=5pt},
+        thick,
+        draw=black!65
+    },
+    node distance=0.35cm
+]
+
+% Main pipeline
+\node[image] (img) {Image};
+\node[stem, right=of img] (stem) {Stem};
+
+% Layer 1 blocks
+\node[block, right=0.65cm of stem] (l1b1) {Block 1};
+\node[block, right=of l1b1] (l1b2) {Block 2};
+
+% Layer 2 blocks
+\node[block, right=0.65cm of l1b2] (l2b1) {Block 1};
+\node[block, right=of l2b1] (l2b2) {Block 2};
+
+% Layer 3 blocks
+\node[block, right=0.65cm of l2b2] (l3b1) {Block 1};
+\node[block, right=of l3b1] (l3b2) {Block 2};
+
+% Layer 4 blocks
+\node[block, right=0.65cm of l3b2] (l4b1) {Block 1};
+\node[block, right=of l4b1] (l4b2) {Block 2};
+
+\node[head, right=0.65cm of l4b2] (head) {Classification\\Head};
+
+% Arrows
+\draw[arrow] (img) -- (stem);
+\draw[arrow] (stem) -- (l1b1);
+\draw[arrow] (l1b1) -- (l1b2);
+\draw[arrow] (l1b2) -- (l2b1);
+\draw[arrow] (l2b1) -- (l2b2);
+\draw[arrow] (l2b2) -- (l3b1);
+\draw[arrow] (l3b1) -- (l3b2);
+\draw[arrow] (l3b2) -- (l4b1);
+\draw[arrow] (l4b1) -- (l4b2);
+\draw[arrow] (l4b2) -- (head);
+
+% Layer labels using braces
+\draw[layerbrace]
+    ($(l1b1.north west)+(0,0.18)$) -- ($(l1b2.north east)+(0,0.18)$)
+    node[midway, yshift=0.45cm] {\small Layer 1};
+
+\draw[layerbrace]
+    ($(l2b1.north west)+(0,0.18)$) -- ($(l2b2.north east)+(0,0.18)$)
+    node[midway, yshift=0.45cm] {\small Layer 2};
+
+\draw[layerbrace]
+    ($(l3b1.north west)+(0,0.18)$) -- ($(l3b2.north east)+(0,0.18)$)
+    node[midway, yshift=0.45cm] {\small Layer 3};
+
+\draw[layerbrace]
+    ($(l4b1.north west)+(0,0.18)$) -- ($(l4b2.north east)+(0,0.18)$)
+    node[midway, yshift=0.45cm] {\small Layer 4};
+
+\end{tikzpicture}%

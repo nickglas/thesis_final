@@ -1,0 +1,123 @@
+\section{RQ1.1 Coarse Architectural Boundary Selection}
+\label{sec:rq11}
+
+\subsection{Research Question}
+This subsection addresses the following sub-research question:
+
+\begin{quote}
+\textit{Which coarse architectural stage boundaries provide the most suitable two-part microservice decompositions of ResNet-18 under controlled local execution, and how do their latency and boundary-crossing costs compare to monolithic inference?}
+\end{quote}
+
+RQ1.1 is designed as a coarse-boundary screening stage rather than an exhaustive exploration of all possible split points. Its purpose is to identify architecturally meaningful two-part decompositions that can be compared against monolithic inference under controlled local execution, and to determine which coarse boundaries provide the strongest carry-forward basis for later refinement. In this stage, suitability is not treated as a question of raw latency alone. It is evaluated in relation to the joint trade-off between end-to-end latency, activation-transfer burden, boundary-crossing cost, and the structural balance of computation across the two resulting services.
+
+\subsection{Literature Context}
+Prior work on distributed and split neural network inference consistently shows that partitioning a model across execution boundaries introduces a fundamental trade-off between local computation and communication overhead. DNNSplit demonstrates that split points should be selected systematically with respect to latency and cost, rather than by arbitrary layer choice \cite{dnnsplit}. More broadly, DeeperThings shows that split-boundary placement strongly affects performance because early feature maps are often large and expensive to transmit, while later layers tend to reduce activation size but can shift too much computation to one side of the partition \cite{deeperthings}.
+
+Survey literature on deep neural network partitioning across cloud, edge, and end devices likewise emphasizes that effective partitioning requires balancing activation-transfer cost, compute distribution, and deployment constraints rather than focusing solely on network depth \cite{survey_partitioning}. Optimization-based approaches such as genetic algorithms further suggest that the most suitable boundary is context-dependent and should be judged with respect to latency, bandwidth, and device capability \cite{ga_partitioning}. These studies support the view that partitioning is a multi-objective problem rather than a purely architectural one.
+
+Recent work has extended this perspective by considering finer-grained or adaptive partitioning strategies. Fine-grained elastic partitioning for distributed DNN inference over 5G networks shows that performance can improve when boundaries are selected with awareness of communication conditions and execution constraints \cite{fine_grained_partitioning}. Delay-aware scheduling studies likewise show that inference latency and throughput are sensitive to where and how the model is split, especially in heterogeneous edge environments \cite{delay_aware_inference}. More recent hierarchical partitioning studies similarly indicate that different network regions may be preferable depending on resource availability and the desired latency--communication trade-off \cite{hierarchical_partitioning}.
+
+Although much of this literature is framed in device--edge--cloud settings rather than microservice-based inference, the underlying principles remain relevant. A microservice boundary introduces the same core costs of serialization, transmission, and deserialization, even when the communicating services run on the same host. For that reason, the stage-level decomposition studied here is grounded in the partitioning literature but adapted to a controlled local microservice setting.
+
+\subsection{Experimental Setup}
+The RQ1.1 benchmark used the fully controlled local CPU-only configuration in order to minimize variance and isolate the effect of the partition boundary itself. The evaluated model was ResNet-18 with pretrained weights, executed on CPU in FP32 precision with an input shape of $1 \times 3 \times 224 \times 224$. The benchmark compared one monolithic baseline against four two-part split configurations, each corresponding to a coarse architectural stage boundary in ResNet-18.
+
+\begin{table}[htbp]
+\centering
+\caption{RQ1.1 benchmark configuration}
+\label{tab:rq11-config}
+\begin{tabular}{ll}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Model & ResNet-18 (pretrained) \\
+Device & CPU \\
+Precision & FP32 \\
+Input shape & $1 \times 3 \times 224 \times 224$ \\
+Conditions & Monolithic + split after layer1, layer2, layer3, layer4 \\
+Rounds & 5 \\
+Warmup iterations & 50 \\
+Measured iterations & 200 \\
+Cooldown between conditions & 5 seconds \\
+Random seed & 42 \\
+Communication & gRPC over localhost (\texttt{127.0.0.1:50051}) \\
+Maximum message size & 16 MB \\
+Parity tolerance & $1.0 \times 10^{-5}$ \\
+Parity inputs & 5 \\
+Warmup window & 10 iterations \\
+Warmup CV threshold & 0.02 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The benchmark was configured to use a single-threaded PyTorch execution model pinned to one physical CPU core with SMT avoided. Thread counts for PyTorch, OpenMP, MKL, and OpenBLAS were all fixed to one. In addition, process priority was increased, the CPU governor was set to \texttt{performance}, and turbo boost was disabled in order to reduce frequency-related variance. These controls were applied symmetrically across all conditions so that the comparison remained fair and reproducible.
+
+\subsection{Benchmark Design}
+The experiment followed a repeated-measures design with five conditions: a monolithic baseline and four split configurations. The split points were selected after the major architectural stages of ResNet-18, namely after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. These boundaries are meaningful because they preserve the stage structure of the network while allowing the evaluation of progressively later partition points.
+
+The benchmark protocol consisted of 5 rounds. For each round and condition, 50 warmup iterations were executed before 200 measured iterations were recorded. A 5-second cooldown separated successive conditions. The ordering of conditions was randomized using a fixed seed to reduce ordering bias. Functional equivalence between monolithic and split executions was enforced as a mandatory precondition through both local and gRPC parity checks using five inputs and an absolute tolerance of $1.0 \times 10^{-5}$.
+
+A warmup calibration procedure was used to monitor whether latency had stabilized. This procedure used a trailing window of 10 iterations and a coefficient-of-variation threshold of 0.02. The goal was not to terminate warmup adaptively, but to provide evidence that the fixed warmup count was sufficient for stable measurement.
+
+\subsection{Partition Conditions}
+The four split conditions corresponded to the following coarse stage boundaries in ResNet-18:
+
+\begin{itemize}
+    \item \textbf{split\_after\_layer1:} The first service executes the stem and \texttt{layer1}, and the second service executes \texttt{layer2} through the classifier head. This split transfers a large intermediate tensor, approximately $64 \times 56 \times 56$, corresponding to roughly 784 KB in FP32.
+    \item \textbf{split\_after\_layer2:} The first service executes the stem and \texttt{layer1--layer2}, and the second service executes \texttt{layer3} through the classifier head. The intermediate tensor is approximately $128 \times 28 \times 28$, or 392 KB.
+    \item \textbf{split\_after\_layer3:} The first service executes the stem and \texttt{layer1--layer3}, and the second service executes \texttt{layer4} plus pooling and classification. The intermediate tensor is approximately $256 \times 14 \times 14$, or 196 KB.
+    \item \textbf{split\_after\_layer4:} The first service executes the stem and \texttt{layer1--layer4}, and the second service executes only average pooling and the final linear layer. The intermediate tensor is approximately $512 \times 7 \times 7$, or 98 KB.
+\end{itemize}
+
+These stage boundaries provide a coarse sweep across the network from earlier to later partition points. This design is consistent with partitioning research that typically evaluates a limited set of architecturally meaningful split points rather than all layers exhaustively \cite{dnnsplit, deeperthings, survey_partitioning}.
+
+\subsection{Results}
+\label{sec:rq11-results}
+The measured results show that monolithic execution achieved the lowest mean end-to-end latency at 76.12 ms. The four split conditions yielded mean latencies of 79.65 ms for \texttt{split\_after\_layer1}, 78.63 ms for \texttt{split\_after\_layer2}, 78.50 ms for \texttt{split\_after\_layer3}, and 77.26 ms for \texttt{split\_after\_layer4}. This corresponds to relative overheads of approximately 4.6\%, 3.3\%, 3.1\%, and 1.5\%, respectively, compared to monolithic execution.
+
+\begin{table}[htbp]
+\centering
+\caption{RQ1.1 summary of mean latency and overhead}
+\label{tab:rq11-results}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std. Dev. (ms)} & \textbf{Overhead vs. Monolithic} \\
+\midrule
+Monolithic & 76.12 & 74.04 & 3.89 & -- \\
+Split after layer1 & 79.65 & 78.77 & 2.28 & 4.6\% \\
+Split after layer2 & 78.63 & 77.65 & 2.73 & 3.3\% \\
+Split after layer3 & 78.50 & 77.56 & 2.74 & 3.1\% \\
+Split after layer4 & 77.26 & 76.09 & 2.65 & 1.5\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\input{figures/tikz/results/rq11_coarse_split_results}
+}
+\caption{RQ1.1 coarse split latency results under controlled local execution. Although \texttt{split\_after\_layer4} has the lowest mean latency among split configurations, it is rejected by the compute-degeneracy rule. The selected carry-forward candidates are \texttt{split\_after\_layer3} and \texttt{split\_after\_layer2}.}
+\label{fig:rq11_coarse_split_results}
+\end{figure}
+
+\Cref{fig:rq11_coarse_split_results} visualises the latency pattern reported in
+\cref{tab:rq11-results}. The raw fastest split is the latest boundary, but the
+carry-forward decision depends on both latency and structural compute balance rather
+than latency alone.
+
+All split configurations therefore introduced positive latency overhead relative to monolithic inference. However, the magnitude and character of this overhead varied substantially with split location. The earliest split, after \texttt{layer1}, performed worst because it crossed the largest intermediate activation and exhibited the highest boundary-crossing cost. The latest split, after \texttt{layer4}, minimized activation-transfer size and achieved the lowest raw split latency. However, it left only a minimal residual computation segment on the second service (under 1 ms), making it structurally compute-degenerate despite its low transfer burden. The mid-to-late splits, after \texttt{layer2} and \texttt{layer3}, formed the strongest non-degenerate candidates in the coarse sweep.
+
+The boundary-crossing measurements further support this interpretation. The split after \texttt{layer1} incurred the largest boundary-crossing interval at 53.03 ms, followed by \texttt{layer2} at 39.96 ms and \texttt{layer3} at 25.73 ms, while \texttt{layer4} was much smaller at 2.13 ms. This descending pattern is consistent with the reduction in activation-transfer burden from 784 KB at \texttt{layer1} to 98 KB at \texttt{layer4}. At the same time, the late \texttt{layer4} split shows that minimizing transfer burden alone does not determine overall suitability as a microservice decomposition, because the downstream service becomes too small to represent a meaningful balanced distribution.
+
+Cross-round consistency was strong across all configurations, indicating stable execution behavior. The monolithic condition had a round coefficient of variation (CV) of 0.013, while \texttt{split\_after\_layer2}, \texttt{split\_after\_layer3}, and \texttt{split\_after\_layer4} had round CVs of 0.007, 0.008, and 0.008, respectively. The split after \texttt{layer1} also remained stable with a round CV of 0.009.
+
+\subsection{Interpretation}
+The observed pattern aligns well with prior literature on split computing and distributed CNN inference. First, the poor performance of the earliest split is consistent with the widely reported effect that early feature maps are expensive to transmit because they remain large in spatial dimensions \cite{deeperthings, survey_partitioning}. Second, the late split after \texttt{layer4} shows that minimizing activation size alone is not sufficient; a split must also preserve a meaningful compute balance across services \cite{pareto_split, split_object_detectors}. Third, the favorable position of \texttt{split\_after\_layer2} and \texttt{split\_after\_layer3} is consistent with prior work that often identifies mid-network partitions as plausible trade-offs between communication and computation \cite{dnnsplit, pareto_split, deeperthings}.
+
+The benchmark also indicates that raw latency ranking alone is not sufficient for the thesis-facing carry-forward decision. Under the predeclared selection rule, the lowest raw split latency was observed at \texttt{split\_after\_layer4}. However, this candidate was excluded from main-candidate eligibility because it was compute-degenerate. Among the remaining non-degenerate candidates, \texttt{split\_after\_layer3} and \texttt{split\_after\_layer2} presented extremely similar end-to-end latencies. Through the defined carry-forward resolution, \texttt{split\_after\_layer3} is selected as the main carry-forward candidate and \texttt{split\_after\_layer2} is retained as the reference candidate.
+
+The results therefore support the thesis hypothesis that coarse architectural stage boundaries are not equally suitable for microservice-based inference. Rather, the most suitable boundaries are those that reduce activation-transfer burden without collapsing the second partition into a near-empty remainder. In this experiment, the strongest balanced carry-forward region lies in the mid-to-late coarse portion of the network around \texttt{layer2} and \texttt{layer3}, while the latest split after \texttt{layer4} remains informative as the raw-fastest but structurally degenerate boundary.
+
+\subsection{Answer to RQ1.1}
+RQ1.1 shows that coarse architectural stage boundaries are not equally suitable for two-part microservice decomposition of ResNet-18 under controlled local execution. Early boundaries incur high activation-transfer and boundary-crossing costs, while the latest boundary after \texttt{layer4} minimizes transfer size but becomes compute-degenerate. The most suitable balanced carry-forward candidates therefore lie in the mid-to-late coarse region around \texttt{layer2} and \texttt{layer3}, which provide the most credible trade-off between end-to-end latency, communication-related cost, and compute distribution. According to the screening logic, \texttt{split\_after\_layer3} is selected as the main coarse carry-forward candidate, with \texttt{split\_after\_layer2} retained as the reference candidate \cite{dnnsplit, deeperthings, survey_partitioning, pareto_split}.

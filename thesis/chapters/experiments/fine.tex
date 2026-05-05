@@ -1,0 +1,127 @@
+\section{RQ1.2 Fine-Grained Refinement}
+\label{sec:rq12}
+
+\subsection{Research Question}
+
+This subsection addresses the following sub-research question:
+
+\begin{quote}
+\textit{How does finer-grained refinement within the late-stage coarse region carried forward from RQ1.1 affect latency and communication-related overhead for two-part microservice inference?}
+\end{quote}
+
+RQ1.2 is designed as a targeted refinement stage, not as a new blind search across the network. It takes the carry-forward outcome of RQ1.1 as its starting point. In RQ1.1, the coarse architectural boundary screening identified the mid-to-late region around \texttt{layer2} and \texttt{layer3} as the strongest balanced carry-forward zone, with \texttt{split\_after\_layer3} selected as the main candidate and \texttt{split\_after\_layer2} retained as the reference candidate. RQ1.2 therefore operates within that carried-forward comparison space and introduces one meaningful finer-grained split point between the two coarse anchors. The purpose is to determine whether a block-level boundary within this region reveals latency or communication-related differences that were not visible at the coarse stage level.
+
+\subsection{Literature Context}
+\label{sec:rq12-litcontext}
+
+The broader DNN partitioning literature consistently identifies partition granularity as a factor that influences the latency--communication trade-off. Neurosurgeon was among the first systems to demonstrate that layer-level partitioning between a mobile device and the cloud systematically outperforms coarse offloading strategies, because different layers exhibit different computational and communication profiles~\cite{neurosurgeon}. This finding implies that two split points that appear similar at a coarse level may differ once the internal structure of the intervening layers is considered.
+
+DNNSplit extends this perspective by showing that split points should be selected with respect to both latency and cost rather than by arbitrary layer choice, and that the optimal boundary depends on the characteristics of the specific network and deployment context~\cite{dnnsplit}. DeeperThings similarly shows that early feature maps are large and expensive to transmit, while later boundaries reduce activation size but may shift the compute balance too far toward one side of the partition~\cite{deeperthings}. The DNN partition survey by Xu~et~al.\ reinforces that effective partitioning requires jointly considering activation-transfer cost, compute distribution, and the granularity at which boundaries are placed~\cite{survey_partitioning}.
+
+More directly relevant to RQ1.2 is the work by Ren~et~al.\ on fine-grained elastic partitioning for distributed DNN inference in 5G networks~\cite{fine_grained_partitioning}. That study explicitly contrasts coarse single-point partitioning with finer-grained multi-point partitioning and shows that the latter can meaningfully improve inference latency when boundaries are placed with awareness of per-layer computation and communication characteristics. Although their setting involves edge--cloud collaboration rather than local microservice inference, the underlying principle carries over: a single coarse partition may miss internal structure that a refined boundary can expose.
+
+Hierarchical partitioning strategies provide further support for this reasoning. HiDP proposes a two-tier partitioning approach that first creates coarse global blocks and then refines them locally, and shows that the hierarchical strategy achieves lower latency than approaches confined to global-level partitioning alone~\cite{hierarchical_partitioning}. This two-tier logic parallels the relationship between RQ1.1 and RQ1.2 in this thesis, where coarse screening is followed by block-level refinement within the selected region.
+
+Recent work on block-wise profiling of DNN models by Masud~et~al.\ further demonstrates that execution time varies substantially across blocks within the same model, suggesting that not all layers with similar depth are computationally equivalent~\cite{pareto_split}. This observation is directly relevant to the central hypothesis of RQ1.2: that two split points producing the same intermediate activation size may still differ in end-to-end latency because the distribution of computation around the boundary differs. BottleFit similarly shows that the position of a bottleneck within a network affects not only the compression rate but also the resulting accuracy and processing cost, confirming that boundary placement involves trade-offs beyond activation size alone~\cite{bottlefit}.
+
+Taken together, these studies establish that partition granularity is not merely a design convenience but a factor with measurable performance consequences. RQ1.2 applies this principle within the specific carried-forward region from RQ1.1 in order to determine whether block-level refinement reveals meaningful differences beyond the coarse stage-boundary comparison.
+
+\subsection{Experimental Setup}
+\label{sec:rq12-setup}
+
+The RQ1.2 benchmark reused the same fully controlled local CPU-only configuration as RQ1.1 in order to ensure that the two stages remain directly comparable. The evaluated model was ResNet-18 with pretrained weights, executed on CPU in FP32 precision with an input shape of $1 \times 3 \times 224 \times 224$. Communication between the two split services used gRPC over localhost (\texttt{127.0.0.1:50051}) with a maximum message size of 16~MB.
+
+\begin{table}[t]
+\centering
+\caption{RQ1.2 benchmark configuration}
+\label{tab:rq12-config}
+\begin{tabular}{ll}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Model                          & ResNet-18 (pretrained) \\
+Device                         & CPU \\
+Precision                      & FP32 \\
+Input shape                    & $1 \times 3 \times 224 \times 224$ \\
+Conditions                     & Monolithic + split after layer2, layer3.0, layer3 \\
+Rounds                         & 5 \\
+Warmup iterations              & 50 \\
+Measured iterations            & 200 \\
+Cooldown between conditions    & 5 seconds \\
+Random seed                    & 42 \\
+Communication                  & gRPC over localhost (\texttt{127.0.0.1:50051}) \\
+Maximum message size           & 16~MB \\
+Parity tolerance               & $1.0 \times 10^{-5}$ \\
+Parity inputs                  & 5 \\
+Warmup window                  & 10 iterations \\
+Warmup CV threshold            & 0.02 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All CPU stabilisation controls from RQ1.1 were applied identically: single-threaded PyTorch execution pinned to one physical core with SMT avoided, thread counts for PyTorch, OpenMP, MKL, and OpenBLAS all fixed to one, process priority elevated, the CPU governor set to \texttt{performance}, and turbo boost disabled. These controls were applied symmetrically across all conditions so that any observed differences can be attributed to boundary placement rather than to environmental variation.
+
+\subsection{Benchmark Design}
+\label{sec:rq12-design}
+
+The experiment followed the same repeated-measures protocol as RQ1.1: 5~rounds of 200 measured iterations per condition, preceded by 50 warmup iterations and separated by 5-second cooldowns. Condition ordering was randomised within each round using a fixed seed. Functional equivalence between monolithic and split executions was enforced through both local and gRPC parity checks using five inputs and an absolute tolerance of $1.0 \times 10^{-5}$. A warmup calibration procedure using a trailing window of 10~iterations and a coefficient-of-variation threshold of 0.02 was applied to verify that latency had stabilised before measurement.
+
+The key difference from RQ1.1 is the composition of the condition set. Rather than sweeping across all coarse stage boundaries, RQ1.2 evaluates a targeted set of three refined split conditions anchored by the RQ1.1 carry-forward candidates, with one new block-level split point inserted between them.
+
+\subsection{Refined Partition Conditions}
+\label{sec:rq12-conditions}
+
+The RQ1.2 condition set consists of one monolithic baseline and three split configurations:
+
+\begin{itemize}
+    \item \textbf{split\_after\_layer2:} The first service executes the stem and \texttt{layer1}--\texttt{layer2}, and the second service executes \texttt{layer3} through the classifier head. This is the RQ1.1 reference carry-forward candidate. The intermediate activation tensor is approximately $128 \times 28 \times 28$, or 392~KB in FP32.
+
+    \item \textbf{split\_after\_layer3\_block0:} The first service executes the stem and \texttt{layer1}--\texttt{layer3.0} (i.e., the first residual block of \texttt{layer3}), and the second service executes from \texttt{layer3.1} onward through the classifier head. This is the single new finer-grained split point introduced in RQ1.2. It bisects the coarse \texttt{layer3} stage at its internal block boundary. The intermediate activation tensor is approximately $256 \times 14 \times 14$, or 196~KB in FP32 --- the same size as the tensor produced at the end of the full \texttt{layer3} stage.
+
+    \item \textbf{split\_after\_layer3:} The first service executes the stem and \texttt{layer1}--\texttt{layer3}, and the second service executes \texttt{layer4} plus pooling and classification. This is the RQ1.1 main carry-forward candidate. The intermediate activation tensor is approximately $256 \times 14 \times 14$, or 196~KB in FP32.
+\end{itemize}
+
+The monolithic baseline is retained for reference so that all overhead values remain anchored to the same absolute comparison. Together, these four conditions form a targeted refinement set rather than an exhaustive within-stage search: \texttt{split\_after\_layer2} and \texttt{split\_after\_layer3} anchor the carried-forward coarse space, while \texttt{split\_after\_layer3\_block0} probes the single meaningful block-level internal boundary between them.
+
+An important structural observation motivates this design. The coarse boundary after \texttt{layer3} and the block-level boundary after \texttt{layer3.0} produce intermediate activation tensors of the same size (both approximately 196~KB). This creates a controlled comparison in which the activation-transfer burden is held constant while the distribution of computation across the two services differs. If the two conditions yield different end-to-end latencies, the difference can be attributed to compute placement rather than to communication cost.
+
+\subsection{Results}
+\label{sec:rq12-results}
+
+The measured results are summarised in \cref{tab:rq12-results}. Monolithic execution achieved the lowest mean end-to-end latency at 76.291~ms. Among the three refined split conditions, \texttt{split\_after\_layer2} achieved the lowest mean split latency at 78.689~ms, followed by \texttt{split\_after\_layer3\_block0} at 78.691~ms and \texttt{split\_after\_layer3} at 78.853~ms. This corresponds to overhead relative to monolithic execution of approximately 3.1\%, 3.1\%, and 3.4\%, respectively.
+
+\begin{table}[t]
+\centering
+\caption{RQ1.2 summary of mean latency, overhead, and activation-transfer burden}
+\label{tab:rq12-results}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std.\ Dev.\ (ms)} & \textbf{Overhead} & \textbf{Activation (KB)} \\
+\midrule
+Monolithic                    & 76.291 & 73.778 & 3.578 & ---   & --- \\
+Split after layer2            & 78.689 & 77.615 & 2.669 & 3.1\% & 392 \\
+Split after layer3\_block0    & 78.691 & 77.999 & 2.715 & 3.1\% & 196 \\
+Split after layer3            & 78.853 & 77.836 & 2.677 & 3.4\% & 196 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The boundary-crossing interval measurements reveal a notable difference between the two conditions that share the same activation size. \texttt{split\_after\_layer3\_block0} exhibited a boundary-crossing interval of 33.135~ms, while \texttt{split\_after\_layer3} exhibited a boundary-crossing interval of 25.718~ms. Despite producing activation tensors of the same size (approximately 196~KB), the two conditions differ by more than 7.4~ms in boundary-crossing cost. The earlier split (\texttt{layer2}) had the largest boundary-crossing interval at 39.937~ms, consistent with its larger activation tensor of 392~KB.
+
+Cross-round consistency was strong across all conditions. The monolithic condition had a round coefficient of variation (CV) of 0.001, while the split conditions had round CVs of 0.003 (\texttt{split\_after\_layer2}), 0.004 (\texttt{split\_after\_layer3}), and 0.015 (\texttt{split\_after\_layer3\_block0}). The slightly higher variability of \texttt{split\_after\_layer3\_block0} is attributable to a favourable first round; from round~2 onward its per-round means were consistent with the other split conditions.
+
+\subsection{Interpretation}
+\label{sec:rq12-interpretation}
+
+The results support three observations.
+
+\paragraph{The refined region remains tightly clustered.} All three refined split conditions fall within a very narrow latency band, from 78.689~ms to 78.853~ms. This indicates that the block-level refinement does not reveal a dramatically superior new split. Instead, it confirms that the carried-forward \texttt{layer2}--\texttt{layer3} region identified in RQ1.1 already captures the main structure of the latency--communication trade-off in this late-stage part of the network.
+
+\paragraph{Equal activation size does not guarantee equal performance.} The most instructive comparison in this refinement stage is between \texttt{split\_after\_layer3\_block0} and \texttt{split\_after\_layer3}. Both conditions transfer an intermediate tensor of approximately 196~KB, yet they differ in boundary-crossing interval by more than 7.4~ms and in mean end-to-end latency by a smaller but still measurable amount. This demonstrates that activation-transfer size is not the sole determinant of boundary cost. The distribution of computation on either side of the boundary also matters: shifting the split from the end of \texttt{layer3} to the internal boundary after \texttt{layer3.0} changes the compute placement and therefore changes boundary-crossing behavior even when the serialized tensor is the same size. This finding is consistent with the broader partitioning literature, which treats compute distribution as a first-class consideration alongside communication cost~\cite{dnnsplit, deeperthings, survey_partitioning, fine_grained_partitioning, hierarchical_partitioning}.
+
+\paragraph{This run does not overturn the coarse screening.} Under the current refined benchmark outcome, \texttt{split\_after\_layer2} is the raw-fastest split and is selected as the main candidate by the implemented carry-forward rule, with \texttt{split\_after\_layer3\_block0} retained as the reference candidate. However, the three refined conditions remain so close that the central thesis-facing conclusion is not that RQ1.2 discovered a dramatically better split than RQ1.1. Rather, the refinement confirms that the late carried-forward region remains the correct focus, while revealing that small block-level shifts can still change behavior measurably even when activation-transfer size is held constant.
+
+\subsection{Answer to RQ1.2}
+\label{sec:rq12-answer}
+
+RQ1.2 shows that finer-grained refinement within the carried-forward coarse region from RQ1.1 does not overturn the coarse-level findings, but it does reveal a meaningful secondary insight. In the latest refined comparison, \texttt{split\_after\_layer2} is the raw-fastest split and is selected as the main candidate under the implemented selection rule, while \texttt{split\_after\_layer3\_block0} is retained as the reference candidate. The refined split \texttt{split\_after\_layer3} is slightly slower in this run. At the same time, the comparison between \texttt{split\_after\_layer3\_block0} and \texttt{split\_after\_layer3} --- which share the same activation-transfer size of approximately 196~KB yet differ in boundary-crossing interval by more than 7.4~ms --- demonstrates that equal activation-transfer size does not guarantee equal performance. Compute placement within the refined region still matters, even when the serialized tensor is held constant. The coarse RQ1.1 screening had already identified the correct late-stage comparison space; the block-level refinement confirms that structure and adds the observation that per-block compute distribution is a secondary but observable factor in boundary-crossing cost~\cite{dnnsplit, deeperthings, survey_partitioning, fine_grained_partitioning, hierarchical_partitioning, neurosurgeon, bottlefit}.

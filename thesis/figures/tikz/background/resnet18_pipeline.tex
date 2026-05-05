@@ -1,0 +1,85 @@
+\begin{tikzpicture}[
+    font=\small,
+    image/.style={
+        draw=black!55,
+        fill=black!5,
+        rounded corners=3pt,
+        minimum width=1.15cm,
+        minimum height=0.8cm,
+        align=center,
+        thick
+    },
+    stem/.style={
+        draw=orange!75!black,
+        fill=orange!15,
+        rounded corners=3pt,
+        minimum width=1.25cm,
+        minimum height=0.8cm,
+        align=center,
+        thick
+    },
+    layer/.style={
+        draw=blue!65!black,
+        fill=blue!14,
+        rounded corners=3pt,
+        minimum width=1.25cm,
+        minimum height=0.8cm,
+        align=center,
+        thick
+    },
+    head/.style={
+        draw=green!45!black,
+        fill=green!12,
+        rounded corners=3pt,
+        minimum width=1.25cm,
+        minimum height=0.8cm,
+        align=center,
+        thick
+    },
+    arrow/.style={
+        -{Latex[length=2mm]},
+        thick,
+        draw=black!70
+    },
+    node distance=0.28cm
+]
+
+%% image of resnet18
+\node[image] (img) {Image};
+\node[stem, right=of img] (conv) {Conv};
+\node[stem, right=of conv] (bn) {BN};
+\node[stem, right=of bn] (relu) {ReLU};
+\node[stem, right=of relu] (maxpool) {MaxPool};
+
+\node[layer, right=0.55cm of maxpool] (l1) {Layer 1};
+\node[layer, right=of l1] (l2) {Layer 2};
+\node[layer, right=of l2] (l3) {Layer 3};
+\node[layer, right=of l3] (l4) {Layer 4};
+
+\node[head, right=0.55cm of l4] (avgpool) {AvgPool};
+\node[head, right=of avgpool] (fc) {FC};
+
+\draw[arrow] (img) -- (conv);
+\draw[arrow] (conv) -- (bn);
+\draw[arrow] (bn) -- (relu);
+\draw[arrow] (relu) -- (maxpool);
+\draw[arrow] (maxpool) -- (l1);
+\draw[arrow] (l1) -- (l2);
+\draw[arrow] (l2) -- (l3);
+\draw[arrow] (l3) -- (l4);
+\draw[arrow] (l4) -- (avgpool);
+\draw[arrow] (avgpool) -- (fc);
+
+\draw[decorate, decoration={brace, mirror, amplitude=5pt}]
+    ($(conv.south west)+(0,-0.12)$) -- ($(maxpool.south east)+(0,-0.12)$)
+    node[midway, yshift=-0.45cm] {\small Stem};
+
+\draw[decorate, decoration={brace, amplitude=5pt}]
+    ($(l1.north west)+(0,0.12)$) -- ($(l4.north east)+(0,0.12)$)
+    node[midway, yshift=0.45cm] {\small Residual stages};
+
+\draw[decorate, decoration={brace, mirror, amplitude=5pt}]
+    ($(avgpool.south west)+(0,-0.12)$) -- ($(fc.south east)+(0,-0.12)$)
+    node[midway, yshift=-0.45cm] {\small Classification head};
+
+\end{tikzpicture}%

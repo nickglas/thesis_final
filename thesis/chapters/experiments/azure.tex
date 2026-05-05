@@ -1,0 +1,278 @@
+\section{RQ1.5 Azure Kubernetes Service Transfer Validation}
+\label{sec:rq15}
+
+\subsection{Research Question}
+
+\begin{quote}
+\textit{Does the local Kubernetes latency pattern observed for the coarse-stage
+ResNet-18 microservice chain transfer to Azure Kubernetes Service, and how do the
+absolute and relative costs change under managed cloud execution?}
+\end{quote}
+
+RQ1.5 moves the predefined RQ1.4 chain family from local \texttt{kind} Kubernetes to
+Azure Kubernetes Service (AKS). The purpose is not to select a new decomposition, but to
+test whether the architectural ordering observed in local Kubernetes remains credible
+when the same synchronously chained inference workload is executed on managed cloud
+infrastructure. The stage therefore compares absolute latency, relative overhead, and
+condition ordering between the frozen RQ1.4 local Kubernetes run and the frozen RQ1.5
+AKS run.
+
+\subsection{Literature Context}
+
+The split-computing literature predicts that the cost of a distributed DNN chain should
+depend jointly on the number and location of boundaries. Each boundary moves an
+intermediate activation through serialisation, transport, and deserialisation, while the
+size of the transferred tensor and the compute left on each side determine how costly
+that boundary becomes~\cite{neurosurgeon,jointdnn,deeperthings,survey_partitioning}.
+Optimisation and pipeline-oriented studies likewise treat partition latency as a function
+of both communication and compute placement rather than service count alone
+~\cite{dnnsplit,pareto_split,dads}. This supports carrying the RQ1.4 chain family into
+AKS as a transfer-validation step: if the architecture matters more than local incidental
+noise, the relative ordering should remain interpretable even when the platform changes.
+
+At the same time, microservice and cloud-systems work shows why absolute latency should
+not be expected to replicate exactly. RPC-based microservice calls pay a layered
+communication cost from protocol processing, serialisation, header parsing, memory
+copies, and network-stack traversal~\cite{rpc_overhead_hotos25,notnets_apsys24}.
+Managed Kubernetes introduces further environment-specific factors. Prior work comparing
+managed Kubernetes services reports provider- and platform-dependent performance
+differences, while container, virtualisation, CNI, and cloud-noise studies show that VM
+type, networking path, host scheduling, and infrastructure variability can alter absolute
+measurements~\cite{managed_k8s_perf,virtualization_costs,cni_k8s_ic2e21,noise_in_clouds}.
+For that reason, RQ1.5 treats preserved rank ordering and comparable overhead trends as
+directional transfer evidence, while avoiding the stronger claim that local Kubernetes
+and AKS should produce identical millisecond values~\cite{benchmarking_sc15}.
+
+\subsection{Experimental Setup}
+
+The thesis-facing RQ1.5 benchmark used the frozen controlled AKS
+transfer-validation benchmark exported on 2026-04-22. The environment snapshot records a Linux Azure runtime
+(\texttt{Linux-5.15.0-1102-azure-x86\_64-with-glibc2.41}), Python~3.10.20, and
+PyTorch~2.11.0+cu130. The deployment ran in namespace \texttt{rq15} on a single-node
+AKS cluster using Kubernetes~1.34, a \texttt{Standard\_D8s\_v3} node in the
+\texttt{swedencentral} Azure region, and \texttt{kubenet} networking. Deployment
+metadata confirms that pod colocation was enforced: for every condition, the benchmark
+client and all service pods were scheduled on the same AKS node,
+\texttt{aks-rq15pool-24384142-vmss000000}. All AKS conditions used the same pinned
+container image digest:
+\texttt{sha256:df3cf16f8760493993f8}\allowbreak
+\texttt{ad5ba103bc5508a130180baf5130}\allowbreak
+\texttt{ec44542a44513a8a}.
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.5 AKS benchmark configuration}
+\label{tab:rq15_config}
+\begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Runtime & Azure Kubernetes Service benchmark \\
+Cluster & Single-node AKS cluster, Kubernetes~1.34 \\
+Node type & \texttt{Standard\_D8s\_v3} \\
+Region & \texttt{swedencentral} \\
+Network plugin & \texttt{kubenet} \\
+Namespace & \texttt{rq15} \\
+Conditions & Five predefined configurations from \texttt{monolithic\_k8s\_1svc} to \texttt{chain\_5svc} \\
+Execution mode & In-cluster rolling orchestration with teardown between conditions \\
+Model & ResNet-18 (pretrained) \\
+Device & CPU \\
+Precision & FP32 \\
+Input shape & $1 \times 3 \times 224 \times 224$ \\
+Rounds & 5 \\
+Warmup iterations & 50 \\
+Measured iterations & 200 \\
+Cooldown between conditions & 5 seconds \\
+Random seed & 42 \\
+Communication & gRPC (in-cluster Kubernetes) \\
+gRPC port & 50051 \\
+Maximum message size & 16~MB \\
+Service pod CPU request / limit & 1 core / 1 core \\
+Service pod memory request / limit & 1~GiB / 1~GiB \\
+Client CPU request / limit & 500m / 500m \\
+Client memory request / limit & 1~GiB / 1~GiB \\
+Pod QoS & \texttt{Guaranteed} for service pods \\
+Image pull policy & \texttt{Always} \\
+Carry-forward & Not applicable; RQ1.5 evaluates a predefined chain family \\
+Parity validation & Local segment validation and live gRPC chain validation; \texttt{num\_inputs} $= 5$, \texttt{atol} $= 1 \times 10^{-5}$ \\
+Warmup calibration & Trailing window $= 10$, CV threshold $= 0.02$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+CPU stabilisation controls were requested consistently with the preceding stages, and
+were applied where the managed AKS runtime allowed. Threading controls for PyTorch,
+OpenMP, MKL, and OpenBLAS were requested and observed at one thread. CPU affinity was
+applied to one physical core with SMT excluded; the observed affinity set was core~0.
+Process priority \texttt{nice~-5} was requested but could not be applied due to
+insufficient privileges, so the benchmark ran at \texttt{nice=0}. CPU governor and
+turbo controls were unavailable through the exposed sysfs interface in AKS. These
+constraints are treated as realistic cloud-environment limitations of managed or
+virtualised execution, not as architectural effects of the microservice decomposition.
+
+Before timing, both local chain-segment validation and live gRPC validation passed for
+every condition with \texttt{max\_abs\_diff} $= 0.0$ and
+\texttt{atol} $= 1 \times 10^{-5}$. This supports functional equivalence across the
+monolithic and chained AKS deployments.
+
+\subsection{Conditions}
+
+RQ1.5 reused the same predefined chain family as RQ1.4:
+
+\begin{itemize}
+    \item \textbf{\texttt{monolithic\_k8s\_1svc}}: Full ResNet-18 inference in a single Kubernetes service.
+    \item \textbf{\texttt{chain\_2svc}}: Two services with a split after \texttt{layer2}. Cumulative transferred activation per request: 980~KB.
+    \item \textbf{\texttt{chain\_3svc}}: Three services with splits after \texttt{layer1} and \texttt{layer3}. Cumulative transferred activation per request: 1568~KB.
+    \item \textbf{\texttt{chain\_4svc}}: Four services with splits after \texttt{layer1}, \texttt{layer2}, and \texttt{layer3}. Cumulative transferred activation per request: 1960~KB.
+    \item \textbf{\texttt{chain\_5svc}}: Five services with splits after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. Cumulative transferred activation per request: 2058~KB.
+\end{itemize}
+
+Carry-forward is not applicable in this stage. The experiment evaluates a fixed
+deployment family in AKS rather than choosing a new split point.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.5 AKS summary of mean latency and overhead vs.\ AKS monolithic baseline}
+\label{tab:rq15_results}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 65.619 & 65.312 & 1.291 & 67.693 & --- \\
+\texttt{chain\_2svc}           & 68.900 & 68.599 & 1.578 & 71.269 & +3.280 / +5.0\% \\
+\texttt{chain\_3svc}           & 71.884 & 71.488 & 1.701 & 74.798 & +6.264 / +9.5\% \\
+\texttt{chain\_4svc}           & 74.172 & 73.823 & 1.622 & 76.712 & +8.553 / +13.0\% \\
+\texttt{chain\_5svc}           & 75.695 & 75.339 & 1.826 & 77.993 & +10.075 / +15.4\% \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.5 AKS overhead and inferred non-compute/platform cost breakdown}
+\label{tab:rq15_overhead}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Overhead (ms)} & \textbf{Overhead (\%)} & \textbf{Cumul.\ Activation (KB)} & \textbf{Inferred Non-Compute / Platform (ms)} \\
+\midrule
+\texttt{chain\_2svc} & 3.280  & 5.0  & 980  & 4.053 \\
+\texttt{chain\_3svc} & 6.264  & 9.5  & 1568 & 6.337 \\
+\texttt{chain\_4svc} & 8.553  & 13.0 & 1960 & 8.041 \\
+\texttt{chain\_5svc} & 10.075 & 15.4 & 2058 & 9.381 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.5 transfer comparison between local Kubernetes and AKS}
+\label{tab:rq15_transfer}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Local mean (ms)} & \textbf{AKS mean (ms)} & \textbf{Local overhead} & \textbf{AKS overhead} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 81.447 & 65.619 & 0.0\%  & 0.0\% \\
+\texttt{chain\_2svc}           & 84.189 & 68.900 & 3.4\%  & 5.0\% \\
+\texttt{chain\_3svc}           & 87.608 & 71.884 & 7.6\%  & 9.5\% \\
+\texttt{chain\_4svc}           & 92.312 & 74.172 & 13.3\% & 13.0\% \\
+\texttt{chain\_5svc}           & 92.624 & 75.695 & 13.7\% & 15.4\% \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The rank ordering is identical between the frozen local Kubernetes and AKS runs:
+\texttt{monolithic\_k8s\_1svc}, \texttt{chain\_2svc}, \texttt{chain\_3svc},
+\texttt{chain\_4svc}, and \texttt{chain\_5svc}. Absolute latency is lower in the AKS
+run for every condition, but the within-environment ordering and the direction of the
+overhead trend are preserved.
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.5 AKS cross-round consistency}
+\label{tab:rq15_rounds}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 65.619 & 0.1714 & 0.4432 & 0.0026 \\
+\texttt{chain\_2svc}           & 68.900 & 0.1628 & 0.3750 & 0.0024 \\
+\texttt{chain\_3svc}           & 71.884 & 0.1290 & 0.3199 & 0.0018 \\
+\texttt{chain\_4svc}           & 74.172 & 0.2225 & 0.5384 & 0.0030 \\
+\texttt{chain\_5svc}           & 75.695 & 0.1291 & 0.3284 & 0.0017 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The AKS run was highly stable across measured rounds. Round CVs ranged from 0.0017 to
+0.0030, which is lower than the corresponding local Kubernetes CVs reported in RQ1.4.
+Warmup calibration indicated that each run reached a stable window at least once before
+measurement, while the cross-round CVs of the measured iterations provide the stronger
+stability evidence for the final reported means. As in the previous stage, effect sizes
+and Mann-Whitney tests were computed from pooled per-iteration data and are treated as
+supplementary because $N = 1{,}000$ per condition makes very small differences
+statistically significant. Cross-round stability, parity validation, and preserved
+ordering are the primary evidence for this stage.
+
+\subsection{Interpretation}
+
+The results reveal four bounded findings for the AKS transfer-validation stage.
+
+\paragraph{Finding 1: AKS preserves the local Kubernetes condition ordering.}
+The complete RQ1.4 ordering is preserved in AKS: the monolithic Kubernetes service is
+fastest, followed by \texttt{chain\_2svc}, \texttt{chain\_3svc}, \texttt{chain\_4svc},
+and \texttt{chain\_5svc}. This provides directional transfer evidence. The same
+service-count trend that increased latency in local Kubernetes remains visible under
+managed cloud execution, even though the absolute millisecond values differ between
+environments.
+
+\paragraph{Finding 2: AKS overhead is monotonic with service count.}
+Relative to the AKS monolithic baseline, mean latency rises from 65.619~ms to
+68.900~ms, 71.884~ms, 74.172~ms, and 75.695~ms as the chain grows from one to five
+services. The corresponding overheads are +3.280~ms (5.0\%), +6.264~ms (9.5\%),
++8.553~ms (13.0\%), and +10.075~ms (15.4\%). Within this AKS deployment, adding
+synchronous service boundaries is therefore associated with measurable end-to-end cost.
+
+\paragraph{Finding 3: Marginal overhead decreases toward later boundaries.}
+The AKS marginal increments are +3.280~ms from the monolithic baseline to
+\texttt{chain\_2svc}, +2.984~ms from \texttt{chain\_2svc} to \texttt{chain\_3svc},
++2.288~ms from \texttt{chain\_3svc} to \texttt{chain\_4svc}, and +1.523~ms from
+\texttt{chain\_4svc} to \texttt{chain\_5svc}. This is consistent with the bounded
+non-linearity expected from the activation profile of the chain family: later added
+boundaries move smaller tensors, so an additional service boundary does not imply a
+constant per-boundary penalty.
+
+\paragraph{Finding 4: Absolute latency is environment-specific.}
+All AKS means are lower than their local Kubernetes counterparts, including the
+monolithic baseline. The lower AKS absolute latencies should not be interpreted as
+evidence that AKS is generally faster than local Kubernetes. The local and AKS runs
+differ in host CPU, kernel, virtualisation layer, Kubernetes implementation, container
+runtime context, CPU scheduling context, and networking path. RQ1.5 therefore uses
+within-environment ordering and normalised overhead as the primary comparison, not
+direct absolute latency. On that basis, AKS provides directional transfer evidence for
+the RQ1.4 ordering while preserving the claim scope: absolute latency is
+deployment-specific, and the AKS run should not be interpreted as a numerical
+replication of the local Kubernetes measurements.
+
+\subsection{Answer to RQ1.5}
+
+Under the controlled AKS transfer-validation setup, the local Kubernetes service-count
+pattern transfers directionally to managed cloud execution. The AKS run preserves the
+complete RQ1.4 ordering: \texttt{monolithic\_k8s\_1svc} remains fastest at 65.619~ms,
+followed by \texttt{chain\_2svc} at 68.900~ms, \texttt{chain\_3svc} at 71.884~ms,
+\texttt{chain\_4svc} at 74.172~ms, and \texttt{chain\_5svc} at 75.695~ms. Relative
+overhead grows monotonically from 5.0\% for \texttt{chain\_2svc} to 15.4\% for
+\texttt{chain\_5svc}, while marginal increments shrink toward the final boundary.
+RQ1.5 therefore supports a directional transfer claim: the same architectural chain
+ordering remains visible in AKS, although absolute latency values are
+environment-specific and should not be interpreted as a direct replication of the local
+Kubernetes measurements.

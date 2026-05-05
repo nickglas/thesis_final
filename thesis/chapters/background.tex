@@ -1,0 +1,118 @@
+\chapter{Background}%
+\label{ch:background}
+
+In this chapter, you provide information that has a benefit for an informed audience.
+Often, you use this to explain a technique or a concept you use, referring to the literature.
+This is different from Related Work (\cref{ch:related}), where you show the relation of literature to your contributions (to ground, compare, or inform).
+A good rule of thumb is that your thesis should still make sense if the background chapter is removed.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\input{../figures/tikz/background/resnet18_pipeline.tex}%
+}
+\caption{Top-level ResNet-18 inference pipeline used in this thesis. The model is treated as a stem, four residual stages, and a classification head.}
+\label{fig:resnet18_pipeline}
+\end{figure}
+
+ResNet-18 can be viewed as three major parts for the purposes of this thesis:
+an initial stem, four residual stages, and a classification head. The stem performs
+the first feature extraction and spatial downsampling through convolution,
+normalisation, activation, and max pooling. The four residual stages, denoted
+\texttt{layer1} through \texttt{layer4}, contain the main residual-block computation
+of the network. The classification head then reduces the final feature map through
+average pooling and applies the final fully connected classifier.
+
+This structure motivates the coarse split choices used later in RQ1.1. The thesis
+does not treat every primitive operation as an equally meaningful split candidate.
+Instead, the initial coarse sweep uses the four residual-stage boundaries after
+\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. These boundaries
+preserve the architectural stage structure of ResNet-18 and provide a controlled
+progression from early, high-activation regions to later, lower-activation regions.
+Splits inside the stem are excluded from the primary coarse sweep because they
+would place boundaries between tightly coupled primitive operations before
+substantial activation-size reduction. Splits inside the classification head are also
+excluded because the head contains only the final pooling and linear classification
+operations, leaving one side of the partition with negligible computation.
+
+%%split point image
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\input{../figures/tikz/background/rq11_coarse_split_boundaries.tex}%
+}
+\caption{Coarse ResNet-18 partition boundaries evaluated in RQ1.1. The stem and classification head are collapsed into single blocks, while the four residual stages are shown as the candidate split locations.}
+\label{fig:rq11_coarse_split_boundaries}
+\end{figure}
+
+As shown in \cref{fig:rq11_coarse_split_boundaries}, RQ1.1 evaluates split
+points after the four major residual stages rather than inside the stem or
+classification head.
+
+%%segmented image of resnet18 after layer2 split
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\input{../figures/tikz/background/split_after_layer2_two_segments.tex}%
+}
+\caption{Example two-segment decomposition produced by a split after \texttt{layer2}. The first segment executes the stem through \texttt{layer2}; the second segment receives the intermediate activation tensor and executes \texttt{layer3} through the classification head.}
+\label{fig:split_after_layer2_two_segments}
+\end{figure}
+A split boundary creates two execution segments, as illustrated for
+\texttt{split\_after\_layer2} in \cref{fig:split_after_layer2_two_segments}.
+
+%% service-boundary / RPC cost figure
+\begin{figure}[htbp]
+\centering
+\resizebox{0.96\textwidth}{!}{%
+\input{../figures/tikz/background/service_boundary_rpc_cost.tex}%
+}
+\caption{Runtime cost components introduced by a two-service inference
+boundary. In addition to the model computation on each side of the split,
+the intermediate activation must be serialized, transferred through gRPC,
+deserialized by the downstream service, and followed by response
+serialization and reconstruction. The boundary-crossing interval therefore
+includes serialization, RPC transport, remote execution, and response
+reconstruction.}
+\label{fig:service_boundary_rpc_cost}
+\end{figure}
+
+%%split inside layer3 image
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\input{../figures/tikz/background/resnet18_block_structure.tex}%
+}
+\caption{Simplified ResNet-18 block structure. The stem and classification head are shown as single components, while each residual stage is shown as two basic blocks.}
+\label{fig:resnet18_block_structure}
+\end{figure}
+
+%%split inside layer3 image with split after block0
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\input{../figures/tikz/background/rq12_split_after_layer3_block0_segments.tex}%
+}
+\caption{Block-level two-segment decomposition used in RQ1.2. The refined split point is placed inside \texttt{layer3}, after the first residual block. Segment 1 executes the stem through \texttt{layer3.0}; Segment 2 receives the intermediate activation tensor and executes \texttt{layer3.1} through the classification head.}
+\label{fig:rq12_split_after_layer3_block0_segments}
+\end{figure}
+
+%%all detailed layers 
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\input{../figures/tikz/background/resnet18_detailed_basicblock_containers.tex}%
+}
+\caption{Detailed ResNet-18 structure with BasicBlock containers. Each residual stage contains two BasicBlocks, and each BasicBlock contains two convolution operations. The first block of layers 2--4 includes a projection shortcut for downsampling.}
+\label{fig:resnet18_detailed_basicblock_containers}
+\end{figure}
+
+%% RQ1.4 Kubernetes 5-service pod/service placement figure
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{%
+\input{../figures/tikz/background/rq14_chain5_kubernetes_placement.tex}%
+}
+\caption{Kubernetes pod and service placement for the RQ1.4 five-service chain. The benchmark client and all inference pods are placed on the same Kubernetes node, while each model segment is exposed through a Kubernetes Service and communicates using synchronous gRPC forwarding. The labels above the arrows show the activation-transfer size at each coarse ResNet-18 boundary.}
+\label{fig:rq14_chain5_kubernetes_placement}
+\end{figure}
