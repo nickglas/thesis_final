@@ -37,7 +37,7 @@ RQ1.3 draws on three bodies of evidence:
     \item \textbf{Internal timing experiment on monolithic ResNet-18.} A separate instrumented forward-pass profiling experiment was conducted on the same monolithic model under a closely matched single-threaded CPU-stabilised environment. This experiment measured per-stage, per-block, and selected internal operation timings for a single-threaded CPU forward pass, averaged over 200 measured iterations preceded by 50 warmup iterations, using 10 rounds and the same randomisation seed. Functional equivalence was verified (maximum absolute difference of 0.0 against the uninstrumented model), and instrumentation overhead was measured at 0.645~ms (0.88\% of total forward-pass time), confirming that the profiling did not meaningfully distort the timing distribution. This experiment is used as supporting evidence to characterise the internal compute distribution of ResNet-18; it is not a split benchmark and does not introduce new split conditions.
 \end{enumerate}
 
-No new split benchmark was conducted for RQ1.3. The explanatory analysis is based entirely on measurements already reported in RQ1.1 and RQ1.2, supplemented by the internal timing experiment described above. To keep this supporting evidence auditable without turning RQ1.3 into a separate benchmark stream, \cref{tab:rq13-config,tab:rq13-internal-summary,tab:rq13-topops} provide a compact summary of the internal timing configuration and the specific internal timing results used in the explanatory analysis.
+No new split benchmark was conducted for RQ1.3. The explanatory analysis is based entirely on measurements already reported in RQ1.1 and RQ1.2, supplemented by the internal timing experiment described above. To keep this supporting evidence auditable without turning RQ1.3 into a separate benchmark stream, \cref{tab:rq13-config,tab:rq13-internal-summary,fig:rq13-stage-compute-distribution,tab:rq13-topops} provide a compact summary of the internal timing configuration and the specific internal timing results used in the explanatory analysis.
 
 \begin{table}[t]
 \centering
@@ -78,12 +78,146 @@ Layer2                 & 11.968 & 16.23\% \\
 Layer3                 & 13.689 & 18.56\% \\
 Layer4                 & 22.639 & 30.70\% \\
 Layer3.1 block         & 7.340  & 9.95\% \\
-AvgPool + FC           & 0.324  & 0.44\% \\
+Classification head    & 0.324  & 0.44\% \\
 Convolution ops        & ---    & 81.8\% \\
 BatchNorm ops          & ---    & 3.3\% \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\begin{figure}[t]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\begin{tikzpicture}[
+    font=\small,
+    axis/.style={
+        thick,
+        draw=black!70,
+        -{Latex[length=2mm]}
+    },
+    grid/.style={
+        draw=black!12,
+        thin
+    },
+    stagebar/.style={
+        draw=blue!65!black,
+        fill=blue!18,
+        rounded corners=2pt,
+        thick
+    },
+    headbar/.style={
+        draw=red!70!black,
+        fill=red!10,
+        rounded corners=2pt,
+        thick
+    },
+    layerfourbar/.style={
+        draw=green!45!black,
+        fill=green!18,
+        rounded corners=2pt,
+        thick
+    },
+    label/.style={
+        font=\scriptsize,
+        text=black!75,
+        align=right
+    },
+    vallabel/.style={
+        font=\scriptsize\bfseries,
+        text=black!75
+    },
+    note/.style={
+        font=\scriptsize,
+        text=black!65,
+        align=center
+    }
+]
+
+% x scale: x = percentage * 0.20
+% 30.70 -> 6.140
+% 18.56 -> 3.712
+% 17.72 -> 3.544
+% 16.31 -> 3.262
+% 16.23 -> 3.246
+% 0.44  -> 0.088
+
+% Grid and x-axis labels
+\foreach \x/\pct in {
+    0/0,
+    1/5,
+    2/10,
+    3/15,
+    4/20,
+    5/25,
+    6/30
+} {
+    \draw[grid] (\x,0) -- (\x,6.2);
+    \node[
+        font=\scriptsize,
+        text=black!65
+    ] at (\x,-0.28) {\pct};
+}
+
+% Axes
+\draw[axis] (0,0) -- (6.6,0);
+\draw[axis] (0,0) -- (0,6.45);
+
+\node[
+    font=\small,
+    text=black!75
+] at (3.3,-0.75) {Share of total forward-pass compute (\%)};
+
+\node[
+    rotate=90,
+    font=\small,
+    text=black!75
+] at (-1.85,3.15) {ResNet-18 component};
+
+% Bars
+\draw[layerfourbar] (0,5.20) rectangle (6.140,5.70);
+\draw[stagebar]     (0,4.40) rectangle (3.712,4.90);
+\draw[stagebar]     (0,3.60) rectangle (3.544,4.10);
+\draw[stagebar]     (0,2.80) rectangle (3.262,3.30);
+\draw[stagebar]     (0,2.00) rectangle (3.246,2.50);
+\draw[headbar]      (0,1.20) rectangle (0.088,1.70);
+
+% Y labels
+\node[label, anchor=east] at (-0.15,5.45) {\texttt{layer4}};
+\node[label, anchor=east] at (-0.15,4.65) {\texttt{layer3}};
+\node[label, anchor=east] at (-0.15,3.85) {\texttt{layer1}};
+\node[label, anchor=east] at (-0.15,3.05) {Stem};
+\node[label, anchor=east] at (-0.15,2.25) {\texttt{layer2}};
+\node[label, anchor=east] at (-0.15,1.45) {Classification head};
+
+% Value labels
+\node[vallabel, anchor=west] at (6.24,5.45) {30.70\%};
+\node[vallabel, anchor=west] at (3.82,4.65) {18.56\%};
+\node[vallabel, anchor=west] at (3.65,3.85) {17.72\%};
+\node[vallabel, anchor=west] at (3.37,3.05) {16.31\%};
+\node[vallabel, anchor=west] at (3.35,2.25) {16.23\%};
+\node[vallabel, anchor=west] at (0.22,1.45) {0.44\%};
+
+% Annotation for the degenerate downstream segment
+\draw[
+    red!70!black,
+    thick,
+    -{Latex[length=1.8mm]}
+] (1.55,0.85) -- (0.18,1.20);
+
+\node[
+    note,
+    text width=6.0cm,
+    anchor=north
+] at (3.25,0.75) {
+    After \texttt{layer4}, only the classification head remains.
+    This is below the 10\% compute-degeneracy threshold.
+};
+
+\end{tikzpicture}%
+}
+\caption{Stage-level compute distribution from the RQ1.3 internal timing analysis. The final classification head contributes less than 1\% of total forward-pass compute, while \texttt{layer4} accounts for the largest stage-level share. This explains why \texttt{split\_after\_layer4} is raw-fast but compute-degenerate: almost all meaningful model computation remains before the split.}
+\label{fig:rq13-stage-compute-distribution}
+\end{figure}
 
 \begin{table}[t]
 \centering
@@ -120,7 +254,7 @@ This observation is consistent with the broader partitioning literature, which i
 
 Although \texttt{split\_after\_layer4} achieved the lowest boundary-crossing interval and the lowest raw split latency in RQ1.1 (77.26~ms), it was classified as compute-degenerate because the second service executed only average pooling and the final linear layer --- a residual computation segment of well under 1~ms. This means that minimising activation-transfer size to its smallest value does not, by itself, produce a suitable microservice decomposition. A boundary that pushes nearly all computation to one side leaves the second service structurally empty, which defeats the purpose of decomposition.
 
-The internal timing experiment provides quantitative support for this observation. The monolithic forward pass took approximately 73.75~ms on average, of which \texttt{layer4} alone accounted for 30.70\% (approximately 22.64~ms). More importantly, the computation remaining after a \texttt{layer4} split --- average pooling plus the final linear layer --- accounts for only about 0.32~ms in total, or roughly 0.44\% of the full forward pass. This means that a split after \texttt{layer4} places approximately 99.6\% of the total computation on the first service and leaves only about 0.4\% on the second. By contrast, a split after \texttt{layer3} places approximately 68.8\% of compute on the first service and 31.1\% on the second, producing a substantially more balanced distribution.
+The internal timing experiment provides quantitative support for this observation. As shown in \cref{fig:rq13-stage-compute-distribution}, the monolithic forward pass took approximately 73.75~ms on average, of which \texttt{layer4} alone accounted for 30.70\% (approximately 22.64~ms). More importantly, the computation remaining after a \texttt{layer4} split --- average pooling plus the final linear layer --- accounts for only about 0.32~ms in total, or roughly 0.44\% of the full forward pass. This means that a split after \texttt{layer4} places approximately 99.6\% of the total computation on the first service and leaves only about 0.4\% on the second. By contrast, a split after \texttt{layer3} places approximately 68.8\% of compute on the first service and 31.1\% on the second, producing a substantially more balanced distribution.
 
 The supporting timing analysis also shows that compute is concentrated in a small number of heavy internal units rather than being spread uniformly. As shown in \cref{tab:rq13-topops}, the heaviest units are dominated by convolutional operations in later network regions, especially \texttt{layer4}. This makes a very late split structurally problematic: it transfers a small activation tensor, but it also leaves the remote side with almost no substantial computation.
 
@@ -138,7 +272,7 @@ This observation directly supports the principle established in the partitioning
 
 \subparagraph{D. Internal timing confirms that compute is unevenly distributed within ResNet-18.}
 
-The internal timing experiment provides a structural explanation for why different boundaries within the same coarse region yield different performance. The per-stage compute shares are approximately: stem 16.31\%, \texttt{layer1} 17.72\%, \texttt{layer2} 16.23\%, \texttt{layer3} 18.56\%, and \texttt{layer4} 30.70\%. Convolution operations account for 81.8\% of total compute, while batch normalisation contributes approximately 3.3\% and operations below 0.1~ms (such as ReLU and residual addition) are individually negligible.
+The internal timing experiment provides a structural explanation for why different boundaries within the same coarse region yield different performance. As visualised in \cref{fig:rq13-stage-compute-distribution}, the per-stage compute shares are approximately: stem 16.31\%, \texttt{layer1} 17.72\%, \texttt{layer2} 16.23\%, \texttt{layer3} 18.56\%, and \texttt{layer4} 30.70\%. Convolution operations account for 81.8\% of total compute, while batch normalisation contributes approximately 3.3\% and operations below 0.1~ms (such as ReLU and residual addition) are individually negligible.
 
 The operation-level support data adds a more concrete view of this distribution. As shown in \cref{tab:rq13-topops}, the heaviest internal units are predominantly convolutional operations, with the largest shares concentrated in \texttt{layer4} and the late \texttt{layer3} region. By contrast, batch normalisation, residual addition, and ReLU operations are individually small and do not serve as meaningful compute anchors by themselves. This confirms that ResNet-18 is not only uneven at the stage level, but also internally dominated by a relatively small number of heavy convolutional units.
 

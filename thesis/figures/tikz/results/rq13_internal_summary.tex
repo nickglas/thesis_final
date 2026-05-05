@@ -1,0 +1,143 @@
+% timing.tex
+% RQ1.3 stage-level compute distribution figure.
+% Required preamble packages:
+% \usepackage{graphicx}
+% \usepackage{tikz}
+% \usetikzlibrary{arrows.meta}
+
+\begin{figure}[t]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\begin{tikzpicture}[
+    font=\small,
+    axis/.style={
+        thick,
+        draw=black!70,
+        -{Latex[length=2mm]}
+    },
+    grid/.style={
+        draw=black!12,
+        thin
+    },
+    stagebar/.style={
+        draw=blue!65!black,
+        fill=blue!18,
+        rounded corners=2pt,
+        thick
+    },
+    headbar/.style={
+        draw=red!70!black,
+        fill=red!10,
+        rounded corners=2pt,
+        thick
+    },
+    layerfourbar/.style={
+        draw=green!45!black,
+        fill=green!18,
+        rounded corners=2pt,
+        thick
+    },
+    label/.style={
+        font=\scriptsize,
+        text=black!75,
+        align=right
+    },
+    vallabel/.style={
+        font=\scriptsize\bfseries,
+        text=black!75
+    },
+    note/.style={
+        font=\scriptsize,
+        text=black!65,
+        align=center
+    }
+]
+
+% ------------------------------------------------------------------
+% Data source: RQ1.3 internal timing report.
+%
+% Stage-level compute share:
+% layer4       30.70%
+% layer3       18.56%
+% layer1       17.72%
+% stem         16.31%
+% layer2       16.23%
+% avgpool+fc    0.44%
+%
+% x scale: x = percentage * 0.20
+% 30.70 -> 6.140
+% 18.56 -> 3.712
+% 17.72 -> 3.544
+% 16.31 -> 3.262
+% 16.23 -> 3.246
+% 0.44  -> 0.088
+% ------------------------------------------------------------------
+
+% Grid and x-axis labels
+\foreach \x/\pct in {
+    0/0,
+    1/5,
+    2/10,
+    3/15,
+    4/20,
+    5/25,
+    6/30
+} {
+    \draw[grid] (\x,0) -- (\x,6.2);
+    \node[
+        font=\scriptsize,
+        text=black!65
+    ] at (\x,-0.28) {\pct};
+}
+
+% Axes
+\draw[axis] (0,0) -- (6.6,0);
+\draw[axis] (0,0) -- (0,6.45);
+
+\node[
+    font=\small,
+    text=black!75
+] at (3.3,-0.75) {Share of total forward-pass compute (\%)};
+
+\node[
+    rotate=90,
+    font=\small,
+    text=black!75
+] at (-1.85,3.15) {ResNet-18 component};
+
+% Bars
+\draw[layerfourbar] (0,5.20) rectangle (6.140,5.70);
+\draw[stagebar]     (0,4.40) rectangle (3.712,4.90);
+\draw[stagebar]     (0,3.60) rectangle (3.544,4.10);
+\draw[stagebar]     (0,2.80) rectangle (3.262,3.30);
+\draw[stagebar]     (0,2.00) rectangle (3.246,2.50);
+\draw[headbar]      (0,1.20) rectangle (0.088,1.70);
+
+% Y labels
+\node[label, anchor=east] at (-0.15,5.45) {\texttt{layer4}};
+\node[label, anchor=east] at (-0.15,4.65) {\texttt{layer3}};
+\node[label, anchor=east] at (-0.15,3.85) {\texttt{layer1}};
+\node[label, anchor=east] at (-0.15,3.05) {Stem};
+\node[label, anchor=east] at (-0.15,2.25) {\texttt{layer2}};
+\node[label, anchor=east] at (-0.15,1.45) {Classification head};
+
+% Value labels
+\node[vallabel, anchor=west] at (6.24,5.45) {30.70\%};
+\node[vallabel, anchor=west] at (3.82,4.65) {18.56\%};
+\node[vallabel, anchor=west] at (3.65,3.85) {17.72\%};
+\node[vallabel, anchor=west] at (3.37,3.05) {16.31\%};
+\node[vallabel, anchor=west] at (3.35,2.25) {16.23\%};
+\node[vallabel, anchor=west] at (0.22,1.45) {0.44\%};
+
+% Annotation for the degenerate downstream segment
+\draw[
+    red!70!black,
+    thick,
+    -{Latex[length=1.8mm]}
+] (1.55,0.85) -- (0.18,1.20);
+
+\end{tikzpicture}%
+}
+\caption{Stage-level compute distribution from the RQ1.3 internal timing analysis. The final classification head contributes less than 1\% of total forward-pass compute, while \texttt{layer4} accounts for the largest stage-level share. This explains why \texttt{split\_after\_layer4} is raw-fast but compute-degenerate: almost all meaningful model computation remains before the split.}
+\label{fig:rq13_stage_compute_distribution}
+\end{figure}
