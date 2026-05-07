@@ -32,17 +32,11 @@ latency cost.
 
 \section{Limitations \& Threats to Validity}
 
-The conclusions are bounded by the evaluated workload and deployment setup. The thesis
-uses ResNet-18, CPU-only FP32 inference, batch size one, synchronous gRPC calls, and
-same-node Kubernetes and AKS placement. The results should therefore not be generalized
-directly to GPU inference, concurrent serving, multi-node clusters, larger models,
-feature-compressed split computing, or different service-mesh configurations.
-
-The benchmark design reduces internal validity risks through repeated rounds, fixed
-inputs and weights, functional parity checks, and a shared measurement contract. Still,
-cloud measurements remain sensitive to platform conditions, and the AKS and confidential
-VM results should be read as measured evidence for this deployment path rather than as
-provider-independent constants.
+The conclusions are bounded by the evaluated workload and deployment setup
+(ResNet-18, CPU-only FP32 inference, batch size one, synchronous gRPC, and
+same-node Kubernetes and AKS placement) and by the bounded threat models of
+the evaluated security mechanisms. The full discussion of these threats is
+consolidated in \cref{sec:analysis-threats}.
 
 \section{Future Work}
 

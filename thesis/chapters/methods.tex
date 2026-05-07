@@ -488,43 +488,12 @@ configs; the artifact freeze identifies which run is the thesis-facing primary r
 \section{Limitations and Threats to Validity}
 \label{sec:methods-limitations}
 
-Several methodological limitations should be acknowledged.
-
-\textbf{Single-node clusters.}
-Both the RQ1.4 \texttt{kind} cluster and the RQ1.5 AKS cluster are single-node.
-Single-node deployments eliminate inter-node network hops and do not capture the
-scheduling and networking variability of a multi-node production cluster.
-Results therefore reflect in-cluster pod-to-pod latency on a single physical or virtual
-machine and are not directly generalisable to distributed multi-node deployments.
-
-\textbf{CPU-only inference.}
-All stages use CPU inference with a single thread.
-GPU-accelerated inference would substantially shift the compute distribution, reduce
-per-inference time, and change the relative weight of the gRPC boundary cost.
-The results are not directly generalisable to GPU-hosted microservice deployments.
-
-\textbf{Single model and workload.}
-The thesis evaluates one model (ResNet-18) at batch size one with one input shape.
-Different architectures, larger activation maps, or higher-batch workloads may produce
-different cost curves and different optimal split regions.
-
-\textbf{Controlled conditions versus production variability.}
-The local stages apply strict CPU stabilisation and achieve low cross-round variance.
-The Kubernetes and AKS stages are less controllable and exhibit higher variability.
-Neither environment captures the full noise of a shared multi-tenant cloud cluster,
-where CPU steal, network congestion, and noisy neighbours can substantially affect tail
-latency.
-
-\textbf{mTLS threat-model scope.}
-Sidecar-based mTLS protects the inter-proxy communication path but does not prevent
-plaintext from existing inside the endpoint after TLS termination.
-The security claims for RQ2.1 are explicitly scoped to communication-level hardening.
-
-\textbf{SEV-SNP threat-model scope.}
-AMD SEV-SNP protects the VM boundary against the host platform but not against a
-compromised guest OS or application process, and several side-channel and availability
-threats fall outside its core guarantee.
-RQ2.2 claims VM-level confidential execution, not complete application-level isolation.
+The methodological scope of this study has known limitations covering
+single-node deployment, CPU-only inference, the use of a single model and
+workload, controlled-versus-production variability, and the bounded threat
+models claimed by RQ2.1 (mTLS communication-level hardening) and RQ2.2
+(SEV-SNP VM-level confidential execution). These limitations are consolidated
+and discussed in \cref{sec:analysis-threats}.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Ethical Considerations}

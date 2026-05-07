@@ -8,6 +8,7 @@ software-engineering evaluation: local split screening, Kubernetes deployment, m
 AKS transfer validation, and security hardening.
 
 \section{Split Computing and DNN Partitioning}
+\label{sec:rw-split-computing}
 
 Early split-computing systems established that neural-network inference can be divided
 between execution environments, but that the split point determines whether the
@@ -33,6 +34,7 @@ and evaluates how a small number of architecturally meaningful split choices beh
 across deployment layers.
 
 \section{Granularity and Internal Model Structure}
+\label{sec:rw-granularity}
 
 Several studies show that coarse layer depth is not enough to explain split performance.
 Fine-grained elastic partitioning demonstrates that more detailed placement decisions
@@ -56,6 +58,7 @@ activation-transfer size and compute placement interact in a reproducible micros
 setting.
 
 \section{Kubernetes and Cloud-Native Inference}
+\label{sec:rw-cloud-native}
 
 Moving from local split inference to Kubernetes changes the systems context. A
 microservice boundary is not only a model partition; it is also an RPC path with
@@ -79,6 +82,7 @@ Instead, RQ1.5 asks whether the ordering and relative overhead trends from local
 Kubernetes transfer directionally to managed AKS.
 
 \section{Security Hardening}
+\label{sec:rw-security}
 
 The security stages build on prior work in service identity, mTLS, service meshes, and
 confidential computing. Policy-driven Kubernetes security work motivates combining

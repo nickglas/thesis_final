@@ -16,27 +16,9 @@ predefined set of five in-cluster conditions from \texttt{monolithic\_k8s\_1svc}
 \texttt{chain\_5svc} to measure how end-to-end latency changes as synchronous service
 boundaries are added under controlled local Kubernetes execution.
 
-\subsection{Literature Context}
-
-Prior work on split computing and distributed DNN inference consistently establishes that
-each additional service boundary introduces serialisation, transport, and coordination
-overhead. Neurosurgeon, JointDNN, and DeeperThings all report that partition quality
-depends jointly on compute placement and the activation transferred across each boundary,
-with early and spatially large feature maps making communication especially expensive
-~\cite{neurosurgeon,jointdnn,deeperthings}. Survey and optimisation-oriented work
-similarly frames boundary selection as a joint problem over transfer volume, compute
-balance, and deployment constraints rather than a simple function of network depth
-~\cite{survey_partitioning,dnnsplit,split_computing_survey}.
-
-For multi-stage chains, this literature implies that end-to-end cost should generally
-rise as more boundaries are inserted, but that the size of each increment still depends
-on where those boundaries occur. ParetoPipe and DADS both show that pipeline latency is
-sensitive to boundary count and boundary placement, while hierarchical partitioning and
-containerised inference studies indicate that deployment context can add fixed
-coordination cost beyond raw model computation
-~\cite{pareto_split,dads,hierarchical_partitioning,k8s_genai_inference}. RQ1.4
-therefore evaluates a fixed coarse-stage chain family in Kubernetes and measures the
-resulting cost directly rather than assuming a uniform per-boundary penalty.
+The literature framing for multi-boundary chain cost and Kubernetes-level
+deployment overhead is discussed in
+\cref{sec:rw-split-computing,sec:rw-cloud-native}.
 
 \subsection{Experimental Setup}
 
@@ -214,53 +196,5 @@ five conditions: 0.0162 for \texttt{monolithic\_k8s\_1svc}, 0.0141 for
 checks above, this supports treating the reported condition means as representative of
 the local in-cluster benchmark.
 
-\subsection{Interpretation}
-
-The results reveal four bounded findings for this controlled local Kubernetes
-benchmark.
-
-\paragraph{Finding 1: Latency rises from one service to four services.}
-Mean end-to-end latency increases from 81.447~ms for \texttt{monolithic\_k8s\_1svc} to
-84.189~ms, 87.608~ms, and 92.312~ms for \texttt{chain\_2svc}, \texttt{chain\_3svc}, and
-\texttt{chain\_4svc}, respectively. Relative to the Kubernetes monolithic baseline, the
-added overhead therefore grows from +2.742~ms (3.4\%) to +10.865~ms (13.3\%). Under
-this controlled local Kubernetes setup, the evaluated coarse-stage ResNet-18 family
-shows a clear accumulation of cost as synchronous service boundaries are added.
-
-\paragraph{Finding 2: The increment from four to five services is small.}
-The final step from \texttt{chain\_4svc} to \texttt{chain\_5svc} increases mean latency
-by only 0.312~ms, even though it adds one more boundary. This is consistent with the
-activation profile of the evaluated chain family: cumulative transferred activation rises
-from 1960~KB to 2058~KB, so the added late-stage boundary contributes only 98~KB. In
-this setup, later boundaries can therefore add less overhead when the additional
-transferred activation is small. This should be read as a property of the evaluated
-coarse-stage ResNet-18 chain family under this local benchmark, not as a universal law
-about microservice depth.
-
-\paragraph{Finding 3: \texttt{chain\_2svc} is the lowest-overhead non-monolithic condition.}
-Among the chained deployments, \texttt{chain\_2svc} remains the smallest non-monolithic
-overhead point at +2.742~ms (3.4\%). Within the evaluated family, it is therefore the
-least expensive way to move from a single service to a chained deployment while
-preserving exact parity in the benchmarked workload. Because RQ1.4 uses a predefined
-condition set, this is an empirical summary of the final Kubernetes family rather than a
-carry-forward decision.
-
-\paragraph{Finding 4: Scope of validity.}
-Deployment metadata shows that all services ran on the same node of the local
-\texttt{kind} cluster. The result is therefore a valid local in-cluster Kubernetes
-benchmark, but it is still a single-node local cluster result. Broader cloud validation
-is deferred to RQ1.5.
-
-\subsection{Answer to RQ1.4}
-
-Under the final controlled local Kubernetes setup on the Ubuntu/Linux runtime,
-increasing the number of synchronously chained coarse-stage ResNet-18 services raises
-end-to-end latency from \texttt{monolithic\_k8s\_1svc} through
-\texttt{chain\_4svc}, with mean latency increasing from 81.447~ms to 84.189~ms,
-87.608~ms, and 92.312~ms. The smallest non-monolithic overhead is
-\texttt{chain\_2svc} at +2.742~ms (3.4\%), while \texttt{chain\_5svc} reaches
-92.624~ms, only 0.312~ms above \texttt{chain\_4svc}. In this single-node local
-\texttt{kind} cluster, added boundaries therefore impose measurable but bounded
-overhead, and later boundaries can contribute less when the additional transferred
-activation is small. Carry-forward is not applicable in this stage because the
-Kubernetes condition set was predefined rather than selected.
+The interpretation of these results and the answer to RQ1.4 are presented in
+\cref{sec:analysis-rq14}.
