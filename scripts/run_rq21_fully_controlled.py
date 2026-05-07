@@ -887,6 +887,61 @@ class RQ21PreflightRunner:
     def _terraform_init(self) -> None:
         run_command(["terraform", "init", "-input=false"], cwd=self.infra_dir)
 
+    def target_aks_infrastructure_exists(self) -> bool:
+        """Return true when the requested AKS/ACR target already exists.
+
+        Terraform is used as "provision or reuse" for these runs. If the target
+        cluster and registry already exist, quota preflight should not require
+        the full VM quota again because Terraform can converge without adding
+        nodes.
+        """
+        cluster = run_command(
+            [
+                "az", "aks", "show",
+                "--resource-group", self.args.resource_group,
+                "--name", self.args.cluster_name,
+                "--query", "provisioningState",
+                "-o", "tsv",
+            ],
+            capture_output=True,
+            check=False,
+        )
+        if cluster.returncode != 0 or (cluster.stdout or "").strip().lower() != "succeeded":
+            return False
+
+        if getattr(self.args, "isolated_node_pools", False):
+            nodepool = run_command(
+                [
+                    "az", "aks", "nodepool", "show",
+                    "--resource-group", self.args.resource_group,
+                    "--cluster-name", self.args.cluster_name,
+                    "--name", self.args.nodepool,
+                    "--query", "provisioningState",
+                    "-o", "tsv",
+                ],
+                capture_output=True,
+                check=False,
+            )
+            if nodepool.returncode != 0 or (nodepool.stdout or "").strip().lower() != "succeeded":
+                return False
+
+        if self.acr_name:
+            acr = run_command(
+                [
+                    "az", "acr", "show",
+                    "--resource-group", self.args.resource_group,
+                    "--name", self.acr_name,
+                    "--query", "provisioningState",
+                    "-o", "tsv",
+                ],
+                capture_output=True,
+                check=False,
+            )
+            if acr.returncode != 0 or (acr.stdout or "").strip().lower() != "succeeded":
+                return False
+
+        return True
+
     def refresh_kubeconfig(self) -> None:
         self.kubeconfig_path.parent.mkdir(parents=True, exist_ok=True)
         log(f"Refreshing kubeconfig for {self.args.cluster_name} in {self.kubeconfig_path}.")
@@ -902,8 +957,32 @@ class RQ21PreflightRunner:
 
     def provision_with_terraform(self) -> None:
         log(f"Provisioning or reusing AKS infrastructure via Terraform in {self.infra_dir}.")
-        self.azure_quota_preflight()
         self._terraform_init()
+        if self.target_aks_infrastructure_exists():
+            log(
+                "Target AKS/ACR infrastructure already exists; reusing it without "
+                "running Terraform apply."
+            )
+            result = run_command(
+                ["terraform", "output", "-json"],
+                cwd=self.infra_dir,
+                capture_output=True,
+                check=False,
+            )
+            if result.returncode == 0:
+                self.terraform_outputs = json.loads(result.stdout or "{}")
+                if self.terraform_outputs:
+                    self._sync_from_terraform_outputs()
+            else:
+                warn(
+                    "Could not read Terraform outputs while reusing existing infrastructure; "
+                    "continuing with CLI arguments. "
+                    f"Terraform output detail: {(result.stderr or result.stdout or '').strip()}"
+                )
+            self.refresh_kubeconfig()
+            return
+        else:
+            self.azure_quota_preflight()
         run_command(
             [
                 "terraform", "apply", "-auto-approve", "-input=false",

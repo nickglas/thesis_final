@@ -142,17 +142,17 @@ the protected downstream segments. Resource metrics were complete in both runs.
 }
 \end{table}
 
-For the primary \texttt{chain\_2svc} topology, mTLS increased mean latency from
+For the primary \texttt{chain\_2svc} topology, the mTLS/AuthZ hardening bundle increased mean latency from
 70.094~ms to 73.216~ms. The mean overhead was therefore 3.122~ms, or 4.5\%, and p95
 latency increased by 3.531~ms. The inferred non-compute/platform component increased
 from 4.268~ms to 7.284~ms. This supports the interpretation that most of the added
 latency is associated with the communication/platform path introduced by the mesh
 rather than with a change in neural-network computation.
 
-For the additional \texttt{chain\_5svc} stress topology, mTLS increased mean latency
+For the additional \texttt{chain\_5svc} stress topology, the same hardening bundle increased mean latency
 from 76.693~ms to 85.702~ms. The mean overhead was 9.008~ms, or 11.7\%, and p95
 latency increased by 10.028~ms. The inferred non-compute/platform component increased
-from 9.727~ms to 18.164~ms. The stress run therefore shows that the mTLS cost grows
+from 9.727~ms to 18.164~ms. The stress run therefore shows that the communication-hardening cost grows
 when the number of protected service boundaries grows, even though the main RQ2.1
 answer remains anchored in \texttt{chain\_2svc}.
 
@@ -173,11 +173,58 @@ answer remains anchored in \texttt{chain\_2svc}.
 \end{table}
 
 The paired-pass deltas in \cref{tab:rq21_paired_deltas} are consistent with the overall
-means. In \texttt{chain\_2svc}, every paired pass shows a positive mTLS overhead, with
+means. In \texttt{chain\_2svc}, every paired pass shows a positive mTLS/AuthZ hardening overhead, with
 pass-level deltas between 2.693~ms and 3.318~ms. In \texttt{chain\_5svc}, every paired
 pass is also positive, with deltas between 8.203~ms and 9.968~ms. The alternating
 execution order reduces the risk that the result is explained only by slow drift during
 the run.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\input{figures/tikz/results/rq21_mtls_latency_overhead}
+}
+\caption{RQ2.1 mTLS/AuthZ latency overhead for the primary and stress AKS chains. Mean and p95 deltas are computed within the paired plain/mTLS design. The stress topology contains four protected inter-service boundaries, so the larger overhead visualises the depth sensitivity of sidecar-mediated communication hardening.}
+\label{fig:rq21_mtls_latency_overhead}
+\end{figure}
+
+\Cref{fig:rq21_mtls_latency_overhead} visualises the paired latency deltas from
+\cref{tab:rq21_paired_deltas}. The figure focuses on deltas rather than raw latency so
+that the two RQ2.1 findings remain visible: the selected two-service chain pays a
+modest overhead, while the deeper stress chain pays a larger overhead once four
+inter-service boundaries are protected.
+
+\begin{table}[ht]
+\centering
+\caption{RQ2.1 chain-2 ablation of the communication-hardening bundle}
+\label{tab:rq21_ablation}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{llccc}
+\toprule
+\textbf{Step} & \textbf{Condition} & \textbf{Mean latency (ms)} & \textbf{Adjacent delta (ms)} & \textbf{Interpretation} \\
+\midrule
+C0 & Plain Kubernetes, no mesh & 72.670 & -- & Non-mesh baseline \\
+C1 & Mesh-default sidecars / auto-mTLS / no AuthZ & 75.533 & +2.863 & Main mesh data-path cost \\
+C2 & Strict downstream mTLS / no AuthZ & 75.412 & -0.122 & Not distinguishable from pass noise \\
+C3 & Strict downstream mTLS plus AuthZ & 75.715 & +0.303 & Small additional policy cost \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+An additional \texttt{chain\_2svc} ablation was run after the frozen paired benchmark to
+interpret the hardening bundle more precisely. This ablation is supporting evidence
+rather than a replacement for the frozen result, because it was collected in a separate
+campaign with a rebuilt image. Nevertheless, the full hardened ablation condition
+reproduced the frozen result's magnitude: C3--C0 added 3.045~ms, close to the frozen
+paired \texttt{chain\_2svc} overhead of 3.122~ms. As shown in \cref{tab:rq21_ablation},
+most of the adjacent latency change occurred when moving from plain Kubernetes to the
+mesh-default condition. Strict mTLS enforcement over mesh-default traffic and the
+AuthorizationPolicy step were both small relative to pass-level variation. The correct
+interpretation is therefore not that pure TLS cryptography alone costs about 3~ms, but
+that the deployed managed-Istio data path introduces most of the measured overhead,
+while strict mTLS and identity-based authorization mainly add enforcement semantics
+with little additional steady-state latency in this workload.
 
 \begin{table}[ht]
 \centering
@@ -214,8 +261,8 @@ than the sidecar CPU component itself.
 
 The results support four bounded findings.
 
-\paragraph{Finding 1: mTLS adds measurable but bounded overhead to the selected chain.}
-For the primary \texttt{chain\_2svc} topology, the mTLS/service-identity layer adds
+\paragraph{Finding 1: the mTLS/AuthZ hardening bundle adds measurable but bounded overhead to the selected chain.}
+For the primary \texttt{chain\_2svc} topology, the service-mesh hardening layer adds
 3.122~ms, or 4.5\%, to mean end-to-end latency. This is a measurable cost, but it is
 bounded relative to the approximately 70~ms plain AKS baseline. The result is
 consistent with service-mesh literature: sidecars add critical-path work, but the
@@ -223,12 +270,12 @@ visible percentage overhead depends on the workload and on how much application 
 the proxy cost is amortised over~\cite{meshinsight_socc23}.
 
 \paragraph{Finding 2: security overhead grows with protected chain depth.}
-The \texttt{chain\_5svc} stress run increases the mean mTLS overhead to 9.008~ms
+The \texttt{chain\_5svc} stress run increases the mean hardening overhead to 9.008~ms
 (11.7\%). This is nearly three times the absolute \texttt{chain\_2svc} overhead. The
 larger cost is expected: the stress topology contains more injected proxies, more
 authorization policies, and more protected inter-service boundaries. This finding
 reinforces the RQ1 result that service-count decisions and security decisions cannot be
-separated. A chain that is tolerable without mTLS may become less attractive once every
+separated. A chain that is tolerable without communication hardening may become less attractive once every
 boundary also carries identity, encryption, proxying, and policy-enforcement cost.
 
 \paragraph{Finding 3: the result is lower than some published Istio overheads, but not in conflict with them.}
@@ -258,16 +305,18 @@ claimed as a measured first hardening layer, not as a complete security solution
 Under the paired AKS RQ2.1 benchmark, adding service identity, managed-Istio mTLS, and
 inter-service authorization policy introduces measurable but bounded overhead for the
 selected \texttt{chain\_2svc} deployment. Mean latency increases from 70.094~ms in the
-plain condition to 73.216~ms with mTLS, an overhead of 3.122~ms or 4.5\%; p95 latency
+plain condition to 73.216~ms with the mTLS/AuthZ hardening bundle, an overhead of 3.122~ms or 4.5\%; p95 latency
 increases by 3.531~ms. Security validation passed in every mTLS pass, including
 full-chain positive probes and direct-denial probes against protected downstream
 segments. The additional \texttt{chain\_5svc} stress run shows that the same hardening
 approach becomes more expensive as service depth increases: mean overhead rises to
 9.008~ms or 11.7\%. RQ2.1 therefore supports a cautious conclusion: service identity
-and mTLS are feasible for the selected Azure chain at a modest latency cost, but the
-cost is not negligible, grows with the number of protected service boundaries, and
-comes with operational complexity from sidecars, policies, resource requests, and
-readiness delay.
+and managed-Istio mTLS/AuthZ are feasible for the selected Azure chain at a modest
+latency cost, but the cost is not negligible, grows with the number of protected
+service boundaries, and comes with operational complexity from sidecars, policies,
+resource requests, and readiness delay. The follow-up ablation indicates that this
+cost is dominated by entering the managed-Istio sidecar data path rather than by strict
+mTLS enforcement or AuthorizationPolicy evaluation alone.
 
 \section{RQ2.2 Confidential VM Execution Hardening}
 \label{sec:rq22}
@@ -648,7 +697,7 @@ choice for all deployments.
 The results also show that performance and security cannot be evaluated independently.
 RQ1 established that service boundaries add measurable overhead and that this overhead
 depends on boundary placement and service count. RQ2 shows that security mechanisms
-compound this cost. mTLS overhead grows when more service boundaries are protected,
+compound this cost. The mTLS/AuthZ hardening overhead grows when more service boundaries are protected,
 and confidential-execution overhead grows when the confidential-computing scope expands
 from one service to both services. Therefore, the final deployment decision depends on
 three linked factors: the chosen model partition, the number of service boundaries, and

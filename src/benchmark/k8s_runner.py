@@ -7,7 +7,9 @@ standard Kubernetes DNS. The runner performs:
       Generate condition-order permutation
       For each condition c:
           Resolve all service addresses for the condition
-          Wait for gRPC readiness on every service in the chain
+          Wait for gRPC readiness on each client-visible service
+          (strict mTLS/AuthZ conditions may intentionally block direct probes
+          to protected downstream services)
           Run live chain parity validation (round 1 only)
           Run warmup with calibration check
           Run M measured iterations (recorded)
@@ -626,35 +628,53 @@ class K8sBenchmarkRunner:
     def _client_visible_readiness_addresses(self, cond, service_addresses: list) -> list:
         """Return service addresses the benchmark client is allowed to probe.
 
-        RQ2.1 mTLS + AuthorizationPolicy intentionally denies direct client
-        access to downstream service2. The benchmark still calls service1 and
-        exercises the full service1->service2 chain; only the readiness gate is
-        narrowed so the runner does not fail on the intended denial path.
+        RQ2.1 mTLS/AuthZ configurations intentionally deny direct client
+        access to protected downstream services. The benchmark still calls
+        service1 and exercises the full service1->... chain; only the readiness
+        gate is narrowed so the runner does not fail on the intended denial path.
         """
         raw_k8s = self.raw_config.get("kubernetes") or {}
         if not isinstance(raw_k8s, dict):
             return service_addresses
 
         mesh = raw_k8s.get("mesh") or {}
-        authz = mesh.get("authorization_policy") or {}
-        security_condition = str(raw_k8s.get("security_condition") or "").lower()
         mesh_enabled = bool(mesh.get("enabled", False))
-        authz_enabled = bool(authz.get("enabled", False))
-        if not (
-            security_condition == "mtls"
-            and mesh_enabled
-            and authz_enabled
-            and cond.type == "chain"
-        ):
+        if not mesh_enabled or cond.type != "chain":
             return service_addresses
 
-        try:
-            downstream_segment = int(authz.get("downstream_segment_index") or 2)
-        except (TypeError, ValueError):
-            downstream_segment = 2
-        if downstream_segment <= 1:
+        blocked_segments = []
+        peer = mesh.get("peer_authentication") or {}
+        for workload in peer.get("strict_workloads") or []:
+            if not isinstance(workload, dict):
+                continue
+            mode = str(workload.get("mode") or "STRICT").upper()
+            if mode != "STRICT":
+                continue
+            try:
+                blocked_segments.append(int(workload.get("segment_index") or 0))
+            except (TypeError, ValueError):
+                continue
+
+        authz = mesh.get("authorization_policy") or {}
+        if isinstance(authz, dict) and bool(authz.get("enabled", False)):
+            policies = authz.get("policies")
+            policy_items = policies if isinstance(policies, list) and policies else [authz]
+            for policy in policy_items:
+                if not isinstance(policy, dict):
+                    continue
+                try:
+                    blocked_segments.append(int(policy.get("downstream_segment_index") or 2))
+                except (TypeError, ValueError):
+                    blocked_segments.append(2)
+
+        blocked_downstream_segments = [
+            segment for segment in blocked_segments
+            if segment > 1 and segment <= len(service_addresses)
+        ]
+        if not blocked_downstream_segments:
             return service_addresses
-        return service_addresses[: max(1, downstream_segment - 1)]
+        first_blocked_segment = min(blocked_downstream_segments)
+        return service_addresses[: max(1, first_blocked_segment - 1)]
 
     def _validate_chain_parity(self, client: ChainClient, cond):
         """Live chain parity validation: send test inputs through the deployed

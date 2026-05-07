@@ -1089,6 +1089,32 @@ class RQ21PairedBenchmarkRunner:
             or ""
         ).strip()
 
+    def _condition_config(self, key: str) -> dict[str, Any]:
+        path = (getattr(self, "effective_config_paths", {}) or {}).get(key)
+        if path and path.exists():
+            return load_yaml(path)
+        return (getattr(self, "raw_configs", {}) or {}).get(key) or {}
+
+    def condition_mesh_enabled(self, key: str) -> bool:
+        config = self._condition_config(key)
+        if not config:
+            return key == "mtls"
+        k8s = (config.get("kubernetes") or {})
+        mesh = k8s.get("mesh") or {}
+        return bool(isinstance(mesh, dict) and mesh.get("enabled", False))
+
+    def condition_mesh_revision(self, key: str) -> str | None:
+        config = self._condition_config(key)
+        if not config:
+            revision = str(getattr(self, "mesh_revision", "") or "").strip()
+            return revision if key == "mtls" and revision else None
+        k8s = (config.get("kubernetes") or {})
+        mesh = k8s.get("mesh") or {}
+        if not isinstance(mesh, dict) or not mesh.get("enabled", False):
+            return None
+        revision = str(mesh.get("revision") or self.mesh_revision or "").strip()
+        return revision or None
+
     def _is_auto_mesh_revision(self, revision: str) -> bool:
         return revision.lower() in {"auto", "latest", "supported"}
 
@@ -2400,7 +2426,8 @@ class RQ21PairedBenchmarkRunner:
 
         docs = load_manifest_documents(context.manifest_dir)
         kind_counts = dict(sorted(Counter(str(doc.get("kind") or "") for doc in docs).items()))
-        control_plane_pods = mesh_control_plane_pods() if context.key == "mtls" else []
+        mesh_enabled = self.condition_mesh_enabled(context.key)
+        control_plane_pods = mesh_control_plane_pods() if mesh_enabled else []
         benchmark_nodes = set(service_nodes)
         if client_node_name not in {"", "unknown"}:
             benchmark_nodes.add(client_node_name)
@@ -2502,7 +2529,7 @@ class RQ21PairedBenchmarkRunner:
             "mesh_control_plane_shared_pod_names": control_plane_colocation["control_plane_pod_names"],
         }
         deployment_complexity = {
-            "aks_enablement_step_count": 1 if context.key == "mtls" else 0,
+            "aks_enablement_step_count": 1 if mesh_enabled else 0,
             "kubernetes_object_count": len(docs),
             "kubernetes_object_counts_by_kind": kind_counts,
             "always_on_control_plane_pod_count": len(control_plane_pods),
@@ -2512,7 +2539,7 @@ class RQ21PairedBenchmarkRunner:
             "total_injected_container_count": sidecar_total,
         }
         operational_complexity = {
-            "mesh_revision": self.mesh_revision if context.key == "mtls" else None,
+            "mesh_revision": self.condition_mesh_revision(context.key),
             "sidecar_readiness_failure_count": sum(
                 1
                 for record in service_records
@@ -2897,7 +2924,6 @@ class RQ21PairedBenchmarkRunner:
             [
                 "kubectl",
                 "exec",
-                "-i",
                 "-n",
                 context.client_namespace,
                 self.args.client_pod,
@@ -2907,6 +2933,7 @@ class RQ21PairedBenchmarkRunner:
                 code,
                 source_path,
             ],
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -2917,22 +2944,52 @@ class RQ21PairedBenchmarkRunner:
                 shutil.rmtree(extracted_path)
             else:
                 extracted_path.unlink()
+        extracted = False
         with tarfile.open(fileobj=process.stdout, mode="r|") as archive:
             archive.extractall(path=destination_path.parent)
+            extracted = True
+        process.stdout.close()
+        timed_out = False
+        try:
+            return_code = process.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            process.terminate()
+            try:
+                return_code = process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                return_code = process.wait(timeout=5)
         stderr = process.stderr.read().decode("utf-8", errors="replace") if process.stderr else ""
-        return_code = process.wait()
         if return_code != 0:
+            if extracted and extracted_path.exists():
+                warn(
+                    f"kubectl tar-stream fallback extracted {source_path} but "
+                    f"kubectl exec exited with {return_code}"
+                    f"{' after timeout' if timed_out else ''}; continuing."
+                )
+            else:
+                raise PipelineError(
+                    f"kubectl tar-stream fallback failed for {source_path}: {stderr.strip() or return_code}"
+                )
+        if timed_out and return_code == 0:
+            warn(f"kubectl tar-stream fallback for {source_path} timed out after extraction; continuing.")
+        if not extracted_path.exists():
             raise PipelineError(
-                f"kubectl tar-stream fallback failed for {source_path}: {stderr.strip() or return_code}"
+                f"kubectl tar-stream fallback did not create expected path for {source_path}"
             )
         if extracted_path.exists() and extracted_path != destination_path:
             shutil.move(str(extracted_path), str(destination_path))
 
+    def pod_benchmark_root(self) -> str:
+        return "/tmp/rq21_paired"
+
     def run_condition_benchmark(self, context: ConditionContext, pass_index: int) -> dict[str, Any]:
         log(f"Running benchmark for {context.condition_name}.")
         self.inject_runtime_metadata(context)
-        remote_config = f"/tmp/rq21_paired/{context.condition_name}_config.yaml"
-        remote_output = f"/tmp/rq21_paired/{context.condition_name}_pass{pass_index:02d}_{utc_run_stamp()}"
+        pod_root = self.pod_benchmark_root()
+        remote_config = f"{pod_root}/{context.condition_name}_config.yaml"
+        remote_output = f"{pod_root}/{context.condition_name}_pass{pass_index:02d}_{utc_run_stamp()}"
         self.write_file_into_pod(
             context,
             remote_config,

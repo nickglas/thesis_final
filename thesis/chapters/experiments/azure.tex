@@ -188,6 +188,19 @@ deployment family in AKS rather than choosing a new split point.
 }
 \end{table}
 
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\input{figures/tikz/results/rq15_transfer_overhead}
+}
+\caption{RQ1.5 normalised overhead transfer comparison between local Kubernetes and AKS. Overheads are computed relative to each environment's own monolithic Kubernetes baseline, so the figure visualises directional transfer of the service-count trend rather than raw latency equivalence.}
+\label{fig:rq15_transfer_overhead}
+\end{figure}
+
+\Cref{fig:rq15_transfer_overhead} visualises the transfer comparison in
+\cref{tab:rq15_transfer}. The overhead trend is similar across environments even though
+the absolute millisecond values differ.
+
 The rank ordering is identical between the frozen local Kubernetes and AKS runs:
 \texttt{monolithic\_k8s\_1svc}, \texttt{chain\_2svc}, \texttt{chain\_3svc},
 \texttt{chain\_4svc}, and \texttt{chain\_5svc}. Absolute latency is lower in the AKS
