@@ -271,6 +271,11 @@ def parse_args() -> argparse.Namespace:
         help="Build the Docker image before pushing. Only valid with --push.",
     )
     parser.add_argument(
+        "--image-ref",
+        default=None,
+        help="Existing pinned image reference to use for this run, e.g. <acr>.azurecr.io/thesis-inference@sha256:<digest>.",
+    )
+    parser.add_argument(
         "--acr-name",
         default=None,
         help="ACR name without the .azurecr.io suffix. Derived from kubernetes.image when omitted.",
@@ -326,6 +331,8 @@ def parse_args() -> argparse.Namespace:
 
     if args.build and not args.push:
         parser.error("--build requires --push")
+    if args.image_ref and (args.push or args.build):
+        parser.error("--image-ref cannot be combined with --push/--build")
     if args.delete_aks_on_success and args.provisioner == "terraform":
         parser.error(
             "--delete-aks-on-success is not supported with --provisioner terraform because it would leave Terraform state inconsistent; "
@@ -382,7 +389,11 @@ class RQ15Orchestrator:
         )
         self.namespace = args.namespace or str(self.raw_config["kubernetes"]["namespace"])
         self.conditions: list[str] = []
-        self.acr_name = args.acr_name or self._derive_acr_name_from_config()
+        self.acr_name = (
+            args.acr_name
+            or self._derive_acr_name_from_image_ref(args.image_ref)
+            or self._derive_acr_name_from_config()
+        )
         self.effective_image_ref = ""
         self.current_context = ""
         self.terraform_outputs: dict[str, Any] = {}
@@ -482,6 +493,12 @@ class RQ15Orchestrator:
 
     def _derive_acr_name_from_config(self) -> str | None:
         image = str(self.raw_config.get("kubernetes", {}).get("image", "")).strip()
+        return self._derive_acr_name_from_image_ref(image)
+
+    def _derive_acr_name_from_image_ref(self, image: str | None) -> str | None:
+        if not image:
+            return None
+        image = str(image).strip()
         match = re.match(r"^([a-zA-Z0-9]+)\.azurecr\.io/", image)
         return match.group(1) if match else None
 
@@ -720,6 +737,12 @@ class RQ15Orchestrator:
 
     def resolve_image_reference(self) -> str:
         configured_image = str(self.raw_config.get("kubernetes", {}).get("image", "")).strip()
+        if self.args.image_ref:
+            if "@sha256:" not in self.args.image_ref:
+                raise PipelineError("--image-ref must be pinned with @sha256:<digest>")
+            log(f"Using pinned image from --image-ref: {self.args.image_ref}")
+            return self.args.image_ref
+
         if self.args.push:
             if not self.acr_name:
                 raise PipelineError("Unable to determine the ACR name for --push")

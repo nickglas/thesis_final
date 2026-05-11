@@ -1,7 +1,0 @@
-{
-  "reason": "explicit --push",
-  "acr_name": "somerandomnewacrname",
-  "local_image": "thesis-inference:latest",
-  "pushed_tag": "rq22-20260502_200835",
-  "pinned_ref": "somerandomnewacrname.azurecr.io/thesis-inference@sha256:a1c5b261c7a16ec0dbf67bcb894bf9b73d4ae7e1a5f9b2abdd5d9f5899255c79"
-}

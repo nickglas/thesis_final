@@ -1,5 +1,0 @@
-[pod/chain-5svc-mtls-svc-1-9cdf9bdf-hljjs/inference] READY
-[pod/chain-5svc-mtls-svc-2-54648bd458-fkqzp/inference] READY
-[pod/chain-5svc-mtls-svc-3-6c89bc5879-f6j59/inference] READY
-[pod/chain-5svc-mtls-svc-4-8bd75497b-rvvll/inference] READY
-[pod/chain-5svc-mtls-svc-5-c75656969-9p9zq/inference] READY

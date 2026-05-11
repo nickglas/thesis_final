@@ -8,6 +8,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 CONFIG_REL="configs/rq1/1.4/rq1_4_fully_controlled.yaml"
 CONFIG_PATH="${REPO_ROOT}/${CONFIG_REL}"
 IMAGE_TAG="thesis-inference:latest"
+IMAGE_REF=""
 CLIENT_POD_NAME="benchmark-client"
 GENERATED_DIR="${REPO_ROOT}/k8s/base/generated"
 
@@ -68,6 +69,7 @@ Runs the RQ1.4 fully controlled local Kubernetes benchmark end to end.
 
 Options:
   --cleanup-on-failure  Tear down rq14 resources if the run fails.
+  --image-ref REF       Pull an existing pinned image and retag it as ${IMAGE_TAG}.
   --prune-image         Remove ${IMAGE_TAG} after a successful run.
   --rolling             Deploy and benchmark one condition at a time.
   -h, --help            Show this help text.
@@ -121,6 +123,11 @@ parse_args() {
     case "$1" in
       --cleanup-on-failure)
         CLEANUP_ON_FAILURE=1
+        ;;
+      --image-ref)
+        shift
+        [[ $# -gt 0 ]] || die "--image-ref requires a value"
+        IMAGE_REF="$1"
         ;;
       --prune-image)
         PRUNE_IMAGE=1
@@ -545,6 +552,15 @@ restore_host_cpu_controls() {
 }
 
 build_image() {
+  if [[ -n "${IMAGE_REF}" ]]; then
+    [[ "${IMAGE_REF}" == *@sha256:* ]] || die "--image-ref must be pinned with @sha256:<digest>"
+    log "Pulling existing pinned image ${IMAGE_REF}."
+    docker pull "${IMAGE_REF}"
+    log "Tagging ${IMAGE_REF} as ${IMAGE_TAG} for local Kubernetes."
+    docker tag "${IMAGE_REF}" "${IMAGE_TAG}"
+    return 0
+  fi
+
   docker build -t "${IMAGE_TAG}" "${REPO_ROOT}"
 }
 

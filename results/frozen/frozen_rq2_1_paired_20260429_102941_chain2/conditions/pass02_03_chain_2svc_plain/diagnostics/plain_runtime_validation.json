@@ -1,9 +1,0 @@
-{
-  "condition": "chain_2svc_plain",
-  "passed": true,
-  "errors": [],
-  "service_pod_nodes": [
-    "aks-rq15pool-19952245-vmss000000"
-  ],
-  "client_node": "aks-rq15pool-19952245-vmss000000"
-}

@@ -1,5 +1,0 @@
-condition,cohens_d,mann_whitney_u,mann_whitney_p,n_monolithic,n_split,pooling_note
-split_after_layer1,1.10651499610222,281857.0,5.0640798827799146e-64,1000,1000,"Per-iteration pooling; with large N, p-values are near-zero for any non-trivial difference. Cohen's d is more informative for effect magnitude."
-split_after_layer4,0.3418132608276073,323112.0,1.040398313089682e-42,1000,1000,"Per-iteration pooling; with large N, p-values are near-zero for any non-trivial difference. Cohen's d is more informative for effect magnitude."
-split_after_layer3,0.7068348631961027,304600.0,9.992786652307851e-52,1000,1000,"Per-iteration pooling; with large N, p-values are near-zero for any non-trivial difference. Cohen's d is more informative for effect magnitude."
-split_after_layer2,0.7458752494331854,299734.0,3.033174817982036e-54,1000,1000,"Per-iteration pooling; with large N, p-values are near-zero for any non-trivial difference. Cohen's d is more informative for effect magnitude."

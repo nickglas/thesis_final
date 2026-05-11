@@ -1,5 +1,0 @@
-{
-  "applicable": false,
-  "reason": "Carry-forward is only defined for the two-service split-selection experiments (RQ1.1/RQ1.2). RQ1.4 uses a predefined Kubernetes chain configuration set, so no carry-forward decision is applied.",
-  "baseline_condition": "monolithic_k8s_1svc"
-}

@@ -1,1 +1,0 @@
-error: container istio-proxy is not valid for pod chain-5svc-plain-svc-1-5547df97bd-jqbs7

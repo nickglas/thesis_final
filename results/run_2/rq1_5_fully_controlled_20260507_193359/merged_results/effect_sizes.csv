@@ -1,5 +1,0 @@
-condition,baseline_condition,cohens_d,mann_whitney_u,mann_whitney_p,n_monolithic,n_split,pooling_note
-chain_2svc,monolithic_k8s_1svc,1.8746860009393471,73261.0,1.7315010220780558e-239,1000,1000,"Per-iteration pooling; with large N, p-values are near-zero for any non-trivial difference. Cohen's d is more informative for effect magnitude."
-chain_3svc,monolithic_k8s_1svc,2.765922761057582,26757.0,4.916026582682727e-294,1000,1000,"Per-iteration pooling; with large N, p-values are near-zero for any non-trivial difference. Cohen's d is more informative for effect magnitude."
-chain_4svc,monolithic_k8s_1svc,3.6515682745433753,12362.0,0.0,1000,1000,"Per-iteration pooling; with large N, p-values are near-zero for any non-trivial difference. Cohen's d is more informative for effect magnitude."
-chain_5svc,monolithic_k8s_1svc,4.144257556578826,6852.0,0.0,1000,1000,"Per-iteration pooling; with large N, p-values are near-zero for any non-trivial difference. Cohen's d is more informative for effect magnitude."
