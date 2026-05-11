@@ -19,8 +19,11 @@ Examples:
 from __future__ import annotations
 
 import argparse
+import os
+import platform
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -31,6 +34,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LOCAL_IMAGE_TAG = "thesis-inference:latest"
+TOOLS_BIN = REPO_ROOT / ".tools" / "bin"
+DEFAULT_KIND_VERSION = "v0.31.0"
 
 DEFAULT_STAGES = (
     "rq1_1",
@@ -90,6 +95,13 @@ def format_command(command: list[str]) -> str:
     return shlex.join(command)
 
 
+def add_tools_to_path() -> None:
+    tools_bin = str(TOOLS_BIN)
+    path_parts = os.environ.get("PATH", "").split(os.pathsep)
+    if tools_bin not in path_parts:
+        os.environ["PATH"] = tools_bin + os.pathsep + os.environ.get("PATH", "")
+
+
 def csv_items(value: str | None) -> list[str]:
     if not value:
         return []
@@ -111,6 +123,35 @@ def validate_digest(digest: str) -> str:
     if not re.fullmatch(r"sha256:[0-9a-fA-F]{64}", digest):
         raise RuntimeError(f"Unexpected ACR digest response: {digest!r}")
     return digest
+
+
+def kind_asset_name() -> str:
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+
+    if system == "linux":
+        os_name = "linux"
+    elif system == "darwin":
+        os_name = "darwin"
+    elif system == "windows":
+        os_name = "windows"
+    else:
+        raise RuntimeError(f"Unsupported OS for automatic kind install: {platform.system()}")
+
+    if machine in {"x86_64", "amd64"}:
+        arch = "amd64"
+    elif machine in {"aarch64", "arm64"}:
+        arch = "arm64"
+    else:
+        raise RuntimeError(f"Unsupported CPU architecture for automatic kind install: {platform.machine()}")
+
+    suffix = ".exe" if os_name == "windows" else ""
+    return f"kind-{os_name}-{arch}{suffix}"
+
+
+def kind_binary_path() -> Path:
+    suffix = ".exe" if platform.system().lower() == "windows" else ""
+    return TOOLS_BIN / f"kind{suffix}"
 
 
 def resolve_stages(args: argparse.Namespace) -> list[str]:
@@ -145,7 +186,7 @@ def append_common_results_arg(command: list[str], args: argparse.Namespace) -> l
     return command
 
 
-def append_rq15_cloud_args(command: list[str], args: argparse.Namespace, acr_name: str) -> list[str]:
+def append_rq15_cloud_args(command: list[str], args: argparse.Namespace, acr_name: str, stage: str) -> list[str]:
     command += ["--image-ref", args.image_ref, "--acr-name", acr_name]
     if args.provision_cloud:
         command.append("--provision")
@@ -155,8 +196,13 @@ def append_rq15_cloud_args(command: list[str], args: argparse.Namespace, acr_nam
         command.append("--delete-resource-group-on-failure")
     if args.cleanup_on_failure:
         command.append("--cleanup-on-failure")
-    if args.rq15_nodepool:
+    if stage == "rq1_5" and args.rq15_nodepool:
         command += ["--nodepool", args.rq15_nodepool]
+    command += ["--condition-retries", str(args.rq15_condition_retries)]
+    if stage == "rq1_5" and args.rq15_resume_artifact_dir:
+        command += ["--resume-artifact-dir", args.rq15_resume_artifact_dir]
+    if stage == "rq1_5b" and args.rq15b_resume_artifact_dir:
+        command += ["--resume-artifact-dir", args.rq15b_resume_artifact_dir]
     return append_common_results_arg(command, args)
 
 
@@ -224,12 +270,11 @@ def build_stage_plan(stage: str, args: argparse.Namespace, acr_name: str) -> Sta
         )
 
     if stage == "rq1_4":
-        command = ["bash", "scripts/run_rq14_fully_controlled.sh", "--image-ref", args.image_ref]
-        if args.rq14_rolling:
-            command.append("--rolling")
-        if args.cleanup_on_failure:
-            command.append("--cleanup-on-failure")
-        return StagePlan(stage, [command])
+        command = (
+            python_script("scripts/run_all_rq1.py")
+            + ["--only", "rq1_4", "--skip-image-build", "--skip-cloud", "--rq14-rolling"]
+        )
+        return StagePlan(stage, local_image_prepare_commands(args) + [command])
 
     if stage == "rq1_4b":
         command = (
@@ -242,23 +287,27 @@ def build_stage_plan(stage: str, args: argparse.Namespace, acr_name: str) -> Sta
         command = python_script("scripts/run_rq15_fully_controlled.py") + [
             "--config",
             "configs/rq1/1.5/rq1_5_full.yaml",
+            "--resource-group",
+            args.rq15_resource_group,
+            "--cluster-name",
+            args.rq15_cluster_name,
         ]
-        return StagePlan(stage, [append_rq15_cloud_args(command, args, acr_name)])
+        return StagePlan(stage, [append_rq15_cloud_args(command, args, acr_name, stage)])
 
     if stage == "rq1_5b":
         command = python_script("scripts/run_rq15_fully_controlled.py") + [
             "--config",
             "configs/rq1/1.5/rq1_5b_multinode.yaml",
             "--resource-group",
-            "rg-thesis-rq15b",
+            args.rq15b_resource_group,
             "--cluster-name",
-            "thesis-rq15b",
+            args.rq15b_cluster_name,
             "--nodepool",
             args.rq15b_nodepool,
             "--node-count",
             str(args.rq15b_node_count),
         ]
-        return StagePlan(stage, [append_rq15_cloud_args(command, args, acr_name)])
+        return StagePlan(stage, [append_rq15_cloud_args(command, args, acr_name, stage)])
 
     if stage == "rq2_1_paired":
         command = python_script("scripts/run_rq21_paired_benchmark.py")
@@ -317,6 +366,43 @@ def run_capture(command: list[str]) -> str:
     if completed.stderr:
         print(completed.stderr, end="", file=sys.stderr)
     return completed.stdout.strip()
+
+
+def ensure_kind_for_selected_stages(args: argparse.Namespace, stages: list[str]) -> bool:
+    if not {"rq1_4", "rq1_4b"}.intersection(stages):
+        return True
+
+    if shutil.which("kind"):
+        return True
+
+    local_kind = kind_binary_path()
+    if local_kind.exists():
+        add_tools_to_path()
+        log(f"Using repo-local kind: {local_kind}")
+        return True
+
+    if args.no_install_kind:
+        warn("kind is required for rq1_4/rq1_4b but was not found on PATH.")
+        return False
+
+    asset = kind_asset_name()
+    url = f"https://kind.sigs.k8s.io/dl/{args.kind_version}/{asset}"
+
+    if args.dry_run:
+        run_command(["mkdir", "-p", str(TOOLS_BIN)], dry_run=True)
+        run_command(["curl", "-L", "-o", str(local_kind), url], dry_run=True)
+        if platform.system().lower() != "windows":
+            run_command(["chmod", "+x", str(local_kind)], dry_run=True)
+        add_tools_to_path()
+        return True
+
+    TOOLS_BIN.mkdir(parents=True, exist_ok=True)
+    run_command(["curl", "-L", "-o", str(local_kind), url], dry_run=False)
+    if platform.system().lower() != "windows":
+        local_kind.chmod(local_kind.stat().st_mode | 0o755)
+    add_tools_to_path()
+    log(f"Installed kind {args.kind_version} to {local_kind}")
+    return True
 
 
 def run_stage(plan: StagePlan, *, dry_run: bool) -> StageResult:
@@ -474,10 +560,18 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Do not run 'az acr login' before container-based stages.",
     )
+    parser.set_defaults(provision_cloud=True)
     parser.add_argument(
         "--provision-cloud",
+        dest="provision_cloud",
         action="store_true",
-        help="Pass the cloud provisioning flag to AKS-backed stages.",
+        help="Provision AKS-backed stages through their inner Terraform lifecycle. This is the default.",
+    )
+    parser.add_argument(
+        "--reuse-cloud",
+        dest="provision_cloud",
+        action="store_false",
+        help="Reuse existing AKS clusters instead of provisioning through the inner runners.",
     )
     parser.add_argument(
         "--destroy-cloud-on-success",
@@ -495,11 +589,48 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--smoke", action="store_true", help="Use RQ2 smoke profiles where supported.")
     parser.add_argument("--skip-mesh-enable", action="store_true", help="Pass through to RQ2 mesh-aware runners.")
     parser.add_argument("--results-root", default=None, help="Results root passed to runners that support it.")
-    parser.add_argument("--rq14-rolling", action="store_true", help="Run RQ1.4 one condition at a time.")
+    parser.add_argument(
+        "--rq14-rolling",
+        action="store_true",
+        help="Backward-compatible no-op; RQ1.4 uses rolling mode by default.",
+    )
     parser.add_argument("--rq15-nodepool", default=None, help="Override RQ1.5 nodepool.")
+    parser.add_argument("--rq15-resource-group", default="rg-thesis-rq15", help="RQ1.5 resource group.")
+    parser.add_argument("--rq15-cluster-name", default="thesis-rq15", help="RQ1.5 AKS cluster name.")
+    parser.add_argument(
+        "--rq15-resume-artifact-dir",
+        default=None,
+        help="Existing RQ1.5 export directory whose complete partials should be reused.",
+    )
+    parser.add_argument("--rq15b-resource-group", default="rg-thesis-rq15b", help="RQ1.5b resource group.")
+    parser.add_argument("--rq15b-cluster-name", default="thesis-rq15b", help="RQ1.5b AKS cluster name.")
     parser.add_argument("--rq15b-nodepool", default="rq15bpool", help="RQ1.5b nodepool label.")
     parser.add_argument("--rq15b-node-count", type=int, default=6, help="RQ1.5b node count.")
-    return parser.parse_args()
+    parser.add_argument(
+        "--rq15b-resume-artifact-dir",
+        default=None,
+        help="Existing RQ1.5b export directory whose complete partials should be reused.",
+    )
+    parser.add_argument(
+        "--rq15-condition-retries",
+        type=int,
+        default=1,
+        help="Retries per RQ1.5/RQ1.5b rolling condition when artifacts are incomplete.",
+    )
+    parser.add_argument(
+        "--kind-version",
+        default=DEFAULT_KIND_VERSION,
+        help="kind release to install locally when rq1_4/rq1_4b need kind and it is missing.",
+    )
+    parser.add_argument(
+        "--no-install-kind",
+        action="store_true",
+        help="Fail instead of downloading a repo-local kind binary when kind is missing.",
+    )
+    args = parser.parse_args()
+    if args.rq15_condition_retries < 0:
+        parser.error("--rq15-condition-retries must be >= 0")
+    return args
 
 
 def main() -> int:
@@ -508,6 +639,9 @@ def main() -> int:
     log(f"Stages: {', '.join(stages)}")
     if args.dry_run:
         log("Dry run: no commands will be executed.")
+
+    if not ensure_kind_for_selected_stages(args, stages):
+        return 1
 
     if args.build_push_image and args.image_ref:
         raise SystemExit("--build-push-image cannot be combined with --image-ref")

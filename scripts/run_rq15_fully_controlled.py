@@ -292,6 +292,25 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--resource-group", default=DEFAULT_RESOURCE_GROUP, help="Azure resource group name")
     parser.add_argument("--cluster-name", default=DEFAULT_CLUSTER_NAME, help="AKS cluster name")
+    parser.add_argument(
+        "--skip-kubeconfig-refresh",
+        action="store_true",
+        help="Use the current kubectl context as-is instead of refreshing credentials for --cluster-name.",
+    )
+    parser.add_argument(
+        "--resume-artifact-dir",
+        default=None,
+        help=(
+            "Reuse an existing RQ1.5 export directory. Complete per-condition "
+            "partials are skipped; incomplete partials are rerun and then merged."
+        ),
+    )
+    parser.add_argument(
+        "--condition-retries",
+        type=int,
+        default=1,
+        help="Retry an individual rolling condition when copied artifacts are incomplete.",
+    )
     parser.add_argument("--location", default=DEFAULT_LOCATION, help="Azure region for provisioning")
     parser.add_argument("--node-count", type=int, default=DEFAULT_NODE_COUNT, help="Node count for AKS provisioning")
     parser.add_argument(
@@ -348,6 +367,8 @@ def parse_args() -> argparse.Namespace:
             "--delete-resource-group-on-failure is enabled without --provision; "
             "the script will still delete the named group if a failure occurs."
         )
+    if args.condition_retries < 0:
+        parser.error("--condition-retries must be >= 0")
     return args
 
 
@@ -375,7 +396,9 @@ class RQ15Orchestrator:
             "rq1_5b_multinode" if self.is_multinode else "rq1_5_fully_controlled"
         )
         host_export_dir = (
-            Path(args.results_root).resolve() / f"{self.experiment_signature}_{self.run_ts}"
+            Path(args.resume_artifact_dir).resolve()
+            if args.resume_artifact_dir
+            else Path(args.results_root).resolve() / f"{self.experiment_signature}_{self.run_ts}"
         )
         self.state = RunnerState(
             host_export_dir=host_export_dir,
@@ -397,6 +420,8 @@ class RQ15Orchestrator:
         self.effective_image_ref = ""
         self.current_context = ""
         self.terraform_outputs: dict[str, Any] = {}
+        self._existing_acr_resource_group: str | None = None
+        self._resource_group_exists: bool | None = None
 
         config_min_nodes = placement_raw.get("min_nodes")
         if (
@@ -503,6 +528,8 @@ class RQ15Orchestrator:
         return match.group(1) if match else None
 
     def prepare_artifact_dirs(self) -> None:
+        if self.args.resume_artifact_dir and not self.state.host_export_dir.is_dir():
+            raise PipelineError(f"--resume-artifact-dir does not exist: {self.state.host_export_dir}")
         self.state.host_export_dir.mkdir(parents=True, exist_ok=True)
         self.state.diagnostics_dir.mkdir(parents=True, exist_ok=True)
         self.state.host_partial_results_dir.mkdir(parents=True, exist_ok=True)
@@ -529,6 +556,8 @@ class RQ15Orchestrator:
 
     def verify_host_prerequisites(self) -> None:
         ensure_command("kubectl")
+        if not self.args.skip_kubeconfig_refresh:
+            ensure_command("az")
         if self.args.push:
             ensure_command("docker")
             ensure_command("az")
@@ -542,7 +571,7 @@ class RQ15Orchestrator:
     def _terraform_var_args(self) -> list[str]:
         if not self.acr_name:
             raise PipelineError("ACR name is required for Terraform provisioning")
-        return [
+        args = [
             f"-var=resource_group_name={self.args.resource_group}",
             f"-var=location={self.args.location}",
             f"-var=acr_name={self.acr_name}",
@@ -551,6 +580,16 @@ class RQ15Orchestrator:
             f"-var=node_count={self.args.node_count}",
             f"-var=node_vm_size={self.args.node_vm_size}",
         ]
+        if not self._terraform_creates_resource_group():
+            args.append("-var=create_resource_group=false")
+        if self._terraform_uses_existing_acr():
+            args.extend(
+                [
+                    "-var=create_acr=false",
+                    f"-var=acr_resource_group_name={self._existing_acr_group()}",
+                ]
+            )
+        return args
 
     def _terraform_output_value(self, name: str) -> Any:
         payload = self.terraform_outputs.get(name)
@@ -573,6 +612,130 @@ class RQ15Orchestrator:
     def _terraform_init(self) -> None:
         run_command(["terraform", "init", "-input=false"], cwd=self.infra_dir)
 
+    def _az_tsv(self, args: list[str], *, check: bool = False) -> str:
+        result = run_command(
+            ["az", *args, "--output", "tsv"],
+            capture_output=True,
+            check=check,
+        )
+        return (result.stdout or "").strip() if result.returncode == 0 else ""
+
+    def _terraform_uses_existing_acr(self) -> bool:
+        return bool(self.args.image_ref)
+
+    def _terraform_creates_resource_group(self) -> bool:
+        if self._resource_group_exists is None:
+            group_id = self._az_tsv(
+                ["group", "show", "--name", self.args.resource_group, "--query", "id"],
+                check=False,
+            )
+            self._resource_group_exists = bool(group_id)
+        return not self._resource_group_exists
+
+    def _existing_acr_group(self) -> str:
+        if self._existing_acr_resource_group is not None:
+            return self._existing_acr_resource_group
+        if not self.acr_name:
+            raise PipelineError("ACR name is required before resolving existing ACR resource group")
+        group = self._az_tsv(
+            ["acr", "show", "--name", self.acr_name, "--query", "resourceGroup"],
+            check=False,
+        )
+        if not group:
+            raise PipelineError(
+                f"ACR {self.acr_name} was not found in the current Azure subscription. "
+                "The uniform-image run passes --image-ref, so the registry must already exist."
+            )
+        self._existing_acr_resource_group = group
+        return group
+
+    def _terraform_state_addresses(self) -> set[str]:
+        result = run_command(
+            ["terraform", "state", "list"],
+            cwd=self.infra_dir,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return set()
+        return {line.strip() for line in (result.stdout or "").splitlines() if line.strip()}
+
+    def _terraform_import_if_exists(self, address: str, resource_id: str, state_addresses: set[str]) -> None:
+        if address in state_addresses:
+            return
+        log(f"Importing existing Azure resource into Terraform state: {address}")
+        run_command(
+            ["terraform", "import", *self._terraform_var_args(), address, resource_id],
+            cwd=self.infra_dir,
+        )
+        state_addresses.add(address)
+
+    def _terraform_state_rm_if_present(self, addresses: list[str], state_addresses: set[str]) -> None:
+        for address in addresses:
+            if address not in state_addresses:
+                continue
+            log(
+                f"Removing {address} from Terraform state because this run treats it "
+                "as existing/shared infrastructure."
+            )
+            run_command(["terraform", "state", "rm", address], cwd=self.infra_dir)
+            state_addresses.discard(address)
+
+    def prepare_terraform_state(self) -> None:
+        state_addresses = self._terraform_state_addresses()
+
+        if not self._terraform_creates_resource_group():
+            self._terraform_state_rm_if_present(
+                ["azurerm_resource_group.rq15", "azurerm_resource_group.rq15[0]"],
+                state_addresses,
+            )
+
+        if self._terraform_uses_existing_acr():
+            self._terraform_state_rm_if_present(
+                ["azurerm_container_registry.rq15", "azurerm_container_registry.rq15[0]"],
+                state_addresses,
+            )
+        elif self.acr_name:
+            acr_id = self._az_tsv(
+                ["acr", "show", "--name", self.acr_name, "--query", "id"],
+                check=False,
+            )
+            if acr_id:
+                self._terraform_import_if_exists(
+                    "azurerm_container_registry.rq15[0]",
+                    acr_id,
+                    state_addresses,
+                )
+
+        cluster_id = self._az_tsv(
+            [
+                "aks",
+                "show",
+                "--resource-group",
+                self.args.resource_group,
+                "--name",
+                self.args.cluster_name,
+                "--query",
+                "id",
+            ],
+            check=False,
+        )
+        if cluster_id:
+            self._terraform_import_if_exists(
+                "azurerm_kubernetes_cluster.rq15",
+                cluster_id,
+                state_addresses,
+            )
+        else:
+            self._terraform_state_rm_if_present(
+                [
+                    "azurerm_kubernetes_cluster.rq15",
+                    "azurerm_kubernetes_cluster_node_pool.benchmark[0]",
+                    "azurerm_role_assignment.aks_acr_pull",
+                ],
+                state_addresses,
+            )
+
     def refresh_kubeconfig(self) -> None:
         self.kubeconfig_path.parent.mkdir(parents=True, exist_ok=True)
         log(f"Refreshing kubeconfig for {self.args.cluster_name} in {self.kubeconfig_path}.")
@@ -590,6 +753,7 @@ class RQ15Orchestrator:
         log(f"Provisioning AKS infrastructure via Terraform in {self.infra_dir}.")
         self.azure_quota_preflight()
         self._terraform_init()
+        self.prepare_terraform_state()
         try:
             run_command(
                 [
@@ -1219,6 +1383,57 @@ class RQ15Orchestrator:
                 f"kubectl tar-stream fallback failed for {source_path}: {stderr.strip() or return_code}"
             )
 
+    def expected_rows_per_condition(self) -> int:
+        benchmark = self.raw_config.get("benchmark") or {}
+        try:
+            rounds = int(benchmark["rounds"])
+            measured_iterations = int(benchmark["measured_iterations"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise PipelineError(
+                "Cannot determine expected per-condition row count from benchmark.rounds "
+                "and benchmark.measured_iterations"
+            ) from exc
+        return rounds * measured_iterations
+
+    def raw_iteration_row_count(self, raw_path: Path) -> int:
+        with raw_path.open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle)
+            if not reader.fieldnames:
+                return 0
+            return sum(1 for _ in reader)
+
+    def validate_condition_artifacts(self, condition_name: str, condition_dir: Path) -> list[str]:
+        errors: list[str] = []
+        if not condition_dir.is_dir():
+            return [f"missing partial results directory: {condition_dir}"]
+
+        required_files = [
+            "raw_iterations.csv",
+            "parity_validation.json",
+            "warmup_calibration.json",
+            "deployment_metadata.json",
+            "environment.json",
+        ]
+        for file_name in required_files:
+            path = condition_dir / file_name
+            if not path.is_file():
+                errors.append(f"missing {file_name}")
+
+        raw_path = condition_dir / "raw_iterations.csv"
+        if raw_path.is_file():
+            expected_rows = self.expected_rows_per_condition()
+            try:
+                actual_rows = self.raw_iteration_row_count(raw_path)
+            except Exception as exc:
+                errors.append(f"could not read raw_iterations.csv: {exc}")
+            else:
+                if actual_rows != expected_rows:
+                    errors.append(
+                        f"raw_iterations.csv has {actual_rows} rows; expected {expected_rows}"
+                    )
+
+        return errors
+
     def run_condition_benchmark(self, condition_name: str) -> None:
         condition_log_path = self.state.host_benchmark_log_dir / f"{condition_name}.log"
         pod_output_dir = f"{self.state.pod_partial_results_root}/{condition_name}"
@@ -1227,40 +1442,70 @@ class RQ15Orchestrator:
         self.copy_effective_config_to_pod()
         self.inject_runtime_metadata()
 
-        log(f"Running the in-cluster rolling benchmark for {condition_name}.")
-        run_command(
-            [
-                "kubectl", "exec", "-n", self.namespace, self.args.client_pod, "--",
-                "rm", "-rf", pod_output_dir,
-            ],
-            check=False,
-        )
+        max_attempts = self.args.condition_retries + 1
+        last_errors: list[str] = []
+        last_exception: Exception | None = None
 
-        stream_command(
-            [
-                "kubectl", "exec", "-n", self.namespace, self.args.client_pod, "--",
-                "python", "run_k8s_experiment.py",
-                "--config", self.state.pod_config_path,
-                "--condition", condition_name,
-                "--output-dir", pod_output_dir,
-            ],
-            condition_log_path,
-        )
+        for attempt in range(1, max_attempts + 1):
+            attempt_suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
+            attempt_log_path = (
+                condition_log_path
+                if attempt == 1
+                else self.state.host_benchmark_log_dir / f"{condition_name}.attempt{attempt}.log"
+            )
+            log(f"Running the in-cluster rolling benchmark for {condition_name}{attempt_suffix}.")
+            run_command(
+                [
+                    "kubectl", "exec", "-n", self.namespace, self.args.client_pod, "--",
+                    "rm", "-rf", pod_output_dir,
+                ],
+                check=False,
+            )
 
-        run_command(
-            [
-                "kubectl", "exec", "-n", self.namespace, self.args.client_pod, "--",
-                "test", "-d", pod_output_dir,
-            ]
-        )
-        log(f"Copying rolling results for {condition_name} from pod path {pod_output_dir}.")
-        self.copy_results_with_fallback(pod_output_dir, host_condition_results_dir)
-        run_command(
-            [
-                "kubectl", "exec", "-n", self.namespace, self.args.client_pod, "--",
-                "rm", "-rf", pod_output_dir,
-            ],
-            check=False,
+            try:
+                stream_command(
+                    [
+                        "kubectl", "exec", "-n", self.namespace, self.args.client_pod, "--",
+                        "python", "run_k8s_experiment.py",
+                        "--config", self.state.pod_config_path,
+                        "--condition", condition_name,
+                        "--output-dir", pod_output_dir,
+                    ],
+                    attempt_log_path,
+                )
+
+                run_command(
+                    [
+                        "kubectl", "exec", "-n", self.namespace, self.args.client_pod, "--",
+                        "test", "-d", pod_output_dir,
+                    ]
+                )
+                log(f"Copying rolling results for {condition_name} from pod path {pod_output_dir}.")
+                self.copy_results_with_fallback(pod_output_dir, host_condition_results_dir)
+                last_errors = self.validate_condition_artifacts(condition_name, host_condition_results_dir)
+                if not last_errors:
+                    run_command(
+                        [
+                            "kubectl", "exec", "-n", self.namespace, self.args.client_pod, "--",
+                            "rm", "-rf", pod_output_dir,
+                        ],
+                        check=False,
+                    )
+                    return
+                warn(
+                    f"{condition_name} artifacts are incomplete after attempt {attempt}: "
+                    + "; ".join(last_errors)
+                )
+            except Exception as exc:
+                last_exception = exc
+                warn(f"{condition_name} attempt {attempt} failed: {exc}")
+
+            if attempt < max_attempts:
+                log(f"Retrying {condition_name} before tearing down condition resources.")
+
+        details = "; ".join(last_errors) if last_errors else str(last_exception or "unknown error")
+        raise PipelineError(
+            f"{condition_name} did not produce a complete partial result after {max_attempts} attempt(s): {details}"
         )
 
     def merge_rolling_results(self) -> None:
@@ -1277,8 +1522,11 @@ class RQ15Orchestrator:
 
         for condition in self.conditions:
             condition_dir = self.state.host_partial_results_dir / condition
-            if not condition_dir.is_dir():
-                raise PipelineError(f"Missing partial results directory: {condition_dir}")
+            artifact_errors = self.validate_condition_artifacts(condition, condition_dir)
+            if artifact_errors:
+                raise PipelineError(
+                    f"Incomplete partial results for {condition}: " + "; ".join(artifact_errors)
+                )
 
             raw_path = condition_dir / "raw_iterations.csv"
             parity_path = condition_dir / "parity_validation.json"
@@ -1405,6 +1653,18 @@ class RQ15Orchestrator:
         self.wait_for_client_ready()
 
         for condition_name in self.conditions:
+            if self.args.resume_artifact_dir:
+                existing_dir = self.state.host_partial_results_dir / condition_name
+                artifact_errors = self.validate_condition_artifacts(condition_name, existing_dir)
+                if not artifact_errors:
+                    log(f"Skipping {condition_name}; complete partial results already exist.")
+                    continue
+                if existing_dir.exists():
+                    warn(
+                        f"Rerunning {condition_name}; existing partial is incomplete: "
+                        + "; ".join(artifact_errors)
+                    )
+
             self.deploy_condition_resources(condition_name)
             self.wait_for_condition_ready(condition_name, self.condition_expected_pods(condition_name))
             self.run_condition_benchmark(condition_name)
@@ -1515,10 +1775,7 @@ class RQ15Orchestrator:
                 warn(f"Preserving namespace {self.namespace} for inspection.")
         if self.args.delete_resource_group_on_failure:
             try:
-                log(
-                    "Cost-bound failure cleanup: deleting resource group "
-                    f"{self.args.resource_group}."
-                )
+                log("Cost-bound failure cleanup: destroying Terraform-managed infrastructure.")
                 self._destroy_resource_group_unconditional()
             except Exception as exc:  # pragma: no cover - destroy best effort
                 warn(f"Failed to delete resource group on failure: {exc}")
@@ -1534,6 +1791,12 @@ class RQ15Orchestrator:
                     f"Terraform destroy failed during failure cleanup ({exc}); "
                     "falling back to az group delete."
                 )
+                if not self._terraform_creates_resource_group():
+                    warn(
+                        "Skipping fallback resource-group deletion because this run uses "
+                        "an existing/shared resource group."
+                    )
+                    return
         run_command(
             [
                 "az", "group", "delete",
@@ -1549,6 +1812,8 @@ class RQ15Orchestrator:
         self.verify_required_files()
         self.verify_host_prerequisites()
         self.maybe_provision_cluster()
+        if not self.args.provision and not self.args.skip_kubeconfig_refresh:
+            self.refresh_kubeconfig()
         self.refresh_cluster_context()
         self.write_effective_config()
         self.validate_effective_config(require_pinned_image=False)

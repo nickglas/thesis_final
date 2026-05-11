@@ -38,7 +38,8 @@ provider "azurerm" {
 }
 
 locals {
-  experiment_tag = var.experiment_tag != "" ? var.experiment_tag : (var.enable_benchmark_pool ? "rq21-isolated" : "rq15")
+  experiment_tag                 = var.experiment_tag != "" ? var.experiment_tag : (var.enable_benchmark_pool ? "rq21-isolated" : "rq15")
+  acr_lookup_resource_group_name = var.acr_resource_group_name != "" ? var.acr_resource_group_name : var.resource_group_name
 }
 
 # ---------------------------------------------------------------------------
@@ -46,8 +47,19 @@ locals {
 # ---------------------------------------------------------------------------
 
 resource "azurerm_resource_group" "rq15" {
+  count    = var.create_resource_group ? 1 : 0
   name     = var.resource_group_name
   location = var.location
+}
+
+data "azurerm_resource_group" "existing" {
+  count = var.create_resource_group ? 0 : 1
+  name  = var.resource_group_name
+}
+
+locals {
+  resource_group_name     = var.create_resource_group ? azurerm_resource_group.rq15[0].name : data.azurerm_resource_group.existing[0].name
+  resource_group_location = var.create_resource_group ? azurerm_resource_group.rq15[0].location : data.azurerm_resource_group.existing[0].location
 }
 
 # ---------------------------------------------------------------------------
@@ -57,11 +69,24 @@ resource "azurerm_resource_group" "rq15" {
 # ---------------------------------------------------------------------------
 
 resource "azurerm_container_registry" "rq15" {
+  count               = var.create_acr ? 1 : 0
   name                = var.acr_name
-  resource_group_name = azurerm_resource_group.rq15.name
-  location            = azurerm_resource_group.rq15.location
+  resource_group_name = local.resource_group_name
+  location            = local.resource_group_location
   sku                 = "Basic"
   admin_enabled       = false
+}
+
+data "azurerm_container_registry" "existing" {
+  count               = var.create_acr ? 0 : 1
+  name                = var.acr_name
+  resource_group_name = local.acr_lookup_resource_group_name
+}
+
+locals {
+  acr_id           = var.create_acr ? azurerm_container_registry.rq15[0].id : data.azurerm_container_registry.existing[0].id
+  acr_name         = var.create_acr ? azurerm_container_registry.rq15[0].name : data.azurerm_container_registry.existing[0].name
+  acr_login_server = var.create_acr ? azurerm_container_registry.rq15[0].login_server : data.azurerm_container_registry.existing[0].login_server
 }
 
 # ---------------------------------------------------------------------------
@@ -80,8 +105,8 @@ resource "azurerm_container_registry" "rq15" {
 
 resource "azurerm_kubernetes_cluster" "rq15" {
   name                = var.cluster_name
-  location            = azurerm_resource_group.rq15.location
-  resource_group_name = azurerm_resource_group.rq15.name
+  location            = local.resource_group_location
+  resource_group_name = local.resource_group_name
   dns_prefix          = var.cluster_name
 
   # kubernetes_version is omitted — Azure picks the current default stable release.
@@ -143,7 +168,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "benchmark" {
 # ---------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "aks_acr_pull" {
-  scope                = azurerm_container_registry.rq15.id
+  scope                = local.acr_id
   role_definition_name = "AcrPull"
   principal_id         = azurerm_kubernetes_cluster.rq15.kubelet_identity[0].object_id
 }

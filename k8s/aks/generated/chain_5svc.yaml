@@ -51,7 +51,7 @@ spec:
     spec:
       containers:
       - name: inference
-        image: thesisrq15bacr.azurecr.io/thesis-inference@sha256:c5d44bd08783fc78177c2fc4b5d9209d08258309f9d907fcb02cd1315e0fe1de
+        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:88d2fc3721a88ac68887d7556aae88237fd8c378aeab667a0a919f03858fdfee
         imagePullPolicy: Always
         ports:
         - containerPort: 50051
@@ -164,7 +164,7 @@ spec:
     spec:
       containers:
       - name: inference
-        image: thesisrq15bacr.azurecr.io/thesis-inference@sha256:c5d44bd08783fc78177c2fc4b5d9209d08258309f9d907fcb02cd1315e0fe1de
+        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:88d2fc3721a88ac68887d7556aae88237fd8c378aeab667a0a919f03858fdfee
         imagePullPolicy: Always
         ports:
         - containerPort: 50051
@@ -277,7 +277,7 @@ spec:
     spec:
       containers:
       - name: inference
-        image: thesisrq15bacr.azurecr.io/thesis-inference@sha256:c5d44bd08783fc78177c2fc4b5d9209d08258309f9d907fcb02cd1315e0fe1de
+        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:88d2fc3721a88ac68887d7556aae88237fd8c378aeab667a0a919f03858fdfee
         imagePullPolicy: Always
         ports:
         - containerPort: 50051
@@ -390,7 +390,7 @@ spec:
     spec:
       containers:
       - name: inference
-        image: thesisrq15bacr.azurecr.io/thesis-inference@sha256:c5d44bd08783fc78177c2fc4b5d9209d08258309f9d907fcb02cd1315e0fe1de
+        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:88d2fc3721a88ac68887d7556aae88237fd8c378aeab667a0a919f03858fdfee
         imagePullPolicy: Always
         ports:
         - containerPort: 50051
@@ -503,7 +503,7 @@ spec:
     spec:
       containers:
       - name: inference
-        image: thesisrq15bacr.azurecr.io/thesis-inference@sha256:c5d44bd08783fc78177c2fc4b5d9209d08258309f9d907fcb02cd1315e0fe1de
+        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:88d2fc3721a88ac68887d7556aae88237fd8c378aeab667a0a919f03858fdfee
         imagePullPolicy: Always
         ports:
         - containerPort: 50051

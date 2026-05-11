@@ -10,10 +10,28 @@ variable "location" {
   default     = "swedencentral"
 }
 
+variable "create_resource_group" {
+  description = "When false, use an existing resource group instead of creating/managing it."
+  type        = bool
+  default     = true
+}
+
 variable "acr_name" {
   description = "Azure Container Registry name. Must be globally unique and alphanumeric only (no hyphens)."
   type        = string
   # No default — must be supplied explicitly because ACR names are globally unique.
+}
+
+variable "create_acr" {
+  description = "When false, use an existing shared ACR instead of creating one in the experiment resource group."
+  type        = bool
+  default     = true
+}
+
+variable "acr_resource_group_name" {
+  description = "Resource group containing the existing ACR when create_acr=false. Defaults to resource_group_name when omitted."
+  type        = string
+  default     = ""
 }
 
 variable "cluster_name" {

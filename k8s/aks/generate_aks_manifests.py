@@ -408,6 +408,21 @@ def _client_manifest_file_name(condition_name: str) -> str:
     return f"99_benchmark_client_{sanitize_k8s_name_component(condition_name)}.yaml"
 
 
+def _resolve_nodepool_override(raw_value: str | None, fallback: str) -> str:
+    """Resolve CLI nodepool override.
+
+    Local kind runners pass an explicit empty nodepool while reusing the AKS
+    generator for anti-affinity. In that case no AKS agentpool selector should
+    be emitted.
+    """
+    if raw_value is None:
+        return fallback
+    value = str(raw_value).strip()
+    if value.lower() in {"", "none", "null", "false", "-"}:
+        return ""
+    return value
+
+
 def _base_node_selector(cfg: dict) -> dict[str, str]:
     selector: dict[str, str] = {}
     nodepool = str(cfg.get("nodepool") or "").strip()
@@ -1214,7 +1229,7 @@ def main() -> None:
             "namespace": resolved_namespace,
             "client_namespace": resolved_client_namespace,
             "mesh_namespace": resolved_namespace if cfg.get("mesh_enabled") else cfg.get("mesh_namespace"),
-            "nodepool": args.nodepool or cfg["nodepool"],
+            "nodepool": _resolve_nodepool_override(args.nodepool, cfg["nodepool"]),
             "grpc_port": args.grpc_port or cfg["grpc_port"],
             "cpu_request": args.cpu_request or args.cpu or cfg["cpu_request"],
             "cpu_limit": args.cpu_limit or args.cpu_request or args.cpu or cfg["cpu_limit"],

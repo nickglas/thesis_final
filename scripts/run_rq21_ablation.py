@@ -236,6 +236,7 @@ class RQ21AblationRunner(paired.RQ21PairedBenchmarkRunner):
             provision=self.args.provision,
             provisioner=self.args.provisioner,
             acr_name=self.acr_name,
+            image_ref=self.args.image_ref,
             push=self.args.push,
             build=self.args.build,
             image_tag=self.args.image_tag,

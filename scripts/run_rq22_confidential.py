@@ -225,6 +225,8 @@ class RQ22ConfidentialRunner:
         self.active_service2_pool: str | None = None
         self.active_rolling_pools: list[str] = []
         self.effective_pinned_image_ref = ""
+        self._existing_acr_resource_group: str | None = None
+        self._resource_group_exists: bool | None = None
 
     def standard_condition_name(self) -> str:
         cc = self.raw_config.get("confidential_compute") or {}
@@ -509,7 +511,7 @@ class RQ22ConfidentialRunner:
         )
 
     def terraform_vars(self) -> dict[str, Any]:
-        return {
+        payload = {
             "resource_group_name": self.args.resource_group,
             "location": self.args.region,
             "acr_name": self.args.acr_name,
@@ -528,6 +530,171 @@ class RQ22ConfidentialRunner:
             },
             "experiment_tag": "rq22-amd-rolling",
         }
+        if not self._terraform_creates_resource_group():
+            payload["create_resource_group"] = False
+        if self._terraform_uses_existing_acr():
+            payload["create_acr"] = False
+            payload["acr_resource_group_name"] = self._existing_acr_group()
+        return payload
+
+    def _az_tsv(self, args: list[str], *, check: bool = False) -> str:
+        result = self.run_logged(
+            ["az", *args, "--output", "tsv"],
+            capture_output=True,
+            check=check,
+        )
+        return (result.stdout or "").strip() if result.returncode == 0 else ""
+
+    def _terraform_uses_existing_acr(self) -> bool:
+        return bool(self.args.image_ref)
+
+    def _terraform_creates_resource_group(self) -> bool:
+        if self._resource_group_exists is None:
+            group_id = self._az_tsv(
+                ["group", "show", "--name", self.args.resource_group, "--query", "id"],
+                check=False,
+            )
+            self._resource_group_exists = bool(group_id)
+        return not self._resource_group_exists
+
+    def _existing_acr_group(self) -> str:
+        if self._existing_acr_resource_group is not None:
+            return self._existing_acr_resource_group
+        if not self.args.acr_name:
+            raise PipelineError("ACR name is required before resolving existing ACR resource group")
+        group = self._az_tsv(
+            ["acr", "show", "--name", self.args.acr_name, "--query", "resourceGroup"],
+            check=False,
+        )
+        if not group:
+            raise PipelineError(
+                f"ACR {self.args.acr_name} was not found in the current Azure subscription. "
+                "The uniform-image run passes --image-ref, so the registry must already exist."
+            )
+        self._existing_acr_resource_group = group
+        return group
+
+    def _terraform_var_file_args(self) -> list[str]:
+        return ["-var-file", str(self.tfvars_path)]
+
+    def _terraform_state_addresses(self) -> set[str]:
+        result = self.run_logged(
+            ["terraform", "state", "list"],
+            cwd=INFRA_DIR,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return set()
+        return {line.strip() for line in (result.stdout or "").splitlines() if line.strip()}
+
+    def _terraform_import_if_exists(self, address: str, resource_id: str, state_addresses: set[str]) -> None:
+        if address in state_addresses:
+            return
+        log(f"Importing existing Azure resource into Terraform state: {address}")
+        self.run_logged(
+            ["terraform", "import", *self._terraform_var_file_args(), address, resource_id],
+            cwd=INFRA_DIR,
+            capture_output=False,
+        )
+        state_addresses.add(address)
+
+    def _terraform_state_rm_if_present(self, addresses: list[str], state_addresses: set[str]) -> None:
+        for address in addresses:
+            if address not in state_addresses:
+                continue
+            log(
+                f"Removing {address} from Terraform state because this run treats it "
+                "as existing/shared infrastructure."
+            )
+            self.run_logged(
+                ["terraform", "state", "rm", address],
+                cwd=INFRA_DIR,
+                capture_output=False,
+            )
+            state_addresses.discard(address)
+
+    def prepare_terraform_state(self) -> None:
+        state_addresses = self._terraform_state_addresses()
+
+        if not self._terraform_creates_resource_group():
+            self._terraform_state_rm_if_present(
+                ["azurerm_resource_group.rq15", "azurerm_resource_group.rq15[0]"],
+                state_addresses,
+            )
+
+        if self._terraform_uses_existing_acr():
+            self._terraform_state_rm_if_present(
+                ["azurerm_container_registry.rq15", "azurerm_container_registry.rq15[0]"],
+                state_addresses,
+            )
+        elif self.args.acr_name:
+            acr_id = self._az_tsv(
+                ["acr", "show", "--name", self.args.acr_name, "--query", "id"],
+                check=False,
+            )
+            if acr_id:
+                self._terraform_import_if_exists(
+                    "azurerm_container_registry.rq15[0]",
+                    acr_id,
+                    state_addresses,
+                )
+
+        cluster_id = self._az_tsv(
+            [
+                "aks",
+                "show",
+                "--resource-group",
+                self.args.resource_group,
+                "--name",
+                self.args.cluster_name,
+                "--query",
+                "id",
+            ],
+            check=False,
+        )
+        if cluster_id:
+            self._terraform_import_if_exists(
+                "azurerm_kubernetes_cluster.rq15",
+                cluster_id,
+                state_addresses,
+            )
+            nodepool_id = self._az_tsv(
+                [
+                    "aks",
+                    "nodepool",
+                    "show",
+                    "--resource-group",
+                    self.args.resource_group,
+                    "--cluster-name",
+                    self.args.cluster_name,
+                    "--name",
+                    self.args.service1_nodepool,
+                    "--query",
+                    "id",
+                ],
+                check=False,
+            )
+            if nodepool_id:
+                self._terraform_import_if_exists(
+                    "azurerm_kubernetes_cluster_node_pool.benchmark[0]",
+                    nodepool_id,
+                    state_addresses,
+                )
+            else:
+                self._terraform_state_rm_if_present(
+                    ["azurerm_kubernetes_cluster_node_pool.benchmark[0]"],
+                    state_addresses,
+                )
+        else:
+            self._terraform_state_rm_if_present(
+                [
+                    "azurerm_kubernetes_cluster.rq15",
+                    "azurerm_kubernetes_cluster_node_pool.benchmark[0]",
+                    "azurerm_role_assignment.aks_acr_pull",
+                ],
+                state_addresses,
+            )
 
     def write_lifecycle(self, extra: dict[str, Any] | None = None) -> None:
         payload = {
@@ -557,8 +724,9 @@ class RQ22ConfidentialRunner:
         self.tfvars_path.write_text(json.dumps(self.terraform_vars(), indent=2), encoding="utf-8")
         log("Provisioning RQ2.2 service1 AKS foundation with Terraform.")
         self.run_logged(["terraform", "init", "-input=false"], cwd=INFRA_DIR, capture_output=False)
+        self.prepare_terraform_state()
         self.run_logged(
-            ["terraform", "apply", "-auto-approve", "-input=false", "-var-file", str(self.tfvars_path)],
+            ["terraform", "apply", "-auto-approve", "-input=false", *self._terraform_var_file_args()],
             cwd=INFRA_DIR,
             capture_output=False,
         )
@@ -579,7 +747,7 @@ class RQ22ConfidentialRunner:
             self.tfvars_path.write_text(json.dumps(self.terraform_vars(), indent=2), encoding="utf-8")
         self.run_logged(["terraform", "init", "-input=false"], cwd=INFRA_DIR, capture_output=False)
         self.run_logged(
-            ["terraform", "destroy", "-auto-approve", "-input=false", "-var-file", str(self.tfvars_path)],
+            ["terraform", "destroy", "-auto-approve", "-input=false", *self._terraform_var_file_args()],
             cwd=INFRA_DIR,
             capture_output=False,
         )

@@ -77,10 +77,10 @@ spec:
           resources:
             requests:
               cpu: "1"
-              memory: "1Gi"
+              memory: "512Mi"
             limits:
               cpu: "1"
-              memory: "1Gi"
+              memory: "512Mi"
           securityContext:
             capabilities:
               add:
@@ -171,10 +171,10 @@ spec:
           resources:
             requests:
               cpu: "1"
-              memory: "1Gi"
+              memory: "512Mi"
             limits:
               cpu: "1"
-              memory: "1Gi"
+              memory: "512Mi"
           securityContext:
             capabilities:
               add:
@@ -263,10 +263,10 @@ spec:
           resources:
             requests:
               cpu: "1"
-              memory: "1Gi"
+              memory: "512Mi"
             limits:
               cpu: "1"
-              memory: "1Gi"
+              memory: "512Mi"
           securityContext:
             capabilities:
               add:

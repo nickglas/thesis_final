@@ -38,6 +38,7 @@ POD_RESULTS_DIR=""
 CLEANUP_ON_FAILURE=0
 PRUNE_IMAGE=0
 ROLLING_MODE=0
+SKIP_IMAGE_BUILD=0
 RESOURCES_DEPLOYED=0
 FINAL_RESULTS_DIR=""
 HOST_CPU_GOVERNOR_SET=0
@@ -72,6 +73,7 @@ Options:
   --image-ref REF       Pull an existing pinned image and retag it as ${IMAGE_TAG}.
   --prune-image         Remove ${IMAGE_TAG} after a successful run.
   --rolling             Deploy and benchmark one condition at a time.
+  --skip-image-build    Reuse an existing local ${IMAGE_TAG}.
   -h, --help            Show this help text.
 EOF
 }
@@ -134,6 +136,9 @@ parse_args() {
         ;;
       --rolling)
         ROLLING_MODE=1
+        ;;
+      --skip-image-build)
+        SKIP_IMAGE_BUILD=1
         ;;
       -h|--help)
         usage
@@ -255,15 +260,11 @@ validate_fully_controlled_config() {
     "benchmark.measured_iterations"
     "benchmark.cooldown_seconds"
     "benchmark.seed"
-    "grpc.host"
-    "grpc.port"
-    "grpc.max_message_bytes"
-    "carry_forward.near_best_window_pct"
-    "carry_forward.degeneracy_threshold_pct"
     "parity.atol"
     "parity.num_inputs"
     "warmup_calibration.window"
     "warmup_calibration.cv_threshold"
+    "warmup_calibration.max_extra_iterations"
     "cpu_stabilisation.threading.pytorch_intra_op"
     "cpu_stabilisation.threading.pytorch_inter_op"
     "cpu_stabilisation.threading.omp_num_threads"
@@ -281,6 +282,8 @@ validate_fully_controlled_config() {
   )
   local required_pairs=(
     "kubernetes.namespace=rq14"
+    "kubernetes.grpc_port=50051"
+    "kubernetes.max_message_bytes=16777216"
     "kubernetes.image=${IMAGE_TAG}"
     "kubernetes.image_pull_policy=IfNotPresent"
     "kubernetes.resources.cpu_request=1"
@@ -558,6 +561,12 @@ build_image() {
     docker pull "${IMAGE_REF}"
     log "Tagging ${IMAGE_REF} as ${IMAGE_TAG} for local Kubernetes."
     docker tag "${IMAGE_REF}" "${IMAGE_TAG}"
+    return 0
+  fi
+
+  if (( SKIP_IMAGE_BUILD )); then
+    log "Skipping Docker build; reusing local ${IMAGE_TAG}."
+    docker image inspect "${IMAGE_TAG}" >/dev/null || die "Local image ${IMAGE_TAG} not found while --skip-image-build is set."
     return 0
   fi
 
