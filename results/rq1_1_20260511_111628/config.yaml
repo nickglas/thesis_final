@@ -1,0 +1,181 @@
+# -----------------------------------------------------------------------------
+# RQ1.1 fully controlled benchmark mode
+#
+# Intended for: official thesis evaluation.
+#
+# Purpose:
+#   RQ1.1 is a coarse split-point screening experiment. It compares a
+#   monolithic ResNet-18 baseline against four two-service decompositions,
+#   each split after one coarse architectural stage. The goal is to measure
+#   the latency cost of introducing one service boundary and decide which
+#   split points are credible enough to carry forward.
+#
+# Properties:
+#   Single-threaded PyTorch execution pinned to a single physical core with
+#   SMT avoided. High process priority is requested. The CPU governor is
+#   requested as performance mode, and turbo disabling is requested to reduce
+#   frequency-induced variance where the host supports it.
+# -----------------------------------------------------------------------------
+
+# metadata copied into result artifacts and reports.
+experiment:
+  name: "RQ1.1 fully controlled"
+  description: "Strictly controlled single-core benchmark for thesis defensibility"
+
+# Model under test. These settings keep the experiment focused on architectural
+# split choice rather than model, device, precision, or input-size effects.
+model:
+  # ResNet-18 is the fixed model family for this thesis
+  name: "resnet18"
+  # Use torchvision pretrained weights so every condition runs identical weights.
+  pretrained: true
+  # CPU-only inference avoids GPU-specific confounds such as kernel launch,
+  # host-device transfer, and device scheduling effects.
+  device: "cpu"
+  # Batch size 1, RGB image, ImageNet resolution: [N, C, H, W].
+  input_shape: [1, 3, 224, 224]
+  # FP32 avoids mixed-precision or quantization effects.
+  precision: "fp32"
+
+# Conditions are the independent-variable levels in RQ1.1.
+# The monolithic condition is the no-boundary baseline. The split conditions
+# run Part A locally and Part B in a separate OS process over localhost gRPC.
+conditions:
+  # Baseline: full ResNet-18 in one process, direct model(input) call.
+  # No serialization, RPC, or process boundary is included.
+  - name: "monolithic"
+    type: "monolithic"
+
+  # Split after layer1.
+  # Service A: stem + layer1.
+  # Service B: layer2 + layer3 + layer4 + avgpool + fc.
+  # Boundary activation: 1 x 64 x 56 x 56 FP32 = 802,816 bytes (~784 KiB).
+  - name: "split_after_layer1"
+    type: "split"
+    split_after: "layer1"
+
+  # Split after layer2.
+  # Service A: stem + layer1 + layer2.
+  # Service B: layer3 + layer4 + avgpool + fc.
+  # Boundary activation: 1 x 128 x 28 x 28 FP32 = 401,408 bytes (~392 KiB).
+  - name: "split_after_layer2"
+    type: "split"
+    split_after: "layer2"
+
+  # Split after layer3.
+  # Service A: stem + layer1 + layer2 + layer3.
+  # Service B: layer4 + avgpool + fc.
+  # Boundary activation: 1 x 256 x 14 x 14 FP32 = 200,704 bytes (~196 KiB).
+  - name: "split_after_layer3"
+    type: "split"
+    split_after: "layer3"
+
+  # Split after layer4.
+  # Service A: stem + layer1 + layer2 + layer3 + layer4.
+  # Service B: avgpool + fc only.
+  # Boundary activation: 1 x 512 x 7 x 7 FP32 = 100,352 bytes (~98 KiB).
+  # This can be fast but compute-degenerate because Service B does little work.
+  - name: "split_after_layer4"
+    type: "split"
+    split_after: "layer4"
+
+# Repetition structure for stable latency estimates.
+benchmark:
+  # Independent rounds. Each round randomizes condition order using seed + round.
+  rounds: 5
+  # Warmup calls per condition per round. Warmups are discarded from summaries.
+  warmup_iterations: 50
+  # Timed calls per condition per round. Total measured samples per condition:
+  # rounds * measured_iterations = 5 * 200 = 1,000.
+  measured_iterations: 200
+  # Pause after each condition to reduce short-term thermal/scheduling carryover.
+  cooldown_seconds: 5
+  # Controls the deterministic input tensor and per-round condition permutations.
+  seed: 42
+
+# Localhost gRPC settings for the split conditions.
+grpc:
+  # Service B listens on localhost. This preserves real RPC/process overhead
+  # while avoiding external network variability in RQ1.1.
+  host: "127.0.0.1"
+  # Port used by the Service B subprocess.
+  port: 50051
+  # Maximum protobuf message size. 16 MiB easily covers all RQ1.1 activations.
+  max_message_bytes: 16777216
+
+# Predeclared rule for choosing which split points carry forward.
+carry_forward:
+  # Candidate splits within 5% of the raw fastest split are treated as near-best.
+  near_best_window_pct: 5.0
+  # A split is compute-degenerate if the smaller compute side contributes less
+  # than 10% of total split compute. Degenerate candidates are not promoted to
+  # selected_main even if they are fast.
+  degeneracy_threshold_pct: 10.0
+
+# Functional-equivalence checks. Timing is only meaningful if the split model
+# produces the same output as monolithic ResNet-18 within tolerance.
+parity:
+  # Maximum allowed absolute difference between monolithic and split outputs.
+  # value  1.0e-5 means 0.00001
+  atol: 1.0e-5
+  # Number of deterministic random inputs used for parity validation.
+  num_inputs: 5
+
+# Warmup stability diagnostic. The runner still performs the configured warmup
+# count, but records whether latency stabilizes during the warmup window.
+warmup_calibration:
+  # Number of most recent warmup samples used for coefficient-of-variation checks.
+  window: 10
+  # Warmup is considered stable once trailing-window CV is below 2%.
+  cv_threshold: 0.02
+  # Fixed warmup per the thesis methodology: calibration is diagnostic only,
+  # not adaptive. 0 = run exactly warmup_iterations and never extend.
+  max_extra_iterations: 0
+
+# CPU behavior controls. These are applied before measurement and recorded in
+# environment.json with requested/applied/error metadata for auditability.
+cpu_stabilisation:
+  # Thread counts are fixed at 1 to remove thread-pool scheduling variance.
+  # The same settings are propagated to the Service B subprocess.
+  threading:
+    # PyTorch operator-level parallelism.
+    pytorch_intra_op: 1
+    # PyTorch graph/task-level parallelism.
+    pytorch_inter_op: 1
+    # OpenMP thread count for lower-level numerical libraries.
+    omp_num_threads: 1
+    # Intel MKL thread count, where MKL is present.
+    mkl_num_threads: 1
+    # OpenBLAS thread count, where OpenBLAS is present.
+    openblas_num_threads: 1
+
+  # CPU affinity pins the benchmark process to a stable CPU set.
+  affinity:
+    # Enable process CPU pinning when supported by the host OS.
+    enabled: true
+    # Use one physical core for the thesis-facing single-core profile.
+    num_cores: 1
+    # Avoid simultaneous multithreading siblings to reduce contention.
+    avoid_smt: true
+    # Optional explicit CPU IDs. null means auto-select suitable cores.
+    explicit_cpus: null
+
+  # Process priority requests reduce interference from unrelated host work.
+  priority:
+    # Request priority elevation if permissions allow it.
+    enabled: true
+    # Negative nice value means higher priority on Unix-like systems.
+    nice_value: -5
+
+  # CPU frequency governor request. This may be unavailable on virtualized,
+  # WSL, Windows-hosted, or managed-cloud environments.
+  governor:
+    # Try to set the governor before benchmarking.
+    set_governor: true
+    # Prefer fixed high-performance frequency behavior over powersave scaling.
+    requested_mode: "performance"
+
+  # Turbo control request. Like governor control, this is best-effort and is
+  # recorded as unavailable if the platform does not expose the setting.
+  turbo:
+    disable_turbo: true

@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Run thesis experiments while reusing one pinned thesis-inference image.
+"""Run thesis experiments with one thesis-inference image.
 
-The wrapper keeps image provenance uniform by accepting exactly one immutable
-ACR digest reference and passing it through to the existing experiment runners.
-It never builds or pushes an image.
+The wrapper keeps image provenance uniform by either accepting one immutable
+ACR digest reference or building/pushing one image, resolving its digest, and
+passing that same pinned reference through to the existing experiment runners.
 
-Example:
+Examples:
+    python scripts/run_uniform_image_experiments.py \
+        --build-push-image \
+        --acr-name thesisrq15acr \
+        --dry-run
+
     python scripts/run_uniform_image_experiments.py \
         --image-ref thesisrq15acr.azurecr.io/thesis-inference@sha256:<digest> \
         --dry-run
@@ -20,7 +25,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -30,19 +35,18 @@ LOCAL_IMAGE_TAG = "thesis-inference:latest"
 DEFAULT_STAGES = (
     "rq1_1",
     "rq1_2",
+    "rq1_3",
     "rq1_4",
+    "rq1_4b",
     "rq1_5",
+    "rq1_5b",
     "rq2_1_paired",
     "rq2_1_mtls_split",
     "rq2_1_ablation",
     "rq2_2",
 )
 
-OPTIONAL_STAGES = (
-    "rq1_3",
-    "rq1_4b",
-    "rq1_5b",
-)
+OPTIONAL_STAGES: tuple[str, ...] = ()
 
 ALL_STAGES = DEFAULT_STAGES + OPTIONAL_STAGES
 CONTAINER_STAGES = {"rq1_4", "rq1_4b", "rq1_5", "rq1_5b", "rq2_1_paired", "rq2_1_mtls_split", "rq2_1_ablation", "rq2_2"}
@@ -68,6 +72,10 @@ class StageResult:
 
 def timestamp() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def utc_run_stamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S").lower()
 
 
 def log(message: str) -> None:
@@ -96,6 +104,13 @@ def validate_image_ref(image_ref: str) -> str:
             "<acr>.azurecr.io/thesis-inference@sha256:<64-hex-digest>"
         )
     return match.group("acr")
+
+
+def validate_digest(digest: str) -> str:
+    digest = digest.strip().strip('"')
+    if not re.fullmatch(r"sha256:[0-9a-fA-F]{64}", digest):
+        raise RuntimeError(f"Unexpected ACR digest response: {digest!r}")
+    return digest
 
 
 def resolve_stages(args: argparse.Namespace) -> list[str]:
@@ -285,6 +300,25 @@ def run_command(command: list[str], *, dry_run: bool) -> None:
         raise RuntimeError(f"command failed with exit code {completed.returncode}")
 
 
+def run_capture(command: list[str]) -> str:
+    log("$ " + format_command(command))
+    completed = subprocess.run(
+        command,
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        if completed.stdout:
+            print(completed.stdout, end="")
+        if completed.stderr:
+            print(completed.stderr, end="", file=sys.stderr)
+        raise RuntimeError(f"command failed with exit code {completed.returncode}")
+    if completed.stderr:
+        print(completed.stderr, end="", file=sys.stderr)
+    return completed.stdout.strip()
+
+
 def run_stage(plan: StagePlan, *, dry_run: bool) -> StageResult:
     started = time.time()
     try:
@@ -295,22 +329,132 @@ def run_stage(plan: StagePlan, *, dry_run: bool) -> StageResult:
     return StageResult(plan.name, "dry-run" if dry_run else "ok", time.time() - started)
 
 
+def build_push_and_resolve_image(args: argparse.Namespace, acr_name: str) -> str:
+    remote_image = f"{acr_name}.azurecr.io/thesis-inference:{args.image_tag}"
+    create_acr_commands = []
+    if args.create_acr:
+        create_acr_commands = [
+            [
+                "az",
+                "group",
+                "create",
+                "--name",
+                args.acr_resource_group,
+                "--location",
+                args.acr_location,
+            ],
+            [
+                "az",
+                "acr",
+                "create",
+                "--resource-group",
+                args.acr_resource_group,
+                "--name",
+                acr_name,
+                "--sku",
+                args.acr_sku,
+            ],
+        ]
+
+    commands = [
+        *create_acr_commands,
+        [
+            "az",
+            "acr",
+            "show",
+            "--name",
+            acr_name,
+            "--query",
+            "loginServer",
+            "--output",
+            "tsv",
+        ],
+        ["az", "acr", "login", "--name", acr_name],
+        ["docker", "build", "-t", args.local_image, "."],
+        ["docker", "tag", args.local_image, remote_image],
+        ["docker", "push", remote_image],
+    ]
+
+    for command in commands:
+        run_command(command, dry_run=args.dry_run)
+
+    digest_query = [
+        "az",
+        "acr",
+        "repository",
+        "show",
+        "--name",
+        acr_name,
+        "--image",
+        f"thesis-inference:{args.image_tag}",
+        "--query",
+        "digest",
+        "--output",
+        "tsv",
+    ]
+    if args.dry_run:
+        run_command(digest_query, dry_run=True)
+        image_ref = f"{acr_name}.azurecr.io/thesis-inference@sha256:{'0' * 64}"
+        log(f"Dry-run placeholder pinned image: {image_ref}")
+        return image_ref
+
+    digest = validate_digest(run_capture(digest_query))
+    image_ref = f"{acr_name}.azurecr.io/thesis-inference@{digest}"
+    log(f"Resolved pushed image to pinned reference: {image_ref}")
+    return image_ref
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the thesis experiment scripts with one existing pinned "
-            "thesis-inference image. This wrapper never builds or pushes images."
+            "Run the thesis experiment scripts with one pinned thesis-inference "
+            "image, either reused via --image-ref or created via --build-push-image."
         )
     )
     parser.add_argument(
         "--image-ref",
-        required=True,
+        default=None,
         help="Pinned image reference: <acr>.azurecr.io/thesis-inference@sha256:<digest>",
     )
     parser.add_argument(
         "--acr-name",
         default=None,
-        help="ACR name without .azurecr.io. Defaults to the registry in --image-ref.",
+        help="ACR name without .azurecr.io. Required for --build-push-image; otherwise defaults to the registry in --image-ref.",
+    )
+    parser.add_argument(
+        "--build-push-image",
+        action="store_true",
+        help="Build the Docker image, push it to --acr-name, resolve its digest, and use that digest for all stages.",
+    )
+    parser.add_argument(
+        "--create-acr",
+        action="store_true",
+        help="Create the target ACR before building/pushing. Use when az acr list is empty.",
+    )
+    parser.add_argument(
+        "--acr-resource-group",
+        default="rg-thesis-rq15",
+        help="Resource group for --create-acr.",
+    )
+    parser.add_argument(
+        "--acr-location",
+        default="swedencentral",
+        help="Azure region for --create-acr.",
+    )
+    parser.add_argument(
+        "--acr-sku",
+        default="Basic",
+        help="ACR SKU for --create-acr.",
+    )
+    parser.add_argument(
+        "--image-tag",
+        default=f"uniform-{utc_run_stamp()}",
+        help="ACR tag to use with --build-push-image.",
+    )
+    parser.add_argument(
+        "--local-image",
+        default=LOCAL_IMAGE_TAG,
+        help="Local Docker image tag used for the build before pushing.",
     )
     parser.add_argument(
         "--only",
@@ -321,7 +465,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--include-optional",
         action="store_true",
-        help=f"Also run optional/sensitivity stages: {', '.join(OPTIONAL_STAGES)}.",
+        help="Backward-compatible no-op; all thesis stages run by default.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Print commands without executing them.")
     parser.add_argument("--continue-on-failure", action="store_true", help="Continue after a stage fails.")
@@ -360,24 +504,39 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    image_acr_name = validate_image_ref(args.image_ref)
-    acr_name = args.acr_name or image_acr_name
-    if acr_name != image_acr_name:
-        raise SystemExit(
-            f"--acr-name ({acr_name}) must match the registry in --image-ref ({image_acr_name}) "
-            "so every stage uses the same image source."
-        )
-
     stages = resolve_stages(args)
-    plans = [build_stage_plan(stage, args, acr_name) for stage in stages]
-
-    log(f"Uniform image: {args.image_ref}")
     log(f"Stages: {', '.join(stages)}")
     if args.dry_run:
         log("Dry run: no commands will be executed.")
 
+    if args.build_push_image and args.image_ref:
+        raise SystemExit("--build-push-image cannot be combined with --image-ref")
+    if args.build_push_image:
+        if not args.acr_name:
+            raise SystemExit("--acr-name is required with --build-push-image")
+        acr_name = args.acr_name
+        log(f"Image destination tag: {acr_name}.azurecr.io/thesis-inference:{args.image_tag}")
+        try:
+            args.image_ref = build_push_and_resolve_image(args, acr_name)
+        except Exception as exc:
+            warn(f"Image build/push failed: {exc}")
+            return 1
+    else:
+        if not args.image_ref:
+            raise SystemExit("Provide either --image-ref or --build-push-image --acr-name")
+        image_acr_name = validate_image_ref(args.image_ref)
+        acr_name = args.acr_name or image_acr_name
+        if acr_name != image_acr_name:
+            raise SystemExit(
+                f"--acr-name ({acr_name}) must match the registry in --image-ref ({image_acr_name}) "
+                "so every stage uses the same image source."
+            )
+
+    log(f"Uniform image: {args.image_ref}")
+    plans = [build_stage_plan(stage, args, acr_name) for stage in stages]
+
     results: list[StageResult] = []
-    if CONTAINER_STAGES.intersection(stages) and not args.skip_acr_login:
+    if CONTAINER_STAGES.intersection(stages) and not args.skip_acr_login and not args.build_push_image:
         login_plan = StagePlan("acr_login", [["az", "acr", "login", "--name", acr_name]])
         login_result = run_stage(login_plan, dry_run=args.dry_run)
         results.append(login_result)
