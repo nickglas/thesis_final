@@ -2,6 +2,135 @@
 
 Run these commands from the repository root.
 
+Use WSL bash or another bash shell for the commands below. The wrapper and
+the experiment runners are Python/bash based; no PowerShell wrapper is needed.
+
+## Full fresh thesis run with one image
+
+This is the canonical "act like we have nothing" command. It creates the
+resource group/ACR when needed, builds one `thesis-inference` image, pushes it
+to ACR, resolves the immutable digest, and then runs every default thesis stage
+with that same pinned image:
+
+- `rq1_1`
+- `rq1_2`
+- `rq1_3`
+- `rq1_4`
+- `rq1_4b`
+- `rq1_5`
+- `rq1_5b`
+- `rq2_1_paired`
+- `rq2_1_mtls_split`
+- `rq2_1_ablation`
+- `rq2_2`
+
+```bash
+python scripts/run_uniform_image_experiments.py \
+  --build-push-image \
+  --create-acr \
+  --acr-name thesisrq15acr \
+  --acr-resource-group rg-thesis-rq15 \
+  --acr-location swedencentral \
+  --destroy-cloud-on-success \
+  --destroy-cloud-on-failure
+```
+
+If `thesisrq15acr` already exists and you only want to build/push a new image
+into it, omit `--create-acr`.
+
+To inspect the generated plan without spending Azure money:
+
+```bash
+python scripts/run_uniform_image_experiments.py \
+  --build-push-image \
+  --create-acr \
+  --acr-name thesisrq15acr \
+  --acr-resource-group rg-thesis-rq15 \
+  --acr-location swedencentral \
+  --destroy-cloud-on-success \
+  --destroy-cloud-on-failure \
+  --dry-run
+```
+
+The wrapper prints the resolved pinned image reference in this form:
+
+```text
+<acr>.azurecr.io/thesis-inference@sha256:<digest>
+```
+
+That digest is the image identity used for all container-backed stages.
+
+## Login and service checks
+
+### 1. Python environment
+
+```bash
+cd /mnt/c/Users/Nick/Desktop/opus
+source .venv/bin/activate
+python --version
+pip install -r requirements.txt
+```
+
+### 2. Azure CLI
+
+```bash
+az login
+az account show -o table
+```
+
+If the wrong subscription is selected:
+
+```bash
+az account set --subscription "<subscription-name-or-id>"
+az account show -o table
+```
+
+One-time provider registration for a fresh subscription:
+
+```bash
+az provider register --namespace Microsoft.ContainerService
+az provider register --namespace Microsoft.ContainerRegistry
+az provider register --namespace Microsoft.Compute
+az provider register --namespace Microsoft.Network
+```
+
+### 3. Docker and ACR
+
+Start Docker Desktop and enable WSL integration for the distro you are using.
+Then check Docker from bash:
+
+```bash
+docker info
+```
+
+The wrapper runs `az acr login --name thesisrq15acr` automatically after the ACR
+exists. To test registry login manually:
+
+```bash
+az acr login --name thesisrq15acr
+```
+
+Optional, only if Docker Hub rate limits base-image pulls:
+
+```bash
+docker login
+```
+
+### 4. Terraform and Kubernetes tools
+
+Terraform uses the Azure CLI login above, so there is no separate Terraform
+cloud login for these local runs.
+
+```bash
+terraform version
+kubectl version --client
+kubelogin --version
+```
+
+The AKS runners refresh kubeconfig with `az aks get-credentials` after
+provisioning. The RQ1.4/RQ1.4b local Kubernetes stages use `kind`; if it is not
+on `PATH`, the wrapper downloads a repo-local binary under `.tools/bin`.
+
 ## What is directly comparable
 
 Use only these thesis-facing configs for direct comparison:

@@ -5,6 +5,11 @@
 > local execution, and how do their latency and boundary-crossing costs compare
 > to monolithic inference?
 
+## Full thesis wrapper
+
+For the current all-experiments wrapper, one-image run command, and Azure/Docker
+login checklist, see [README_uniform_runs.md](README_uniform_runs.md).
+
 ## Quick Start
 
 ### 1. Install dependencies
