@@ -37,8 +37,9 @@ variable "node_count" {
 variable "node_vm_size" {
   description = <<-EOT
     VM SKU for the benchmark AKS node pool.
-    Standard_D8s_v3 (8 vCPU, 32 GiB) — DSv3 family has 10 vCPU quota in swedencentral.
-    Standard_D8s_v5 (8 vCPU, 32 GiB) is preferred but DSv5 family has 0 quota on this subscription.
+    Standard_D8s_v3 (8 vCPU, 32 GiB) is the thesis-facing SKU; keep this fixed
+    across single-node and multi-node sensitivity runs so the per-node CPU
+    profile is identical. RQ1.5b multi-node uses 6 of these (48 vCPU total).
     Do NOT use Spot or B-series (preemption/credit variance violate measurement stability).
   EOT
   type        = string

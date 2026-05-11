@@ -15,8 +15,12 @@ ResNet-18 boundaries lie in the mid-to-late region around \texttt{layer2} and
 \texttt{layer3}, because early boundaries transfer larger activations and overly late
 boundaries become compute-degenerate. RQ1.4 and RQ1.5 then showed that the same
 service-count ordering remains visible in Kubernetes and AKS, although absolute latency
-is environment-specific. RQ2 showed that mTLS/AuthZ and confidential VM execution are
-feasible for the selected AKS chain, but each protection layer adds measurable overhead.
+is environment-specific. RQ1.5b additionally bounded the inter-node penalty that the
+single-node primary design intentionally hides: forcing every chain hop across a node
+boundary on a six-node AKS cluster adds 8.6--12.2~ms per condition, dominated by the
+first inter-node hop, with the architectural ordering preserved. RQ2 showed that
+mTLS/AuthZ and confidential VM execution are feasible for the selected AKS chain, but
+each protection layer adds measurable overhead.
 
 \section{Contributions}
 
@@ -34,17 +38,24 @@ latency cost.
 
 The conclusions are bounded by the evaluated workload and deployment setup
 (ResNet-18, CPU-only FP32 inference, batch size one, synchronous gRPC, and
-same-node Kubernetes and AKS placement) and by the bounded threat models of
-the evaluated security mechanisms. The full discussion of these threats is
-consolidated in \cref{sec:analysis-threats}.
+same-node Kubernetes and AKS placement for the thesis-facing primary runs) and
+by the bounded threat models of the evaluated security mechanisms. The
+RQ1.5b sensitivity stage explicitly relaxes the same-node placement
+constraint to bound the inter-node network penalty, but other production
+factors (multi-region placement, autoscaling, concurrent client load,
+non-default CNI plugins) remain out of scope. The full discussion of these
+threats is consolidated in \cref{sec:analysis-threats}.
 
 \section{Future Work}
 
 Future work should extend the evaluation to larger and more diverse models, including
 transformer-based inference workloads and models with different activation profiles.
 The same staged method could also be applied under concurrent load, GPU execution,
-multi-node Kubernetes placement, and autoscaling conditions. Another useful extension is
-to combine architectural partitioning with feature compression, since compression may
-change the cost of early split points. Finally, the security evaluation could be expanded
-to compare sidecar and sidecarless meshes, application-layer encryption, attestation
-workflow integration, and different confidential-computing platforms.
+cross-availability-zone or cross-region placement, and autoscaling conditions; the
+multi-node sensitivity stage in \cref{sec:rq15b} bounds the intra-zone inter-node
+penalty but leaves these wider topology questions open.
+Another useful extension is to combine architectural partitioning with feature
+compression, since compression may change the cost of early split points. Finally,
+the security evaluation could be expanded to compare sidecar and sidecarless meshes,
+application-layer encryption, attestation workflow integration, and different
+confidential-computing platforms.

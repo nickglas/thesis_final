@@ -1,0 +1,130 @@
+% RQ1.5b multi-node penalty per condition.
+% Same SKU (Standard_D8s_v3), same region (swedencentral), same day:
+% the only difference is single-node colocation vs multi_node_anti_affinity.
+%
+% Mean latency series:
+%   single-node (frozen RQ1.5  sweden, 2026-05-08): 57.963 / 63.367 / 66.543 / 70.698 / 71.480
+%   multi-node  (frozen RQ1.5b sweden, 2026-05-08): 70.118 / 73.408 / 75.593 / 79.342 / 81.172
+%   delta (ms)                                    : 12.155 / 10.041 /  9.050 /  8.644 /  9.692
+\begin{tikzpicture}[
+    font=\small,
+    axis/.style={thick, draw=black!70, -{Latex[length=2mm]}},
+    grid/.style={draw=black!12, thin},
+    snpoint/.style={
+        circle,
+        draw=blue!65!black,
+        fill=blue!18,
+        thick,
+        minimum size=5.5pt,
+        inner sep=0pt
+    },
+    mnpoint/.style={
+        rectangle,
+        draw=red!65!black,
+        fill=red!18,
+        thick,
+        minimum size=5.5pt,
+        inner sep=0pt
+    },
+    deltapoint/.style={
+        diamond,
+        draw=black!70,
+        fill=black!12,
+        thick,
+        minimum size=6pt,
+        inner sep=0pt
+    },
+    snseries/.style={very thick, draw=blue!65!black},
+    mnseries/.style={very thick, draw=red!65!black},
+    deltaseries/.style={thick, draw=black!55, dashed},
+    pointlabel/.style={font=\scriptsize\bfseries, align=center},
+    xlabel/.style={font=\scriptsize, text=black!75, align=center},
+    ylabel/.style={font=\small, text=black!75},
+    legendlabel/.style={font=\scriptsize, text=black!75},
+    note/.style={font=\scriptsize, text=black!65, align=center}
+]
+
+% y scale: y = ms * 0.07  (range ~55..82 ms after offset; we draw y in [0..6])
+% We plot mean latency (ms) on the left axis.
+
+\foreach \ms/\y in {55/0,60/0.35,65/0.70,70/1.05,75/1.40,80/1.75,85/2.10} {
+    \draw[grid] (0,\y) -- (10.4,\y);
+    \node[anchor=east, font=\scriptsize, text=black!65] at (-0.18,\y) {\ms};
+}
+
+\draw[axis] (0,0) -- (10.75,0);
+\draw[axis] (0,0) -- (0,2.5);
+
+\node[ylabel, rotate=90] at (-1.10,1.30) {Mean latency (ms)};
+\node[ylabel] at (5.2,-0.85) {Condition};
+
+% Single-node coordinates: y = (ms - 55) * 0.07
+\coordinate (s1) at (1, 0.20724);   % 57.963
+\coordinate (s2) at (3, 0.58569);   % 63.367
+\coordinate (s3) at (5, 0.80801);   % 66.543
+\coordinate (s4) at (7, 1.09886);   % 70.698
+\coordinate (s5) at (9, 1.15360);   % 71.480
+
+% Multi-node coordinates
+\coordinate (m1) at (1, 1.05826);   % 70.118
+\coordinate (m2) at (3, 1.28856);   % 73.408
+\coordinate (m3) at (5, 1.44151);   % 75.593
+\coordinate (m4) at (7, 1.70394);   % 79.342
+\coordinate (m5) at (9, 1.83204);   % 81.172
+
+\draw[snseries] (s1) -- (s2) -- (s3) -- (s4) -- (s5);
+\draw[mnseries] (m1) -- (m2) -- (m3) -- (m4) -- (m5);
+
+% Vertical delta brackets between sn and mn at each condition
+\foreach \i in {1,2,3,4,5} {
+    \draw[deltaseries] (s\i) -- (m\i);
+}
+
+\foreach \i in {1,2,3,4,5} {
+    \node[snpoint] at (s\i) {};
+    \node[mnpoint] at (m\i) {};
+}
+
+% Single-node value labels
+\node[pointlabel, text=blue!65!black, below=0.10cm of s1] {57.96};
+\node[pointlabel, text=blue!65!black, below=0.10cm of s2] {63.37};
+\node[pointlabel, text=blue!65!black, below=0.10cm of s3] {66.54};
+\node[pointlabel, text=blue!65!black, below=0.10cm of s4] {70.70};
+\node[pointlabel, text=blue!65!black, below=0.10cm of s5] {71.48};
+
+% Multi-node value labels
+\node[pointlabel, text=red!65!black, above=0.10cm of m1] {70.12};
+\node[pointlabel, text=red!65!black, above=0.10cm of m2] {73.41};
+\node[pointlabel, text=red!65!black, above=0.10cm of m3] {75.59};
+\node[pointlabel, text=red!65!black, above=0.10cm of m4] {79.34};
+\node[pointlabel, text=red!65!black, above=0.10cm of m5] {81.17};
+
+% Per-condition delta annotations on the bracket midpoint
+\node[note, text=black!70, font=\scriptsize\itshape, anchor=west]
+    at ($(s1)!0.5!(m1) + (0.18,0)$) {+12.15 ms};
+\node[note, text=black!70, font=\scriptsize\itshape, anchor=west]
+    at ($(s2)!0.5!(m2) + (0.18,0)$) {+10.04};
+\node[note, text=black!70, font=\scriptsize\itshape, anchor=west]
+    at ($(s3)!0.5!(m3) + (0.18,0)$) {+9.05};
+\node[note, text=black!70, font=\scriptsize\itshape, anchor=west]
+    at ($(s4)!0.5!(m4) + (0.18,0)$) {+8.64};
+\node[note, text=black!70, font=\scriptsize\itshape, anchor=west]
+    at ($(s5)!0.5!(m5) + (0.18,0)$) {+9.69};
+
+% X-axis condition labels
+\node[xlabel] at (1,-0.30) {\texttt{1svc}\\mono};
+\node[xlabel] at (3,-0.30) {\texttt{2svc}};
+\node[xlabel] at (5,-0.30) {\texttt{3svc}};
+\node[xlabel] at (7,-0.30) {\texttt{4svc}};
+\node[xlabel] at (9,-0.30) {\texttt{5svc}};
+
+% Legend
+\draw[snseries] (6.20,-0.55) -- (6.85,-0.55);
+\node[snpoint] at (6.525,-0.55) {};
+\node[legendlabel, anchor=west] at (6.95,-0.55) {Single-node AKS (RQ1.5)};
+
+\draw[mnseries] (6.20,-0.78) -- (6.85,-0.78);
+\node[mnpoint] at (6.525,-0.78) {};
+\node[legendlabel, anchor=west] at (6.95,-0.78) {Multi-node AKS (RQ1.5b)};
+
+\end{tikzpicture}

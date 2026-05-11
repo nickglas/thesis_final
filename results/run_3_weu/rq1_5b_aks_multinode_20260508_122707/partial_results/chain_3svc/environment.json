@@ -1,0 +1,139 @@
+{
+  "timestamp": "2026-05-08T12:54:10.298662",
+  "platform": "Linux-5.15.0-1110-azure-x86_64-with-glibc2.41",
+  "processor": "",
+  "python_version": "3.10.20",
+  "torch_version": "2.11.0+cu130",
+  "cpu_count": 8,
+  "git_commit": "unknown",
+  "cpu_stabilisation": {
+    "threading": {
+      "requested": {
+        "pytorch_intra_op": 1,
+        "pytorch_inter_op": 1,
+        "omp_num_threads": 1,
+        "mkl_num_threads": 1,
+        "openblas_num_threads": 1
+      },
+      "applied": {
+        "pytorch_intra_op": 1,
+        "pytorch_inter_op": 1,
+        "omp_num_threads": "1",
+        "mkl_num_threads": "1",
+        "openblas_num_threads": "1"
+      }
+    },
+    "affinity": {
+      "requested": {
+        "enabled": true,
+        "num_cores": 1,
+        "avoid_smt": true,
+        "explicit_cpus": null
+      },
+      "detected": {
+        "physical_cores_available": [
+          0,
+          2,
+          4,
+          6
+        ],
+        "total_cpus": 8
+      },
+      "applied": true,
+      "applied_cores": [
+        0
+      ],
+      "method": "auto-detected physical cores (SMT excluded), first 1"
+    },
+    "priority": {
+      "requested": {
+        "enabled": true,
+        "nice_value": -5
+      },
+      "detected": {
+        "current_nice": 0
+      },
+      "applied": false,
+      "applied_nice": 0,
+      "error": "Insufficient privileges for nice(-5); running at default nice=0"
+    },
+    "governor": {
+      "requested": {
+        "set_governor": false,
+        "requested_mode": "performance"
+      },
+      "detected": "unavailable",
+      "note": "cpufreq sysfs not exposed (expected on WSL2/Hyper-V or non-Linux). CPU frequency is managed by the host OS.",
+      "applied": false,
+      "reason": "Not requested and sysfs unavailable"
+    },
+    "turbo": {
+      "requested": {
+        "disable_turbo": false
+      },
+      "detected": "unavailable",
+      "note": "Neither intel_pstate/no_turbo nor cpufreq/boost sysfs entries are exposed. Turbo behaviour is controlled by the host OS.",
+      "applied": false,
+      "reason": "Not requested and sysfs unavailable"
+    },
+    "aslr": {
+      "detected": "2",
+      "note": "Detection only; disabling requires root and has negligible impact on wall-clock inference latency."
+    }
+  },
+  "deployment": {
+    "type": "kubernetes",
+    "cluster_type": "aks",
+    "cluster_version": "1.34",
+    "node_count": 6,
+    "node_instance_type": "Standard_D8s_v3",
+    "azure_region": "westeurope",
+    "cni": "kubenet",
+    "namespace": "rq15b",
+    "pod_colocation_enforced": false,
+    "pod_placement": {
+      "benchmark-client": "aks-rq15bpool-32050207-vmss000004",
+      "chain-3svc-svc-1": "aks-rq15bpool-32050207-vmss000003",
+      "chain-3svc-svc-2": "aks-rq15bpool-32050207-vmss000001",
+      "chain-3svc-svc-3": "aks-rq15bpool-32050207-vmss000005"
+    },
+    "container_image_digest": "sha256:ab124e921bd17d9883bb1cce41fdef003868c65c9b7c05cd17cfaf22b61acf35",
+    "acr_registry": "thesisrq15bacr.azurecr.io",
+    "mesh": {
+      "enabled": false,
+      "implementation": null,
+      "revision": null,
+      "service_namespace": "rq15b",
+      "client_namespace": "rq15b",
+      "service_accounts": {},
+      "proxy_resources": {},
+      "peer_authentication": {
+        "declared": {},
+        "observed": []
+      },
+      "control_plane_pods": []
+    },
+    "namespaces": {
+      "service": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      },
+      "client": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      }
+    }
+  }
+}

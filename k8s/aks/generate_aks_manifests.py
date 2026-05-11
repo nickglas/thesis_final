@@ -540,6 +540,38 @@ def _service_affinity(condition_spec: dict, cfg: dict | None = None) -> dict | N
     n_segments = len(split_points) + 1
     if condition_spec["type"] != "chain" or n_segments <= 1:
         return None
+
+    strategy = str((cfg or {}).get("placement_strategy") or "none")
+    if strategy == "multi_node_anti_affinity":
+        # RQ1.4b/1.5b multi-node sensitivity: each chain segment must land on a
+        # distinct node so every inter-service gRPC hop crosses the network,
+        # and services must avoid the benchmark client's node so the
+        # client→service1 hop also crosses the network.
+        return {
+            "podAntiAffinity": {
+                "requiredDuringSchedulingIgnoredDuringExecution": [
+                    {
+                        "labelSelector": {
+                            "matchLabels": {
+                                "experiment-condition": condition_spec["name"],
+                                "workload-role": "service",
+                            }
+                        },
+                        "topologyKey": "kubernetes.io/hostname",
+                    },
+                    {
+                        "labelSelector": {
+                            "matchLabels": {
+                                "workload-role": "client",
+                            }
+                        },
+                        "topologyKey": "kubernetes.io/hostname",
+                    },
+                ]
+            }
+        }
+
+    # Default behaviour (single-node colocation for RQ1.4 / RQ1.5 primary).
     return {
         "podAffinity": {
             "requiredDuringSchedulingIgnoredDuringExecution": [
@@ -557,10 +589,35 @@ def _service_affinity(condition_spec: dict, cfg: dict | None = None) -> dict | N
 
 
 def _client_affinity(condition_spec: dict | None, cfg: dict) -> dict | None:
-    if condition_spec is None or condition_spec["type"] != "split":
+    strategy = str(cfg.get("placement_strategy") or "none")
+
+    if strategy == "multi_node_anti_affinity":
+        # Multi-node sensitivity: client must land on a node that does NOT host
+        # any service pod, so the client→service1 hop also crosses a node
+        # boundary. Anti-affinity targets every workload-role=service pod
+        # (across conditions), which is the right scope for rolling mode where
+        # only one condition is active at a time.
+        return {
+            "podAntiAffinity": {
+                "requiredDuringSchedulingIgnoredDuringExecution": [
+                    {
+                        "labelSelector": {
+                            "matchLabels": {
+                                "workload-role": "service",
+                            }
+                        },
+                        "topologyKey": "kubernetes.io/hostname",
+                    }
+                ]
+            }
+        }
+
+    if condition_spec is None:
         return None
 
-    strategy = str(cfg.get("placement_strategy") or "none")
+    if condition_spec["type"] != "split":
+        return None
+
     if strategy not in {"strict_same_node", "prefer_same_node"}:
         return None
 

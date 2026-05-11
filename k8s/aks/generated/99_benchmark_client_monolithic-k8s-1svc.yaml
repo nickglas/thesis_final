@@ -1,0 +1,63 @@
+# Generated benchmark client pod.
+# Regenerate from the experiment config before applying.
+# Condition-specific placement manifest for monolithic_k8s_1svc.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: benchmark-client
+  namespace: rq15b
+  labels:
+    app: thesis-inference
+    experiment: rq15b
+    workload-role: client
+    role: client
+    condition: monolithic_k8s_1svc
+    experiment-condition: monolithic_k8s_1svc
+spec:
+  restartPolicy: Never
+  containers:
+  - name: client
+    image: thesisrq15bacr.azurecr.io/thesis-inference@sha256:c5d44bd08783fc78177c2fc4b5d9209d08258309f9d907fcb02cd1315e0fe1de
+    imagePullPolicy: Always
+    command:
+    - sleep
+    - infinity
+    env:
+    - name: PYTORCH_INTRA_OP_THREADS
+      value: '1'
+    - name: PYTORCH_INTER_OP_THREADS
+      value: '1'
+    - name: OMP_NUM_THREADS
+      value: '1'
+    - name: MKL_NUM_THREADS
+      value: '1'
+    - name: OPENBLAS_NUM_THREADS
+      value: '1'
+    - name: MY_POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: MY_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: MY_POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+    resources:
+      requests:
+        cpu: '1'
+        memory: 1Gi
+      limits:
+        cpu: '1'
+        memory: 1Gi
+  nodeSelector:
+    agentpool: rq15bpool
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            workload-role: service
+        topologyKey: kubernetes.io/hostname

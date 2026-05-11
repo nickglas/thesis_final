@@ -120,6 +120,63 @@ def _collect_pod_placement(
     return placement, observed_all_colocated if observed_conditions else False
 
 
+def validate_multi_node_placement(
+    deployment_metadata: dict[str, dict[str, Any]],
+    *,
+    require_dedicated_client_node: bool = True,
+) -> tuple[bool, list[str]]:
+    """Verify that every chain segment landed on a distinct node.
+
+    Used by the RQ1.4b / RQ1.5b multi-node sensitivity stages. Returns
+    (passed, errors). Errors are human-readable strings suitable for logging
+    and aborting the run.
+    """
+    errors: list[str] = []
+    if not isinstance(deployment_metadata, dict) or not deployment_metadata:
+        errors.append("multi-node validation requested but no deployment metadata available")
+        return False, errors
+
+    for condition_name, condition_meta in deployment_metadata.items():
+        if not isinstance(condition_meta, dict):
+            continue
+        services = condition_meta.get("services") or []
+        if not services:
+            continue
+        service_node_pairs: list[tuple[str, str]] = []
+        for service in services:
+            if not isinstance(service, dict):
+                continue
+            service_name = str(service.get("service_name") or "unknown")
+            node_name = str(service.get("node_name") or "unknown")
+            if node_name in ("", "unknown"):
+                errors.append(
+                    f"{condition_name}: missing node placement for {service_name}"
+                )
+                continue
+            service_node_pairs.append((service_name, node_name))
+
+        seen_nodes: dict[str, str] = {}
+        for service_name, node_name in service_node_pairs:
+            if node_name in seen_nodes:
+                errors.append(
+                    f"{condition_name}: services {seen_nodes[node_name]} and "
+                    f"{service_name} both landed on node {node_name}"
+                )
+            else:
+                seen_nodes[node_name] = service_name
+
+        if require_dedicated_client_node and service_node_pairs:
+            client = condition_meta.get("client") or {}
+            client_node = str(client.get("node_name") or "")
+            if client_node and client_node != "unknown" and client_node in seen_nodes:
+                errors.append(
+                    f"{condition_name}: client landed on {client_node} which "
+                    f"also runs service {seen_nodes[client_node]}"
+                )
+
+    return (not errors), errors
+
+
 def _collect_condition_placement_validation(
     deployment_metadata: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:

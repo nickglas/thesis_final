@@ -25,7 +25,10 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.benchmark.config import load_config
-from src.benchmark.deployment_metadata import build_environment_deployment_section
+from src.benchmark.deployment_metadata import (
+    build_environment_deployment_section,
+    validate_multi_node_placement,
+)
 
 
 DEFAULT_CONFIG_REL = "configs/rq1/1.5/rq1_5_full.yaml"
@@ -161,8 +164,12 @@ def run_command(
     check: bool = True,
     text: bool = True,
 ) -> subprocess.CompletedProcess:
+    resolved_args = list(args)
+    executable = shutil.which(resolved_args[0])
+    if executable:
+        resolved_args[0] = executable
     result = subprocess.run(
-        args,
+        resolved_args,
         cwd=str(cwd) if cwd else None,
         capture_output=capture_output,
         text=text,
@@ -177,9 +184,13 @@ def run_command(
 
 
 def stream_command(args: list[str], log_path: Path, *, cwd: Path | None = None) -> None:
+    resolved_args = list(args)
+    executable = shutil.which(resolved_args[0])
+    if executable:
+        resolved_args[0] = executable
     with log_path.open("w", encoding="utf-8") as handle:
         process = subprocess.Popen(
-            args,
+            resolved_args,
             cwd=str(cwd) if cwd else None,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -299,6 +310,14 @@ def parse_args() -> argparse.Namespace:
         help="Delete the entire resource group after a successful run",
     )
     parser.add_argument(
+        "--delete-resource-group-on-failure",
+        action="store_true",
+        help=(
+            "Delete the entire resource group on failure. Bounds Azure cost when "
+            "the orchestrator dies mid-run with --provision."
+        ),
+    )
+    parser.add_argument(
         "--skip-preflight",
         action="store_true",
         help="Skip the fail-closed cluster preflight. Not recommended for thesis-facing runs.",
@@ -317,6 +336,11 @@ def parse_args() -> argparse.Namespace:
             "--delete-resource-group-on-success is enabled without --provision; "
             "the script will still delete the named group after a successful run."
         )
+    if args.delete_resource_group_on_failure and not args.provision:
+        warn(
+            "--delete-resource-group-on-failure is enabled without --provision; "
+            "the script will still delete the named group if a failure occurs."
+        )
     return args
 
 
@@ -330,7 +354,22 @@ class RQ15Orchestrator:
         self.source_config_path = (self.repo_root / args.config).resolve()
         self.source_config_rel = self.source_config_path.relative_to(self.repo_root)
         self.run_ts = utc_run_stamp()
-        host_export_dir = Path(args.results_root).resolve() / f"rq1_5_fully_controlled_{self.run_ts}"
+
+        # Read placement strategy before computing the export dir so the
+        # output folder name reflects single-node vs multi-node mode.
+        self.raw_config = self._load_raw_config(self.source_config_path)
+        placement_raw = (self.raw_config.get("kubernetes") or {}).get("placement") or {}
+        self.placement_strategy = str(placement_raw.get("strategy") or "none")
+        self.is_multinode = self.placement_strategy == "multi_node_anti_affinity"
+
+        # Distinct folder prefix per mode keeps RQ1.5 and RQ1.5b artifacts
+        # immediately distinguishable on disk.
+        self.experiment_signature = (
+            "rq1_5b_multinode" if self.is_multinode else "rq1_5_fully_controlled"
+        )
+        host_export_dir = (
+            Path(args.results_root).resolve() / f"{self.experiment_signature}_{self.run_ts}"
+        )
         self.state = RunnerState(
             host_export_dir=host_export_dir,
             diagnostics_dir=host_export_dir / "diagnostics",
@@ -338,16 +377,26 @@ class RQ15Orchestrator:
             host_benchmark_log_dir=host_export_dir / "condition_logs",
             merged_results_dir=host_export_dir / "merged_results",
             effective_config_path=host_export_dir / "effective_config.yaml",
-            pod_partial_results_root=f"/tmp/rq15_rolling_{self.run_ts}",
+            pod_partial_results_root=f"/tmp/{self.experiment_signature}_rolling_{self.run_ts}",
             pod_config_path=args.pod_config_path,
         )
-        self.raw_config = self._load_raw_config(self.source_config_path)
         self.namespace = args.namespace or str(self.raw_config["kubernetes"]["namespace"])
         self.conditions: list[str] = []
         self.acr_name = args.acr_name or self._derive_acr_name_from_config()
         self.effective_image_ref = ""
         self.current_context = ""
         self.terraform_outputs: dict[str, Any] = {}
+
+        config_min_nodes = placement_raw.get("min_nodes")
+        if (
+            self.is_multinode
+            and args.node_count == DEFAULT_NODE_COUNT
+            and config_min_nodes not in (None, "")
+        ):
+            try:
+                args.node_count = int(config_min_nodes)
+            except (TypeError, ValueError):
+                pass
 
     def _requested_vm_profile(self) -> tuple[int, str]:
         result = run_command(
@@ -1265,7 +1314,21 @@ class RQ15Orchestrator:
         deployment_section = build_environment_deployment_section(deployment_metadata)
         if deployment_section:
             environment["deployment"] = deployment_section
-            if not deployment_section.get("pod_colocation_enforced", False):
+            if self.is_multinode:
+                passed, errors = validate_multi_node_placement(
+                    deployment_metadata,
+                    require_dedicated_client_node=True,
+                )
+                if not passed:
+                    raise PipelineError(
+                        "Multi-node placement validation failed:\n- "
+                        + "\n- ".join(errors)
+                    )
+                environment["multi_node_validation"] = {
+                    "strategy": self.placement_strategy,
+                    "passed": True,
+                }
+            elif not deployment_section.get("pod_colocation_enforced", False):
                 raise PipelineError(
                     "Rolling merge detected missing or non-colocated service pod placement. "
                     "RQ1.5 requires verifiable same-node colocation for each condition."
@@ -1275,6 +1338,14 @@ class RQ15Orchestrator:
             "conditions": self.conditions,
             "partial_results_root": str(self.state.host_partial_results_dir.resolve()),
             "teardown_between_conditions": True,
+        }
+        environment["experiment_signature"] = {
+            "signature": self.experiment_signature,
+            "stage": "RQ1.5b" if self.is_multinode else "RQ1.5",
+            "mode": "multi_node" if self.is_multinode else "single_node",
+            "placement_strategy": self.placement_strategy,
+            "namespace": self.namespace,
+            "host_export_dir": str(self.state.host_export_dir.resolve()),
         }
         with (self.state.merged_results_dir / "environment.json").open("w", encoding="utf-8") as handle:
             json.dump(environment, handle, indent=2)
@@ -1419,7 +1490,36 @@ class RQ15Orchestrator:
                     warn(f"Failed to clean up the namespace after an error: {exc}")
             else:
                 warn(f"Preserving namespace {self.namespace} for inspection.")
+        if self.args.delete_resource_group_on_failure:
+            try:
+                log(
+                    "Cost-bound failure cleanup: deleting resource group "
+                    f"{self.args.resource_group}."
+                )
+                self._destroy_resource_group_unconditional()
+            except Exception as exc:  # pragma: no cover - destroy best effort
+                warn(f"Failed to delete resource group on failure: {exc}")
         warn(f"Run failed. Host artifacts directory: {self.state.host_export_dir}")
+
+    def _destroy_resource_group_unconditional(self) -> None:
+        if self.args.provisioner == "terraform":
+            try:
+                self.destroy_with_terraform()
+                return
+            except Exception as exc:  # pragma: no cover - fall back to az
+                warn(
+                    f"Terraform destroy failed during failure cleanup ({exc}); "
+                    "falling back to az group delete."
+                )
+        run_command(
+            [
+                "az", "group", "delete",
+                "--name", self.args.resource_group,
+                "--yes",
+                "--no-wait",
+            ],
+            check=False,
+        )
 
     def run(self) -> None:
         self.prepare_artifact_dirs()

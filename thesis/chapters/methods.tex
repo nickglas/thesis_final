@@ -44,6 +44,10 @@ synchronous service boundaries are added under in-cluster orchestration.
 RQ1.5 re-runs the same predefined chain family on Azure Kubernetes Service (AKS) to
 test whether the local Kubernetes ordering and overhead pattern transfer directionally
 to managed cloud execution.
+RQ1.5b is an AKS multi-node sensitivity stage that re-runs the same chain family on a
+six-node cluster with pod anti-affinity, so every chain hop is forced across a node
+boundary; it quantifies the inter-node penalty that the single-node RQ1.5 design
+intentionally hides.
 RQ2.1 adds managed-Istio mTLS, service accounts, and authorisation policy to the
 selected AKS deployment path, measuring the resulting latency, resource, and operational
 overhead using a paired execution design.
@@ -359,7 +363,10 @@ prevent throttling or migration during measurement windows.
 The use of a single-node \texttt{kind} cluster is an acknowledged limitation: it
 eliminates inter-node network hops and does not capture the scheduling and networking
 variability of a multi-node or managed cluster.
-This limitation is addressed by the transfer-validation design of RQ1.5.
+This limitation is addressed in two stages: RQ1.5 re-runs the same chain family on
+managed AKS, and RQ1.5b adds an explicit multi-node sensitivity stage that forces
+every chain hop across a node boundary so the inter-node penalty becomes a measured,
+bounded quantity.
 
 \subsection{RQ1.5 -- AKS Transfer Validation}
 \label{sec:methods-rq15}
@@ -380,6 +387,36 @@ this reason.
 
 All service pods and the benchmark client are colocated on the same AKS node and run
 with Guaranteed QoS, applying the same resource and placement discipline as RQ1.4.
+
+\subsection{RQ1.5b -- AKS Multi-Node Sensitivity}
+\label{sec:methods-rq15b}
+
+RQ1.5b is a sensitivity stage that quantifies the inter-node network cost the
+single-node RQ1.5 design intentionally hides.
+The stage re-runs the same predefined chain family on a six-node AKS cluster
+(\texttt{Standard\_D8s\_v3} $\times$ 6, region \texttt{swedencentral}, single node pool,
+single VNet) and enforces \emph{multi-node} placement: each chain segment of a given
+condition lands on a distinct cluster node, and the benchmark client lands on a sixth
+dedicated node.
+Placement is enforced by Kubernetes pod anti-affinity keyed on
+\texttt{kubernetes.io/hostname}, with two terms per service deployment: a service-vs-service
+term using the \texttt{experiment-condition} and \texttt{workload-role: service} labels, and
+a service-vs-client term using the \texttt{workload-role: client} label.
+The benchmark client carries a mirror anti-affinity rule against
+\texttt{workload-role: service}.
+
+Compliance is verified after deployment by reading observed \texttt{nodeName} values
+from the Kubernetes API.
+A condition is admitted to the rolling merge only if its service pods are pairwise
+disjoint by node and the client node is distinct from every service node; a single
+collision aborts the run.
+The shared benchmark contract is otherwise unchanged from RQ1.5: same model, same chain
+family, same Guaranteed-QoS pod profile, same five-round / 200-iteration / 50-warmup
+discipline, and the same image used in the same-day RQ1.5 single-node run.
+The headline sensitivity metric is the per-condition multi-node penalty
+$\Delta_c = \mathrm{mean}_c^{\mathrm{multi}} - \mathrm{mean}_c^{\mathrm{single}}$,
+computed against the same-day frozen RQ1.5 single-node baseline so that the inter-node
+delta is not contaminated by region-time drift.
 
 \subsection{RQ2.1 -- Service Identity and Mutual TLS Hardening}
 \label{sec:methods-rq21}

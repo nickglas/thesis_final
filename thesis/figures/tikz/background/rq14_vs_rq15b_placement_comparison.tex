@@ -1,0 +1,248 @@
+% RQ1.4/1.5 vs RQ1.4b/1.5b placement — side-by-side comparison.
+% Top panel: single-node placement (all six pods inside one node box).
+% Bottom panel: multi-node placement (each pod in its own node box, with
+% explicit VNet clouds between adjacent nodes).
+% The two panels share the same chain layout so the contrast is purely
+% in the topology, not the chain itself.
+\begin{tikzpicture}[
+    font=\small,
+    cluster/.style={
+        draw=black!50,
+        fill=white,
+        rounded corners=10pt,
+        thick,
+        inner xsep=14pt,
+        inner ysep=18pt
+    },
+    nodebox/.style={
+        draw=black!65,
+        fill=black!4,
+        rounded corners=8pt,
+        line width=1.0pt,
+        inner xsep=14pt,
+        inner ysep=16pt
+    },
+    multinodebox/.style={
+        draw=blue!55!black,
+        fill=blue!8,
+        rounded corners=8pt,
+        line width=1.1pt,
+        inner xsep=10pt,
+        inner ysep=12pt
+    },
+    multiclientbox/.style={
+        draw=orange!75!black,
+        fill=orange!10,
+        rounded corners=8pt,
+        line width=1.1pt,
+        inner xsep=10pt,
+        inner ysep=12pt
+    },
+    pod/.style={
+        draw=blue!65!black,
+        fill=blue!18,
+        rounded corners=4pt,
+        minimum width=1.85cm,
+        minimum height=0.95cm,
+        align=center,
+        thick,
+        font=\scriptsize
+    },
+    clientpod/.style={
+        draw=orange!75!black,
+        fill=orange!22,
+        rounded corners=4pt,
+        minimum width=1.85cm,
+        minimum height=0.95cm,
+        align=center,
+        thick,
+        font=\scriptsize
+    },
+    svc/.style={
+        draw=green!45!black,
+        fill=green!15,
+        rounded corners=3pt,
+        minimum width=1.5cm,
+        minimum height=0.4cm,
+        align=center,
+        thick,
+        font=\tiny
+    },
+    intraarrow/.style={
+        -{Latex[length=2.2mm]},
+        thick,
+        draw=black!70
+    },
+    interarrow/.style={
+        -{Latex[length=2.4mm]},
+        very thick,
+        draw=red!75!black
+    },
+    returnarrow/.style={
+        -{Latex[length=2mm]},
+        thick,
+        draw=black!55,
+        dashed
+    },
+    transferlabel/.style={
+        font=\tiny\bfseries,
+        text=red!70!black,
+        align=center
+    },
+    intralabel/.style={
+        font=\tiny,
+        text=black!65,
+        align=center
+    },
+    nodelabel/.style={
+        font=\scriptsize\bfseries,
+        text=black!75
+    },
+    panelbanner/.style={
+        font=\small\bfseries,
+        text=black!80
+    },
+    cloudlabel/.style={
+        font=\tiny\itshape,
+        text=blue!55!black
+    },
+    vnetcloud/.style={
+        draw=blue!55!black,
+        fill=blue!12,
+        line width=0.6pt
+    }
+]
+
+% =====================================================================
+% TOP PANEL — single-node placement (RQ1.4 / RQ1.5)
+% =====================================================================
+\node[clientpod] (a_client) at (0,0) {Benchmark\\client pod};
+\node[pod, right=0.85cm of a_client] (a_p1) {Pod 1\\\texttt{stem+layer1}};
+\node[pod, right=0.7cm of a_p1]      (a_p2) {Pod 2\\\texttt{layer2}};
+\node[pod, right=0.7cm of a_p2]      (a_p3) {Pod 3\\\texttt{layer3}};
+\node[pod, right=0.7cm of a_p3]      (a_p4) {Pod 4\\\texttt{layer4}};
+\node[pod, right=0.7cm of a_p4]      (a_p5) {Pod 5\\\texttt{avgpool+fc}};
+
+\node[svc, below=0.32cm of a_p1] (a_s1) {Service 1};
+\node[svc, below=0.32cm of a_p2] (a_s2) {Service 2};
+\node[svc, below=0.32cm of a_p3] (a_s3) {Service 3};
+\node[svc, below=0.32cm of a_p4] (a_s4) {Service 4};
+\node[svc, below=0.32cm of a_p5] (a_s5) {Service 5};
+
+\begin{pgfonlayer}{background}
+\node[
+    nodebox,
+    fit=(a_client)(a_p1)(a_p2)(a_p3)(a_p4)(a_p5)(a_s1)(a_s2)(a_s3)(a_s4)(a_s5),
+    label={[nodelabel]above:Single Kubernetes node}
+] (a_node) {};
+
+\node[
+    cluster,
+    fit=(a_node),
+    label={[panelbanner]above:%
+        \textbf{(a)} RQ1.4 / RQ1.5 single-node placement \textemdash{} all pods on one node, every gRPC hop is loopback}
+] (a_clusterbox) {};
+\end{pgfonlayer}
+
+\draw[intraarrow] (a_client) -- node[intralabel, above] {gRPC} (a_p1);
+\draw[intraarrow] (a_p1) -- node[transferlabel, above] {784 KiB} (a_p2);
+\draw[intraarrow] (a_p2) -- node[transferlabel, above] {392 KiB} (a_p3);
+\draw[intraarrow] (a_p3) -- node[transferlabel, above] {196 KiB} (a_p4);
+\draw[intraarrow] (a_p4) -- node[transferlabel, above] {98 KiB}  (a_p5);
+
+\draw[black!35, thick] (a_s1) -- (a_p1);
+\draw[black!35, thick] (a_s2) -- (a_p2);
+\draw[black!35, thick] (a_s3) -- (a_p3);
+\draw[black!35, thick] (a_s4) -- (a_p4);
+\draw[black!35, thick] (a_s5) -- (a_p5);
+
+\draw[returnarrow]
+    (a_p5.south) .. controls +(0,-1.0) and +(0,-1.0) ..
+    node[intralabel, below, pos=0.5] {final output returned to caller}
+    (a_client.south);
+
+% =====================================================================
+% BOTTOM PANEL — multi-node placement (RQ1.4b / RQ1.5b)
+% =====================================================================
+% Place far enough below the top panel to leave room for both clusters
+\node[clientpod] (b_client) at (0,-7.5) {Benchmark\\client pod};
+\node[pod, right=2.2cm of b_client] (b_p1) {Pod 1\\\texttt{stem+layer1}};
+\node[pod, right=1.9cm of b_p1]    (b_p2) {Pod 2\\\texttt{layer2}};
+\node[pod, right=1.9cm of b_p2]    (b_p3) {Pod 3\\\texttt{layer3}};
+\node[pod, right=1.9cm of b_p3]    (b_p4) {Pod 4\\\texttt{layer4}};
+\node[pod, right=1.9cm of b_p4]    (b_p5) {Pod 5\\\texttt{avgpool+fc}};
+
+\node[svc, below=0.32cm of b_p1] (b_s1) {Service 1};
+\node[svc, below=0.32cm of b_p2] (b_s2) {Service 2};
+\node[svc, below=0.32cm of b_p3] (b_s3) {Service 3};
+\node[svc, below=0.32cm of b_p4] (b_s4) {Service 4};
+\node[svc, below=0.32cm of b_p5] (b_s5) {Service 5};
+
+\begin{pgfonlayer}{background}
+\node[multiclientbox, fit=(b_client),     label={[nodelabel]above:Node 0 (client)}] (b_n0) {};
+\node[multinodebox,   fit=(b_p1)(b_s1),   label={[nodelabel]above:Node 1}]          (b_n1) {};
+\node[multinodebox,   fit=(b_p2)(b_s2),   label={[nodelabel]above:Node 2}]          (b_n2) {};
+\node[multinodebox,   fit=(b_p3)(b_s3),   label={[nodelabel]above:Node 3}]          (b_n3) {};
+\node[multinodebox,   fit=(b_p4)(b_s4),   label={[nodelabel]above:Node 4}]          (b_n4) {};
+\node[multinodebox,   fit=(b_p5)(b_s5),   label={[nodelabel]above:Node 5}]          (b_n5) {};
+
+\node[
+    cluster,
+    fit=(b_n0)(b_n1)(b_n2)(b_n3)(b_n4)(b_n5),
+    label={[panelbanner]above:%
+        \textbf{(b)} RQ1.4b / RQ1.5b multi-node placement \textemdash{} every chain segment on a distinct node, every gRPC hop crosses the network}
+] (b_clusterbox) {};
+\end{pgfonlayer}
+
+% Tiny VNet clouds between every adjacent pair (between the inter-node arrows)
+\foreach \a/\b/\name in {b_n0/b_n1/c01, b_n1/b_n2/c12, b_n2/b_n3/c23, b_n3/b_n4/c34, b_n4/b_n5/c45} {
+    \coordinate (mid_\name) at ($(\a.east)!0.5!(\b.west)$);
+    \begin{scope}[shift={(mid_\name)}]
+        \fill[vnetcloud]
+            ( 0mm,   0mm) circle (2.8mm)
+            ( 3mm,   1mm) circle (2.4mm)
+            (-3mm,   1mm) circle (2.4mm)
+            ( 0mm,   2.5mm) circle (2.4mm);
+        \draw[draw=blue!55!black, line width=0.5pt, fill=none] ( 0mm,   0mm) circle (2.8mm);
+        \draw[draw=blue!55!black, line width=0.5pt, fill=none] ( 3mm,   1mm) circle (2.4mm);
+        \draw[draw=blue!55!black, line width=0.5pt, fill=none] (-3mm,   1mm) circle (2.4mm);
+        \draw[draw=blue!55!black, line width=0.5pt, fill=none] ( 0mm,   2.5mm) circle (2.4mm);
+        \node[cloudlabel] at (0, 1mm) {VNet};
+    \end{scope}
+}
+
+% Inter-node gRPC arrows (every hop crosses)
+\draw[interarrow] (b_client.east) -- node[transferlabel, above=3mm] {gRPC}    (b_p1.west);
+\draw[interarrow] (b_p1.east)     -- node[transferlabel, above=3mm] {784 KiB} (b_p2.west);
+\draw[interarrow] (b_p2.east)     -- node[transferlabel, above=3mm] {392 KiB} (b_p3.west);
+\draw[interarrow] (b_p3.east)     -- node[transferlabel, above=3mm] {196 KiB} (b_p4.west);
+\draw[interarrow] (b_p4.east)     -- node[transferlabel, above=3mm] {98 KiB}  (b_p5.west);
+
+\draw[black!35, thick] (b_s1) -- (b_p1);
+\draw[black!35, thick] (b_s2) -- (b_p2);
+\draw[black!35, thick] (b_s3) -- (b_p3);
+\draw[black!35, thick] (b_s4) -- (b_p4);
+\draw[black!35, thick] (b_s5) -- (b_p5);
+
+\draw[returnarrow]
+    (b_p5.south east) .. controls +(0.6,-1.6) and +(0,-1.8) ..
+    node[intralabel, below, pos=0.85] {final output returned to caller}
+    (b_client.south);
+
+% =====================================================================
+% Connector between the two panels (visual hint of "and now distributed")
+% =====================================================================
+\draw[
+    -{Latex[length=3mm]},
+    line width=1.4pt,
+    draw=black!55,
+    shorten <=2pt,
+    shorten >=2pt
+] (a_clusterbox.south) -- node[
+    panelbanner,
+    fill=white,
+    inner sep=3pt,
+    text=black!70
+] {with \texttt{multi\_node\_anti\_affinity} placement} (b_clusterbox.north);
+
+\end{tikzpicture}%

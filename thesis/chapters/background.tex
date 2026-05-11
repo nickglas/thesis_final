@@ -7,6 +7,8 @@ as the inference workload, the meaning of a split boundary in distributed DNN
 inference, and the Kubernetes-style service chain used in the later deployment stages.
 The more comparative discussion of prior work appears in \cref{ch:related}.
 
+
+
 \begin{figure}[htbp]
 \centering
 \resizebox{\textwidth}{!}{%
@@ -131,6 +133,21 @@ than treating activation size as the only explanatory variable. Prior work on
 fine-grained and hierarchical DNN partitioning similarly argues that useful split
 selection requires awareness of the model's internal computational structure
 ~\cite{fine_grained_partitioning,hierarchical_partitioning,pareto_split}.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.95\textwidth}{!}{%
+\input{figures/tikz/background/rq15b_chain5_multinode_placement}
+}
+\caption{RQ1.4b / RQ1.5b multi-node placement of \texttt{chain\_5svc}.
+Each chain segment lands on a distinct cluster node; the benchmark
+client pod lands on a sixth dedicated node. Every gRPC hop therefore
+crosses a node boundary, in contrast to the same-figure single-node
+layout used for RQ1.4 and RQ1.5
+(\cref{fig:rq14_chain5_kubernetes_placement}).}
+\label{fig:rq15b_chain5_multinode_placement}
+\end{figure}
+
 
 %% RQ1.4 Kubernetes 5-service pod/service placement figure
 \begin{figure}[htbp]

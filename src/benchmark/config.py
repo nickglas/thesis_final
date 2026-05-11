@@ -77,7 +77,15 @@ class K8sResourceConfig:
 
 @dataclass
 class K8sPlacementConfig:
-    """Explicit placement controls for Kubernetes benchmark pods."""
+    """Explicit placement controls for Kubernetes benchmark pods.
+
+    Strategies:
+      - "none" / "prefer_same_node" / "strict_same_node": single-node colocation
+        (existing behaviour for RQ1.4 and RQ1.5 thesis-facing primary runs).
+      - "multi_node_anti_affinity": forces every chain segment plus the client
+        onto distinct nodes via pod anti-affinity. Used by RQ1.4b/1.5b multi-node
+        sensitivity stages so every gRPC hop crosses a node boundary.
+    """
     strategy: str = "none"
     require_same_node: bool = False
     fail_if_not_colocated: bool = False
@@ -85,6 +93,9 @@ class K8sPlacementConfig:
     node_pool: Optional[str] = None
     tolerations: List[Dict[str, Any]] = field(default_factory=list)
     require_control_plane_isolation: bool = False
+    min_nodes: Optional[int] = None
+    require_distinct_nodes: bool = False
+    require_dedicated_client_node: bool = False
 
 
 @dataclass
@@ -140,14 +151,14 @@ class ExperimentConfig:
     cooldown_seconds: int
     seed: int
 
-    # gRPC
-    grpc_host: str
-    grpc_port: int
-    grpc_max_message_bytes: int
+    # gRPC (only used by the local split runner; chain/K8s configs may omit it)
+    grpc_host: str = "127.0.0.1"
+    grpc_port: int = 50051
+    grpc_max_message_bytes: int = 16 * 1024 * 1024
 
-    # Carry-forward
-    near_best_window_pct: float
-    degeneracy_threshold_pct: float
+    # Carry-forward (only meaningful for RQ1.1/RQ1.2; chain configs may omit it)
+    near_best_window_pct: float = 5.0
+    degeneracy_threshold_pct: float = 10.0
 
     # Parity validation
     parity_atol: float = 1e-5
@@ -216,6 +227,9 @@ def load_config(path: str) -> ExperimentConfig:
         ),
     )
 
+    grpc_raw = raw.get("grpc") or {}
+    carry_forward_raw = raw.get("carry_forward") or {}
+
     return ExperimentConfig(
         experiment_name=raw["experiment"]["name"],
         experiment_description=raw["experiment"]["description"],
@@ -230,11 +244,11 @@ def load_config(path: str) -> ExperimentConfig:
         measured_iterations=raw["benchmark"]["measured_iterations"],
         cooldown_seconds=raw["benchmark"]["cooldown_seconds"],
         seed=raw["benchmark"]["seed"],
-        grpc_host=raw["grpc"]["host"],
-        grpc_port=raw["grpc"]["port"],
-        grpc_max_message_bytes=raw["grpc"]["max_message_bytes"],
-        near_best_window_pct=raw["carry_forward"]["near_best_window_pct"],
-        degeneracy_threshold_pct=raw["carry_forward"]["degeneracy_threshold_pct"],
+        grpc_host=grpc_raw.get("host", "127.0.0.1"),
+        grpc_port=grpc_raw.get("port", 50051),
+        grpc_max_message_bytes=grpc_raw.get("max_message_bytes", 16 * 1024 * 1024),
+        near_best_window_pct=carry_forward_raw.get("near_best_window_pct", 5.0),
+        degeneracy_threshold_pct=carry_forward_raw.get("degeneracy_threshold_pct", 10.0),
         parity_atol=raw.get("parity", {}).get("atol", 1e-5),
         parity_num_inputs=raw.get("parity", {}).get("num_inputs", 5),
         warmup_calibration_window=raw.get("warmup_calibration", {}).get("window", 10),
@@ -280,6 +294,12 @@ def _parse_k8s_config(raw) -> Optional[K8sConfig]:
                     toleration[str(key)] = str(value)
             if toleration:
                 tolerations.append(toleration)
+    min_nodes_raw = placement_raw.get("min_nodes")
+    min_nodes = (
+        int(min_nodes_raw)
+        if min_nodes_raw not in (None, "")
+        else None
+    )
     placement = K8sPlacementConfig(
         strategy=str(placement_raw.get("strategy", "none")),
         require_same_node=bool(placement_raw.get("require_same_node", False)),
@@ -296,6 +316,13 @@ def _parse_k8s_config(raw) -> Optional[K8sConfig]:
         tolerations=tolerations,
         require_control_plane_isolation=bool(
             placement_raw.get("require_control_plane_isolation", False)
+        ),
+        min_nodes=min_nodes,
+        require_distinct_nodes=bool(
+            placement_raw.get("require_distinct_nodes", False)
+        ),
+        require_dedicated_client_node=bool(
+            placement_raw.get("require_dedicated_client_node", False)
         ),
     )
     return K8sConfig(

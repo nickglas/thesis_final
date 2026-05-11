@@ -105,13 +105,31 @@ def main():
         environment_snapshot,
         conditions,
     )
+    is_rq15b_multinode = is_rq15_transfer and _is_rq15b_multinode_run(
+        config.experiment_name,
+        environment_snapshot,
+    )
+    comparison_context = (
+        _RQ15B_MULTINODE_CONTEXT if is_rq15b_multinode else _RQ15_SINGLENODE_CONTEXT
+    )
+
     reference_summary_path = None
     reference_summaries = []
     estimated_compute_ms_by_condition = None
     cross_stage_comparison = []
 
     if is_rq15_transfer:
-        reference_summary_path, reference_summaries = _load_frozen_rq14_reference_summaries(logger)
+        if is_rq15b_multinode:
+            reference_summary_path, reference_summaries = (
+                _load_frozen_rq15_singlenode_reference_summaries(logger)
+            )
+            reference_kind_pretty = "RQ1.5 single-node AKS"
+        else:
+            reference_summary_path, reference_summaries = (
+                _load_frozen_rq14_reference_summaries(logger)
+            )
+            reference_kind_pretty = "RQ1.4 kind local Kubernetes"
+
         if reference_summaries:
             estimated_compute_ms_by_condition = compute_normalized_reference_estimates(
                 summaries,
@@ -129,8 +147,10 @@ def main():
                 )
         else:
             logger.warning(
-                "RQ1.5 analysis detected, but no frozen RQ1.4 condition summaries were found. "
-                "Cross-stage comparison and normalized compute estimates will be omitted."
+                "%s analysis detected, but no frozen %s condition summaries were found. "
+                "Cross-stage comparison and normalized compute estimates will be omitted.",
+                "RQ1.5b" if is_rq15b_multinode else "RQ1.5",
+                reference_kind_pretty,
             )
 
     summaries = enrich_condition_summaries(
@@ -166,8 +186,8 @@ def main():
         cross_stage_comparison = compute_cross_stage_comparison(
             summaries,
             reference_summaries,
-            current_label="aks",
-            reference_label="local_k8s",
+            current_label=comparison_context["current_label"],
+            reference_label=comparison_context["reference_label"],
         )
         if cross_stage_comparison:
             artifact.save_csv("cross_stage_comparison.csv", cross_stage_comparison)
@@ -210,7 +230,8 @@ def main():
                      include_rq15_transfer_validation=is_rq15_transfer,
                      reference_summary_path=reference_summary_path,
                      reference_summaries=reference_summaries,
-                     cross_stage_comparison=cross_stage_comparison)
+                     cross_stage_comparison=cross_stage_comparison,
+                     comparison_context=comparison_context)
     if output_dir == results_dir:
         logger.info(f"Analysis complete. All artifacts in {output_dir}")
     else:
@@ -320,6 +341,54 @@ def _load_frozen_rq14_reference_summaries(logger):
     return reference_path, _load_csv_snapshot(reference_path, logger)
 
 
+def _load_frozen_rq15_singlenode_reference_summaries(logger):
+    """Locate the most recent frozen RQ1.5 single-node AKS condition summaries.
+
+    Used as the comparison reference for RQ1.5b multi-node sensitivity runs.
+    Multi-node folder prefixes (``rq1_5b_*``) are explicitly excluded so this
+    never accidentally points at another multi-node run.
+    """
+    patterns = [
+        os.path.join(REPO_ROOT, "results", "frozen", "frozen_rq1_5_fully_controlled_*", "merged_results", "condition_summaries.csv"),
+        os.path.join(REPO_ROOT, "results", "frozen", "rq1_5_fully_controlled_*", "merged_results", "condition_summaries.csv"),
+    ]
+    candidates = sorted({
+        match
+        for pattern in patterns
+        for match in glob.glob(pattern)
+        if "rq1_5b" not in os.path.basename(os.path.dirname(os.path.dirname(match)))
+    })
+    if not candidates:
+        return None, []
+    reference_path = candidates[-1]
+    return reference_path, _load_csv_snapshot(reference_path, logger)
+
+
+def _is_rq15b_multinode_run(experiment_name, environment_snapshot):
+    """Detect whether the current results directory belongs to RQ1.5b multi-node.
+
+    Three signals are checked in order; any one of them triggers the
+    multi-node analysis branch:
+      1. ``environment.experiment_signature`` recorded by the orchestrator.
+      2. ``placement_policy.strategy == 'multi_node_anti_affinity'``.
+      3. The literal substring ``rq1.5b`` in the experiment name.
+    """
+    env = environment_snapshot or {}
+    sig = env.get("experiment_signature") or {}
+    if isinstance(sig, dict):
+        if str(sig.get("mode") or "").lower() == "multi_node":
+            return True
+        if str(sig.get("signature") or "").lower() == "rq1_5b_multinode":
+            return True
+    deployment = env.get("deployment") or {}
+    placement = deployment.get("placement_policy") or {}
+    if str(placement.get("strategy") or "").lower() == "multi_node_anti_affinity":
+        return True
+    if "rq1.5b" in str(experiment_name or "").lower():
+        return True
+    return False
+
+
 def _is_rq15_transfer_validation(experiment_name, environment_snapshot, condition_names):
     experiment_label = str(experiment_name or "").lower()
     deployment = (environment_snapshot or {}).get("deployment") or {}
@@ -335,6 +404,45 @@ def _is_rq15_transfer_validation(experiment_name, environment_snapshot, conditio
         "chain_5svc",
     }
     return expected_conditions.issubset(set(condition_names))
+
+
+# ------------------------------------------------------------------
+# Cross-stage comparison context — single-node RQ1.5 vs multi-node RQ1.5b.
+# Each context tells the analysis which frozen reference to load and which
+# labels / column headers / interpretation strings to render.
+# ------------------------------------------------------------------
+
+_RQ15_SINGLENODE_CONTEXT = {
+    "current_label": "aks",
+    "reference_label": "local_k8s",
+    "current_pretty": "AKS",
+    "reference_pretty": "RQ1.4 local Kubernetes",
+    "reference_short": "RQ1.4",
+    "section_title": "RQ1.5 Transfer Validation vs Frozen RQ1.4",
+    "reference_caption": "Frozen RQ1.4 reference",
+    "current_header": "AKS Mean (ms)",
+    "reference_header": "Local K8s Mean (ms)",
+    "current_overhead_header": "AKS Overhead (%)",
+    "reference_overhead_header": "Local Overhead (%)",
+    "current_rank_header": "AKS Rank",
+    "reference_rank_header": "Local Rank",
+}
+
+_RQ15B_MULTINODE_CONTEXT = {
+    "current_label": "aks_multinode",
+    "reference_label": "aks_singlenode",
+    "current_pretty": "AKS multi-node",
+    "reference_pretty": "RQ1.5 single-node AKS",
+    "reference_short": "RQ1.5",
+    "section_title": "RQ1.5b Multi-Node Sensitivity vs Frozen RQ1.5 Single-Node AKS",
+    "reference_caption": "Frozen RQ1.5 single-node reference",
+    "current_header": "Multi-node Mean (ms)",
+    "reference_header": "Single-node Mean (ms)",
+    "current_overhead_header": "Multi-node Overhead (%)",
+    "reference_overhead_header": "Single-node Overhead (%)",
+    "current_rank_header": "Multi-node Rank",
+    "reference_rank_header": "Single-node Rank",
+}
 
 
 def _flatten_mapping(mapping, prefix=""):
@@ -604,38 +712,56 @@ def _append_rq15_transfer_validation(
     cross_stage_comparison,
     reference_summary_path,
     environment_snapshot,
+    comparison_context=None,
 ):
-    lines.extend(["\n## RQ1.5 Transfer Validation vs Frozen RQ1.4\n"])
+    ctx = comparison_context or _RQ15_SINGLENODE_CONTEXT
+    current_label = ctx["current_label"]
+    reference_label = ctx["reference_label"]
+    current_pretty = ctx["current_pretty"]
+    reference_pretty = ctx["reference_pretty"]
+    reference_short = ctx["reference_short"]
+    is_multinode_ctx = (current_label == "aks_multinode")
+
+    lines.extend([f"\n## {ctx['section_title']}\n"])
     if reference_summary_path:
-        lines.append(f"- **Frozen RQ1.4 reference:** `{reference_summary_path}`")
+        lines.append(f"- **{ctx['reference_caption']}:** `{reference_summary_path}`")
 
     if not cross_stage_comparison:
         lines.extend([
             "",
-            "_Cross-stage comparison unavailable because no frozen RQ1.4 summary artifact was found._",
+            f"_Cross-stage comparison unavailable because no frozen {reference_short} summary artifact was found._",
         ])
         return
 
+    current_mean_key = f"{current_label}_mean_ms"
+    reference_mean_key = f"{reference_label}_mean_ms"
+    current_overhead_key = f"{current_label}_overhead_pct_vs_baseline"
+    reference_overhead_key = f"{reference_label}_overhead_pct_vs_baseline"
+    current_rank_key = f"{current_label}_rank"
+    reference_rank_key = f"{reference_label}_rank"
+
     lines.extend([
         "",
-        "| Condition | Local K8s Mean (ms) | AKS Mean (ms) | Local Overhead (%) | AKS Overhead (%) | Local Rank | AKS Rank | Rank Match |",
+        f"| Condition | {ctx['reference_header']} | {ctx['current_header']} | "
+        f"{ctx['reference_overhead_header']} | {ctx['current_overhead_header']} | "
+        f"{ctx['reference_rank_header']} | {ctx['current_rank_header']} | Rank Match |",
         "|---|---|---|---|---|---|---|---|",
     ])
     for row in cross_stage_comparison:
         lines.append(
-            f"| {row['condition']} | {_format_float(row.get('local_k8s_mean_ms'))} | "
-            f"{_format_float(row.get('aks_mean_ms'))} | "
-            f"{_format_percent(row.get('local_k8s_overhead_pct_vs_baseline'))} | "
-            f"{_format_percent(row.get('aks_overhead_pct_vs_baseline'))} | "
-            f"{_format_report_value(row.get('local_k8s_rank'))} | "
-            f"{_format_report_value(row.get('aks_rank'))} | "
+            f"| {row['condition']} | {_format_float(row.get(reference_mean_key))} | "
+            f"{_format_float(row.get(current_mean_key))} | "
+            f"{_format_percent(row.get(reference_overhead_key))} | "
+            f"{_format_percent(row.get(current_overhead_key))} | "
+            f"{_format_report_value(row.get(reference_rank_key))} | "
+            f"{_format_report_value(row.get(current_rank_key))} | "
             f"{_format_report_value(row.get('rank_match'))} |"
         )
 
     marginal_rows = _compute_marginal_overhead_rows(summaries)
     if marginal_rows:
         lines.extend([
-            "\n### AKS Marginal Overhead Progression\n",
+            f"\n### {current_pretty} Marginal Overhead Progression\n",
             "| Transition | Increment vs Previous Condition (ms) |",
             "|---|---|",
         ])
@@ -647,10 +773,10 @@ def _append_rq15_transfer_validation(
     ordering_preserved = all(row.get("rank_match") is True for row in cross_stage_comparison)
     ordered_summaries = _summaries_by_service_count(summaries)
     ordered_reference = _summaries_by_service_count(reference_summaries)
-    current_overheads = [summary.get("absolute_overhead_ms") for summary in ordered_summaries]
+    current_overheads_seq = [summary.get("absolute_overhead_ms") for summary in ordered_summaries]
     monotonic_overhead = all(
         _is_finite_number(left) and _is_finite_number(right) and right >= left
-        for left, right in zip(current_overheads, current_overheads[1:])
+        for left, right in zip(current_overheads_seq, current_overheads_seq[1:])
     )
 
     bounded_nonlinearity = None
@@ -670,24 +796,24 @@ def _append_rq15_transfer_validation(
             key=lambda summary: summary["inferred_non_compute_overhead_ms"],
         )
         inferred_sentence = (
-            "Using the frozen RQ1.4 total-compute means rescaled to the AKS monolithic baseline as a heuristic compute reference, "
-            f"the chained AKS conditions retain {_format_float(min(inferred_values))}–{_format_float(max(inferred_values))} ms "
+            f"Using the frozen {reference_short} total-compute means rescaled to the {current_pretty} monolithic baseline as a heuristic compute reference, "
+            f"the chained {current_pretty} conditions retain {_format_float(min(inferred_values))}–{_format_float(max(inferred_values))} ms "
             f"of residual non-compute/platform latency, with the highest residual at {peak_summary['condition']}."
         )
 
     lines.extend(["\n### Interpretation\n"])
     lines.append(
         "- " + (
-            "Condition ordering is preserved between frozen RQ1.4 and the AKS run."
+            f"Condition ordering is preserved between frozen {reference_short} and the {current_pretty} run."
             if ordering_preserved
-            else "Condition ordering is not fully preserved between frozen RQ1.4 and the AKS run."
+            else f"Condition ordering is not fully preserved between frozen {reference_short} and the {current_pretty} run."
         )
     )
     lines.append(
         "- " + (
-            "AKS overhead remains monotonic with service count when normalized against the AKS monolithic baseline."
+            f"{current_pretty} overhead remains monotonic with service count when normalized against the {current_pretty} monolithic baseline."
             if monotonic_overhead
-            else "AKS overhead does not increase monotonically across the full service-count progression."
+            else f"{current_pretty} overhead does not increase monotonically across the full service-count progression."
         )
     )
 
@@ -695,40 +821,54 @@ def _append_rq15_transfer_validation(
         if bounded_nonlinearity:
             lines.append(
                 "- "
-                f"The bounded-nonlinearity pattern is reproduced on AKS: the final increment ({_format_float(marginal_rows[-1]['increment_ms'])} ms for {marginal_rows[-1]['to_condition']}) is smaller than the preceding increment ({_format_float(marginal_rows[-2]['increment_ms'])} ms)."
+                f"The bounded-nonlinearity pattern is reproduced on {current_pretty}: the final increment ({_format_float(marginal_rows[-1]['increment_ms'])} ms for {marginal_rows[-1]['to_condition']}) is smaller than the preceding increment ({_format_float(marginal_rows[-2]['increment_ms'])} ms)."
             )
         else:
             lines.append(
                 "- "
-                f"The exact chain_4svc→chain_5svc near-plateau from RQ1.4 is not reproduced on AKS: the final increment is {_format_float(marginal_rows[-1]['increment_ms'])} ms versus {_format_float(marginal_rows[-2]['increment_ms'])} ms for the preceding step."
+                f"The exact chain_4svc→chain_5svc near-plateau from {reference_short} is not reproduced on {current_pretty}: the final increment is {_format_float(marginal_rows[-1]['increment_ms'])} ms versus {_format_float(marginal_rows[-2]['increment_ms'])} ms for the preceding step."
             )
 
     if cross_stage_comparison:
-        local_overheads = [row.get("local_k8s_overhead_pct_vs_baseline") for row in cross_stage_comparison]
-        aks_overheads = [row.get("aks_overhead_pct_vs_baseline") for row in cross_stage_comparison]
+        reference_overheads_seq = [row.get(reference_overhead_key) for row in cross_stage_comparison]
+        current_overheads_pct_seq = [row.get(current_overhead_key) for row in cross_stage_comparison]
         if all(
-            _is_finite_number(local_value) and _is_finite_number(aks_value) and aks_value >= local_value
-            for local_value, aks_value in zip(local_overheads, aks_overheads)
+            _is_finite_number(ref_value) and _is_finite_number(cur_value) and cur_value >= ref_value
+            for ref_value, cur_value in zip(reference_overheads_seq, current_overheads_pct_seq)
         ):
-            lines.append(
-                "- AKS relative overhead fractions remain directionally aligned with RQ1.4 but are larger in magnitude, which is consistent with added cloud-platform overhead rather than an architectural reversal."
-            )
+            if is_multinode_ctx:
+                lines.append(
+                    f"- {current_pretty} relative overhead fractions remain directionally aligned with {reference_short} but are larger in magnitude, which is consistent with the added inter-node network cost rather than an architectural reversal."
+                )
+            else:
+                lines.append(
+                    f"- {current_pretty} relative overhead fractions remain directionally aligned with {reference_short} but are larger in magnitude, which is consistent with added cloud-platform overhead rather than an architectural reversal."
+                )
         else:
             lines.append(
-                "- AKS relative overhead fractions remain comparable for discussion purposes, but they should be interpreted as environment-level effects rather than strict numeric replications of RQ1.4."
+                f"- {current_pretty} relative overhead fractions remain comparable for discussion purposes, but they should be interpreted as environment-level effects rather than strict numeric replications of {reference_short}."
             )
 
     if inferred_sentence:
         lines.append(f"- {inferred_sentence}")
 
     deployment = (environment_snapshot or {}).get("deployment") or {}
-    if deployment.get("pod_colocation_enforced") is True:
-        lines.append(
-            "- Deployment metadata confirms same-node service placement for each measured condition, preserving the RQ1.4 intra-condition topology while moving execution to AKS."
-        )
+    if is_multinode_ctx:
+        # For multi-node, the relevant placement claim is "every chain hop crosses
+        # a node boundary" — read off the multi_node_validation block.
+        mnv = (environment_snapshot or {}).get("multi_node_validation") or {}
+        if mnv.get("passed") is True:
+            lines.append(
+                "- Deployment metadata confirms every chain segment ran on a distinct cluster node and the benchmark client ran on a sixth dedicated node, so every gRPC hop crossed the Azure VNet."
+            )
+    else:
+        if deployment.get("pod_colocation_enforced") is True:
+            lines.append(
+                f"- Deployment metadata confirms same-node service placement for each measured condition, preserving the {reference_short} intra-condition topology while moving execution to {current_pretty}."
+            )
 
     lines.append(
-        "- Absolute latency differences between frozen RQ1.4 and AKS are interpreted as environment-level effects and do not by themselves overturn the within-stage architectural comparison."
+        f"- Absolute latency differences between frozen {reference_short} and {current_pretty} are interpreted as environment-level effects and do not by themselves overturn the within-stage architectural comparison."
     )
 
     limitations = _build_rq15_limitations(environment_snapshot)
@@ -746,7 +886,8 @@ def _generate_report(source_results_dir, output_dir, summaries, round_sums,
                      include_rq15_transfer_validation=False,
                      reference_summary_path=None,
                      reference_summaries=None,
-                     cross_stage_comparison=None):
+                     cross_stage_comparison=None,
+                     comparison_context=None):
     """Write a Markdown summary report."""
     lines = [f"# {experiment_name} Experiment Report\n"]
     if output_dir != source_results_dir:
@@ -829,6 +970,7 @@ def _generate_report(source_results_dir, output_dir, summaries, round_sums,
             cross_stage_comparison,
             reference_summary_path,
             environment_snapshot,
+            comparison_context=comparison_context,
         )
 
     # ----- Effect sizes (secondary, with caveats) -----

@@ -4,17 +4,17 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: benchmark-client
-  namespace: rq11-azure
+  namespace: rq15b
   labels:
     app: thesis-inference
-    role: client
+    experiment: rq15b
     workload-role: client
-    experiment: rq11-azure
+    role: client
 spec:
   restartPolicy: Never
   containers:
   - name: client
-    image: thesisrq11acr.azurecr.io/thesis-inference@sha256:6d3af14a988a138142d11b12c6a09d328b2d381eac3041bab171e2faf10c0279
+    image: thesisrq15bacr.azurecr.io/thesis-inference@sha256:c5d44bd08783fc78177c2fc4b5d9209d08258309f9d907fcb02cd1315e0fe1de
     imagePullPolicy: Always
     command:
     - sleep
@@ -50,4 +50,11 @@ spec:
         cpu: '1'
         memory: 1Gi
   nodeSelector:
-    agentpool: rq11pool
+    agentpool: rq15bpool
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            workload-role: service
+        topologyKey: kubernetes.io/hostname

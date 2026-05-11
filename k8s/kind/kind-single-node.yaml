@@ -1,0 +1,8 @@
+# Single-node kind cluster used by RQ1.4 (thesis-facing primary).
+# All service pods plus the benchmark client land on the same node, matching
+# the in-cluster colocation contract documented in chapters/methods.tex.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: thesis-rq14
+nodes:
+  - role: control-plane

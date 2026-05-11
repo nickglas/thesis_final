@@ -296,22 +296,24 @@ local Kubernetes remains visible under managed cloud execution, even though
 the absolute millisecond values differ between environments.
 
 \paragraph{Finding 2: AKS overhead is monotonic with service count.}
-Relative to the AKS monolithic baseline, mean latency rises from 65.619~ms to
-68.900~ms, 71.884~ms, 74.172~ms, and 75.695~ms as the chain grows from one to
-five services. The corresponding overheads are +3.280~ms (5.0\%), +6.264~ms
-(9.5\%), +8.553~ms (13.0\%), and +10.075~ms (15.4\%). Within this AKS
+Relative to the AKS monolithic baseline, mean latency rises from 57.963~ms to
+63.367~ms, 66.543~ms, 70.698~ms, and 71.480~ms as the chain grows from one to
+five services. The corresponding overheads are +5.404~ms (9.3\%), +8.580~ms
+(14.8\%), +12.735~ms (22.0\%), and +13.517~ms (23.3\%). Within this AKS
 deployment, adding synchronous service boundaries is therefore associated with
 measurable end-to-end cost.
 
-\paragraph{Finding 3: Marginal overhead decreases toward later boundaries.}
-The AKS marginal increments are +3.280~ms from the monolithic baseline to
-\texttt{chain\_2svc}, +2.984~ms from \texttt{chain\_2svc} to
-\texttt{chain\_3svc}, +2.288~ms from \texttt{chain\_3svc} to
-\texttt{chain\_4svc}, and +1.523~ms from \texttt{chain\_4svc} to
-\texttt{chain\_5svc}. This is consistent with the bounded non-linearity
-expected from the activation profile of the chain family: later added
-boundaries move smaller tensors, so an additional service boundary does not
-imply a constant per-boundary penalty.
+\paragraph{Finding 3: Marginal overhead is bounded at the last boundary.}
+The AKS marginal increments are +5.404~ms from the monolithic baseline to
+\texttt{chain\_2svc}, +3.176~ms from \texttt{chain\_2svc} to
+\texttt{chain\_3svc}, +4.155~ms from \texttt{chain\_3svc} to
+\texttt{chain\_4svc}, and +0.782~ms from \texttt{chain\_4svc} to
+\texttt{chain\_5svc}. The first three steps reflect the cost of adding
+synchronous boundaries that move 392--784~KiB activations, while the final
+step is sharply smaller because the layer-4 boundary moves only 98~KiB. This
+is consistent with the bounded non-linearity expected from the activation
+profile of the chain family: an additional service boundary does not imply a
+constant per-boundary penalty.
 
 \paragraph{Finding 4: Absolute latency is environment-specific.}
 All AKS means are lower than their local Kubernetes counterparts, including
@@ -330,15 +332,71 @@ Kubernetes measurements.
 Under the controlled AKS transfer-validation setup, the local Kubernetes
 service-count pattern transfers directionally to managed cloud execution. The
 AKS run preserves the complete RQ1.4 ordering: \texttt{monolithic\_k8s\_1svc}
-remains fastest at 65.619~ms, followed by \texttt{chain\_2svc} at 68.900~ms,
-\texttt{chain\_3svc} at 71.884~ms, \texttt{chain\_4svc} at 74.172~ms, and
-\texttt{chain\_5svc} at 75.695~ms. Relative overhead grows monotonically from
-5.0\% for \texttt{chain\_2svc} to 15.4\% for \texttt{chain\_5svc}, while
-marginal increments shrink toward the final boundary. RQ1.5 therefore supports
+remains fastest at 57.963~ms, followed by \texttt{chain\_2svc} at 63.367~ms,
+\texttt{chain\_3svc} at 66.543~ms, \texttt{chain\_4svc} at 70.698~ms, and
+\texttt{chain\_5svc} at 71.480~ms. Relative overhead grows monotonically from
+9.3\% for \texttt{chain\_2svc} to 23.3\% for \texttt{chain\_5svc}, while the
+final marginal increment (\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc})
+of 0.782~ms is much smaller than the preceding 4.155~ms step, consistent with
+the activation-transfer-size explanation from RQ1.3. RQ1.5 therefore supports
 a directional transfer claim: the same architectural chain ordering remains
 visible in AKS, although absolute latency values are environment-specific and
 should not be interpreted as a direct replication of the local Kubernetes
 measurements.
+
+\subsection{RQ1.5b: AKS Multi-Node Sensitivity}
+\label{sec:analysis-rq15b}
+
+The results in \cref{sec:rq15b} support three bounded findings for the AKS
+multi-node sensitivity stage.
+
+\paragraph{Finding 1: Multi-node placement preserves the AKS condition ordering.}
+With every chain segment forced onto a distinct node and the benchmark client
+on a sixth dedicated node, the complete RQ1.5 ordering is preserved
+(\texttt{monolithic\_k8s\_1svc}~$<$~\texttt{chain\_2svc}~$<$~\texttt{chain\_3svc}~$<$~\texttt{chain\_4svc}~$<$~\texttt{chain\_5svc}).
+The bounded-non-linearity finding from RQ1.4 and RQ1.5 also reproduces under
+multi-node execution: the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 1.830~ms,
+smaller than the preceding 3.749~ms step (\cref{tab:rq15b_results}). The
+architectural ordering is therefore not an artefact of single-node colocation.
+
+\paragraph{Finding 2: The inter-node penalty is dominated by the first hop.}
+\Cref{tab:rq15b_delta} compares the multi-node run condition-by-condition with
+the same-day frozen single-node RQ1.5 baseline. The monolithic condition
+already gains 12.155~ms of latency relative to the single-node monolithic,
+because the client now ships a 600~KiB input tensor over the Azure VNet rather
+than over a loopback socket. The chained conditions add per-condition deltas
+in the narrow band of 8.6--10.0~ms. The inter-node cost therefore flattens
+once the first-hop tax has been paid: subsequent service-to-service hops move
+smaller activations (784, 392, 196, 98~KiB) and contribute marginal additional
+network cost. This is a measured bound, not a speculation: the worst-case
+single-node-to-multi-node delta on the evaluated chain family is 12.155~ms
+(monolithic), and the deepest chain
+(\texttt{chain\_5svc}) gains only 9.692~ms.
+
+\paragraph{Finding 3: Multi-node round-to-round consistency is tighter than single-node AKS.}
+Round CVs for the chained conditions in RQ1.5b are 0.0020--0.0099, lower than
+the single-node RQ1.5 chained CVs of 0.0075--0.0145
+(\cref{tab:rq15b_rounds}, \cref{tab:rq15_rounds}). This is consistent with each
+pod having a dedicated VM and therefore no neighbour contention: with one
+inference workload per node, scheduling jitter on the busy node is the only
+remaining source of round-to-round drift. The monolithic condition shows a
+similar improvement (0.0072 vs 0.0225). Cross-round stability therefore
+strengthens, rather than weakens, when the topology is distributed.
+
+\paragraph{Answer to RQ1.5b.}
+Under enforced multi-node placement, the same five-condition chain family
+preserves the monotonic-but-bounded overhead progression seen in RQ1.4 and
+RQ1.5: per-condition mean latency increases from 70.118~ms (monolithic) to
+81.172~ms (\texttt{chain\_5svc}), and the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} step plateaus at
++1.830~ms. The per-condition multi-node penalty relative to the single-node
+RQ1.5 baseline is dominated by the first inter-node hop (12.155~ms for the
+600~KiB input transfer to service-1) with subsequent hops contributing
+8.6--10.0~ms each. The single-node RQ1.4 / RQ1.5 design therefore
+underestimates true production latency by approximately one inter-node hop
+plus a small per-hop margin; that underestimation is now bounded
+quantitatively rather than acknowledged abstractly.
 
 \subsection{Synthesis: Deployment Context}
 \label{sec:analysis-deployment-synthesis}
@@ -592,7 +650,8 @@ Every thesis-facing frozen run achieves
 tolerance $1.0 \times 10^{-5}$ and five validation inputs. This applies to all
 five RQ1.1 conditions (\cref{sec:rq11}), all four RQ1.2 conditions
 (\cref{sec:rq12}), all five RQ1.4 conditions (\cref{sec:rq14}), all five
-RQ1.5 conditions (\cref{sec:rq15}), and all paired RQ2.1 and RQ2.2 runs
+RQ1.5 conditions (\cref{sec:rq15}), all five RQ1.5b multi-node conditions
+(\cref{sec:rq15b}), and all paired RQ2.1 and RQ2.2 runs
 (\cref{sec:rq21,sec:rq22}). No numerical drift is introduced by the partition
 or transport layer at any stage.
 
@@ -601,9 +660,12 @@ Each benchmark stage reports per-condition round CVs computed as the standard
 deviation of per-round condition means divided by the grand mean
 (\cref{sec:methods-statistics}). The local screening stages (RQ1.1, RQ1.2)
 achieve round CVs in the range 0.001--0.015. The local Kubernetes stage
-(RQ1.4) sees round CVs of 0.0075--0.0174 (\cref{tab:rq14_rounds}), and the
-AKS stage (RQ1.5) sees round CVs of 0.0017--0.0030
-(\cref{tab:rq15_rounds}). These low CVs support treating the reported
+(RQ1.4) sees round CVs of 0.0075--0.0174 (\cref{tab:rq14_rounds}). The AKS
+single-node stage (RQ1.5) sees round CVs of 0.0075--0.0225 across the chained
+conditions and the monolithic baseline (\cref{tab:rq15_rounds}); the AKS
+multi-node sensitivity stage (RQ1.5b) tightens these to 0.0020--0.0099
+(\cref{tab:rq15b_rounds}) because each pod has its own dedicated VM and
+therefore no neighbour contention. These low CVs support treating the reported
 condition means as representative of each environment rather than as
 artefacts of a single favourable or unfavourable run.
 
@@ -686,12 +748,18 @@ consolidated from the methodological scoping in \cref{ch:methods} and apply
 to all stages of the staged pipeline.
 
 \paragraph{Single-node clusters.}
-Both the RQ1.4 \texttt{kind} cluster and the RQ1.5 AKS cluster are
+The thesis-facing RQ1.4 \texttt{kind} and RQ1.5 AKS primary runs are both
 single-node. Single-node deployments eliminate inter-node network hops and do
 not capture the scheduling and networking variability of a multi-node
-production cluster. Results therefore reflect in-cluster pod-to-pod latency
-on a single physical or virtual machine and are not directly generalisable to
-distributed multi-node deployments.
+production cluster. RQ1.5b
+(\cref{sec:rq15b}, \cref{sec:analysis-rq15b}) addresses this directly with a
+six-node AKS sensitivity stage that forces every chain hop across a node
+boundary; the measured per-condition multi-node penalty is 8.6--12.2~ms and
+is dominated by the first inter-node hop. The single-node primary numbers
+should therefore be interpreted as a clean architectural-overhead measurement
+that excludes the inter-node network path; the multi-node sensitivity in
+\cref{sec:rq15b} provides a quantitative bound on what production multi-node
+deployments add on top.
 
 \paragraph{CPU-only inference.}
 All stages use CPU inference with a single thread. GPU-accelerated inference

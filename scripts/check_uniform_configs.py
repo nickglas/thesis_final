@@ -23,7 +23,9 @@ EXCLUDED_CONFIGS = {
     "RQ1.4 experimental": REPO_ROOT / "configs" / "rq1" / "1.4" / "rq1_4_experimental.yaml",
     "RQ1.4 threaded": REPO_ROOT / "configs" / "rq1" / "1.4" / "rq1_4_threaded.yaml",
     "RQ1.4 smoke": REPO_ROOT / "configs" / "rq1" / "1.4" / "rq1_4_smoke_test.yaml",
+    "RQ1.4b multi-node sensitivity": REPO_ROOT / "configs" / "rq1" / "1.4" / "rq1_4b_multinode.yaml",
     "RQ1.5 smoke": REPO_ROOT / "configs" / "rq1" / "1.5" / "rq1_5_smoke.yaml",
+    "RQ1.5b multi-node sensitivity": REPO_ROOT / "configs" / "rq1" / "1.5" / "rq1_5b_multinode.yaml",
 }
 
 SHARED_FIELDS = [
@@ -37,14 +39,14 @@ SHARED_FIELDS = [
     "benchmark.measured_iterations",
     "benchmark.cooldown_seconds",
     "benchmark.seed",
-    "grpc.port",
-    "grpc.max_message_bytes",
-    "carry_forward.near_best_window_pct",
-    "carry_forward.degeneracy_threshold_pct",
+    # gRPC (top-level) and carry_forward are intentionally absent from
+    # RQ1.4/RQ1.5 chain configs (those use kubernetes.grpc_port and a fixed
+    # chain family). They are therefore not part of the shared contract.
     "parity.atol",
     "parity.num_inputs",
     "warmup_calibration.window",
     "warmup_calibration.cv_threshold",
+    "warmup_calibration.max_extra_iterations",
     "cpu_stabilisation.threading.pytorch_intra_op",
     "cpu_stabilisation.threading.pytorch_inter_op",
     "cpu_stabilisation.threading.omp_num_threads",
@@ -67,6 +69,7 @@ RQ14_RQ15_CHAIN_FIELDS = [
     "parity.num_inputs",
     "warmup_calibration.window",
     "warmup_calibration.cv_threshold",
+    "warmup_calibration.max_extra_iterations",
     "cpu_stabilisation.threading.pytorch_intra_op",
     "cpu_stabilisation.threading.pytorch_inter_op",
     "cpu_stabilisation.threading.omp_num_threads",

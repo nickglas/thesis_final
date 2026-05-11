@@ -1,0 +1,821 @@
+{
+  "chain_2svc": {
+    "namespace": "rq14b",
+    "condition": "chain_2svc",
+    "num_services": 2,
+    "split_points": [
+      "layer2"
+    ],
+    "services": [
+      {
+        "service_name": "chain-2svc-svc-1",
+        "address": "chain-2svc-svc-1.rq14b.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-2svc-svc-2",
+        "address": "chain-2svc-svc-2.rq14b.svc.cluster.local:50051",
+        "segment_index": "2",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesis-inference:latest",
+      "image_pull_policy": "IfNotPresent",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "unknown",
+    "cluster_info": "https://10.96.0.1:443",
+    "cluster_deployment": {},
+    "namespaces": {},
+    "mesh": {},
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "thesis-rq14b-worker5",
+      "pod_ip": "10.244.1.2",
+      "image": "thesis-inference:latest",
+      "image_id": "unknown",
+      "image_pull_policy": "IfNotPresent",
+      "qos_class": "unknown",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesis-inference:latest"
+      ],
+      "service_image_pull_policies": [
+        "IfNotPresent"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "thesis-rq14b-worker5",
+        "pod_ip": "10.244.1.2",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        }
+      }
+    },
+    "collected_at": "2026-05-07T18:17:07.215412"
+  },
+  "chain_5svc": {
+    "namespace": "rq14b",
+    "condition": "chain_5svc",
+    "num_services": 5,
+    "split_points": [
+      "layer1",
+      "layer2",
+      "layer3",
+      "layer4"
+    ],
+    "services": [
+      {
+        "service_name": "chain-5svc-svc-1",
+        "address": "chain-5svc-svc-1.rq14b.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-5svc-svc-2",
+        "address": "chain-5svc-svc-2.rq14b.svc.cluster.local:50051",
+        "segment_index": "2",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-5svc-svc-3",
+        "address": "chain-5svc-svc-3.rq14b.svc.cluster.local:50051",
+        "segment_index": "3",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-5svc-svc-4",
+        "address": "chain-5svc-svc-4.rq14b.svc.cluster.local:50051",
+        "segment_index": "4",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-5svc-svc-5",
+        "address": "chain-5svc-svc-5.rq14b.svc.cluster.local:50051",
+        "segment_index": "5",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesis-inference:latest",
+      "image_pull_policy": "IfNotPresent",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "unknown",
+    "cluster_info": "https://10.96.0.1:443",
+    "cluster_deployment": {},
+    "namespaces": {},
+    "mesh": {},
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "thesis-rq14b-worker5",
+      "pod_ip": "10.244.1.2",
+      "image": "thesis-inference:latest",
+      "image_id": "unknown",
+      "image_pull_policy": "IfNotPresent",
+      "qos_class": "unknown",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesis-inference:latest"
+      ],
+      "service_image_pull_policies": [
+        "IfNotPresent"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "thesis-rq14b-worker5",
+        "pod_ip": "10.244.1.2",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        }
+      }
+    },
+    "collected_at": "2026-05-07T18:17:23.067017"
+  },
+  "chain_4svc": {
+    "namespace": "rq14b",
+    "condition": "chain_4svc",
+    "num_services": 4,
+    "split_points": [
+      "layer1",
+      "layer2",
+      "layer3"
+    ],
+    "services": [
+      {
+        "service_name": "chain-4svc-svc-1",
+        "address": "chain-4svc-svc-1.rq14b.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-4svc-svc-2",
+        "address": "chain-4svc-svc-2.rq14b.svc.cluster.local:50051",
+        "segment_index": "2",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-4svc-svc-3",
+        "address": "chain-4svc-svc-3.rq14b.svc.cluster.local:50051",
+        "segment_index": "3",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-4svc-svc-4",
+        "address": "chain-4svc-svc-4.rq14b.svc.cluster.local:50051",
+        "segment_index": "4",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesis-inference:latest",
+      "image_pull_policy": "IfNotPresent",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "unknown",
+    "cluster_info": "https://10.96.0.1:443",
+    "cluster_deployment": {},
+    "namespaces": {},
+    "mesh": {},
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "thesis-rq14b-worker5",
+      "pod_ip": "10.244.1.2",
+      "image": "thesis-inference:latest",
+      "image_id": "unknown",
+      "image_pull_policy": "IfNotPresent",
+      "qos_class": "unknown",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesis-inference:latest"
+      ],
+      "service_image_pull_policies": [
+        "IfNotPresent"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "thesis-rq14b-worker5",
+        "pod_ip": "10.244.1.2",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        }
+      }
+    },
+    "collected_at": "2026-05-07T18:17:40.348382"
+  },
+  "chain_3svc": {
+    "namespace": "rq14b",
+    "condition": "chain_3svc",
+    "num_services": 3,
+    "split_points": [
+      "layer1",
+      "layer3"
+    ],
+    "services": [
+      {
+        "service_name": "chain-3svc-svc-1",
+        "address": "chain-3svc-svc-1.rq14b.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-3svc-svc-2",
+        "address": "chain-3svc-svc-2.rq14b.svc.cluster.local:50051",
+        "segment_index": "2",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-3svc-svc-3",
+        "address": "chain-3svc-svc-3.rq14b.svc.cluster.local:50051",
+        "segment_index": "3",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesis-inference:latest",
+      "image_pull_policy": "IfNotPresent",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "unknown",
+    "cluster_info": "https://10.96.0.1:443",
+    "cluster_deployment": {},
+    "namespaces": {},
+    "mesh": {},
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "thesis-rq14b-worker5",
+      "pod_ip": "10.244.1.2",
+      "image": "thesis-inference:latest",
+      "image_id": "unknown",
+      "image_pull_policy": "IfNotPresent",
+      "qos_class": "unknown",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesis-inference:latest"
+      ],
+      "service_image_pull_policies": [
+        "IfNotPresent"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "thesis-rq14b-worker5",
+        "pod_ip": "10.244.1.2",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        }
+      }
+    },
+    "collected_at": "2026-05-07T18:17:57.006596"
+  },
+  "monolithic_k8s_1svc": {
+    "namespace": "rq14b",
+    "condition": "monolithic_k8s_1svc",
+    "num_services": 1,
+    "split_points": [],
+    "services": [
+      {
+        "service_name": "monolithic-k8s-1svc-svc-1",
+        "address": "monolithic-k8s-1svc-svc-1.rq14b.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "unknown",
+        "node_name": "unknown",
+        "pod_ip": "unknown",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesis-inference:latest",
+      "image_pull_policy": "IfNotPresent",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "unknown",
+    "cluster_info": "https://10.96.0.1:443",
+    "cluster_deployment": {},
+    "namespaces": {},
+    "mesh": {},
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "thesis-rq14b-worker5",
+      "pod_ip": "10.244.1.2",
+      "image": "thesis-inference:latest",
+      "image_id": "unknown",
+      "image_pull_policy": "IfNotPresent",
+      "qos_class": "unknown",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesis-inference:latest"
+      ],
+      "service_image_pull_policies": [
+        "IfNotPresent"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "thesis-rq14b-worker5",
+        "pod_ip": "10.244.1.2",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        }
+      }
+    },
+    "collected_at": "2026-05-07T18:18:12.581015"
+  }
+}

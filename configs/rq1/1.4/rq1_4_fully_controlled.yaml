@@ -84,18 +84,10 @@ benchmark:
   cooldown_seconds: 5
   seed: 42
 
-# Local gRPC settings (unused in K8s mode; retained for config schema compatibility).
-# Kept aligned with the RQ1.1 and RQ1.2 fully controlled YAMLs so all shared
-# fully controlled parameters remain identical across the thesis-facing runs.
-grpc:
-  host: "127.0.0.1"
-  port: 50051
-  max_message_bytes: 16777216
-
-# Carry-forward (not applicable to RQ1.4; retained for config schema compatibility)
-carry_forward:
-  near_best_window_pct: 5.0
-  degeneracy_threshold_pct: 10.0
+# RQ1.4 is a chain experiment: gRPC and carry-forward fields are not used
+# (K8s wiring uses kubernetes.grpc_port / kubernetes.max_message_bytes;
+# selection is fixed by the predefined chain family). Both blocks are omitted
+# here; the loader supplies safe defaults if any code path inspects them.
 
 parity:
   atol: 1.0e-5
@@ -104,7 +96,9 @@ parity:
 warmup_calibration:
   window: 10
   cv_threshold: 0.02
-  max_extra_iterations: -1  # -1 = unlimited (safety cap: 10 000 iterations)
+  # Fixed warmup per the thesis methodology: calibration is diagnostic only,
+  # not adaptive. 0 = run exactly warmup_iterations and never extend.
+  max_extra_iterations: 0
 
 cpu_stabilisation:
   threading:

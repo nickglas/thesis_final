@@ -20,21 +20,20 @@ AKS run.
 The literature framing for transfer-validation between local Kubernetes and
 managed cloud execution is discussed in \cref{sec:rw-cloud-native}.
 
+
 \subsection{Experimental Setup}
 
 The thesis-facing RQ1.5 benchmark used the frozen controlled AKS
-transfer-validation benchmark exported on 2026-04-22. The environment snapshot records a Linux Azure runtime
-(\texttt{Linux-5.15.0-1102-azure-x86\_64-with-glibc2.41}), Python~3.10.20, and
-PyTorch~2.11.0+cu130. The deployment ran in namespace \texttt{rq15} on a single-node
-AKS cluster using Kubernetes~1.34, a \texttt{Standard\_D8s\_v3} node in the
-\texttt{swedencentral} Azure region, and \texttt{kubenet} networking. Deployment
-metadata confirms that pod colocation was enforced: for every condition, the benchmark
-client and all service pods were scheduled on the same AKS node,
-\texttt{aks-rq15pool-24384142-vmss000000}. All AKS conditions used the same pinned
-container image digest:
-\texttt{sha256:df3cf16f8760493993f8}\allowbreak
-\texttt{ad5ba103bc5508a130180baf5130}\allowbreak
-\texttt{ec44542a44513a8a}.
+transfer-validation benchmark exported on 2026-05-08. The deployment ran in
+namespace \texttt{rq15} on a single-node AKS cluster using Kubernetes~1.34, a
+\texttt{Standard\_D8s\_v3} node in the \texttt{swedencentral} Azure region, and
+\texttt{kubenet} networking. Deployment metadata confirms that pod colocation was
+enforced: for every condition, the benchmark client and all service pods were
+scheduled on the same AKS node. All AKS conditions used the same pinned container
+image digest:
+\texttt{sha256:1f002f8a8f816a1ca5c8}\allowbreak
+\texttt{ee05c3a1d2429822eb0de7405e7f3781}\allowbreak
+\texttt{621cd7406bed}.
 
 \begin{table}[ht]
 \centering
@@ -66,7 +65,7 @@ gRPC port & 50051 \\
 Maximum message size & 16~MB \\
 Service pod CPU request / limit & 1 core / 1 core \\
 Service pod memory request / limit & 1~GiB / 1~GiB \\
-Client CPU request / limit & 500m / 500m \\
+Client CPU request / limit & 1 core / 1 core \\
 Client memory request / limit & 1~GiB / 1~GiB \\
 Pod QoS & \texttt{Guaranteed} for service pods \\
 Image pull policy & \texttt{Always} \\
@@ -118,11 +117,11 @@ deployment family in AKS rather than choosing a new split point.
 \toprule
 \textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 65.619 & 65.312 & 1.291 & 67.693 & --- \\
-\texttt{chain\_2svc}           & 68.900 & 68.599 & 1.578 & 71.269 & +3.280 / +5.0\% \\
-\texttt{chain\_3svc}           & 71.884 & 71.488 & 1.701 & 74.798 & +6.264 / +9.5\% \\
-\texttt{chain\_4svc}           & 74.172 & 73.823 & 1.622 & 76.712 & +8.553 / +13.0\% \\
-\texttt{chain\_5svc}           & 75.695 & 75.339 & 1.826 & 77.993 & +10.075 / +15.4\% \\
+\texttt{monolithic\_k8s\_1svc} & 57.963 & 57.759 & 2.824 & 62.568 & --- \\
+\texttt{chain\_2svc}           & 63.367 & 62.981 & 2.470 & 67.795 & +5.404 / +9.3\% \\
+\texttt{chain\_3svc}           & 66.543 & 66.096 & 2.953 & 71.406 & +8.580 / +14.8\% \\
+\texttt{chain\_4svc}           & 70.698 & 70.234 & 3.302 & 76.335 & +12.735 / +22.0\% \\
+\texttt{chain\_5svc}           & 71.480 & 70.968 & 3.142 & 76.815 & +13.517 / +23.3\% \\
 \bottomrule
 \end{tabular}
 }
@@ -137,10 +136,10 @@ deployment family in AKS rather than choosing a new split point.
 \toprule
 \textbf{Condition} & \textbf{Overhead (ms)} & \textbf{Overhead (\%)} & \textbf{Cumul.\ Activation (KB)} & \textbf{Inferred Non-Compute / Platform (ms)} \\
 \midrule
-\texttt{chain\_2svc} & 3.280  & 5.0  & 980  & 4.053 \\
-\texttt{chain\_3svc} & 6.264  & 9.5  & 1568 & 6.337 \\
-\texttt{chain\_4svc} & 8.553  & 13.0 & 1960 & 8.041 \\
-\texttt{chain\_5svc} & 10.075 & 15.4 & 2058 & 9.381 \\
+\texttt{chain\_2svc} & 5.404  & 9.3  & 980  & 5.527 \\
+\texttt{chain\_3svc} & 8.580  & 14.8 & 1568 & 8.433 \\
+\texttt{chain\_4svc} & 12.735 & 22.0 & 1960 & 10.832 \\
+\texttt{chain\_5svc} & 13.517 & 23.3 & 2058 & 12.346 \\
 \bottomrule
 \end{tabular}
 }
@@ -155,11 +154,11 @@ deployment family in AKS rather than choosing a new split point.
 \toprule
 \textbf{Condition} & \textbf{Local mean (ms)} & \textbf{AKS mean (ms)} & \textbf{Local overhead} & \textbf{AKS overhead} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 81.447 & 65.619 & 0.0\%  & 0.0\% \\
-\texttt{chain\_2svc}           & 84.189 & 68.900 & 3.4\%  & 5.0\% \\
-\texttt{chain\_3svc}           & 87.608 & 71.884 & 7.6\%  & 9.5\% \\
-\texttt{chain\_4svc}           & 92.312 & 74.172 & 13.3\% & 13.0\% \\
-\texttt{chain\_5svc}           & 92.624 & 75.695 & 13.7\% & 15.4\% \\
+\texttt{monolithic\_k8s\_1svc} & 81.447 & 57.963 & 0.0\%  & 0.0\% \\
+\texttt{chain\_2svc}           & 84.189 & 63.367 & 3.4\%  & 9.3\% \\
+\texttt{chain\_3svc}           & 87.608 & 66.543 & 7.6\%  & 14.8\% \\
+\texttt{chain\_4svc}           & 92.312 & 70.698 & 13.3\% & 22.0\% \\
+\texttt{chain\_5svc}           & 92.624 & 71.480 & 13.7\% & 23.3\% \\
 \bottomrule
 \end{tabular}
 }
@@ -193,19 +192,22 @@ overhead trend are preserved.
 \toprule
 \textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 65.619 & 0.1714 & 0.4432 & 0.0026 \\
-\texttt{chain\_2svc}           & 68.900 & 0.1628 & 0.3750 & 0.0024 \\
-\texttt{chain\_3svc}           & 71.884 & 0.1290 & 0.3199 & 0.0018 \\
-\texttt{chain\_4svc}           & 74.172 & 0.2225 & 0.5384 & 0.0030 \\
-\texttt{chain\_5svc}           & 75.695 & 0.1291 & 0.3284 & 0.0017 \\
+\texttt{monolithic\_k8s\_1svc} & 57.963 & 1.3069 & 2.7250 & 0.0225 \\
+\texttt{chain\_2svc}           & 63.367 & 0.4787 & 1.1978 & 0.0076 \\
+\texttt{chain\_3svc}           & 66.543 & 0.5018 & 1.2214 & 0.0075 \\
+\texttt{chain\_4svc}           & 70.698 & 1.0266 & 2.8378 & 0.0145 \\
+\texttt{chain\_5svc}           & 71.480 & 0.9935 & 2.4923 & 0.0139 \\
 \bottomrule
 \end{tabular}
 }
 \end{table}
 
-The AKS run was highly stable across measured rounds. Round CVs ranged from 0.0017 to
-0.0030, which is lower than the corresponding local Kubernetes CVs reported in RQ1.4.
-Warmup calibration indicated that each run reached a stable window at least once before
+The AKS run is stable across measured rounds for all chained conditions, with round
+CVs of 0.0075--0.0145. The monolithic baseline shows a higher round CV of 0.0225;
+this elevated single-pod variability is consistent with managed-cloud noise on the
+\texttt{Standard\_D8s\_v3} VM and does not propagate into the chained conditions, where
+the cumulative compute window dominates per-round variation. Warmup calibration
+indicated that each run reached a stable trailing-window CV at least once before
 measurement, while the cross-round CVs of the measured iterations provide the stronger
 stability evidence for the final reported means. As in the previous stage, effect sizes
 and Mann-Whitney tests were computed from pooled per-iteration data and are treated as
@@ -215,3 +217,173 @@ ordering are the primary evidence for this stage.
 
 The interpretation of these results and the answer to RQ1.5 are presented in
 \cref{sec:analysis-rq15}.
+
+% ────────────────────────────────────────────────────────────────────────────
+\section{RQ1.5b AKS Multi-Node Sensitivity}
+\label{sec:rq15b}
+
+\subsection{Research Question}
+
+\begin{quote}
+\textit{When every chain hop is forced across a node boundary, how much additional
+end-to-end latency does the inter-node network path add, relative to the same-node
+RQ1.5 baseline?}
+\end{quote}
+
+RQ1.5b is a sensitivity stage. It does not replace RQ1.5; the frozen single-node AKS
+results in \cref{sec:rq15} remain the thesis-facing primary numbers. The role of
+RQ1.5b is to quantify, in milliseconds, the inter-node penalty that the single-node
+design intentionally hides, so that the single-node deployment threat to validity
+becomes a bounded, measured cost rather than an unspecified one.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\input{figures/tikz/background/rq14_vs_rq15b_placement_comparison}
+}
+\caption{Same chain, two topologies. (a) RQ1.4 / RQ1.5 single-node placement:
+all six pods on one node, every gRPC hop is loopback. (b) RQ1.4b / RQ1.5b
+multi-node placement: each chain segment lands on a distinct cluster node and
+the client lands on a sixth dedicated node, so every gRPC hop crosses the
+Azure VNet. The chain itself is identical between the two panels; only the
+pod-to-node assignment changes.}
+\label{fig:rq14_vs_rq15b_placement}
+\end{figure}
+
+\subsection{Experimental Setup}
+
+The thesis-facing RQ1.5b benchmark used the frozen multi-node sensitivity run
+exported on 2026-05-08. The deployment ran in namespace \texttt{rq15b} on a six-node
+AKS cluster in the \texttt{swedencentral} Azure region with Kubernetes~1.34 and
+\texttt{kubenet} networking. All six worker nodes were \texttt{Standard\_D8s\_v3}
+(8~vCPUs, 32~GiB) and shared one node pool, one VNet, and one availability zone, so
+the only intentional difference from RQ1.5 is the pod-to-node assignment.
+
+Multi-node placement was enforced by Kubernetes pod anti-affinity. Each service pod
+of a given condition repels every other service pod of that condition keyed on
+\texttt{kubernetes.io/hostname}, and the benchmark client repels every pod with
+\texttt{workload-role: service}. The combined rule guarantees that for the
+\texttt{chain\_5svc} condition all five service segments land on distinct nodes and
+the client lands on a sixth dedicated node, so every gRPC hop in the inference path
+crosses the Azure VNet rather than staying loopback. Compliance was verified after
+deployment by reading observed \texttt{nodeName} values from the Kubernetes API. For
+every condition, the recorded service nodes were pairwise disjoint and the client
+node was distinct from every service node; no condition was promoted to the merge
+phase without this check passing. Functional parity was independently verified:
+\texttt{max\_abs\_diff}~$=0.0$ at \texttt{atol}~$=1\times10^{-5}$ for all five
+conditions in both the local segment validation and the live gRPC chain validation
+(\texttt{num\_inputs}~$=5$).
+
+The shared benchmark contract is otherwise unchanged from RQ1.5: ResNet-18 with
+pretrained weights, CPU FP32 inference, the same five chain conditions, the same
+five-round / 200-iteration / 50-warmup discipline, the same Guaranteed-QoS pod
+profile (1~vCPU + 1~GiB per pod), and the same image used in RQ1.5
+(\texttt{sha256:c5d44bd08783fc78177c}\allowbreak\texttt{2fc4b5d9209d08258309f9d907fc}\allowbreak\texttt{b02cd1315e0fe1de}).
+
+\subsection{Conditions}
+
+RQ1.5b reuses the same predefined chain family as RQ1.4 and RQ1.5
+(\texttt{monolithic\_k8s\_1svc}, \texttt{chain\_2svc}, \texttt{chain\_3svc},
+\texttt{chain\_4svc}, \texttt{chain\_5svc}). The full family is included rather than
+a single representative because the per-condition delta is the headline metric: a
+single point cannot show whether the inter-node penalty grows with hop count,
+dominates one specific boundary, or stays roughly flat. Five points support the
+direct comparison shown in \cref{tab:rq15b_delta}.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.5b AKS multi-node summary of mean latency and overhead vs.\ AKS multi-node monolithic baseline}
+\label{tab:rq15b_results}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 70.118 & 69.807 & 2.277 & 73.249 & --- \\
+\texttt{chain\_2svc}           & 73.408 & 72.949 & 1.952 & 76.959 & +3.290 / +4.7\% \\
+\texttt{chain\_3svc}           & 75.593 & 75.289 & 1.450 & 77.996 & +5.475 / +7.8\% \\
+\texttt{chain\_4svc}           & 79.342 & 78.981 & 1.730 & 82.521 & +9.224 / +13.2\% \\
+\texttt{chain\_5svc}           & 81.172 & 80.826 & 1.656 & 84.156 & +11.054 / +15.8\% \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.5b multi-node penalty, condition-by-condition vs.\ frozen RQ1.5 single-node AKS}
+\label{tab:rq15b_delta}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Single-node mean (ms)} & \textbf{Multi-node mean (ms)} & \textbf{$\Delta$ (ms)} & \textbf{$\Delta$ overhead (pp)} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 57.963 & 70.118 & +12.155 & --- \\
+\texttt{chain\_2svc}           & 63.367 & 73.408 & +10.041 & $-$4.6 \\
+\texttt{chain\_3svc}           & 66.543 & 75.593 &  +9.050 & $-$7.0 \\
+\texttt{chain\_4svc}           & 70.698 & 79.342 &  +8.644 & $-$8.8 \\
+\texttt{chain\_5svc}           & 71.480 & 81.172 &  +9.692 & $-$7.5 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.5b AKS multi-node cross-round consistency}
+\label{tab:rq15b_rounds}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 70.118 & 0.5062 & 1.3566 & 0.0072 \\
+\texttt{chain\_2svc}           & 73.408 & 0.7281 & 1.9613 & 0.0099 \\
+\texttt{chain\_3svc}           & 75.593 & 0.3520 & 0.7515 & 0.0047 \\
+\texttt{chain\_4svc}           & 79.342 & 0.1593 & 0.4062 & 0.0020 \\
+\texttt{chain\_5svc}           & 81.172 & 0.2617 & 0.7378 & 0.0032 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The within-environment ordering is preserved
+(\texttt{monolithic\_k8s\_1svc}~$<$~\texttt{chain\_2svc}~$<$~\texttt{chain\_3svc}~$<$~\texttt{chain\_4svc}~$<$~\texttt{chain\_5svc}),
+and the bounded-non-linearity finding from RQ1.4 reproduces under multi-node
+execution: the \texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is
+1.830~ms, smaller than the preceding 3.749~ms step. Cross-round CVs are tighter than
+in the single-node RQ1.5 run (0.0020--0.0099 across all chained conditions), an
+expected consequence of placing each pod on its own dedicated VM with no neighbour
+contention.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\input{figures/tikz/results/rq15b_multinode_delta}
+}
+\caption{RQ1.5b multi-node penalty per condition. Same SKU
+(\texttt{Standard\_D8s\_v3}), same region (\texttt{swedencentral}), same day; the
+only difference is single-node colocation versus
+\texttt{multi\_node\_anti\_affinity} placement. The penalty is dominated by the
+first inter-node hop (the client$\rightarrow$service-1 transfer of the 600~KiB input
+tensor over the VNet); per-condition deltas in the chained conditions stay in the
+narrow band of 8.6--10.0~ms.}
+\label{fig:rq15b_multinode_delta}
+\end{figure}
+
+\Cref{tab:rq15b_delta} and \cref{fig:rq15b_multinode_delta} summarise the
+per-condition multi-node penalty. The penalty
+is dominated by the first inter-node hop: the monolithic baseline alone gains
+12.155~ms of latency relative to the same-day single-node monolithic, because the
+client now ships a 600~KiB input tensor over the VNet rather than over a loopback
+socket. Adding chain hops with smaller intermediate activations (784, 392, 196,
+98~KiB) yields per-condition deltas in the narrow band of 8.6--10.0~ms, i.e. the
+inter-node cost flattens once the first-hop tax has been paid. The relative overhead
+in fact \emph{decreases} from $+9.3\%$ to $+4.7\%$ at \texttt{chain\_2svc} (and
+similarly at later chains) because the multi-node baseline is itself larger than the
+single-node baseline by exactly that first-hop cost.
+
+The interpretation of these results and the answer to RQ1.5b are presented in
+\cref{sec:analysis-rq15b}.

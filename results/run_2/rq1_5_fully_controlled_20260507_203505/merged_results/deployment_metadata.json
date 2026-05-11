@@ -1,0 +1,1921 @@
+{
+  "monolithic_k8s_1svc": {
+    "namespace": "rq15b",
+    "condition": "monolithic_k8s_1svc",
+    "num_services": 1,
+    "split_points": [],
+    "services": [
+      {
+        "service_name": "monolithic-k8s-1svc-svc-1",
+        "address": "monolithic-k8s-1svc-svc-1.rq15b.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "monolithic-k8s-1svc-svc-1-5b774c8d66-2d9k2",
+        "node_name": "aks-rq15bpool-77818884-vmss000004",
+        "pod_ip": "10.244.2.2",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "monolithic_k8s_1svc",
+          "experiment": "rq15b",
+          "experiment-condition": "monolithic_k8s_1svc",
+          "pod-template-hash": "5b774c8d66",
+          "segment-index": "1",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_pull_policy": "Always",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "thesis-rq15b",
+    "cluster_info": "Kubernetes control plane is running at https://thesis-rq15b-5zjqx5li.hcp.westeurope.azmk8s.io:443",
+    "cluster_deployment": {
+      "type": "kubernetes",
+      "namespace": "rq15b",
+      "cluster_version": "v1.34.6",
+      "node_count": 6,
+      "node_instance_type": "Standard_D8s_v3",
+      "azure_region": "westeurope",
+      "cluster_type": "aks"
+    },
+    "namespaces": {
+      "service": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      },
+      "client": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      }
+    },
+    "mesh": {
+      "enabled": false,
+      "implementation": null,
+      "revision": null,
+      "service_namespace": "rq15b",
+      "client_namespace": "rq15b",
+      "service_accounts": {},
+      "proxy_resources": {},
+      "peer_authentication": {
+        "declared": {},
+        "observed": []
+      },
+      "control_plane_pods": []
+    },
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "aks-rq15bpool-77818884-vmss000003",
+      "pod_ip": "10.244.3.3",
+      "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_pull_policy": "Always",
+      "qos_class": "Guaranteed",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "service_account_name": "default",
+      "containers": [
+        {
+          "name": "client",
+          "container_type": "app",
+          "native_sidecar": false,
+          "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+          "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+          "image_pull_policy": "Always",
+          "ready": true,
+          "restart_count": 0,
+          "resources": {
+            "requests": {
+              "cpu": "1",
+              "memory": "1Gi"
+            },
+            "limits": {
+              "cpu": "1",
+              "memory": "1Gi"
+            }
+          }
+        }
+      ],
+      "sidecar_present": false,
+      "sidecars": [],
+      "sidecar_image_ids": [],
+      "labels": {
+        "app": "thesis-inference",
+        "experiment": "rq15b",
+        "role": "client",
+        "workload-role": "client"
+      },
+      "annotations": {
+        "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"thesis-inference\",\"experiment\":\"rq15b\",\"role\":\"client\",\"workload-role\":\"client\"},\"name\":\"benchmark-client\",\"namespace\":\"rq15b\"},\"spec\":{\"affinity\":{\"podAntiAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":[{\"labelSelector\":{\"matchLabels\":{\"workload-role\":\"service\"}},\"topologyKey\":\"kubernetes.io/hostname\"}]}},\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"env\":[{\"name\":\"PYTORCH_INTRA_OP_THREADS\",\"value\":\"1\"},{\"name\":\"PYTORCH_INTER_OP_THREADS\",\"value\":\"1\"},{\"name\":\"OMP_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MKL_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"OPENBLAS_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MY_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}},{\"name\":\"MY_NODE_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"spec.nodeName\"}}},{\"name\":\"MY_POD_IP\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.podIP\"}}}],\"image\":\"thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75\",\"imagePullPolicy\":\"Always\",\"name\":\"client\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"1Gi\"},\"requests\":{\"cpu\":\"1\",\"memory\":\"1Gi\"}}}],\"nodeSelector\":{\"agentpool\":\"rq15bpool\"},\"restartPolicy\":\"Never\"}}\n"
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75"
+      ],
+      "service_image_pull_policies": [
+        "Always"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "aks-rq15bpool-77818884-vmss000003",
+        "pod_ip": "10.244.3.3",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "client",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "experiment": "rq15b",
+          "role": "client",
+          "workload-role": "client"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"thesis-inference\",\"experiment\":\"rq15b\",\"role\":\"client\",\"workload-role\":\"client\"},\"name\":\"benchmark-client\",\"namespace\":\"rq15b\"},\"spec\":{\"affinity\":{\"podAntiAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":[{\"labelSelector\":{\"matchLabels\":{\"workload-role\":\"service\"}},\"topologyKey\":\"kubernetes.io/hostname\"}]}},\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"env\":[{\"name\":\"PYTORCH_INTRA_OP_THREADS\",\"value\":\"1\"},{\"name\":\"PYTORCH_INTER_OP_THREADS\",\"value\":\"1\"},{\"name\":\"OMP_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MKL_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"OPENBLAS_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MY_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}},{\"name\":\"MY_NODE_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"spec.nodeName\"}}},{\"name\":\"MY_POD_IP\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.podIP\"}}}],\"image\":\"thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75\",\"imagePullPolicy\":\"Always\",\"name\":\"client\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"1Gi\"},\"requests\":{\"cpu\":\"1\",\"memory\":\"1Gi\"}}}],\"nodeSelector\":{\"agentpool\":\"rq15bpool\"},\"restartPolicy\":\"Never\"}}\n"
+        }
+      }
+    },
+    "collected_at": "2026-05-07T20:51:00.677098"
+  },
+  "chain_2svc": {
+    "namespace": "rq15b",
+    "condition": "chain_2svc",
+    "num_services": 2,
+    "split_points": [
+      "layer2"
+    ],
+    "services": [
+      {
+        "service_name": "chain-2svc-svc-1",
+        "address": "chain-2svc-svc-1.rq15b.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "chain-2svc-svc-1-544d4c9c84-9v5ws",
+        "node_name": "aks-rq15bpool-77818884-vmss000004",
+        "pod_ip": "10.244.2.3",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_2svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_2svc",
+          "pod-template-hash": "544d4c9c84",
+          "segment-index": "1",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      },
+      {
+        "service_name": "chain-2svc-svc-2",
+        "address": "chain-2svc-svc-2.rq15b.svc.cluster.local:50051",
+        "segment_index": "2",
+        "pod_name": "chain-2svc-svc-2-89d6df4cc-lhr99",
+        "node_name": "aks-rq15bpool-77818884-vmss000002",
+        "pod_ip": "10.244.4.3",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_2svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_2svc",
+          "pod-template-hash": "89d6df4cc",
+          "segment-index": "2",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_pull_policy": "Always",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "thesis-rq15b",
+    "cluster_info": "Kubernetes control plane is running at https://thesis-rq15b-5zjqx5li.hcp.westeurope.azmk8s.io:443",
+    "cluster_deployment": {
+      "type": "kubernetes",
+      "namespace": "rq15b",
+      "cluster_version": "v1.34.6",
+      "node_count": 6,
+      "node_instance_type": "Standard_D8s_v3",
+      "azure_region": "westeurope",
+      "cluster_type": "aks"
+    },
+    "namespaces": {
+      "service": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      },
+      "client": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      }
+    },
+    "mesh": {
+      "enabled": false,
+      "implementation": null,
+      "revision": null,
+      "service_namespace": "rq15b",
+      "client_namespace": "rq15b",
+      "service_accounts": {},
+      "proxy_resources": {},
+      "peer_authentication": {
+        "declared": {},
+        "observed": []
+      },
+      "control_plane_pods": []
+    },
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "aks-rq15bpool-77818884-vmss000003",
+      "pod_ip": "10.244.3.3",
+      "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_pull_policy": "Always",
+      "qos_class": "Guaranteed",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "service_account_name": "default",
+      "containers": [
+        {
+          "name": "client",
+          "container_type": "app",
+          "native_sidecar": false,
+          "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+          "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+          "image_pull_policy": "Always",
+          "ready": true,
+          "restart_count": 0,
+          "resources": {
+            "requests": {
+              "cpu": "1",
+              "memory": "1Gi"
+            },
+            "limits": {
+              "cpu": "1",
+              "memory": "1Gi"
+            }
+          }
+        }
+      ],
+      "sidecar_present": false,
+      "sidecars": [],
+      "sidecar_image_ids": [],
+      "labels": {
+        "app": "thesis-inference",
+        "experiment": "rq15b",
+        "role": "client",
+        "workload-role": "client"
+      },
+      "annotations": {
+        "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"thesis-inference\",\"experiment\":\"rq15b\",\"role\":\"client\",\"workload-role\":\"client\"},\"name\":\"benchmark-client\",\"namespace\":\"rq15b\"},\"spec\":{\"affinity\":{\"podAntiAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":[{\"labelSelector\":{\"matchLabels\":{\"workload-role\":\"service\"}},\"topologyKey\":\"kubernetes.io/hostname\"}]}},\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"env\":[{\"name\":\"PYTORCH_INTRA_OP_THREADS\",\"value\":\"1\"},{\"name\":\"PYTORCH_INTER_OP_THREADS\",\"value\":\"1\"},{\"name\":\"OMP_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MKL_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"OPENBLAS_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MY_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}},{\"name\":\"MY_NODE_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"spec.nodeName\"}}},{\"name\":\"MY_POD_IP\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.podIP\"}}}],\"image\":\"thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75\",\"imagePullPolicy\":\"Always\",\"name\":\"client\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"1Gi\"},\"requests\":{\"cpu\":\"1\",\"memory\":\"1Gi\"}}}],\"nodeSelector\":{\"agentpool\":\"rq15bpool\"},\"restartPolicy\":\"Never\"}}\n"
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75"
+      ],
+      "service_image_pull_policies": [
+        "Always"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "aks-rq15bpool-77818884-vmss000003",
+        "pod_ip": "10.244.3.3",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "client",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "experiment": "rq15b",
+          "role": "client",
+          "workload-role": "client"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"thesis-inference\",\"experiment\":\"rq15b\",\"role\":\"client\",\"workload-role\":\"client\"},\"name\":\"benchmark-client\",\"namespace\":\"rq15b\"},\"spec\":{\"affinity\":{\"podAntiAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":[{\"labelSelector\":{\"matchLabels\":{\"workload-role\":\"service\"}},\"topologyKey\":\"kubernetes.io/hostname\"}]}},\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"env\":[{\"name\":\"PYTORCH_INTRA_OP_THREADS\",\"value\":\"1\"},{\"name\":\"PYTORCH_INTER_OP_THREADS\",\"value\":\"1\"},{\"name\":\"OMP_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MKL_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"OPENBLAS_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MY_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}},{\"name\":\"MY_NODE_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"spec.nodeName\"}}},{\"name\":\"MY_POD_IP\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.podIP\"}}}],\"image\":\"thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75\",\"imagePullPolicy\":\"Always\",\"name\":\"client\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"1Gi\"},\"requests\":{\"cpu\":\"1\",\"memory\":\"1Gi\"}}}],\"nodeSelector\":{\"agentpool\":\"rq15bpool\"},\"restartPolicy\":\"Never\"}}\n"
+        }
+      }
+    },
+    "collected_at": "2026-05-07T20:54:57.536041"
+  },
+  "chain_3svc": {
+    "namespace": "rq15b",
+    "condition": "chain_3svc",
+    "num_services": 3,
+    "split_points": [
+      "layer1",
+      "layer3"
+    ],
+    "services": [
+      {
+        "service_name": "chain-3svc-svc-1",
+        "address": "chain-3svc-svc-1.rq15b.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "chain-3svc-svc-1-5454f69f85-ckqww",
+        "node_name": "aks-rq15bpool-77818884-vmss000004",
+        "pod_ip": "10.244.2.4",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_3svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_3svc",
+          "pod-template-hash": "5454f69f85",
+          "segment-index": "1",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      },
+      {
+        "service_name": "chain-3svc-svc-2",
+        "address": "chain-3svc-svc-2.rq15b.svc.cluster.local:50051",
+        "segment_index": "2",
+        "pod_name": "chain-3svc-svc-2-7f888c74d4-k5jlr",
+        "node_name": "aks-rq15bpool-77818884-vmss000002",
+        "pod_ip": "10.244.4.4",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_3svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_3svc",
+          "pod-template-hash": "7f888c74d4",
+          "segment-index": "2",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      },
+      {
+        "service_name": "chain-3svc-svc-3",
+        "address": "chain-3svc-svc-3.rq15b.svc.cluster.local:50051",
+        "segment_index": "3",
+        "pod_name": "chain-3svc-svc-3-5d94d9d8c9-v2qcs",
+        "node_name": "aks-rq15bpool-77818884-vmss000005",
+        "pod_ip": "10.244.5.3",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_3svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_3svc",
+          "pod-template-hash": "5d94d9d8c9",
+          "segment-index": "3",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_pull_policy": "Always",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "thesis-rq15b",
+    "cluster_info": "Kubernetes control plane is running at https://thesis-rq15b-5zjqx5li.hcp.westeurope.azmk8s.io:443",
+    "cluster_deployment": {
+      "type": "kubernetes",
+      "namespace": "rq15b",
+      "cluster_version": "v1.34.6",
+      "node_count": 6,
+      "node_instance_type": "Standard_D8s_v3",
+      "azure_region": "westeurope",
+      "cluster_type": "aks"
+    },
+    "namespaces": {
+      "service": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      },
+      "client": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      }
+    },
+    "mesh": {
+      "enabled": false,
+      "implementation": null,
+      "revision": null,
+      "service_namespace": "rq15b",
+      "client_namespace": "rq15b",
+      "service_accounts": {},
+      "proxy_resources": {},
+      "peer_authentication": {
+        "declared": {},
+        "observed": []
+      },
+      "control_plane_pods": []
+    },
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "aks-rq15bpool-77818884-vmss000003",
+      "pod_ip": "10.244.3.3",
+      "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_pull_policy": "Always",
+      "qos_class": "Guaranteed",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "service_account_name": "default",
+      "containers": [
+        {
+          "name": "client",
+          "container_type": "app",
+          "native_sidecar": false,
+          "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+          "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+          "image_pull_policy": "Always",
+          "ready": true,
+          "restart_count": 0,
+          "resources": {
+            "requests": {
+              "cpu": "1",
+              "memory": "1Gi"
+            },
+            "limits": {
+              "cpu": "1",
+              "memory": "1Gi"
+            }
+          }
+        }
+      ],
+      "sidecar_present": false,
+      "sidecars": [],
+      "sidecar_image_ids": [],
+      "labels": {
+        "app": "thesis-inference",
+        "experiment": "rq15b",
+        "role": "client",
+        "workload-role": "client"
+      },
+      "annotations": {
+        "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"thesis-inference\",\"experiment\":\"rq15b\",\"role\":\"client\",\"workload-role\":\"client\"},\"name\":\"benchmark-client\",\"namespace\":\"rq15b\"},\"spec\":{\"affinity\":{\"podAntiAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":[{\"labelSelector\":{\"matchLabels\":{\"workload-role\":\"service\"}},\"topologyKey\":\"kubernetes.io/hostname\"}]}},\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"env\":[{\"name\":\"PYTORCH_INTRA_OP_THREADS\",\"value\":\"1\"},{\"name\":\"PYTORCH_INTER_OP_THREADS\",\"value\":\"1\"},{\"name\":\"OMP_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MKL_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"OPENBLAS_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MY_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}},{\"name\":\"MY_NODE_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"spec.nodeName\"}}},{\"name\":\"MY_POD_IP\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.podIP\"}}}],\"image\":\"thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75\",\"imagePullPolicy\":\"Always\",\"name\":\"client\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"1Gi\"},\"requests\":{\"cpu\":\"1\",\"memory\":\"1Gi\"}}}],\"nodeSelector\":{\"agentpool\":\"rq15bpool\"},\"restartPolicy\":\"Never\"}}\n"
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75"
+      ],
+      "service_image_pull_policies": [
+        "Always"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "aks-rq15bpool-77818884-vmss000003",
+        "pod_ip": "10.244.3.3",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "client",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "experiment": "rq15b",
+          "role": "client",
+          "workload-role": "client"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"thesis-inference\",\"experiment\":\"rq15b\",\"role\":\"client\",\"workload-role\":\"client\"},\"name\":\"benchmark-client\",\"namespace\":\"rq15b\"},\"spec\":{\"affinity\":{\"podAntiAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":[{\"labelSelector\":{\"matchLabels\":{\"workload-role\":\"service\"}},\"topologyKey\":\"kubernetes.io/hostname\"}]}},\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"env\":[{\"name\":\"PYTORCH_INTRA_OP_THREADS\",\"value\":\"1\"},{\"name\":\"PYTORCH_INTER_OP_THREADS\",\"value\":\"1\"},{\"name\":\"OMP_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MKL_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"OPENBLAS_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MY_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}},{\"name\":\"MY_NODE_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"spec.nodeName\"}}},{\"name\":\"MY_POD_IP\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.podIP\"}}}],\"image\":\"thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75\",\"imagePullPolicy\":\"Always\",\"name\":\"client\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"1Gi\"},\"requests\":{\"cpu\":\"1\",\"memory\":\"1Gi\"}}}],\"nodeSelector\":{\"agentpool\":\"rq15bpool\"},\"restartPolicy\":\"Never\"}}\n"
+        }
+      }
+    },
+    "collected_at": "2026-05-07T20:59:16.341213"
+  },
+  "chain_4svc": {
+    "namespace": "rq15b",
+    "condition": "chain_4svc",
+    "num_services": 4,
+    "split_points": [
+      "layer1",
+      "layer2",
+      "layer3"
+    ],
+    "services": [
+      {
+        "service_name": "chain-4svc-svc-1",
+        "address": "chain-4svc-svc-1.rq15b.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "chain-4svc-svc-1-d5bbc8c44-p5nst",
+        "node_name": "aks-rq15bpool-77818884-vmss000004",
+        "pod_ip": "10.244.2.5",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_4svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_4svc",
+          "pod-template-hash": "d5bbc8c44",
+          "segment-index": "1",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      },
+      {
+        "service_name": "chain-4svc-svc-2",
+        "address": "chain-4svc-svc-2.rq15b.svc.cluster.local:50051",
+        "segment_index": "2",
+        "pod_name": "chain-4svc-svc-2-9cb8fb58f-dxq6m",
+        "node_name": "aks-rq15bpool-77818884-vmss000005",
+        "pod_ip": "10.244.5.4",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_4svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_4svc",
+          "pod-template-hash": "9cb8fb58f",
+          "segment-index": "2",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      },
+      {
+        "service_name": "chain-4svc-svc-3",
+        "address": "chain-4svc-svc-3.rq15b.svc.cluster.local:50051",
+        "segment_index": "3",
+        "pod_name": "chain-4svc-svc-3-78c5f86578-dlf5j",
+        "node_name": "aks-rq15bpool-77818884-vmss000002",
+        "pod_ip": "10.244.4.5",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_4svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_4svc",
+          "pod-template-hash": "78c5f86578",
+          "segment-index": "3",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      },
+      {
+        "service_name": "chain-4svc-svc-4",
+        "address": "chain-4svc-svc-4.rq15b.svc.cluster.local:50051",
+        "segment_index": "4",
+        "pod_name": "chain-4svc-svc-4-84d6f475d7-ts9jg",
+        "node_name": "aks-rq15bpool-77818884-vmss000000",
+        "pod_ip": "10.244.0.8",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_4svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_4svc",
+          "pod-template-hash": "84d6f475d7",
+          "segment-index": "4",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_pull_policy": "Always",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "thesis-rq15b",
+    "cluster_info": "Kubernetes control plane is running at https://thesis-rq15b-5zjqx5li.hcp.westeurope.azmk8s.io:443",
+    "cluster_deployment": {
+      "type": "kubernetes",
+      "namespace": "rq15b",
+      "cluster_version": "v1.34.6",
+      "node_count": 6,
+      "node_instance_type": "Standard_D8s_v3",
+      "azure_region": "westeurope",
+      "cluster_type": "aks"
+    },
+    "namespaces": {
+      "service": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      },
+      "client": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      }
+    },
+    "mesh": {
+      "enabled": false,
+      "implementation": null,
+      "revision": null,
+      "service_namespace": "rq15b",
+      "client_namespace": "rq15b",
+      "service_accounts": {},
+      "proxy_resources": {},
+      "peer_authentication": {
+        "declared": {},
+        "observed": []
+      },
+      "control_plane_pods": []
+    },
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "aks-rq15bpool-77818884-vmss000003",
+      "pod_ip": "10.244.3.3",
+      "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_pull_policy": "Always",
+      "qos_class": "Guaranteed",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "service_account_name": "default",
+      "containers": [
+        {
+          "name": "client",
+          "container_type": "app",
+          "native_sidecar": false,
+          "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+          "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+          "image_pull_policy": "Always",
+          "ready": true,
+          "restart_count": 0,
+          "resources": {
+            "requests": {
+              "cpu": "1",
+              "memory": "1Gi"
+            },
+            "limits": {
+              "cpu": "1",
+              "memory": "1Gi"
+            }
+          }
+        }
+      ],
+      "sidecar_present": false,
+      "sidecars": [],
+      "sidecar_image_ids": [],
+      "labels": {
+        "app": "thesis-inference",
+        "experiment": "rq15b",
+        "role": "client",
+        "workload-role": "client"
+      },
+      "annotations": {
+        "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"thesis-inference\",\"experiment\":\"rq15b\",\"role\":\"client\",\"workload-role\":\"client\"},\"name\":\"benchmark-client\",\"namespace\":\"rq15b\"},\"spec\":{\"affinity\":{\"podAntiAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":[{\"labelSelector\":{\"matchLabels\":{\"workload-role\":\"service\"}},\"topologyKey\":\"kubernetes.io/hostname\"}]}},\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"env\":[{\"name\":\"PYTORCH_INTRA_OP_THREADS\",\"value\":\"1\"},{\"name\":\"PYTORCH_INTER_OP_THREADS\",\"value\":\"1\"},{\"name\":\"OMP_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MKL_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"OPENBLAS_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MY_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}},{\"name\":\"MY_NODE_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"spec.nodeName\"}}},{\"name\":\"MY_POD_IP\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.podIP\"}}}],\"image\":\"thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75\",\"imagePullPolicy\":\"Always\",\"name\":\"client\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"1Gi\"},\"requests\":{\"cpu\":\"1\",\"memory\":\"1Gi\"}}}],\"nodeSelector\":{\"agentpool\":\"rq15bpool\"},\"restartPolicy\":\"Never\"}}\n"
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75"
+      ],
+      "service_image_pull_policies": [
+        "Always"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "aks-rq15bpool-77818884-vmss000003",
+        "pod_ip": "10.244.3.3",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "client",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "experiment": "rq15b",
+          "role": "client",
+          "workload-role": "client"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"thesis-inference\",\"experiment\":\"rq15b\",\"role\":\"client\",\"workload-role\":\"client\"},\"name\":\"benchmark-client\",\"namespace\":\"rq15b\"},\"spec\":{\"affinity\":{\"podAntiAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":[{\"labelSelector\":{\"matchLabels\":{\"workload-role\":\"service\"}},\"topologyKey\":\"kubernetes.io/hostname\"}]}},\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"env\":[{\"name\":\"PYTORCH_INTRA_OP_THREADS\",\"value\":\"1\"},{\"name\":\"PYTORCH_INTER_OP_THREADS\",\"value\":\"1\"},{\"name\":\"OMP_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MKL_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"OPENBLAS_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MY_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}},{\"name\":\"MY_NODE_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"spec.nodeName\"}}},{\"name\":\"MY_POD_IP\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.podIP\"}}}],\"image\":\"thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75\",\"imagePullPolicy\":\"Always\",\"name\":\"client\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"1Gi\"},\"requests\":{\"cpu\":\"1\",\"memory\":\"1Gi\"}}}],\"nodeSelector\":{\"agentpool\":\"rq15bpool\"},\"restartPolicy\":\"Never\"}}\n"
+        }
+      }
+    },
+    "collected_at": "2026-05-07T21:03:37.789211"
+  },
+  "chain_5svc": {
+    "namespace": "rq15b",
+    "condition": "chain_5svc",
+    "num_services": 5,
+    "split_points": [
+      "layer1",
+      "layer2",
+      "layer3",
+      "layer4"
+    ],
+    "services": [
+      {
+        "service_name": "chain-5svc-svc-1",
+        "address": "chain-5svc-svc-1.rq15b.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "chain-5svc-svc-1-697f68db8c-76svg",
+        "node_name": "aks-rq15bpool-77818884-vmss000004",
+        "pod_ip": "10.244.2.6",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_5svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_5svc",
+          "pod-template-hash": "697f68db8c",
+          "segment-index": "1",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      },
+      {
+        "service_name": "chain-5svc-svc-2",
+        "address": "chain-5svc-svc-2.rq15b.svc.cluster.local:50051",
+        "segment_index": "2",
+        "pod_name": "chain-5svc-svc-2-584655964b-s4cqf",
+        "node_name": "aks-rq15bpool-77818884-vmss000002",
+        "pod_ip": "10.244.4.6",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_5svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_5svc",
+          "pod-template-hash": "584655964b",
+          "segment-index": "2",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      },
+      {
+        "service_name": "chain-5svc-svc-3",
+        "address": "chain-5svc-svc-3.rq15b.svc.cluster.local:50051",
+        "segment_index": "3",
+        "pod_name": "chain-5svc-svc-3-55c469dd9c-cb8xx",
+        "node_name": "aks-rq15bpool-77818884-vmss000005",
+        "pod_ip": "10.244.5.5",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_5svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_5svc",
+          "pod-template-hash": "55c469dd9c",
+          "segment-index": "3",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      },
+      {
+        "service_name": "chain-5svc-svc-4",
+        "address": "chain-5svc-svc-4.rq15b.svc.cluster.local:50051",
+        "segment_index": "4",
+        "pod_name": "chain-5svc-svc-4-6ff996df64-ztqgh",
+        "node_name": "aks-rq15bpool-77818884-vmss000000",
+        "pod_ip": "10.244.0.9",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_5svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_5svc",
+          "pod-template-hash": "6ff996df64",
+          "segment-index": "4",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      },
+      {
+        "service_name": "chain-5svc-svc-5",
+        "address": "chain-5svc-svc-5.rq15b.svc.cluster.local:50051",
+        "segment_index": "5",
+        "pod_name": "chain-5svc-svc-5-7c7d764bf9-6vrq8",
+        "node_name": "aks-rq15bpool-77818884-vmss000001",
+        "pod_ip": "10.244.1.3",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "inference",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "condition": "chain_5svc",
+          "experiment": "rq15b",
+          "experiment-condition": "chain_5svc",
+          "pod-template-hash": "7c7d764bf9",
+          "segment-index": "5",
+          "workload-role": "service"
+        },
+        "annotations": {}
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_pull_policy": "Always",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "thesis-rq15b",
+    "cluster_info": "Kubernetes control plane is running at https://thesis-rq15b-5zjqx5li.hcp.westeurope.azmk8s.io:443",
+    "cluster_deployment": {
+      "type": "kubernetes",
+      "namespace": "rq15b",
+      "cluster_version": "v1.34.6",
+      "node_count": 6,
+      "node_instance_type": "Standard_D8s_v3",
+      "azure_region": "westeurope",
+      "cluster_type": "aks"
+    },
+    "namespaces": {
+      "service": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      },
+      "client": {
+        "name": "rq15b",
+        "labels": {
+          "experiment": "rq15b",
+          "kubernetes.io/metadata.name": "rq15b"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq15b\"},\"name\":\"rq15b\"}}\n"
+        }
+      }
+    },
+    "mesh": {
+      "enabled": false,
+      "implementation": null,
+      "revision": null,
+      "service_namespace": "rq15b",
+      "client_namespace": "rq15b",
+      "service_accounts": {},
+      "proxy_resources": {},
+      "peer_authentication": {
+        "declared": {},
+        "observed": []
+      },
+      "control_plane_pods": []
+    },
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "aks-rq15bpool-77818884-vmss000003",
+      "pod_ip": "10.244.3.3",
+      "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+      "image_pull_policy": "Always",
+      "qos_class": "Guaranteed",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "service_account_name": "default",
+      "containers": [
+        {
+          "name": "client",
+          "container_type": "app",
+          "native_sidecar": false,
+          "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+          "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+          "image_pull_policy": "Always",
+          "ready": true,
+          "restart_count": 0,
+          "resources": {
+            "requests": {
+              "cpu": "1",
+              "memory": "1Gi"
+            },
+            "limits": {
+              "cpu": "1",
+              "memory": "1Gi"
+            }
+          }
+        }
+      ],
+      "sidecar_present": false,
+      "sidecars": [],
+      "sidecar_image_ids": [],
+      "labels": {
+        "app": "thesis-inference",
+        "experiment": "rq15b",
+        "role": "client",
+        "workload-role": "client"
+      },
+      "annotations": {
+        "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"thesis-inference\",\"experiment\":\"rq15b\",\"role\":\"client\",\"workload-role\":\"client\"},\"name\":\"benchmark-client\",\"namespace\":\"rq15b\"},\"spec\":{\"affinity\":{\"podAntiAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":[{\"labelSelector\":{\"matchLabels\":{\"workload-role\":\"service\"}},\"topologyKey\":\"kubernetes.io/hostname\"}]}},\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"env\":[{\"name\":\"PYTORCH_INTRA_OP_THREADS\",\"value\":\"1\"},{\"name\":\"PYTORCH_INTER_OP_THREADS\",\"value\":\"1\"},{\"name\":\"OMP_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MKL_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"OPENBLAS_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MY_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}},{\"name\":\"MY_NODE_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"spec.nodeName\"}}},{\"name\":\"MY_POD_IP\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.podIP\"}}}],\"image\":\"thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75\",\"imagePullPolicy\":\"Always\",\"name\":\"client\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"1Gi\"},\"requests\":{\"cpu\":\"1\",\"memory\":\"1Gi\"}}}],\"nodeSelector\":{\"agentpool\":\"rq15bpool\"},\"restartPolicy\":\"Never\"}}\n"
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75"
+      ],
+      "service_image_pull_policies": [
+        "Always"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "aks-rq15bpool-77818884-vmss000003",
+        "pod_ip": "10.244.3.3",
+        "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+        "image_pull_policy": "Always",
+        "qos_class": "Guaranteed",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        },
+        "service_account_name": "default",
+        "containers": [
+          {
+            "name": "client",
+            "container_type": "app",
+            "native_sidecar": false,
+            "image": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_id": "thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75",
+            "image_pull_policy": "Always",
+            "ready": true,
+            "restart_count": 0,
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "1Gi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ],
+        "sidecar_present": false,
+        "sidecars": [],
+        "sidecar_image_ids": [],
+        "labels": {
+          "app": "thesis-inference",
+          "experiment": "rq15b",
+          "role": "client",
+          "workload-role": "client"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"thesis-inference\",\"experiment\":\"rq15b\",\"role\":\"client\",\"workload-role\":\"client\"},\"name\":\"benchmark-client\",\"namespace\":\"rq15b\"},\"spec\":{\"affinity\":{\"podAntiAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":[{\"labelSelector\":{\"matchLabels\":{\"workload-role\":\"service\"}},\"topologyKey\":\"kubernetes.io/hostname\"}]}},\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"env\":[{\"name\":\"PYTORCH_INTRA_OP_THREADS\",\"value\":\"1\"},{\"name\":\"PYTORCH_INTER_OP_THREADS\",\"value\":\"1\"},{\"name\":\"OMP_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MKL_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"OPENBLAS_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MY_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}},{\"name\":\"MY_NODE_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"spec.nodeName\"}}},{\"name\":\"MY_POD_IP\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.podIP\"}}}],\"image\":\"thesisrq15bacr.azurecr.io/thesis-inference@sha256:35b0d31329665430413c5c4c35fe8e404035b66619948424629b27eb687c5a75\",\"imagePullPolicy\":\"Always\",\"name\":\"client\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"1Gi\"},\"requests\":{\"cpu\":\"1\",\"memory\":\"1Gi\"}}}],\"nodeSelector\":{\"agentpool\":\"rq15bpool\"},\"restartPolicy\":\"Never\"}}\n"
+        }
+      }
+    },
+    "collected_at": "2026-05-07T21:08:01.482215"
+  }
+}

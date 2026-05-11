@@ -44,22 +44,18 @@ benchmark:
   cooldown_seconds: 5
   seed: 42
 
-grpc:
-  host: "127.0.0.1"
-  port: 50060
-  max_message_bytes: 16777216
-
-carry_forward:
-  near_best_window_pct: 10.0
-  degeneracy_threshold_pct: 5.0
+# RQ1.4 is a chain experiment: gRPC and carry-forward fields are not used
+# (K8s wiring uses kubernetes.grpc_port / kubernetes.max_message_bytes;
+# selection is fixed by the predefined chain family). Both blocks are omitted.
 
 parity:
   atol: 1.0e-5
-  num_inputs: 3
+  num_inputs: 5
 
 warmup_calibration:
-  window: 3
-  cv_threshold: 0.05
+  window: 10
+  cv_threshold: 0.02
+  max_extra_iterations: 0
 
 cpu_stabilisation:
   threading:
