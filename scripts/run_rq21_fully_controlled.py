@@ -323,7 +323,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--results-root",
-        default=str(REPO_ROOT / "results_exports"),
+        default=str(REPO_ROOT / "results"),
         help="Parent directory for preflight artifacts",
     )
     parser.add_argument("--nodepool", default=DEFAULT_NODEPOOL, help="AKS nodepool label for manifest generation")

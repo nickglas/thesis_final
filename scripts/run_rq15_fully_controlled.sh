@@ -11,7 +11,7 @@ CLIENT_POD_NAME="benchmark-client"
 GENERATED_DIR="${REPO_ROOT}/k8s/aks/generated"
 
 RUN_TS="$(date -u +%Y%m%d_%H%M%S)"
-HOST_EXPORT_DIR="${REPO_ROOT}/results_exports/rq1_5_fully_controlled_${RUN_TS}"
+HOST_EXPORT_DIR="${REPO_ROOT}/results/rq1_5_fully_controlled_${RUN_TS}"
 DIAGNOSTICS_DIR="${HOST_EXPORT_DIR}/diagnostics"
 HOST_PARTIAL_RESULTS_DIR="${HOST_EXPORT_DIR}/partial_results"
 HOST_BENCHMARK_LOG_DIR="${HOST_EXPORT_DIR}/condition_logs"

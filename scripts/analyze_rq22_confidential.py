@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_RESULTS_ROOT = REPO_ROOT / "results_exports"
+DEFAULT_RESULTS_ROOT = REPO_ROOT / "results"
 STANDARD_KEY = "standard"
 CONFIDENTIAL_KEY = "confidential"
 
@@ -35,7 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "artifact_dir",
         nargs="?",
-        help="RQ2.2 artifact directory. Defaults to the latest results_exports/rq2_2_confidential_* run.",
+        help="RQ2.2 artifact directory. Defaults to the latest results/rq2_2_confidential_* run.",
     )
     parser.add_argument("--results-root", default=str(DEFAULT_RESULTS_ROOT))
     parser.add_argument("--output-dir", default=None, help="Defaults to <artifact_dir>/analysis.")

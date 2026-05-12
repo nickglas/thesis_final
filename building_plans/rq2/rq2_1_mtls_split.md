@@ -253,7 +253,7 @@ the merged condition samples.
 Produce artifacts under:
 
 ```text
-results_exports/rq2_1_mtls_split_<timestamp>/
+results/rq2_1_mtls_split_<timestamp>/
 ```
 
 Required files:

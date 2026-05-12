@@ -512,7 +512,7 @@ def parse_args() -> argparse.Namespace:
         default="auto",
         help="Expected paired topology. auto infers only supported chain2 or chain5 configs.",
     )
-    parser.add_argument("--results-root", default=str(REPO_ROOT / "results_exports"))
+    parser.add_argument("--results-root", default=str(REPO_ROOT / "results"))
     parser.add_argument("--client-pod", default=DEFAULT_CLIENT_POD)
     parser.add_argument("--nodepool", default=DEFAULT_NODEPOOL)
     parser.add_argument("--provision", action="store_true")

@@ -36,6 +36,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 LOCAL_IMAGE_TAG = "thesis-inference:latest"
 TOOLS_BIN = REPO_ROOT / ".tools" / "bin"
 DEFAULT_KIND_VERSION = "v0.31.0"
+DEFAULT_RQ2_PASSES = 5
+LEGACY_RESULTS_ROOT = "results" + "_exports"
 
 DEFAULT_STAGES = (
     "rq1_1",
@@ -273,6 +275,7 @@ def append_rq2_cloud_args(
     command: list[str],
     args: argparse.Namespace,
     acr_name: str,
+    stage: str,
     *,
     supports_cleanup: bool,
     supports_smoke: bool,
@@ -294,7 +297,35 @@ def append_rq2_cloud_args(
         command.append("--smoke")
     if args.skip_mesh_enable:
         command.append("--skip-mesh-enable")
+    command += rq2_pass_args(args, stage)
     return append_common_results_arg(command, args)
+
+
+def effective_rq2_passes(args: argparse.Namespace, stage: str) -> int:
+    stage_specific = {
+        "rq2_1_paired": args.rq2_paired_passes,
+        "rq2_1_mtls_split": args.rq2_split_passes,
+        "rq2_1_ablation": args.rq2_ablation_passes,
+        "rq2_2": args.rq22_paired_passes,
+    }[stage]
+    if stage_specific is not None:
+        return stage_specific
+    if args.smoke:
+        return 1
+    return args.rq2_passes
+
+
+def rq2_pass_args(args: argparse.Namespace, stage: str) -> list[str]:
+    passes = str(effective_rq2_passes(args, stage))
+    if stage == "rq2_1_paired":
+        return ["--paired-passes", passes]
+    if stage == "rq2_1_mtls_split":
+        return ["--split-passes", passes]
+    if stage == "rq2_1_ablation":
+        return ["--ablation-passes", passes]
+    if stage == "rq2_2":
+        return ["--paired-passes", passes]
+    return []
 
 
 def local_image_prepare_commands(args: argparse.Namespace) -> list[list[str]]:
@@ -376,28 +407,28 @@ def build_stage_plan(stage: str, args: argparse.Namespace, acr_name: str) -> Sta
         command = python_script("scripts/run_rq21_paired_benchmark.py")
         return StagePlan(
             stage,
-            [append_rq2_cloud_args(command, args, acr_name, supports_cleanup=True, supports_smoke=True)],
+            [append_rq2_cloud_args(command, args, acr_name, stage, supports_cleanup=True, supports_smoke=True)],
         )
 
     if stage == "rq2_1_mtls_split":
         command = python_script("scripts/run_rq21_mtls_split.py")
         return StagePlan(
             stage,
-            [append_rq2_cloud_args(command, args, acr_name, supports_cleanup=True, supports_smoke=True)],
+            [append_rq2_cloud_args(command, args, acr_name, stage, supports_cleanup=True, supports_smoke=True)],
         )
 
     if stage == "rq2_1_ablation":
         command = python_script("scripts/run_rq21_ablation.py")
         return StagePlan(
             stage,
-            [append_rq2_cloud_args(command, args, acr_name, supports_cleanup=True, supports_smoke=True)],
+            [append_rq2_cloud_args(command, args, acr_name, stage, supports_cleanup=True, supports_smoke=True)],
         )
 
     if stage == "rq2_2":
         command = python_script("scripts/run_rq22_confidential.py")
         return StagePlan(
             stage,
-            [append_rq2_cloud_args(command, args, acr_name, supports_cleanup=False, supports_smoke=False)],
+            [append_rq2_cloud_args(command, args, acr_name, stage, supports_cleanup=False, supports_smoke=False)],
         )
 
     raise AssertionError(f"unhandled stage: {stage}")
@@ -651,7 +682,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--generate-only", action="store_true", help="Generate RQ2 manifests/configs without live benchmark where supported.")
     parser.add_argument("--smoke", action="store_true", help="Use RQ2 smoke profiles where supported.")
     parser.add_argument("--skip-mesh-enable", action="store_true", help="Pass through to RQ2 mesh-aware runners.")
-    parser.add_argument("--results-root", default=None, help="Results root passed to runners that support it.")
+    parser.add_argument(
+        "--rq2-passes",
+        type=int,
+        default=DEFAULT_RQ2_PASSES,
+        help=(
+            "Default outer passes for RQ2 stages. The source RQ2 configs use "
+            "benchmark.rounds=1 so passes provide the interleaved repetitions "
+            f"(default: {DEFAULT_RQ2_PASSES}; smoke mode uses 1 unless a "
+            "stage-specific value is set)."
+        ),
+    )
+    parser.add_argument("--rq2-paired-passes", type=int, default=None, help="Override passes for rq2_1_paired.")
+    parser.add_argument("--rq2-split-passes", type=int, default=None, help="Override passes for rq2_1_mtls_split.")
+    parser.add_argument("--rq2-ablation-passes", type=int, default=None, help="Override passes for rq2_1_ablation.")
+    parser.add_argument("--rq22-paired-passes", type=int, default=None, help="Override passes for rq2_2.")
+    parser.add_argument(
+        "--results-root",
+        default=str(REPO_ROOT / "results"),
+        help="Results root passed to runners that support it.",
+    )
     parser.add_argument(
         "--rq14-rolling",
         action="store_true",
@@ -693,6 +743,18 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if args.rq15_condition_retries < 0:
         parser.error("--rq15-condition-retries must be >= 0")
+    pass_args = {
+        "--rq2-passes": args.rq2_passes,
+        "--rq2-paired-passes": args.rq2_paired_passes,
+        "--rq2-split-passes": args.rq2_split_passes,
+        "--rq2-ablation-passes": args.rq2_ablation_passes,
+        "--rq22-paired-passes": args.rq22_paired_passes,
+    }
+    for flag, value in pass_args.items():
+        if value is not None and value < 1:
+            parser.error(f"{flag} must be >= 1")
+    if Path(args.results_root).name == LEGACY_RESULTS_ROOT:
+        parser.error(f"--results-root must use results, not the legacy {LEGACY_RESULTS_ROOT} directory")
     return args
 
 
