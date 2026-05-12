@@ -1,0 +1,157 @@
+Environment information collected on 2026-05-12T12:51:50+02:00
+Workspace: C:\Users\Nick\Desktop\opus
+
+Summary
+-------
+- Docker CLI is installed, but the Docker Desktop Linux engine is not reachable from this session.
+- Docker Desktop Service is stopped.
+- Because the Docker daemon is unavailable, Docker server version, Docker cgroup driver, Docker daemon limits, kind clusters, and the actual kindest/node image currently in use could not be observed.
+- WSL Ubuntu is available and reports Ubuntu 22.04.5 LTS on WSL2 kernel 6.6.114.1.
+
+Docker version
+--------------
+Command: docker version
+
+Client:
+  Version:      29.4.2
+  API version:  1.54
+  Go version:   go1.26.2
+  Git commit:   055a478
+  Built:        Fri May 1 01:27:10 2026
+  OS/Arch:      windows/amd64
+  Context:      desktop-linux
+
+Server:
+  unavailable
+  Error:
+    failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine;
+    check if the path is correct and if the daemon is running:
+    open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
+
+Docker context
+--------------
+Command: docker context ls
+
+default:
+  Description: Current DOCKER_HOST based configuration
+  Endpoint:    npipe:////./pipe/docker_engine
+
+desktop-linux:
+  Description: Docker Desktop
+  Endpoint:    npipe:////./pipe/dockerDesktopLinuxEngine
+  Current:     yes
+
+Docker Desktop service/process state
+------------------------------------
+Command: Get-Service -Name com.docker.service
+
+Name:        com.docker.service
+Status:      Stopped
+StartType:   Manual
+DisplayName: Docker Desktop Service
+
+Command: Get-Process | Where-Object { $_.ProcessName -like '*docker*' }
+
+No Docker processes were running.
+
+Docker cgroup driver
+--------------------
+Unavailable in this session because `docker info` cannot connect to the Docker daemon.
+
+WSL cgroup filesystem:
+  Command: wsl -e bash -lc 'stat -fc %T /sys/fs/cgroup; mount | grep cgroup'
+  /sys/fs/cgroup type: cgroup2fs
+  mount: cgroup2 on /sys/fs/cgroup type cgroup2 (rw,nosuid,nodev,noexec,relatime,nsdelegate)
+
+kind version and node image
+---------------------------
+Command: kind version
+
+kind v0.31.0 go1.21.2 windows/amd64
+
+Repo uniform-run default:
+  scripts/run_uniform_image_experiments.py sets DEFAULT_KIND_VERSION = "v0.31.0"
+
+kindest/node image:
+  unavailable in this session
+
+Reason:
+  `kind get clusters` and `docker images` both require the Docker API, and the Docker daemon is unavailable.
+  The repo does not pin a kindest/node image; unless one is passed explicitly to kind, the image is chosen by kind.
+
+Kernel and distro
+-----------------
+Command: wsl -e bash -lc 'uname -a'
+
+Linux DESKTOP-6BKFBQ4 6.6.114.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Mon Dec 1 20:46:23 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+Command: wsl -e bash -lc 'cat /etc/os-release'
+
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+NAME="Ubuntu"
+VERSION_ID="22.04"
+VERSION="22.04.5 LTS (Jammy Jellyfish)"
+VERSION_CODENAME=jammy
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=jammy
+
+WSL distributions
+-----------------
+Command: wsl -l -v
+
+Ubuntu:
+  State at collection start: Stopped
+  WSL version: 2
+
+docker-desktop:
+  State at collection start: Stopped
+  WSL version: 2
+
+ulimit -n
+---------
+Command: wsl -e bash -lc 'ulimit -n'
+
+10240
+
+Command: wsl -e bash -lc 'ulimit -Sn; ulimit -Hn'
+
+soft open files: 10240
+hard open files: 1048576
+
+systemd limits
+--------------
+Command: wsl -e bash -lc 'systemctl is-system-running'
+
+offline
+
+Command: wsl -e bash -lc 'systemctl show --property=DefaultLimitNOFILE --value'
+
+No value returned because systemd is offline in this WSL distro/session.
+
+Command: wsl -e bash -lc 'grep -R "^[[:space:]]*DefaultLimitNOFILE" /etc/systemd /usr/lib/systemd /lib/systemd'
+
+No DefaultLimitNOFILE override was found in the searched systemd config paths.
+
+Docker daemon limits
+--------------------
+Unavailable in this session.
+
+Observed facts:
+- Docker Desktop Service is stopped.
+- `docker info` cannot connect to the Docker Desktop Linux engine.
+- `pgrep -a dockerd` inside the Ubuntu WSL distro returned no process.
+- `systemctl show docker ...` returned no values because systemd is offline.
+
+Commands to rerun after starting Docker Desktop
+-----------------------------------------------
+docker version
+docker info
+docker info --format '{{json .}}'
+kind get clusters
+docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep 'kindest/node'
+docker ps -a --filter label=io.x-k8s.kind.cluster --format '{{.Image}} {{.Names}}'
