@@ -29,6 +29,8 @@ def test_uniform_wrapper_defaults_rq2_paired_to_five_passes():
 
     assert result.returncode == 0, result.stderr + result.stdout
     assert "--paired-passes 5" in result.stdout
+    assert "--results-root" in result.stdout
+    assert "results_exports" not in result.stdout
 
 
 def test_uniform_wrapper_uses_one_rq2_pass_for_smoke_mode():
@@ -36,3 +38,16 @@ def test_uniform_wrapper_uses_one_rq2_pass_for_smoke_mode():
 
     assert result.returncode == 0, result.stderr + result.stdout
     assert "--split-passes 1" in result.stdout
+
+
+def test_uniform_wrapper_rejects_legacy_results_exports_root():
+    result = run_uniform_dry_run(
+        "--only",
+        "rq2_1_paired",
+        "--skip-acr-login",
+        "--results-root",
+        "results_exports",
+    )
+
+    assert result.returncode != 0
+    assert "legacy results_exports directory" in result.stderr

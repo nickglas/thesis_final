@@ -240,7 +240,7 @@ kubectl exec -n rq14b benchmark-client -- `
   python run_k8s_experiment.py `
   --config configs/rq1/1.4/rq1_4b_multinode.yaml --run-analysis
 
-kubectl cp rq14b/benchmark-client:/app/results/ ./results_exports/rq1_4b_<ts>/
+kubectl cp rq14b/benchmark-client:/app/results/ ./results/rq1_4b_<ts>/
 kind delete cluster --name thesis-rq14b
 ```
 

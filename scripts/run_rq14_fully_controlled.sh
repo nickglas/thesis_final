@@ -18,7 +18,7 @@ readonly REFERENCE_FULLY_CONTROLLED_CONFIGS=(
 )
 
 RUN_TS="$(date -u +%Y%m%d_%H%M%S)"
-HOST_EXPORT_DIR="${REPO_ROOT}/results_exports/rq1_4_fully_controlled_${RUN_TS}"
+HOST_EXPORT_DIR="${REPO_ROOT}/results/rq1_4_fully_controlled_${RUN_TS}"
 DIAGNOSTICS_DIR="${HOST_EXPORT_DIR}/diagnostics"
 BENCHMARK_LOG_PATH="${HOST_EXPORT_DIR}/benchmark.log"
 CLIENT_MANIFEST_PATH="${HOST_EXPORT_DIR}/benchmark-client.generated.yaml"

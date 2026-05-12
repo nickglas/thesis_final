@@ -419,7 +419,7 @@ Current status:
   for C2/C3.
 - Step 5 and Step 6 completed for `chain_2svc` on AKS on 2026-05-06. The full
   five-pass campaign produced artifacts under
-  `results_exports/rq2_1_ablation_20260506_105639/`, with all validation gates and
+  `results/rq2_1_ablation_20260506_105639/`, with all validation gates and
   resource-metric completeness checks passing.
 
 ### Step 1: Add Configs

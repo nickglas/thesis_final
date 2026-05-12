@@ -37,6 +37,7 @@ LOCAL_IMAGE_TAG = "thesis-inference:latest"
 TOOLS_BIN = REPO_ROOT / ".tools" / "bin"
 DEFAULT_KIND_VERSION = "v0.31.0"
 DEFAULT_RQ2_PASSES = 5
+LEGACY_RESULTS_ROOT = "results" + "_exports"
 
 DEFAULT_STAGES = (
     "rq1_1",
@@ -696,7 +697,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rq2-split-passes", type=int, default=None, help="Override passes for rq2_1_mtls_split.")
     parser.add_argument("--rq2-ablation-passes", type=int, default=None, help="Override passes for rq2_1_ablation.")
     parser.add_argument("--rq22-paired-passes", type=int, default=None, help="Override passes for rq2_2.")
-    parser.add_argument("--results-root", default=None, help="Results root passed to runners that support it.")
+    parser.add_argument(
+        "--results-root",
+        default=str(REPO_ROOT / "results"),
+        help="Results root passed to runners that support it.",
+    )
     parser.add_argument(
         "--rq14-rolling",
         action="store_true",
@@ -748,6 +753,8 @@ def parse_args() -> argparse.Namespace:
     for flag, value in pass_args.items():
         if value is not None and value < 1:
             parser.error(f"{flag} must be >= 1")
+    if Path(args.results_root).name == LEGACY_RESULTS_ROOT:
+        parser.error(f"--results-root must use results, not the legacy {LEGACY_RESULTS_ROOT} directory")
     return args
 
 

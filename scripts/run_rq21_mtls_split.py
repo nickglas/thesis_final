@@ -112,7 +112,7 @@ def parse_args() -> argparse.Namespace:
     )
     for key, default in CONDITION_CONFIGS.items():
         parser.add_argument(f"--{key.replace('_', '-')}-config", default=default)
-    parser.add_argument("--results-root", default=str(REPO_ROOT / "results_exports"))
+    parser.add_argument("--results-root", default=str(REPO_ROOT / "results"))
     parser.add_argument("--client-pod", default=DEFAULT_CLIENT_POD)
     parser.add_argument("--nodepool", default=DEFAULT_NODEPOOL)
     parser.add_argument("--provision", action="store_true")

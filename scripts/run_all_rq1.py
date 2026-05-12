@@ -541,7 +541,7 @@ def run_kind_stage(stage_name: str, args: argparse.Namespace) -> None:
         kind_delete_cluster(cluster_name)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    host_results_dir = REPO_ROOT / "results_exports" / f"{stage_name}_{timestamp}"
+    host_results_dir = REPO_ROOT / "results" / f"{stage_name}_{timestamp}"
     host_results_dir.mkdir(parents=True, exist_ok=True)
 
     try:

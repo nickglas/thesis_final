@@ -69,6 +69,7 @@ The wrapper prints the resolved pinned image reference in this form:
 ```
 
 That digest is the image identity used for all container-backed stages.
+Experiment artifacts are written under `results/`.
 
 ## Login and service checks
 

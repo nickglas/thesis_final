@@ -230,7 +230,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", default=DEFAULT_CONFIG_REL, help="Source experiment config YAML")
     parser.add_argument(
         "--results-root",
-        default=str(REPO_ROOT / "results_exports"),
+        default=str(REPO_ROOT / "results"),
         help="Parent directory for host-side exported artifacts",
     )
     parser.add_argument(

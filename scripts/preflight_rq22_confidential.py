@@ -25,7 +25,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = REPO_ROOT / "configs" / "rq2" / "2.2" / "rq2_2_confidential_amd_sev_snp.yaml"
-DEFAULT_OUTPUT_ROOT = REPO_ROOT / "results_exports"
+DEFAULT_OUTPUT_ROOT = REPO_ROOT / "results"
 
 APPROVED_REGION = "westeurope"
 APPROVED_BACKEND = "amd_sev_snp"
