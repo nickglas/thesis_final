@@ -69,6 +69,10 @@ The wrapper prints the resolved pinned image reference in this form:
 ```
 
 That digest is the image identity used for all container-backed stages.
+The container image is built with CPU-only PyTorch wheels on purpose, which
+keeps the thesis-inference image small enough for the multi-node kind stage
+(`rq1_4b`) to load it into every node without exhausting local container
+storage.
 
 ## Login and service checks
 
