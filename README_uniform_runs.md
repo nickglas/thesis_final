@@ -158,6 +158,33 @@ Use only these thesis-facing configs for direct comparison:
 - parity validation with `5` inputs at `1e-5`
 - single-threaded CPU stabilisation across PyTorch, OMP, MKL, and OpenBLAS
 
+Warmup is treated as a readiness gate, not as measured data. Each condition
+runs the configured minimum warmup count first. If a config allows extra warmup
+iterations, the runner now requires the current trailing CV window to be stable
+before ending warmup; it does not stop only because an earlier window was once
+stable. If no extra warmup budget is configured, the run continues after the
+configured minimum and records whether the final window was stable in the
+artifact metadata.
+
+The thesis-facing RQ2 wrapper stages use the same effective measurement volume
+by default: `5` outer passes, with `50` warmup and `200` measured iterations per
+pass. That gives `1000` measured requests per condition, matching the RQ1
+default of `5` rounds times `200` measured iterations. Smoke runs still use one
+pass unless explicitly overridden.
+
+For the literature rationale behind the warmup, repetition, and CPU
+stabilisation choices, see `docs/benchmark_methodology.md`.
+
+RQ2 pass count overrides:
+
+```bash
+python scripts/run_uniform_image_experiments.py --only rq2_1_paired --rq2-passes 5
+python scripts/run_uniform_image_experiments.py --only rq2_1_paired --rq2-paired-passes 7
+python scripts/run_uniform_image_experiments.py --only rq2_1_mtls_split --rq2-split-passes 7
+python scripts/run_uniform_image_experiments.py --only rq2_1_ablation --rq2-ablation-passes 7
+python scripts/run_uniform_image_experiments.py --only rq2_2 --rq22-paired-passes 7
+```
+
 ## What is not directly comparable
 
 Do not mix these into the thesis-facing comparison set:

@@ -3,16 +3,16 @@
 Section 5 of the design document specifies W = 50 warmup iterations
 before each condition in each round, excluded from all summaries.
 
-This module runs the full W warmup iterations and additionally
-checks whether latency has stabilised by monitoring the coefficient
-of variation (CV) over a trailing window. The calibration result
-records both the first time a stable window is observed and whether
-the final trailing window also remains stable, so the artifact is
-auditable without relying on a single ambiguous boolean.
+This module runs at least W warmup iterations and additionally checks whether
+latency has stabilised by monitoring the coefficient of variation (CV) over a
+trailing window. The calibration result records both the first time a stable
+window is observed and whether the final trailing window also remains stable,
+so the artifact is auditable without relying on a single ambiguous boolean.
 
-The benchmark always runs at least W iterations.  If stabilisation
-has not been reached by iteration W, a warning is logged but
-execution continues (the configured count is treated as a minimum).
+The benchmark always runs at least W iterations. If extra warmup iterations
+are configured, execution continues until the current trailing window is
+stable or the extra-iteration budget is exhausted. With no extra budget, the
+runner proceeds after W and records that the final warmup window was unstable.
 """
 
 import time
@@ -66,7 +66,7 @@ def run_warmup_calibrated(
         Calibration metadata:
           configured_iterations, total_iterations, stabilised (legacy bool),
           stabilised_once (bool), first_stabilised_at_iteration (int or None),
-          final_window_stabilised (bool or None),
+          final_window_stabilised (bool or None), stop_reason,
           stabilised_at_iteration (legacy alias),
           extra_iterations_used, max_extra_iterations,
           final_window_cv, cv_threshold, window_size,
@@ -76,6 +76,7 @@ def run_warmup_calibrated(
     latencies = []
     stabilised = False
     stabilised_at = None
+    stop_reason = "iteration_limit_reached"
     if max_extra_iterations < 0:
         total_limit = n + _UNLIMITED_WARMUP_CAP
         max_extra_iterations = _UNLIMITED_WARMUP_CAP  # for reporting
@@ -83,44 +84,53 @@ def run_warmup_calibrated(
         max_extra_iterations = max(0, max_extra_iterations)
         total_limit = n + max_extra_iterations
 
+    def trailing_cv() -> float | None:
+        if len(latencies) < window:
+            return None
+        tail = latencies[-window:]
+        mean = sum(tail) / len(tail)
+        if mean <= 0:
+            return None
+        std = math.sqrt(sum((x - mean) ** 2 for x in tail) / len(tail))
+        return std / mean
+
     for i in range(total_limit):
         t0 = time.perf_counter()
         infer_fn(input_tensor)
         t1 = time.perf_counter()
         latencies.append((t1 - t0) * 1000)
 
-        # Check stabilisation once we have enough data
-        if not stabilised and len(latencies) >= window:
-            tail = latencies[-window:]
-            mean = sum(tail) / len(tail)
-            if mean > 0:
-                std = math.sqrt(sum((x - mean) ** 2 for x in tail) / len(tail))
-                cv = std / mean
-                if cv < cv_threshold:
-                    stabilised = True
-                    stabilised_at = i + 1
+        cv = trailing_cv()
+        current_window_stabilised = cv is not None and cv < cv_threshold
 
-        if (i + 1) >= n and stabilised:
+        if not stabilised and current_window_stabilised:
+            stabilised = True
+            stabilised_at = i + 1
+
+        if (i + 1) < n:
+            continue
+
+        if current_window_stabilised:
+            stop_reason = "current_window_stabilised"
+            break
+
+        if max_extra_iterations == 0:
+            stop_reason = "minimum_reached_no_extra_allowed"
             break
 
     # Final CV for the last window
-    final_cv = None
-    if len(latencies) >= window:
-        tail = latencies[-window:]
-        mean = sum(tail) / len(tail)
-        if mean > 0:
-            std = math.sqrt(sum((x - mean) ** 2 for x in tail) / len(tail))
-            final_cv = std / mean
-
+    final_cv = trailing_cv()
     final_window_stabilised = None
     if final_cv is not None:
         final_window_stabilised = final_cv < cv_threshold
 
-    if not stabilised:
+    if not final_window_stabilised:
+        cv_text = f"{final_cv:.4f}" if final_cv is not None else "unavailable"
         logger.warning(
-            f"Warmup did not stabilise within {len(latencies)} iterations "
-            f"(CV={final_cv:.4f} > threshold={cv_threshold}). "
-            f"Proceeding after the configured warmup budget."
+            f"Warmup final window did not stabilise within {len(latencies)} "
+            f"iterations (CV={cv_text}, threshold={cv_threshold}, "
+            f"stop_reason={stop_reason}). Proceeding after the configured "
+            "warmup budget."
         )
 
     return {
@@ -131,6 +141,7 @@ def run_warmup_calibrated(
         "first_stabilised_at_iteration": stabilised_at,
         "stabilised_at_iteration": stabilised_at,
         "final_window_stabilised": final_window_stabilised,
+        "stop_reason": stop_reason,
         "extra_iterations_used": max(0, len(latencies) - n),
         "max_extra_iterations": max_extra_iterations,
         "final_window_cv": final_cv,
