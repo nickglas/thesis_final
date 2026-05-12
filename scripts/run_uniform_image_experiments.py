@@ -91,6 +91,69 @@ def warn(message: str) -> None:
     print(f"[{timestamp()}] WARN: {message}", file=sys.stderr, flush=True)
 
 
+def drop_sudo_root_to_invoking_user() -> bool:
+    """Keep the orchestrator unprivileged even if launched with sudo.
+
+    Azure CLI, Docker, Terraform, and kubeconfig state are user-scoped. Running
+    the whole wrapper as root points those tools at root's home/config and can
+    make otherwise valid logins look broken. CPU controls now elevate only the
+    sysfs/renice operations that need it, so the orchestrator should be the
+    original login user.
+    """
+    if not hasattr(os, "geteuid") or os.geteuid() != 0:
+        return True
+
+    if os.environ.get("OPUS_ALLOW_ROOT_ORCHESTRATOR", "").lower() in {"1", "true", "yes"}:
+        warn(
+            "Running the uniform experiment wrapper as root. This can break "
+            "az/docker/terraform credential discovery."
+        )
+        return True
+
+    sudo_uid = os.environ.get("SUDO_UID")
+    sudo_gid = os.environ.get("SUDO_GID")
+    if not sudo_uid or not sudo_gid:
+        warn(
+            "Refusing to run the whole experiment orchestrator as root. Run it "
+            "as your normal user; CPU controls use sudo internally. Set "
+            "OPUS_ALLOW_ROOT_ORCHESTRATOR=1 to override."
+        )
+        return False
+
+    try:
+        uid = int(sudo_uid)
+        gid = int(sudo_gid)
+    except ValueError:
+        warn("Could not parse SUDO_UID/SUDO_GID; refusing root orchestration.")
+        return False
+
+    if uid == 0:
+        return True
+
+    try:
+        import pwd
+
+        user_info = pwd.getpwuid(uid)
+        username = user_info.pw_name
+        log(f"Detected sudo launch; dropping orchestrator privileges back to {username} (uid={uid}).")
+        if hasattr(os, "initgroups"):
+            os.initgroups(username, gid)
+        os.setgid(gid)
+        os.setuid(uid)
+        os.environ["HOME"] = user_info.pw_dir
+        os.environ["USER"] = username
+        os.environ["LOGNAME"] = username
+        xdg_runtime = Path(f"/run/user/{uid}")
+        if xdg_runtime.is_dir():
+            os.environ["XDG_RUNTIME_DIR"] = str(xdg_runtime)
+        else:
+            os.environ.pop("XDG_RUNTIME_DIR", None)
+        return True
+    except Exception as exc:
+        warn(f"Could not drop root privileges after sudo launch: {exc}")
+        return False
+
+
 def format_command(command: list[str]) -> str:
     return shlex.join(command)
 
@@ -635,6 +698,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if not drop_sudo_root_to_invoking_user():
+        return 1
+
     stages = resolve_stages(args)
     log(f"Stages: {', '.join(stages)}")
     if args.dry_run:

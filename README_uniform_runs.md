@@ -5,6 +5,16 @@ Run these commands from the repository root.
 Use WSL bash or another bash shell for the commands below. The wrapper and
 the experiment runners are Python/bash based; no PowerShell wrapper is needed.
 
+Do not prefix the full experiment command with `sudo`. The Azure CLI, Docker,
+Terraform, and kubeconfig state are tied to your normal user account. CPU
+governor, turbo, and priority controls elevate only the narrow sysfs/renice
+operations that need privileges. If you want to avoid a password prompt during
+the first local benchmark, run this once before starting:
+
+```bash
+sudo -v
+```
+
 ## Full fresh thesis run with one image
 
 This is the canonical "act like we have nothing" command. It creates the
