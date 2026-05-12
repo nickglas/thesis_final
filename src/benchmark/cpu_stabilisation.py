@@ -93,7 +93,7 @@ def _summarise_methods(methods: List[str]) -> str:
 # Physical core detection (avoids SMT siblings)
 # ---------------------------------------------------------------------------
 
-def _detect_physical_cores() -> Optional[List[int]]:s/run_uniform_image_experiments.py <your params>
+def _detect_physical_cores() -> Optional[List[int]]:
     """Return one logical CPU per physical core, preferring the first sibling.
 
     On Linux, reads /sys/devices/system/cpu/cpuN/topology/core_id to group
