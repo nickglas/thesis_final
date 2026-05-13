@@ -97,10 +97,12 @@ def make_pod(
     name: str,
     containers: list[str],
     init_containers: list[str] | None = None,
+    node_name: str | None = None,
 ) -> dict[str, object]:
     return {
         "metadata": {"name": name},
         "spec": {
+            "nodeName": node_name or "node-a",
             "containers": [{"name": container} for container in containers],
             "initContainers": [{"name": container} for container in (init_containers or [])],
         },
@@ -200,6 +202,88 @@ def test_chain5_configs_validate_as_optional_stress_topology(tmp_path: Path):
     assert runner.raw_configs["plain"]["kubernetes"]["client_resources"]["cpu_limit"] == "1"
 
 
+def test_rq21b_multinode_configs_validate_as_chain2_sensitivity(tmp_path: Path):
+    runner = RQ21PairedBenchmarkRunner(
+        default_runner_args(
+            tmp_path,
+            plain_config="configs/rq2/2.1/multinode/rq2_1b_chain2_plain_multinode.yaml",
+            mtls_config="configs/rq2/2.1/multinode/rq2_1b_chain2_mtls_multinode.yaml",
+            topology="chain2",
+            nodepool="rq21bpool",
+            node_count=3,
+        )
+    )
+
+    runner.validate_configs()
+
+    assert runner.is_multinode is True
+    assert runner.experiment_signature == "rq2_1b_multinode"
+    assert runner.artifact_dir.name.startswith("rq2_1b_multinode_")
+    assert runner.condition_names == {
+        "plain": "chain_2svc_plain_multinode",
+        "mtls": "chain_2svc_mtls_multinode",
+    }
+
+
+def test_rq21b_multinode_configs_reject_single_benchmark_node(tmp_path: Path):
+    runner = RQ21PairedBenchmarkRunner(
+        default_runner_args(
+            tmp_path,
+            plain_config="configs/rq2/2.1/multinode/rq2_1b_chain2_plain_multinode.yaml",
+            mtls_config="configs/rq2/2.1/multinode/rq2_1b_chain2_mtls_multinode.yaml",
+            topology="chain2",
+            nodepool="rq21bpool",
+            node_count=1,
+        )
+    )
+
+    with pytest.raises(PipelineError, match="--node-count 3"):
+        runner.validate_configs()
+
+
+def test_rq21b_runtime_placement_validation_requires_distinct_nodes(tmp_path: Path):
+    runner = RQ21PairedBenchmarkRunner.__new__(RQ21PairedBenchmarkRunner)
+    context = build_condition_context(tmp_path, key="plain", service_count=2)
+    context.effective_config_path.write_text(
+        """
+kubernetes:
+  placement:
+    strategy: multi_node_anti_affinity
+    require_dedicated_client_node: true
+    min_nodes: 3
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    errors, summary = runner.runtime_placement_validation(
+        context,
+        [
+            make_pod("service-1", ["inference"], node_name="node-a"),
+            make_pod("service-2", ["inference"], node_name="node-b"),
+        ],
+        make_pod("benchmark-client", ["client"], node_name="node-c"),
+    )
+
+    assert errors == []
+    assert summary["strategy"] == "multi_node_anti_affinity"
+    assert summary["service_pod_nodes"] == ["node-a", "node-b"]
+    assert summary["client_node"] == "node-c"
+    assert summary["dedicated_client_node"] is True
+
+    errors, summary = runner.runtime_placement_validation(
+        context,
+        [
+            make_pod("service-1", ["inference"], node_name="node-a"),
+            make_pod("service-2", ["inference"], node_name="node-a"),
+        ],
+        make_pod("benchmark-client", ["client"], node_name="node-a"),
+    )
+
+    assert any("not on distinct nodes" in error for error in errors)
+    assert any("not on a dedicated node" in error for error in errors)
+    assert summary["dedicated_client_node"] is False
+
+
 def test_wait_for_resource_metrics_ready_accepts_expected_service_and_client_containers(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -250,6 +334,39 @@ def test_wait_for_resource_metrics_ready_fails_before_benchmark_when_condition_m
     assert "plain-svc" in status
     assert "service-1" in status
     assert "service-2" in status
+
+
+def test_write_file_into_pod_retries_transient_kubelet_exec_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    runner = RQ21PairedBenchmarkRunner.__new__(RQ21PairedBenchmarkRunner)
+    runner.args = Namespace(client_pod="benchmark-client")
+    context = build_condition_context(tmp_path)
+    calls: list[list[str]] = []
+    sleeps: list[int] = []
+    exec_attempts = 0
+
+    def fake_run_command(args, **_kwargs):
+        nonlocal exec_attempts
+        calls.append(args)
+        if args[:2] == ["kubectl", "exec"]:
+            exec_attempts += 1
+            if exec_attempts == 1:
+                raise PipelineError(
+                    'Command failed: kubectl exec -n plain-client benchmark-client -- python -c ...\n'
+                    'proxy error from localhost:9443 while dialing 10.224.0.5:10250'
+                )
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(paired, "run_command", fake_run_command)
+    monkeypatch.setattr(paired.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    runner.write_file_into_pod(context, "/tmp/config.yaml", "x: 1\n")
+
+    assert exec_attempts == 2
+    assert sleeps == [5]
+    assert any(call[:3] == ["kubectl", "wait", "--for=condition=Ready"] for call in calls)
 
 
 def test_expected_resource_metric_containers_includes_native_istio_sidecar_for_mtls(tmp_path: Path):
@@ -438,6 +555,51 @@ def test_chain5_mtls_manifest_generation_emits_per_hop_identity_policies(tmp_pat
         assert principals == [
             f"cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc{downstream - 1}"
         ]
+
+
+def test_rq21b_multinode_manifest_generation_emits_anti_affinity(tmp_path: Path):
+    output_dir = tmp_path / "manifests"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "k8s/aks/generate_aks_manifests.py",
+            "--config",
+            "configs/rq2/2.1/multinode/rq2_1b_chain2_mtls_multinode.yaml",
+            "--nodepool",
+            "rq21bpool",
+            "--output-dir",
+            str(output_dir),
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    docs = paired.load_manifest_documents(output_dir)
+    workload_specs = []
+    for doc in docs:
+        if doc.get("kind") == "Deployment":
+            workload_specs.append(((doc.get("spec") or {}).get("template") or {}).get("spec") or {})
+        if doc.get("kind") == "Pod":
+            workload_specs.append(doc.get("spec") or {})
+
+    assert workload_specs
+    for spec in workload_specs:
+        assert (spec.get("nodeSelector") or {}) == {
+            "agentpool": "rq21bpool",
+            "workload": "benchmark",
+        }
+        required_terms = (
+            ((spec.get("affinity") or {}).get("podAntiAffinity") or {})
+            .get("requiredDuringSchedulingIgnoredDuringExecution")
+            or []
+        )
+        assert required_terms
+        assert any(
+            paired.toleration_matches_taint(item, "workload=benchmark:NoSchedule")
+            for item in (spec.get("tolerations") or [])
+        )
 
 
 def test_parse_rejects_infrastructure_destroy_without_provision(monkeypatch: pytest.MonkeyPatch):

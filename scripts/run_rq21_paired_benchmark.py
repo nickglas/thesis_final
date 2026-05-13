@@ -48,8 +48,14 @@ from scripts.run_rq21_fully_controlled import (  # noqa: E402
     kubectl_json_or_none,
     load_yaml,
     log,
+    minimum_benchmark_nodes_for_placement,
+    MULTI_NODE_PLACEMENT_STRATEGY,
+    placement_is_multi_node,
+    placement_min_nodes,
     placement_requires_control_plane_isolation,
+    placement_strategy,
     placement_tolerations,
+    STRICT_SAME_NODE_PLACEMENT_STRATEGY,
     run_command,
     timestamp,
     toleration_matches_taint,
@@ -100,6 +106,23 @@ RESOURCE_MEMORY_METRIC_CATEGORIES = (
     "total_pod_memory_mib",
     "client_memory_mib",
 )
+
+TRANSIENT_KUBECTL_EXEC_MARKERS = (
+    "proxy error",
+    "error sending request",
+    "unable to upgrade connection",
+    "tls handshake timeout",
+    "i/o timeout",
+    "connection refused",
+    "connection reset by peer",
+    "container not found",
+    "pod not found",
+)
+
+
+def looks_like_transient_kubectl_exec_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return any(marker in text for marker in TRANSIENT_KUBECTL_EXEC_MARKERS)
 
 
 @dataclass
@@ -655,13 +678,26 @@ class RQ21PairedBenchmarkRunner:
             key: service_count_for_condition(first_condition(config))
             for key, config in self.raw_configs.items()
         }
+        self.placement_strategy = self.configured_placement_strategy()
+        self.is_multinode = self.placement_strategy == MULTI_NODE_PLACEMENT_STRATEGY
+        self.experiment_signature = (
+            "rq2_1b_multinode" if self.is_multinode else "rq2_1_paired"
+        )
         self.run_stamp = utc_run_stamp()
-        self.artifact_dir = Path(args.results_root).resolve() / f"rq2_1_paired_{self.run_stamp}"
+        self.artifact_dir = (
+            Path(args.results_root).resolve()
+            / f"{self.experiment_signature}_{self.run_stamp}"
+        )
         self.config_dir = self.artifact_dir / "effective_configs"
         self.conditions_root = self.artifact_dir / "conditions"
         self.merged_dir = self.artifact_dir / "merged"
         self.static_dir = self.artifact_dir / "static_validation"
-        self.run_metadata_path = self.artifact_dir / "rq21_paired_run_metadata.json"
+        metadata_name = (
+            "rq21b_multinode_run_metadata.json"
+            if self.is_multinode
+            else "rq21_paired_run_metadata.json"
+        )
+        self.run_metadata_path = self.artifact_dir / metadata_name
 
         self.effective_config_paths: dict[str, Path] = {}
         self.effective_image_ref = ""
@@ -674,6 +710,21 @@ class RQ21PairedBenchmarkRunner:
         self.lifecycle_runner: RQ21PreflightRunner | None = None
         self.infrastructure_provisioned = False
         self.infrastructure_destroyed = False
+
+    def configured_placement_strategy(self) -> str:
+        strategies = {
+            placement_strategy((config.get("kubernetes") or {}).get("placement") or {})
+            for config in self.raw_configs.values()
+        }
+        if len(strategies) == 1:
+            return next(iter(strategies))
+        return "mixed"
+
+    def condition_name_suffix(self) -> str:
+        return "_multinode" if self.is_multinode else ""
+
+    def placement_mode(self) -> str:
+        return "multi_node" if self.is_multinode else "single_node"
 
     def _derive_acr_name(self) -> str | None:
         for config in (self.raw_configs["mtls"], self.raw_configs["plain"]):
@@ -856,10 +907,15 @@ class RQ21PairedBenchmarkRunner:
                     f"found {self.service_counts.get('plain')}"
                 )
             expected_prefix = str(topology_spec["condition_prefix"])
-            if self.condition_names.get("plain") != f"{expected_prefix}_plain":
-                errors.append(f"Plain config must contain condition {expected_prefix}_plain")
-            if self.condition_names.get("mtls") != f"{expected_prefix}_mtls":
-                errors.append(f"mTLS config must contain condition {expected_prefix}_mtls")
+            expected_suffix = self.condition_name_suffix()
+            expected_plain = f"{expected_prefix}_plain{expected_suffix}"
+            expected_mtls = f"{expected_prefix}_mtls{expected_suffix}"
+            if self.condition_names.get("plain") != expected_plain:
+                errors.append(f"Plain config must contain condition {expected_plain}")
+            if self.condition_names.get("mtls") != expected_mtls:
+                errors.append(f"mTLS config must contain condition {expected_mtls}")
+            if self.is_multinode and topology != "chain2":
+                errors.append("RQ2.1b multi-node placement sensitivity is scoped to chain2 only")
 
         plain_condition = first_condition(self.raw_configs["plain"])
         mtls_condition = first_condition(self.raw_configs["mtls"])
@@ -887,6 +943,18 @@ class RQ21PairedBenchmarkRunner:
         for section in ("resources", "client_resources", "placement", "service_name_template", "grpc_port", "max_message_bytes"):
             if plain_k8s.get(section) != mtls_k8s.get(section):
                 errors.append(f"Plain and mTLS kubernetes.{section} must match")
+        placement = plain_k8s.get("placement") or {}
+        configured_strategy = placement_strategy(placement)
+        if self.placement_strategy == "mixed":
+            errors.append("Plain and mTLS configs must use the same kubernetes.placement.strategy")
+        if configured_strategy not in {
+            STRICT_SAME_NODE_PLACEMENT_STRATEGY,
+            MULTI_NODE_PLACEMENT_STRATEGY,
+        }:
+            errors.append(
+                "RQ2.1 paired runner supports only strict same-node placement or "
+                f"{MULTI_NODE_PLACEMENT_STRATEGY}; found {configured_strategy}"
+            )
         if not self.args.image_ref and plain_k8s.get("image") != mtls_k8s.get("image"):
             errors.append("Plain and mTLS kubernetes.image must match unless --image-ref overrides both configs")
         if plain_k8s.get("security_condition") != "plain":
@@ -910,8 +978,15 @@ class RQ21PairedBenchmarkRunner:
             errors.append("Plain and mTLS client namespaces must be separate")
 
         if bool(getattr(self.args, "isolated_node_pools", False)):
-            if int(getattr(self.args, "node_count", DEFAULT_NODE_COUNT)) != 1:
-                errors.append("Final isolated-pool RQ2.1 runs must use benchmark --node-count 1")
+            expected_node_count = minimum_benchmark_nodes_for_placement(
+                placement,
+                self.service_counts.get("plain") or 0,
+            )
+            if int(getattr(self.args, "node_count", DEFAULT_NODE_COUNT)) != expected_node_count:
+                errors.append(
+                    "Final isolated-pool RQ2.1 runs must use benchmark "
+                    f"--node-count {expected_node_count} for placement strategy {configured_strategy}"
+                )
             if int(getattr(self.args, "system_node_count", DEFAULT_SYSTEM_NODE_COUNT)) != 1:
                 errors.append("Final isolated-pool RQ2.1 runs must use --system-node-count 1")
             if str(getattr(self.args, "node_vm_size", DEFAULT_NODE_VM_SIZE)) != DEFAULT_NODE_VM_SIZE:
@@ -947,6 +1022,38 @@ class RQ21PairedBenchmarkRunner:
                         f"{key} kubernetes.placement.node_selector.workload must be benchmark "
                         "for the isolated RQ2.1 benchmark pool"
                     )
+                if placement_is_multi_node(placement):
+                    required_min_nodes = minimum_benchmark_nodes_for_placement(
+                        placement,
+                        self.service_counts.get("plain") or 0,
+                    )
+                    if placement_min_nodes(placement) != required_min_nodes:
+                        errors.append(
+                            f"{key} RQ2.1b placement must set min_nodes={required_min_nodes}"
+                        )
+                    if not bool(placement.get("require_distinct_nodes", False)):
+                        errors.append(
+                            f"{key} RQ2.1b placement must set require_distinct_nodes=true"
+                        )
+                    if not bool(placement.get("require_dedicated_client_node", False)):
+                        errors.append(
+                            f"{key} RQ2.1b placement must set require_dedicated_client_node=true"
+                        )
+                    if bool(placement.get("require_same_node", False)) or bool(
+                        placement.get("fail_if_not_colocated", False)
+                    ):
+                        errors.append(
+                            f"{key} RQ2.1b placement must not request same-node colocation"
+                        )
+                else:
+                    if not bool(placement.get("require_same_node", False)):
+                        errors.append(
+                            f"{key} primary RQ2.1 placement must set require_same_node=true"
+                        )
+                    if not bool(placement.get("fail_if_not_colocated", False)):
+                        errors.append(
+                            f"{key} primary RQ2.1 placement must set fail_if_not_colocated=true"
+                        )
         else:
             requires_isolation = any(
                 placement_requires_control_plane_isolation((raw_k8s.get("placement") or {}))
@@ -1407,6 +1514,17 @@ class RQ21PairedBenchmarkRunner:
                     errors.append(
                         f"{workload_name} must tolerate benchmark taint {self.args.benchmark_taint}"
                     )
+                if placement_is_multi_node(placement):
+                    required_terms = (
+                        ((spec.get("affinity") or {}).get("podAntiAffinity") or {})
+                        .get("requiredDuringSchedulingIgnoredDuringExecution")
+                        or []
+                    )
+                    if not required_terms:
+                        errors.append(
+                            f"{workload_name} must define required pod anti-affinity "
+                            "for RQ2.1b multi-node placement"
+                        )
 
         if context.key == "plain":
             forbidden = {"PeerAuthentication", "AuthorizationPolicy", "ServiceAccount"}
@@ -1654,6 +1772,86 @@ class RQ21PairedBenchmarkRunner:
             "json",
         ])
 
+    def runtime_placement_validation(
+        self,
+        context: ConditionContext,
+        service_pods: list[dict[str, Any]],
+        client_pod: dict[str, Any],
+    ) -> tuple[list[str], dict[str, Any]]:
+        raw_config = load_yaml(context.effective_config_path)
+        placement = (raw_config.get("kubernetes") or {}).get("placement") or {}
+        strategy = placement_strategy(placement)
+        service_records = [
+            {
+                "pod_name": pod_name(pod),
+                "node_name": str((pod.get("spec") or {}).get("nodeName") or "unknown"),
+            }
+            for pod in service_pods
+        ]
+        service_nodes = [
+            record["node_name"]
+            for record in service_records
+            if record["node_name"] not in {"", "unknown"}
+        ]
+        service_node_set = set(service_nodes)
+        client_node = str((client_pod.get("spec") or {}).get("nodeName") or "unknown")
+        errors: list[str] = []
+
+        if placement_is_multi_node(placement):
+            unknown_services = [
+                record["pod_name"]
+                for record in service_records
+                if record["node_name"] in {"", "unknown"}
+            ]
+            if unknown_services:
+                errors.append(
+                    "Multi-node placement validation is missing service node names for "
+                    + ", ".join(unknown_services)
+                )
+            if len(service_node_set) != len(service_records):
+                errors.append(
+                    "Service pods are not on distinct nodes: "
+                    + json.dumps(
+                        {
+                            record["pod_name"]: record["node_name"]
+                            for record in service_records
+                        },
+                        sort_keys=True,
+                    )
+                )
+            if client_node in {"", "unknown"}:
+                errors.append("Benchmark client node placement is unknown")
+            elif bool(placement.get("require_dedicated_client_node", False)) and client_node in service_node_set:
+                errors.append(
+                    f"Benchmark client is not on a dedicated node: client={client_node}, "
+                    f"services={sorted(service_node_set)}"
+                )
+        else:
+            if len(service_node_set) != 1:
+                errors.append(
+                    f"Service pods are not strictly colocated on one node: {sorted(service_node_set)}"
+                )
+            if len(service_node_set) == 1 and client_node not in service_node_set:
+                errors.append(
+                    f"Benchmark client is not colocated with service pods: "
+                    f"client={client_node}, services={sorted(service_node_set)}"
+                )
+
+        return errors, {
+            "strategy": strategy,
+            "service_pod_node_placement": {
+                record["pod_name"]: record["node_name"]
+                for record in service_records
+            },
+            "service_pod_nodes": sorted(service_node_set),
+            "client_node": client_node,
+            "service_nodes_distinct": len(service_node_set) == len(service_records),
+            "dedicated_client_node": (
+                client_node not in {"", "unknown"} and client_node not in service_node_set
+            ),
+            "min_nodes": placement_min_nodes(placement),
+        }
+
     def validate_plain_runtime(self, context: ConditionContext) -> dict[str, Any]:
         errors: list[str] = []
         service_pods = self.service_pods(context)
@@ -1683,10 +1881,8 @@ class RQ21PairedBenchmarkRunner:
         if (authz or {}).get("items"):
             errors.append("Plain namespace unexpectedly contains AuthorizationPolicy resources")
 
-        nodes = set()
         for pod in service_pods:
             name = pod_name(pod)
-            nodes.add(str((pod.get("spec") or {}).get("nodeName") or "unknown"))
             names = [str(container.get("name")) for container in container_specs(pod)]
             app_names = [str(container.get("name")) for container in app_container_specs(pod)]
             if "istio-proxy" in names:
@@ -1694,15 +1890,12 @@ class RQ21PairedBenchmarkRunner:
             if "inference" not in app_names or not container_ready(pod, "inference"):
                 errors.append(f"{name}: inference app container is not Ready")
             errors.extend(bad_pod_states(pod))
-        nodes.discard("unknown")
-        if len(nodes) != 1:
-            errors.append(f"Plain service pods are not strictly colocated on one node: {sorted(nodes)}")
-
-        client_node = str((client_pod.get("spec") or {}).get("nodeName") or "unknown")
-        if len(nodes) == 1 and client_node not in nodes:
-            errors.append(
-                f"Plain benchmark client is not colocated with service pods: client={client_node}, services={sorted(nodes)}"
-            )
+        placement_errors, placement_summary = self.runtime_placement_validation(
+            context,
+            service_pods,
+            client_pod,
+        )
+        errors.extend(placement_errors)
 
         client_container_names = [str(container.get("name")) for container in app_container_specs(client_pod)]
         all_client_names = [str(container.get("name")) for container in container_specs(client_pod)]
@@ -1716,8 +1909,9 @@ class RQ21PairedBenchmarkRunner:
             "condition": context.condition_name,
             "passed": not errors,
             "errors": errors,
-            "service_pod_nodes": sorted(nodes),
-            "client_node": client_node,
+            "service_pod_nodes": placement_summary["service_pod_nodes"],
+            "client_node": placement_summary["client_node"],
+            "placement_validation": placement_summary,
         }
         (context.diagnostics_dir / "plain_runtime_validation.json").write_text(
             json.dumps(result, indent=2),
@@ -1958,7 +2152,6 @@ class RQ21PairedBenchmarkRunner:
         authz_errors, authz_summary = self.validate_mtls_authorization_policies(context, authz_items)
         errors.extend(authz_errors)
 
-        nodes = set()
         required_annotations = {
             "sidecar.istio.io/proxyCPU",
             "sidecar.istio.io/proxyCPULimit",
@@ -1967,7 +2160,6 @@ class RQ21PairedBenchmarkRunner:
         }
         for pod in service_pods:
             name = pod_name(pod)
-            nodes.add(str((pod.get("spec") or {}).get("nodeName") or "unknown"))
             names = [str(container.get("name")) for container in container_specs(pod)]
             app_names = [str(container.get("name")) for container in app_container_specs(pod)]
             if "istio-proxy" not in names:
@@ -1983,15 +2175,12 @@ class RQ21PairedBenchmarkRunner:
             if missing:
                 errors.append(f"{name}: missing proxy annotations {missing}")
             errors.extend(bad_pod_states(pod))
-        nodes.discard("unknown")
-        if len(nodes) != 1:
-            errors.append(f"mTLS service pods are not strictly colocated on one node: {sorted(nodes)}")
-
-        client_node = str((client_pod.get("spec") or {}).get("nodeName") or "unknown")
-        if len(nodes) == 1 and client_node not in nodes:
-            errors.append(
-                f"mTLS benchmark client is not colocated with service pods: client={client_node}, services={sorted(nodes)}"
-            )
+        placement_errors, placement_summary = self.runtime_placement_validation(
+            context,
+            service_pods,
+            client_pod,
+        )
+        errors.extend(placement_errors)
 
         client_container_names = [str(container.get("name")) for container in app_container_specs(client_pod)]
         all_client_names = [str(container.get("name")) for container in container_specs(client_pod)]
@@ -2007,8 +2196,9 @@ class RQ21PairedBenchmarkRunner:
             "condition": context.condition_name,
             "passed": not errors,
             "errors": errors,
-            "service_pod_nodes": sorted(nodes),
-            "client_node": client_node,
+            "service_pod_nodes": placement_summary["service_pod_nodes"],
+            "client_node": placement_summary["client_node"],
+            "placement_validation": placement_summary,
             "peer_authentication_count": len(peer_items),
             "authorization_policy_count": len(authz_items),
             "peer_authentication_validation": peer_summary,
@@ -2646,6 +2836,44 @@ class RQ21PairedBenchmarkRunner:
             "limitations": metadata.get("limitations") or [],
         }
 
+    def run_client_exec_with_retry(
+        self,
+        context: ConditionContext,
+        args: list[str],
+        description: str,
+        *,
+        timeout_seconds: int | None = None,
+        attempts: int = 4,
+    ) -> subprocess.CompletedProcess:
+        for attempt in range(1, attempts + 1):
+            try:
+                return run_command(args, timeout_seconds=timeout_seconds)
+            except PipelineError as exc:
+                if attempt >= attempts or not looks_like_transient_kubectl_exec_error(exc):
+                    raise
+                delay_seconds = min(20, 5 * attempt)
+                first_line = str(exc).strip().splitlines()[0] if str(exc).strip() else repr(exc)
+                warn(
+                    f"{description} failed on attempt {attempt}/{attempts}; "
+                    f"retrying in {delay_seconds}s. {first_line}"
+                )
+                run_command(
+                    [
+                        "kubectl",
+                        "wait",
+                        "--for=condition=Ready",
+                        "pod",
+                        self.args.client_pod,
+                        "-n",
+                        context.client_namespace,
+                        "--timeout=60s",
+                    ],
+                    check=False,
+                    timeout_seconds=75,
+                )
+                time.sleep(delay_seconds)
+        raise PipelineError(f"{description} failed after {attempts} attempts")
+
     def write_file_into_pod(self, context: ConditionContext, remote_path: str, content: str) -> None:
         encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
         code = (
@@ -2654,33 +2882,41 @@ class RQ21PairedBenchmarkRunner:
             "path.parent.mkdir(parents=True, exist_ok=True); "
             "path.write_bytes(base64.b64decode(sys.argv[1]))"
         )
-        run_command([
-            "kubectl",
-            "exec",
-            "-n",
-            context.client_namespace,
-            self.args.client_pod,
-            "--",
-            "python",
-            "-c",
-            code,
-            encoded,
-            remote_path,
-        ])
+        self.run_client_exec_with_retry(
+            context,
+            [
+                "kubectl",
+                "exec",
+                "-n",
+                context.client_namespace,
+                self.args.client_pod,
+                "--",
+                "python",
+                "-c",
+                code,
+                encoded,
+                remote_path,
+            ],
+            f"Writing benchmark config into {context.client_namespace}/{self.args.client_pod}",
+        )
 
     def inject_runtime_metadata(self, context: ConditionContext) -> None:
-        run_command([
-            sys.executable,
-            str(self.repo_root / "scripts" / "inject_k8s_runtime_metadata.py"),
-            "--config",
-            str(context.effective_config_path),
-            "--namespace",
-            context.service_namespace,
-            "--client-namespace",
-            context.client_namespace,
-            "--client-pod",
-            self.args.client_pod,
-        ])
+        self.run_client_exec_with_retry(
+            context,
+            [
+                sys.executable,
+                str(self.repo_root / "scripts" / "inject_k8s_runtime_metadata.py"),
+                "--config",
+                str(context.effective_config_path),
+                "--namespace",
+                context.service_namespace,
+                "--client-namespace",
+                context.client_namespace,
+                "--client-pod",
+                self.args.client_pod,
+            ],
+            f"Injecting runtime metadata into {context.client_namespace}/{self.args.client_pod}",
+        )
 
     def resource_metric_prime_status_path(self, context: ConditionContext) -> Path:
         return context.condition_dir / "resource_metric_prime_status.json"
@@ -3049,17 +3285,21 @@ class RQ21PairedBenchmarkRunner:
             end_snapshot,
         )
 
-        run_command([
-            "kubectl",
-            "exec",
-            "-n",
-            context.client_namespace,
-            self.args.client_pod,
-            "--",
-            "test",
-            "-d",
-            remote_output,
-        ])
+        self.run_client_exec_with_retry(
+            context,
+            [
+                "kubectl",
+                "exec",
+                "-n",
+                context.client_namespace,
+                self.args.client_pod,
+                "--",
+                "test",
+                "-d",
+                remote_output,
+            ],
+            f"Checking benchmark output path in {context.client_namespace}/{self.args.client_pod}",
+        )
         self.copy_results_with_fallback(context, remote_output, context.benchmark_dir)
         (context.condition_dir / "benchmark_remote_output_path.txt").write_text(
             remote_output + "\n",
@@ -3802,6 +4042,39 @@ class RQ21PairedBenchmarkRunner:
             "failures": failures,
         }
 
+    def summarize_placement_validation(self) -> dict[str, Any]:
+        records: list[dict[str, Any]] = []
+        failures: list[dict[str, Any]] = []
+        for record in self.completed_conditions:
+            runtime = record.get("runtime_validation") or {}
+            placement = runtime.get("placement_validation") or {}
+            item = {
+                "pass": record.get("pass"),
+                "execution_index": record.get("execution_index"),
+                "condition_key": record.get("condition_key"),
+                "condition": record.get("condition"),
+                "strategy": placement.get("strategy"),
+                "service_pod_node_placement": placement.get("service_pod_node_placement") or {},
+                "service_pod_nodes": placement.get("service_pod_nodes") or [],
+                "client_node": placement.get("client_node"),
+                "service_nodes_distinct": placement.get("service_nodes_distinct"),
+                "dedicated_client_node": placement.get("dedicated_client_node"),
+                "passed": bool(runtime.get("passed")),
+                "errors": runtime.get("errors") or [],
+            }
+            records.append(item)
+            if not item["passed"]:
+                failures.append(item)
+
+        return {
+            "mode": self.placement_mode(),
+            "strategy": self.placement_strategy,
+            "required": self.is_multinode,
+            "passed": bool(records) and not failures,
+            "records": records,
+            "failures": failures,
+        }
+
     def summarize_iteration_rows(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
         metric_fields = (
             "end_to_end_ms",
@@ -4265,6 +4538,7 @@ class RQ21PairedBenchmarkRunner:
         resources = self.summarize_resource_samples()
         operational = self.summarize_operational_overhead()
         security_validation = self.summarize_security_validation()
+        placement_validation = self.summarize_placement_validation()
         resource_requirement_blockers = self.resource_summary_blockers(resources)
         requirement_blockers = list(resource_requirement_blockers)
         mtls_control_plane = (
@@ -4286,10 +4560,16 @@ class RQ21PairedBenchmarkRunner:
             )
         if not security_validation.get("passed"):
             requirement_blockers.append("mTLS security validation was not completed successfully during the paired run")
+        if self.is_multinode and not placement_validation.get("passed"):
+            requirement_blockers.append("RQ2.1b multi-node placement validation was not completed successfully")
         summary = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "smoke": bool(self.args.smoke),
             "topology": self.selected_topology(),
+            "stage": "RQ2.1b" if self.is_multinode else "RQ2.1",
+            "experiment_signature": self.experiment_signature,
+            "placement_mode": self.placement_mode(),
+            "placement_strategy": self.placement_strategy,
             "image_ref": self.effective_image_ref,
             "mesh_revision": self.mesh_revision,
             "execution_plan": self.execution_plan,
@@ -4297,6 +4577,7 @@ class RQ21PairedBenchmarkRunner:
             "latency": latency,
             "resources": resources,
             "operational": operational,
+            "placement_validation": placement_validation,
             "security_validation_passed": bool(security_validation.get("passed")),
             "security_validation": security_validation,
             "requirements": {
@@ -4317,6 +4598,11 @@ class RQ21PairedBenchmarkRunner:
         }
         summary_path = self.merged_dir / "paired_summary.json"
         summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        if self.is_multinode:
+            (self.merged_dir / "multi_node_validation.json").write_text(
+                json.dumps(placement_validation, indent=2),
+                encoding="utf-8",
+            )
         self.write_summary_csv(summary)
         self.write_summary_markdown(summary)
         self.write_aggregated_results(summary, rows)
@@ -4442,9 +4728,11 @@ class RQ21PairedBenchmarkRunner:
         mtls_resources = resource_by_condition.get("mtls") or {}
         mtls_control_plane = operational.get("mtls_control_plane_colocation") or {}
         lines = [
-            "# RQ2.1 Paired Benchmark Summary",
+            f"# {summary.get('stage', 'RQ2.1')} Paired Benchmark Summary",
             "",
             f"- Topology: `{summary.get('topology')}`",
+            f"- Placement mode: `{summary.get('placement_mode')}`",
+            f"- Placement strategy: `{summary.get('placement_strategy')}`",
             f"- Smoke mode: `{summary['smoke']}`",
             f"- Image: `{summary['image_ref']}`",
             f"- Mesh revision: `{summary['mesh_revision']}`",
@@ -4521,6 +4809,10 @@ class RQ21PairedBenchmarkRunner:
             "completed": completed,
             "smoke": bool(self.args.smoke),
             "topology": self.selected_topology(),
+            "stage": "RQ2.1b" if self.is_multinode else "RQ2.1",
+            "experiment_signature": self.experiment_signature,
+            "placement_mode": self.placement_mode(),
+            "placement_strategy": self.placement_strategy,
             "artifact_dir": str(self.artifact_dir),
             "plain_config": str(self.source_paths["plain"]),
             "mtls_config": str(self.source_paths["mtls"]),
@@ -4552,7 +4844,8 @@ class RQ21PairedBenchmarkRunner:
         topology = self.selected_topology()
         topology_spec = self.topology_spec() or {}
         log(
-            f"RQ2.1 paired benchmark scope: {self.condition_names['plain']} vs "
+            f"{'RQ2.1b' if self.is_multinode else 'RQ2.1'} paired benchmark scope: "
+            f"{self.condition_names['plain']} vs "
             f"{self.condition_names['mtls']} ({topology_spec.get('framing', topology)}). "
             "RQ2.2 is intentionally not run."
         )

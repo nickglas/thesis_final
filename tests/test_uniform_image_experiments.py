@@ -33,6 +33,16 @@ def test_uniform_wrapper_defaults_rq2_paired_to_five_passes():
     assert "results_exports" not in result.stdout
 
 
+def test_uniform_wrapper_builds_rq21b_multinode_plan():
+    result = run_uniform_dry_run("--only", "rq2_1b_multinode", "--skip-acr-login")
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "rq2_1b_chain2_plain_multinode.yaml" in result.stdout
+    assert "rq2_1b_chain2_mtls_multinode.yaml" in result.stdout
+    assert "--node-count 3" in result.stdout
+    assert "--paired-passes 5" in result.stdout
+
+
 def test_uniform_wrapper_uses_one_rq2_pass_for_smoke_mode():
     result = run_uniform_dry_run("--only", "rq2_1_mtls_split", "--skip-acr-login", "--smoke")
 

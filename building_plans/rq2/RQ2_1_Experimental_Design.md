@@ -12,6 +12,8 @@
 
 **Optional secondary stress condition: `chain_5svc`, but only after the primary `chain_2svc` path is stable and only as a paired stress check, not as the headline result.**
 
+**Optional placement sensitivity: RQ2.1b repeats the `chain_2svc` plain versus mTLS/AuthZ pair under forced multi-node placement. It is a sensitivity stage, not the default RQ2.1 result. See [RQ2_1b_Multinode_Sensitivity_Design.md](RQ2_1b_Multinode_Sensitivity_Design.md).**
+
 ### Why this is the right design
 
 **RQ2.1 is not a new architecture study.**
@@ -22,6 +24,9 @@ RQ2.1 comes after RQ1.5. Its job is to measure the incremental cost of adding tr
 
 **`chain_5svc` is too confounded to be primary.**
 If `chain_5svc` were used as the primary RQ2.1 condition, the study would immediately entangle three factors: service-mesh security overhead, sidecar multiplication, and repeated multi-hop forwarding. That is not methodologically clean. It would be a stress test of the most fragmented topology, not a focused validation of secure transport on the selected Azure distributed deployment.
+
+**Multi-node placement is also too confounded to be primary.**
+Forcing the protected hop across AKS nodes is production-relevant, but it adds cross-node network latency, CNI behavior, scheduler placement effects, and cloud variance to the same measurement. That makes it valuable as RQ2.1b sensitivity evidence, not as the default estimate of the security mechanism's overhead.
 
 **The primary RQ2.1 claim should be easy to defend.**
 The strongest thesis story is:
@@ -90,6 +95,7 @@ RQ2.1 is not:
 - An application-layer encryption study.
 - A TEE, HE, MPC, or secure multi-server inference study.
 - A multi-cluster, multi-region, or WAN-distribution study.
+- A worst-case multi-node placement study as the primary causal result.
 - A redesign of the RQ1.5 orchestration pipeline.
 
 ### How it fits after RQ1.5
@@ -99,6 +105,8 @@ RQ1.5 answered whether the chained inference family transfers from local Kuberne
 RQ2.1 uses that frozen AKS execution path as the baseline and asks a narrower follow-up question: once the distributed deployment is accepted, what does it cost to secure the internal service boundaries?
 
 That is the correct next step. It builds on RQ1.5 rather than competing with it.
+
+The optional RQ2.1b multi-node sensitivity stage comes after this controlled answer. It repeats the same `chain_2svc` plain versus mTLS/AuthZ pair with service1, service2, and the benchmark client forced onto distinct AKS benchmark nodes. Its job is to test whether realistic cross-node placement amplifies the already-measured security overhead.
 
 ---
 
@@ -396,10 +404,12 @@ This should be executed only after the primary `chain_2svc_mtls` path passes the
 | `chain_2svc_mtls`  | Primary secure condition          | Required |
 | `chain_5svc_plain` | Secondary matched stress baseline | Optional |
 | `chain_5svc_mtls`  | Secondary secure stress condition | Optional |
+| `chain_2svc_plain_multinode` | RQ2.1b multi-node placement baseline | Optional sensitivity |
+| `chain_2svc_mtls_multinode` | RQ2.1b multi-node secure condition | Optional sensitivity |
 
 ### Why this set is correct
 
-This gives one clean primary pair and one optional stress pair. It answers the RQ without drifting back into a full-family re-evaluation.
+This gives one clean primary pair, one optional chain-depth stress pair, and one separate placement-sensitivity pair. It answers the RQ without drifting back into a full-family re-evaluation.
 
 ### Final RQ2.1 infrastructure contract
 
@@ -414,6 +424,8 @@ Final thesis-facing RQ2.1 runs use an isolated two-pool AKS contract:
 This change is scoped to RQ2.1. It is not a mandatory rerun requirement for RQ1.5, whose role is Azure transfer and validation rather than attribution-sensitive mesh overhead. Existing single-pool RQ2.1 runs remain valid but limited evidence of the managed AKS deployment used at the time. They must not be mixed with the isolated-pool campaign in final thesis reporting. Only isolated-pool RQ2.1 results are final thesis numbers.
 
 `chain_2svc` remains the primary result. `chain_5svc` remains secondary stress evidence.
+
+RQ2.1b uses a separate three-node benchmark-pool contract for placement sensitivity. It must not be mixed into the primary RQ2.1 table as though it were the same causal setup. Its correct use is a four-cell comparison: same-node plain, same-node mTLS/AuthZ, multi-node plain, and multi-node mTLS/AuthZ.
 
 ### Critical traffic-isolation decision
 
@@ -778,6 +790,16 @@ Stability here means not only that latency results are coherent, but also that t
 
 **Exit criterion:** secondary stress data either confirms or bounds cumulative mesh-overhead behavior across deeper chains.
 
+### Stage 5b: Optional multi-node sensitivity pair
+
+1. Only after the primary same-node pair is stable, run the RQ2.1b plan in [RQ2_1b_Multinode_Sensitivity_Design.md](RQ2_1b_Multinode_Sensitivity_Design.md).
+2. Repeat only the `chain_2svc_plain` versus `chain_2svc_mtls` pair under `multi_node_anti_affinity`.
+3. Use one system node and three benchmark nodes so the benchmark client, service1, and service2 are all on distinct nodes.
+4. Add placement-aware runner validation before the full run: same-node configs must still require colocation; RQ2.1b configs must require distinct service nodes and a dedicated client node.
+5. Analyze RQ2.1b as placement sensitivity using `(mtls_multi - plain_multi) - (mtls_single - plain_single)` as the interaction term.
+
+**Exit criterion:** multi-node artifacts prove service1, service2, and the benchmark client ran on distinct nodes and produce a complete paired plain versus mTLS/AuthZ delta.
+
 ### Stage 6: Freeze and thesis integration
 
 1. Freeze configs, manifest generation path, and mesh revision.
@@ -809,3 +831,5 @@ If only one secure configuration is taken forward for RQ2.1, it should be **`cha
 That choice gives the strongest thesis story, the smallest engineering delta from RQ1.5, and the clearest methodological interpretation.
 
 `chain_5svc` is worth keeping only as a secondary stress check after the primary path is complete.
+
+RQ2.1b is worth adding as a separate placement-sensitivity stage if time permits. It should repeat the primary `chain_2svc` plain versus mTLS/AuthZ pair under forced multi-node placement, but it should not replace the controlled same-node RQ2.1 headline result.

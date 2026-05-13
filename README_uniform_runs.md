@@ -34,12 +34,15 @@ with that same pinned image:
 - `rq2_1_ablation`
 - `rq2_2`
 
+Optional sensitivity stages are excluded from the default fresh run. Run
+`rq2_1b_multinode` with `--include-optional` or `--only rq2_1b_multinode`.
+
 ```bash
 python scripts/run_uniform_image_experiments.py \
   --build-push-image \
   --create-acr \
   --acr-name thesisrq15acr \
-  --acr-resource-group rg-thesis-rq15 \
+  --acr-resource-group rg-thesis-acr \
   --acr-location swedencentral \
   --destroy-cloud-on-success \
   --destroy-cloud-on-failure
@@ -47,6 +50,8 @@ python scripts/run_uniform_image_experiments.py \
 
 If `thesisrq15acr` already exists and you only want to build/push a new image
 into it, omit `--create-acr`.
+Keep the ACR in a shared image resource group such as `rg-thesis-acr`, not in
+an experiment resource group that a stage may destroy after success.
 
 To inspect the generated plan without spending Azure money:
 
@@ -55,7 +60,7 @@ python scripts/run_uniform_image_experiments.py \
   --build-push-image \
   --create-acr \
   --acr-name thesisrq15acr \
-  --acr-resource-group rg-thesis-rq15 \
+  --acr-resource-group rg-thesis-acr \
   --acr-location swedencentral \
   --destroy-cloud-on-success \
   --destroy-cloud-on-failure \
@@ -74,6 +79,11 @@ keeps the thesis-inference image small enough for the multi-node kind stage
 (`rq1_4b`) to load it into every node without exhausting local container
 storage.
 Experiment artifacts are written under `results/`.
+At the end of a real wrapper run, the orchestrator also writes a run index to
+`results/uniform_run_<timestamp>/uniform_run_summary.md` and a matching JSON
+file. Use that as the first audit document for stage status, artifact folders,
+the pinned image, and headline metrics; keep the per-experiment summaries as
+the source of truth for detailed analysis.
 
 ## Login and service checks
 
@@ -209,6 +219,7 @@ RQ2 pass count overrides:
 ```bash
 python scripts/run_uniform_image_experiments.py --only rq2_1_paired --rq2-passes 5
 python scripts/run_uniform_image_experiments.py --only rq2_1_paired --rq2-paired-passes 7
+python scripts/run_uniform_image_experiments.py --only rq2_1b_multinode --rq21b-paired-passes 7
 python scripts/run_uniform_image_experiments.py --only rq2_1_mtls_split --rq2-split-passes 7
 python scripts/run_uniform_image_experiments.py --only rq2_1_ablation --rq2-ablation-passes 7
 python scripts/run_uniform_image_experiments.py --only rq2_2 --rq22-paired-passes 7

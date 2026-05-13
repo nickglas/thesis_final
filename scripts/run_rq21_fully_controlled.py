@@ -35,6 +35,8 @@ DEFAULT_SYSTEM_NODE_VM_SIZE = "Standard_D2s_v3"
 DEFAULT_SYSTEM_NODE_COUNT = 1
 DEFAULT_BENCHMARK_NODE_TAINT = "workload=benchmark:NoSchedule"
 INFRA_DIR = REPO_ROOT / "infra"
+MULTI_NODE_PLACEMENT_STRATEGY = "multi_node_anti_affinity"
+STRICT_SAME_NODE_PLACEMENT_STRATEGY = "strict_same_node"
 SUPPORTED_TOPOLOGIES = {
     2: {
         "name": "chain_2svc",
@@ -289,6 +291,40 @@ def placement_tolerations(placement: dict[str, Any]) -> list[dict[str, Any]]:
 
 def placement_requires_control_plane_isolation(placement: dict[str, Any]) -> bool:
     return bool(placement.get("require_control_plane_isolation", False))
+
+
+def placement_strategy(placement: dict[str, Any] | None) -> str:
+    if not isinstance(placement, dict):
+        return "none"
+    return str(placement.get("strategy") or "none")
+
+
+def placement_is_multi_node(placement: dict[str, Any] | None) -> bool:
+    return placement_strategy(placement) == MULTI_NODE_PLACEMENT_STRATEGY
+
+
+def placement_min_nodes(placement: dict[str, Any] | None) -> int | None:
+    if not isinstance(placement, dict):
+        return None
+    raw = placement.get("min_nodes")
+    if raw in (None, ""):
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def minimum_benchmark_nodes_for_placement(
+    placement: dict[str, Any] | None,
+    service_count: int,
+) -> int:
+    if placement_is_multi_node(placement):
+        dedicated_client = bool(
+            (placement or {}).get("require_dedicated_client_node", False)
+        )
+        return int(service_count) + (1 if dedicated_client else 0)
+    return 1
 
 
 def is_avoidable_istio_control_plane_pod(record: dict[str, Any]) -> bool:
@@ -601,12 +637,16 @@ class RQ21PreflightRunner:
         if self.condition.get("type") != "chain":
             errors.append("RQ2.1 Stage 1/2 condition must be type=chain")
         topology_spec = SUPPORTED_TOPOLOGIES.get(self.service_count)
+        placement = self.k8s.get("placement") or {}
+        strategy = placement_strategy(placement)
+        is_multinode = placement_is_multi_node(placement)
         if topology_spec is None:
             errors.append(
                 f"RQ2.1 Stage 1/2 supports only chain_2svc and optional chain_5svc; found {self.service_count} services"
             )
         else:
-            expected_name = f"{topology_spec['name']}_mtls"
+            suffix = "_multinode" if is_multinode else ""
+            expected_name = f"{topology_spec['name']}_mtls{suffix}"
             if self.condition_name != expected_name:
                 errors.append(f"This preflight runner expected condition {expected_name}")
             split_points = list(self.condition.get("chain_split_points") or [])
@@ -614,6 +654,13 @@ class RQ21PreflightRunner:
                 errors.append(
                     f"{expected_name} must use chain_split_points={topology_spec['split_points']}; found {split_points}"
                 )
+        if strategy not in {STRICT_SAME_NODE_PLACEMENT_STRATEGY, MULTI_NODE_PLACEMENT_STRATEGY}:
+            errors.append(
+                "RQ2.1 preflight supports only strict same-node placement or "
+                f"{MULTI_NODE_PLACEMENT_STRATEGY}; found {strategy}"
+            )
+        if is_multinode and self.service_count != 2:
+            errors.append("RQ2.1b multi-node preflight is scoped to chain_2svc only")
         if not bool(self.mesh.get("enabled", False)):
             errors.append("kubernetes.mesh.enabled must be true for the mTLS preflight")
         if str(self.mesh.get("implementation") or "") != "managed AKS Istio add-on":
@@ -626,15 +673,21 @@ class RQ21PreflightRunner:
         if self.client_namespace == self.service_namespace:
             errors.append("kubernetes.client_namespace must keep the benchmark client outside the mesh namespace")
 
-        placement = self.k8s.get("placement") or {}
         configured_node_pool = str(placement.get("node_pool") or "").strip()
         if configured_node_pool and configured_node_pool != str(self.args.nodepool):
             errors.append(
                 f"kubernetes.placement.node_pool must match --nodepool ({self.args.nodepool}), found {configured_node_pool}"
             )
         if bool(getattr(self.args, "isolated_node_pools", False)):
-            if int(getattr(self.args, "node_count", DEFAULT_NODE_COUNT)) != 1:
-                errors.append("Final RQ2.1 isolated-pool runs must use benchmark node_count=1")
+            expected_node_count = minimum_benchmark_nodes_for_placement(
+                placement,
+                self.service_count,
+            )
+            if int(getattr(self.args, "node_count", DEFAULT_NODE_COUNT)) != expected_node_count:
+                errors.append(
+                    "Final RQ2.1 isolated-pool runs must use benchmark "
+                    f"node_count={expected_node_count} for placement strategy {strategy}"
+                )
             if int(getattr(self.args, "system_node_count", DEFAULT_SYSTEM_NODE_COUNT)) != 1:
                 errors.append("Final RQ2.1 isolated-pool runs must use system_node_count=1")
             if str(getattr(self.args, "node_vm_size", DEFAULT_NODE_VM_SIZE)) != DEFAULT_NODE_VM_SIZE:
@@ -663,6 +716,43 @@ class RQ21PreflightRunner:
                     "Final RQ2.1 isolated-pool runs must set "
                     "kubernetes.placement.node_selector.workload=benchmark"
                 )
+            if is_multinode:
+                required_min_nodes = minimum_benchmark_nodes_for_placement(
+                    placement,
+                    self.service_count,
+                )
+                if placement_min_nodes(placement) != required_min_nodes:
+                    errors.append(
+                        "RQ2.1b multi-node placement must set "
+                        f"kubernetes.placement.min_nodes={required_min_nodes}"
+                    )
+                if not bool(placement.get("require_distinct_nodes", False)):
+                    errors.append(
+                        "RQ2.1b multi-node placement must set "
+                        "kubernetes.placement.require_distinct_nodes=true"
+                    )
+                if not bool(placement.get("require_dedicated_client_node", False)):
+                    errors.append(
+                        "RQ2.1b multi-node placement must set "
+                        "kubernetes.placement.require_dedicated_client_node=true"
+                    )
+                if bool(placement.get("require_same_node", False)) or bool(
+                    placement.get("fail_if_not_colocated", False)
+                ):
+                    errors.append(
+                        "RQ2.1b multi-node placement must not request same-node colocation"
+                    )
+            else:
+                if not bool(placement.get("require_same_node", False)):
+                    errors.append(
+                        "Primary RQ2.1 placement must set "
+                        "kubernetes.placement.require_same_node=true"
+                    )
+                if not bool(placement.get("fail_if_not_colocated", False)):
+                    errors.append(
+                        "Primary RQ2.1 placement must set "
+                        "kubernetes.placement.fail_if_not_colocated=true"
+                    )
 
         service_accounts = self.mesh.get("service_accounts") or {}
         for index in [str(value) for value in range(1, self.service_count + 1)]:
@@ -2121,6 +2211,84 @@ class RQ21PreflightRunner:
             json.dump(metadata, handle, indent=2)
         log(f"Wrote RQ2.1 preflight metadata: {self.state.metadata_path}")
 
+    def _validate_runtime_placement(
+        self,
+        service_pods: list[dict[str, Any]],
+        client_pod: dict[str, Any],
+    ) -> tuple[list[str], dict[str, Any]]:
+        placement = self.k8s.get("placement") or {}
+        strategy = placement_strategy(placement)
+        service_records = [
+            {
+                "pod_name": self._pod_name(pod),
+                "node_name": str((pod.get("spec") or {}).get("nodeName") or "unknown"),
+            }
+            for pod in service_pods
+        ]
+        service_nodes = [
+            record["node_name"]
+            for record in service_records
+            if record["node_name"] not in {"", "unknown"}
+        ]
+        service_node_set = set(service_nodes)
+        client_node = str((client_pod.get("spec") or {}).get("nodeName") or "unknown")
+        errors: list[str] = []
+
+        if placement_is_multi_node(placement):
+            unknown_services = [
+                record["pod_name"]
+                for record in service_records
+                if record["node_name"] in {"", "unknown"}
+            ]
+            if unknown_services:
+                errors.append(
+                    "Multi-node placement validation is missing service node names for "
+                    + ", ".join(unknown_services)
+                )
+            if len(service_node_set) != len(service_records):
+                errors.append(
+                    "Inference service pods are not on distinct nodes: "
+                    + json.dumps(
+                        {
+                            record["pod_name"]: record["node_name"]
+                            for record in service_records
+                        },
+                        sort_keys=True,
+                    )
+                )
+            if client_node in {"", "unknown"}:
+                errors.append("Benchmark client node placement is unknown")
+            elif bool(placement.get("require_dedicated_client_node", False)) and client_node in service_node_set:
+                errors.append(
+                    f"Benchmark client is not on a dedicated node: client={client_node}, "
+                    f"services={sorted(service_node_set)}"
+                )
+        else:
+            if len(service_node_set) != 1:
+                errors.append(
+                    f"Inference service pods are not strictly colocated on one node: "
+                    f"{sorted(service_node_set)}"
+                )
+            if len(service_node_set) == 1 and client_node not in service_node_set:
+                errors.append(
+                    f"Benchmark client is not colocated with inference services: "
+                    f"client={client_node}, services={sorted(service_node_set)}"
+                )
+
+        return errors, {
+            "strategy": strategy,
+            "service_pod_node_placement": {
+                record["pod_name"]: record["node_name"]
+                for record in service_records
+            },
+            "service_nodes": sorted(service_node_set),
+            "client_node": client_node,
+            "service_nodes_distinct": len(service_node_set) == len(service_records),
+            "dedicated_client_node": (
+                client_node not in {"", "unknown"} and client_node not in service_node_set
+            ),
+        }
+
     def run_formal_preflight(self) -> None:
         errors: list[str] = []
         warnings: list[str] = []
@@ -2159,11 +2327,9 @@ class RQ21PreflightRunner:
             str(key): str(value)
             for key, value in (self.mesh.get("service_accounts") or {}).items()
         }
-        service_nodes = set()
         for pod in service_pods:
             pod_name = self._pod_name(pod)
             segment_index = self._segment_index(pod)
-            service_nodes.add(str((pod.get("spec") or {}).get("nodeName") or "unknown"))
             all_container_names = self._container_names(pod)
             app_container_names = self._app_container_names(pod)
             if "istio-proxy" not in all_container_names:
@@ -2185,15 +2351,12 @@ class RQ21PreflightRunner:
                 )
             errors.extend(self._bad_pod_states(pod))
 
-        service_nodes.discard("unknown")
-        if len(service_nodes) != 1:
-            errors.append(f"Inference service pods are not strictly colocated on one node: {sorted(service_nodes)}")
-
-        client_node = str((client_pod.get("spec") or {}).get("nodeName") or "unknown")
-        if len(service_nodes) == 1 and client_node not in service_nodes:
-            errors.append(
-                f"Benchmark client is not colocated with inference services: client={client_node}, services={sorted(service_nodes)}"
-            )
+        placement_errors, placement_summary = self._validate_runtime_placement(
+            service_pods,
+            client_pod,
+        )
+        errors.extend(placement_errors)
+        service_nodes = set(placement_summary["service_nodes"])
 
         client_container_names = self._app_container_names(client_pod)
         all_client_container_names = self._container_names(client_pod)

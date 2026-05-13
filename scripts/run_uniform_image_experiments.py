@@ -19,6 +19,8 @@ Examples:
 from __future__ import annotations
 
 import argparse
+import csv
+import json
 import os
 import platform
 import re
@@ -27,9 +29,10 @@ import shutil
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -53,10 +56,20 @@ DEFAULT_STAGES = (
     "rq2_2",
 )
 
-OPTIONAL_STAGES: tuple[str, ...] = ()
+OPTIONAL_STAGES: tuple[str, ...] = ("rq2_1b_multinode",)
 
 ALL_STAGES = DEFAULT_STAGES + OPTIONAL_STAGES
-CONTAINER_STAGES = {"rq1_4", "rq1_4b", "rq1_5", "rq1_5b", "rq2_1_paired", "rq2_1_mtls_split", "rq2_1_ablation", "rq2_2"}
+CONTAINER_STAGES = {
+    "rq1_4",
+    "rq1_4b",
+    "rq1_5",
+    "rq1_5b",
+    "rq2_1_paired",
+    "rq2_1b_multinode",
+    "rq2_1_mtls_split",
+    "rq2_1_ablation",
+    "rq2_2",
+}
 
 IMAGE_REF_RE = re.compile(
     r"^(?P<acr>[A-Za-z0-9]+)\.azurecr\.io/thesis-inference@sha256:[0-9a-fA-F]{64}$"
@@ -75,6 +88,7 @@ class StageResult:
     status: str
     elapsed_seconds: float
     detail: str = ""
+    artifact_dirs: list[str] = field(default_factory=list)
 
 
 def timestamp() -> str:
@@ -158,6 +172,47 @@ def drop_sudo_root_to_invoking_user() -> bool:
 
 def format_command(command: list[str]) -> str:
     return shlex.join(command)
+
+
+def relative_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
+def maybe_float(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        text = str(value).strip()
+        if not text:
+            return None
+        return float(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def format_metric(value: object, digits: int = 2, suffix: str = "") -> str:
+    number = maybe_float(value)
+    if number is None:
+        return "n/a"
+    return f"{number:.{digits}f}{suffix}"
+
+
+def read_json(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def read_csv_rows(path: Path) -> list[dict[str, str]]:
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def result_dir_snapshot(results_root: Path) -> set[Path]:
+    if not results_root.exists():
+        return set()
+    return {path.resolve() for path in results_root.iterdir() if path.is_dir()}
 
 
 def add_tools_to_path() -> None:
@@ -304,6 +359,7 @@ def append_rq2_cloud_args(
 def effective_rq2_passes(args: argparse.Namespace, stage: str) -> int:
     stage_specific = {
         "rq2_1_paired": args.rq2_paired_passes,
+        "rq2_1b_multinode": args.rq21b_paired_passes,
         "rq2_1_mtls_split": args.rq2_split_passes,
         "rq2_1_ablation": args.rq2_ablation_passes,
         "rq2_2": args.rq22_paired_passes,
@@ -317,7 +373,7 @@ def effective_rq2_passes(args: argparse.Namespace, stage: str) -> int:
 
 def rq2_pass_args(args: argparse.Namespace, stage: str) -> list[str]:
     passes = str(effective_rq2_passes(args, stage))
-    if stage == "rq2_1_paired":
+    if stage in {"rq2_1_paired", "rq2_1b_multinode"}:
         return ["--paired-passes", passes]
     if stage == "rq2_1_mtls_split":
         return ["--split-passes", passes]
@@ -405,6 +461,28 @@ def build_stage_plan(stage: str, args: argparse.Namespace, acr_name: str) -> Sta
 
     if stage == "rq2_1_paired":
         command = python_script("scripts/run_rq21_paired_benchmark.py")
+        return StagePlan(
+            stage,
+            [append_rq2_cloud_args(command, args, acr_name, stage, supports_cleanup=True, supports_smoke=True)],
+        )
+
+    if stage == "rq2_1b_multinode":
+        command = python_script("scripts/run_rq21_paired_benchmark.py") + [
+            "--plain-config",
+            "configs/rq2/2.1/multinode/rq2_1b_chain2_plain_multinode.yaml",
+            "--mtls-config",
+            "configs/rq2/2.1/multinode/rq2_1b_chain2_mtls_multinode.yaml",
+            "--topology",
+            "chain2",
+            "--resource-group",
+            args.rq21b_resource_group,
+            "--cluster-name",
+            args.rq21b_cluster_name,
+            "--nodepool",
+            args.rq21b_nodepool,
+            "--node-count",
+            str(args.rq21b_node_count),
+        ]
         return StagePlan(
             stage,
             [append_rq2_cloud_args(command, args, acr_name, stage, supports_cleanup=True, supports_smoke=True)],
@@ -499,14 +577,19 @@ def ensure_kind_for_selected_stages(args: argparse.Namespace, stages: list[str])
     return True
 
 
-def run_stage(plan: StagePlan, *, dry_run: bool) -> StageResult:
+def run_stage(plan: StagePlan, *, dry_run: bool, results_root: Path | None = None) -> StageResult:
     started = time.time()
+    before = result_dir_snapshot(results_root) if results_root and not dry_run else set()
     try:
         for command in plan.commands:
             run_command(command, dry_run=dry_run)
     except Exception as exc:
-        return StageResult(plan.name, "fail", time.time() - started, str(exc))
-    return StageResult(plan.name, "dry-run" if dry_run else "ok", time.time() - started)
+        after = result_dir_snapshot(results_root) if results_root and not dry_run else set()
+        artifacts = [relative_path(path) for path in sorted(after - before)]
+        return StageResult(plan.name, "fail", time.time() - started, str(exc), artifacts)
+    after = result_dir_snapshot(results_root) if results_root and not dry_run else set()
+    artifacts = [relative_path(path) for path in sorted(after - before)]
+    return StageResult(plan.name, "dry-run" if dry_run else "ok", time.time() - started, "", artifacts)
 
 
 def build_push_and_resolve_image(args: argparse.Namespace, acr_name: str) -> str:
@@ -584,6 +667,339 @@ def build_push_and_resolve_image(args: argparse.Namespace, acr_name: str) -> str
     return image_ref
 
 
+def summarize_condition_summary_csv(csv_path: Path) -> dict[str, Any]:
+    rows = read_csv_rows(csv_path)
+    usable = [row for row in rows if maybe_float(row.get("mean_ms")) is not None]
+    if not usable:
+        return {}
+    best = min(usable, key=lambda row: maybe_float(row.get("mean_ms")) or float("inf"))
+    largest_overhead = max(
+        usable,
+        key=lambda row: maybe_float(row.get("absolute_overhead_ms")) or 0.0,
+    )
+    baseline_name = str(best.get("baseline_condition") or "")
+    baseline = next((row for row in usable if row.get("condition") == baseline_name), None)
+    return {
+        "summary_type": "condition_summaries",
+        "condition_count": len(usable),
+        "best_condition": best.get("condition"),
+        "best_mean_ms": maybe_float(best.get("mean_ms")),
+        "baseline_condition": (baseline or {}).get("condition") or baseline_name or None,
+        "baseline_mean_ms": maybe_float((baseline or {}).get("mean_ms")),
+        "largest_overhead_condition": largest_overhead.get("condition"),
+        "largest_overhead_ms": maybe_float(largest_overhead.get("absolute_overhead_ms")),
+        "largest_overhead_pct": maybe_float(largest_overhead.get("pct_overhead_vs_baseline")),
+    }
+
+
+def summarize_internal_timing(artifact_dir: Path) -> dict[str, Any]:
+    summary_csv = artifact_dir / "summary.csv"
+    if not summary_csv.exists():
+        return {}
+    rows = read_csv_rows(summary_csv)
+    model = next((row for row in rows if row.get("unit_name") == "model"), None)
+    level_one = [row for row in rows if row.get("level") == "L1"]
+    largest = max(
+        level_one,
+        key=lambda row: maybe_float(row.get("pct_of_model")) or 0.0,
+        default=None,
+    )
+    overhead = read_json(artifact_dir / "instrumentation_overhead.json") if (artifact_dir / "instrumentation_overhead.json").exists() else {}
+    return {
+        "summary_type": "internal_timing",
+        "model_mean_ms": maybe_float((model or {}).get("mean_ms")),
+        "largest_stage": (largest or {}).get("unit_name"),
+        "largest_stage_pct": maybe_float((largest or {}).get("pct_of_model")),
+        "instrumentation_overhead_ms": maybe_float(overhead.get("overhead_ms")),
+        "instrumentation_overhead_pct": maybe_float(overhead.get("overhead_pct")),
+    }
+
+
+def summarize_paired_summary(summary_path: Path) -> dict[str, Any]:
+    summary = read_json(summary_path)
+    comparison = (summary.get("latency") or {}).get("comparison") or {}
+    resources = (summary.get("resources") or {}).get("comparison") or {}
+    requirements = summary.get("requirements") or {}
+    return {
+        "summary_type": "paired",
+        "stage": summary.get("stage") or "RQ2.1",
+        "topology": summary.get("topology"),
+        "placement_mode": summary.get("placement_mode"),
+        "mean_latency_overhead_ms": maybe_float(comparison.get("mean_latency_overhead_ms")),
+        "mean_latency_overhead_pct": maybe_float(comparison.get("mean_latency_overhead_pct")),
+        "p95_latency_overhead_ms": maybe_float(comparison.get("p95_latency_overhead_ms")),
+        "sidecar_cpu_mcores_mean_overhead": maybe_float(resources.get("sidecar_cpu_mcores_mean_overhead")),
+        "sidecar_memory_mib_mean_overhead": maybe_float(resources.get("sidecar_memory_mib_mean_overhead")),
+        "resource_metrics_complete": requirements.get("resource_metrics_complete"),
+        "security_validation_complete": requirements.get("security_validation_complete"),
+        "blocking_issues": requirements.get("blocking_issues") or [],
+    }
+
+
+def summarize_split_summary(summary_path: Path) -> dict[str, Any]:
+    summary = read_json(summary_path)
+    by_condition = (summary.get("latency") or {}).get("by_condition") or {}
+    split_deltas: dict[str, dict[str, float]] = {}
+    for key, row in by_condition.items():
+        split = str(row.get("split_key") or "")
+        mode = str(row.get("security_mode") or "")
+        if split and mode in {"plain", "mtls"}:
+            split_deltas.setdefault(split, {})[mode] = maybe_float(row.get("mean_ms")) or 0.0
+    deltas = {
+        split: values["mtls"] - values["plain"]
+        for split, values in split_deltas.items()
+        if {"plain", "mtls"}.issubset(values)
+    }
+    requirements = summary.get("requirements") or {}
+    return {
+        "summary_type": "split_sensitivity",
+        "topology": summary.get("topology"),
+        "split_latency_deltas_ms": dict(sorted(deltas.items())),
+        "resource_metrics_complete": requirements.get("resource_metrics_complete"),
+        "validation_complete": requirements.get("validation_complete"),
+        "blocking_issues": requirements.get("blocking_issues") or [],
+    }
+
+
+def summarize_ablation_summary(summary_path: Path) -> dict[str, Any]:
+    summary = read_json(summary_path)
+    deltas = (summary.get("latency") or {}).get("adjacent_deltas") or {}
+    extracted = {
+        name: {
+            "label": payload.get("label"),
+            "mean_latency_delta_ms": maybe_float(payload.get("mean_latency_delta_ms")),
+            "mean_latency_delta_pct": maybe_float(payload.get("mean_latency_delta_pct")),
+        }
+        for name, payload in deltas.items()
+        if isinstance(payload, dict)
+    }
+    requirements = summary.get("requirements") or {}
+    return {
+        "summary_type": "ablation",
+        "topology": summary.get("topology"),
+        "adjacent_deltas": extracted,
+        "resource_metrics_complete": requirements.get("resource_metrics_complete"),
+        "validation_complete": requirements.get("validation_complete"),
+        "blocking_issues": requirements.get("blocking_issues") or [],
+    }
+
+
+def summarize_rq22(artifact_dir: Path) -> dict[str, Any]:
+    rolling_summary = artifact_dir / "rq22_rolling_summary.json"
+    summary = read_json(rolling_summary) if rolling_summary.exists() else {}
+    groups: dict[str, list[float]] = {}
+    for raw_path in artifact_dir.glob("conditions/*/benchmark/raw_iterations.csv"):
+        for row in read_csv_rows(raw_path):
+            condition = str(row.get("condition") or "")
+            if "confidential" in condition:
+                key = "confidential"
+            elif "standard" in condition:
+                key = "standard"
+            else:
+                key = condition or "unknown"
+            value = maybe_float(row.get("end_to_end_ms"))
+            if value is not None:
+                groups.setdefault(key, []).append(value)
+    means = {key: sum(values) / len(values) for key, values in groups.items() if values}
+    delta_ms = None
+    delta_pct = None
+    if {"standard", "confidential"}.issubset(means):
+        delta_ms = means["confidential"] - means["standard"]
+        if means["standard"]:
+            delta_pct = (delta_ms / means["standard"]) * 100.0
+    return {
+        "summary_type": "rq22_confidential",
+        "status": summary.get("status"),
+        "completed_executions": len(summary.get("completed") or []),
+        "standard_mean_ms": means.get("standard"),
+        "confidential_mean_ms": means.get("confidential"),
+        "mean_latency_overhead_ms": delta_ms,
+        "mean_latency_overhead_pct": delta_pct,
+        "effective_image_ref": summary.get("effective_image_ref"),
+    }
+
+
+def summarize_artifact_dir(artifact_dir: Path) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "artifact_dir": relative_path(artifact_dir),
+        "name": artifact_dir.name,
+        "summary_type": "unknown",
+    }
+    try:
+        if (artifact_dir / "merged" / "paired_summary.json").exists():
+            summary.update(summarize_paired_summary(artifact_dir / "merged" / "paired_summary.json"))
+        elif (artifact_dir / "merged" / "split_sensitivity_summary.json").exists():
+            summary.update(summarize_split_summary(artifact_dir / "merged" / "split_sensitivity_summary.json"))
+        elif (artifact_dir / "merged" / "rq2_1_ablation_summary.json").exists():
+            summary.update(summarize_ablation_summary(artifact_dir / "merged" / "rq2_1_ablation_summary.json"))
+        elif (artifact_dir / "rq22_rolling_summary.json").exists():
+            summary.update(summarize_rq22(artifact_dir))
+        elif (artifact_dir / "condition_summaries.csv").exists():
+            summary.update(summarize_condition_summary_csv(artifact_dir / "condition_summaries.csv"))
+        elif (artifact_dir / "merged_results" / "condition_summaries.csv").exists():
+            summary.update(summarize_condition_summary_csv(artifact_dir / "merged_results" / "condition_summaries.csv"))
+        elif (artifact_dir / "summary.csv").exists():
+            summary.update(summarize_internal_timing(artifact_dir))
+    except Exception as exc:
+        summary["summary_error"] = str(exc)
+    return summary
+
+
+def stage_headline(artifact_summary: dict[str, Any]) -> str:
+    summary_type = artifact_summary.get("summary_type")
+    if summary_type == "paired":
+        return (
+            f"{artifact_summary.get('stage', 'RQ2.1')} "
+            f"{artifact_summary.get('topology')}: "
+            f"+{format_metric(artifact_summary.get('mean_latency_overhead_ms'))} ms "
+            f"({format_metric(artifact_summary.get('mean_latency_overhead_pct'))}%)"
+        )
+    if summary_type == "split_sensitivity":
+        deltas = artifact_summary.get("split_latency_deltas_ms") or {}
+        formatted = ", ".join(
+            f"{split} +{format_metric(delta)} ms"
+            for split, delta in deltas.items()
+        )
+        return f"mTLS split deltas: {formatted}" if formatted else "mTLS split sensitivity summary"
+    if summary_type == "ablation":
+        deltas = artifact_summary.get("adjacent_deltas") or {}
+        total = deltas.get("c3_minus_c0") or {}
+        return (
+            "hardened path "
+            f"+{format_metric(total.get('mean_latency_delta_ms'))} ms "
+            f"({format_metric(total.get('mean_latency_delta_pct'))}%)"
+        )
+    if summary_type == "rq22_confidential":
+        return (
+            f"confidential service2 +{format_metric(artifact_summary.get('mean_latency_overhead_ms'))} ms "
+            f"({format_metric(artifact_summary.get('mean_latency_overhead_pct'))}%)"
+        )
+    if summary_type == "condition_summaries":
+        return (
+            f"best={artifact_summary.get('best_condition')} "
+            f"{format_metric(artifact_summary.get('best_mean_ms'))} ms; "
+            f"largest overhead={artifact_summary.get('largest_overhead_condition')} "
+            f"+{format_metric(artifact_summary.get('largest_overhead_ms'))} ms"
+        )
+    if summary_type == "internal_timing":
+        return (
+            f"model {format_metric(artifact_summary.get('model_mean_ms'))} ms; "
+            f"largest stage={artifact_summary.get('largest_stage')} "
+            f"{format_metric(artifact_summary.get('largest_stage_pct'))}%"
+        )
+    return "no known summary parser"
+
+
+def stage_checks(artifact_summary: dict[str, Any]) -> str:
+    checks: list[str] = []
+    for key, label in (
+        ("resource_metrics_complete", "resources"),
+        ("security_validation_complete", "security"),
+        ("validation_complete", "validation"),
+    ):
+        if key in artifact_summary:
+            checks.append(f"{label}={artifact_summary.get(key)}")
+    blockers = artifact_summary.get("blocking_issues")
+    if blockers:
+        checks.append(f"blockers={len(blockers)}")
+    if artifact_summary.get("summary_error"):
+        checks.append("summary_error")
+    return ", ".join(checks) if checks else ""
+
+
+def write_uniform_run_report(
+    *,
+    args: argparse.Namespace,
+    stages: list[str],
+    results: list[StageResult],
+    run_stamp: str,
+) -> dict[str, Path]:
+    results_root = Path(args.results_root).resolve()
+    report_dir = results_root / f"uniform_run_{run_stamp}"
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    stage_payloads: list[dict[str, Any]] = []
+    for result in results:
+        artifact_summaries = [
+            summarize_artifact_dir((REPO_ROOT / artifact).resolve() if not Path(artifact).is_absolute() else Path(artifact))
+            for artifact in result.artifact_dirs
+        ]
+        stage_payloads.append({
+            "name": result.name,
+            "status": result.status,
+            "elapsed_seconds": result.elapsed_seconds,
+            "detail": result.detail,
+            "artifact_dirs": result.artifact_dirs,
+            "artifact_summaries": artifact_summaries,
+        })
+
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "wrapper_run_stamp": run_stamp,
+        "image_ref": args.image_ref,
+        "acr_name": args.acr_name,
+        "selected_stages": stages,
+        "include_optional": bool(args.include_optional),
+        "destroy_cloud_on_success": bool(args.destroy_cloud_on_success),
+        "destroy_cloud_on_failure": bool(args.destroy_cloud_on_failure),
+        "results": stage_payloads,
+    }
+
+    json_path = report_dir / "uniform_run_summary.json"
+    json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    lines = [
+        "# Uniform Thesis Run Summary",
+        "",
+        f"- Generated: `{payload['generated_at']}`",
+        f"- Image: `{args.image_ref}`",
+        f"- Stages: `{', '.join(stages)}`",
+        f"- Destroy cloud on success: `{args.destroy_cloud_on_success}`",
+        f"- Destroy cloud on failure: `{args.destroy_cloud_on_failure}`",
+        "",
+        "## Stage Overview",
+        "",
+        "| Stage | Status | Time | Artifacts | Headline | Checks |",
+        "| --- | --- | ---: | --- | --- | --- |",
+    ]
+    for stage in stage_payloads:
+        artifacts = "<br>".join(f"`{item}`" for item in stage["artifact_dirs"]) or ""
+        if stage["artifact_summaries"]:
+            headline = "<br>".join(stage_headline(item) for item in stage["artifact_summaries"])
+            checks = "<br>".join(stage_checks(item) for item in stage["artifact_summaries"] if stage_checks(item))
+        else:
+            headline = stage["detail"] if stage["status"] == "fail" else ""
+            checks = ""
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    f"`{stage['name']}`",
+                    f"`{stage['status']}`",
+                    f"{stage['elapsed_seconds']:.1f}s",
+                    artifacts,
+                    headline.replace("|", "\\|"),
+                    checks.replace("|", "\\|"),
+                ]
+            )
+            + " |"
+        )
+
+    lines.extend([
+        "",
+        "## Notes",
+        "",
+        "- This file is a run index, not a replacement for the per-experiment analysis artifacts.",
+        "- Treat any failed stage or listed blocker as requiring manual inspection before thesis use.",
+        "- The JSON file beside this report preserves the same information in machine-readable form.",
+        "",
+    ])
+
+    md_path = report_dir / "uniform_run_summary.md"
+    md_path.write_text("\n".join(lines), encoding="utf-8")
+    return {"json": json_path, "markdown": md_path}
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -645,7 +1061,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--include-optional",
         action="store_true",
-        help="Backward-compatible no-op; all thesis stages run by default.",
+        help="Include optional sensitivity stages such as rq2_1b_multinode.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Print commands without executing them.")
     parser.add_argument("--continue-on-failure", action="store_true", help="Continue after a stage fails.")
@@ -694,6 +1110,7 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--rq2-paired-passes", type=int, default=None, help="Override passes for rq2_1_paired.")
+    parser.add_argument("--rq21b-paired-passes", type=int, default=None, help="Override passes for rq2_1b_multinode.")
     parser.add_argument("--rq2-split-passes", type=int, default=None, help="Override passes for rq2_1_mtls_split.")
     parser.add_argument("--rq2-ablation-passes", type=int, default=None, help="Override passes for rq2_1_ablation.")
     parser.add_argument("--rq22-paired-passes", type=int, default=None, help="Override passes for rq2_2.")
@@ -724,6 +1141,10 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Existing RQ1.5b export directory whose complete partials should be reused.",
     )
+    parser.add_argument("--rq21b-resource-group", default="rg-thesis-rq21b", help="RQ2.1b resource group.")
+    parser.add_argument("--rq21b-cluster-name", default="thesis-rq21b", help="RQ2.1b AKS cluster name.")
+    parser.add_argument("--rq21b-nodepool", default="rq21bpool", help="RQ2.1b benchmark nodepool label.")
+    parser.add_argument("--rq21b-node-count", type=int, default=3, help="RQ2.1b benchmark node count.")
     parser.add_argument(
         "--rq15-condition-retries",
         type=int,
@@ -746,6 +1167,7 @@ def parse_args() -> argparse.Namespace:
     pass_args = {
         "--rq2-passes": args.rq2_passes,
         "--rq2-paired-passes": args.rq2_paired_passes,
+        "--rq21b-paired-passes": args.rq21b_paired_passes,
         "--rq2-split-passes": args.rq2_split_passes,
         "--rq2-ablation-passes": args.rq2_ablation_passes,
         "--rq22-paired-passes": args.rq22_paired_passes,
@@ -763,6 +1185,7 @@ def main() -> int:
     if not drop_sudo_root_to_invoking_user():
         return 1
 
+    run_stamp = utc_run_stamp()
     stages = resolve_stages(args)
     log(f"Stages: {', '.join(stages)}")
     if args.dry_run:
@@ -796,11 +1219,12 @@ def main() -> int:
 
     log(f"Uniform image: {args.image_ref}")
     plans = [build_stage_plan(stage, args, acr_name) for stage in stages]
+    results_root = Path(args.results_root).resolve()
 
     results: list[StageResult] = []
     if CONTAINER_STAGES.intersection(stages) and not args.skip_acr_login and not args.build_push_image:
         login_plan = StagePlan("acr_login", [["az", "acr", "login", "--name", acr_name]])
-        login_result = run_stage(login_plan, dry_run=args.dry_run)
+        login_result = run_stage(login_plan, dry_run=args.dry_run, results_root=results_root)
         results.append(login_result)
         if login_result.status == "fail" and not args.continue_on_failure:
             plans = []
@@ -809,7 +1233,7 @@ def main() -> int:
         log("=" * 72)
         log(f"Stage: {plan.name}")
         log("=" * 72)
-        result = run_stage(plan, dry_run=args.dry_run)
+        result = run_stage(plan, dry_run=args.dry_run, results_root=results_root)
         results.append(result)
         if result.status == "fail":
             warn(f"Stage {result.name} failed: {result.detail}")
@@ -825,6 +1249,19 @@ def main() -> int:
             exit_code = 1
         suffix = f" - {result.detail}" if result.detail else ""
         log(f"{result.name}: {result.status} ({result.elapsed_seconds:.1f}s){suffix}")
+    if not args.dry_run:
+        try:
+            report_paths = write_uniform_run_report(
+                args=args,
+                stages=stages,
+                results=results,
+                run_stamp=run_stamp,
+            )
+            log(f"Uniform run report: {report_paths['markdown']}")
+        except Exception as exc:
+            warn(f"Failed to write uniform run report: {exc}")
+            if exit_code == 0:
+                exit_code = 1
     return exit_code
 
 
