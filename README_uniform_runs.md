@@ -146,6 +146,30 @@ The AKS runners refresh kubeconfig with `az aks get-credentials` after
 provisioning. The RQ1.4/RQ1.4b local Kubernetes stages use `kind`; if it is not
 on `PATH`, the wrapper downloads a repo-local binary under `.tools/bin`.
 
+### 4b. Linux/WSL inotify budget for `rq1_4b`
+
+The 7-node kind topology used by `rq1_4b` can exhaust the default Linux inotify
+instance limit (`fs.inotify.max_user_instances=128`) on native Ubuntu and WSL.
+When that happens, worker `kube-proxy` dies during bootstrap with:
+
+```text
+failed complete: too many open files
+```
+
+Raise the limit to at least `256` before running `rq1_4b` or the full uniform
+wrapper on Linux/WSL:
+
+```bash
+sudo sysctl -w fs.inotify.max_user_instances=256
+```
+
+To persist it across reboots:
+
+```bash
+echo 'fs.inotify.max_user_instances=256' | sudo tee /etc/sysctl.d/99-thesis-kind.conf >/dev/null
+sudo sysctl --system
+```
+
 ## What is directly comparable
 
 Use only these thesis-facing configs for direct comparison:

@@ -364,6 +364,27 @@ def test_missing_kubectl_error_includes_wsl_install_hint(tmp_path: Path, monkeyp
     assert "export PATH" in message
 
 
+def test_verify_prerequisites_does_not_require_host_python(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    runner = rq22.RQ22ConfidentialRunner(default_args(tmp_path))
+    checked_commands: list[str] = []
+
+    def fake_ensure_command(command_name: str):
+        checked_commands.append(command_name)
+        if command_name == "python":
+            raise AssertionError("verify_prerequisites should not require a host python command")
+
+    monkeypatch.setattr(rq22, "ensure_command", fake_ensure_command)
+    monkeypatch.setattr(
+        rq22,
+        "run_command",
+        lambda args, **_kwargs: subprocess.CompletedProcess(args, 0, stdout="", stderr=""),
+    )
+
+    runner.verify_prerequisites()
+
+    assert checked_commands[:4] == ["az", "kubectl", "kubelogin", "terraform"]
+
+
 def test_windows_kubectl_in_wsl_path_gets_actionable_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     runner = rq22.RQ22ConfidentialRunner(default_args(tmp_path))
 

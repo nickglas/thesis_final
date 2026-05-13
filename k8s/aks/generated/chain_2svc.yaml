@@ -51,7 +51,7 @@ spec:
     spec:
       containers:
       - name: inference
-        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:88d2fc3721a88ac68887d7556aae88237fd8c378aeab667a0a919f03858fdfee
+        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:240631e29c8c1a66a1dfce8a430d0498c805a7a1b4dea1202746b094c289aa47
         imagePullPolicy: Always
         ports:
         - containerPort: 50051
@@ -161,7 +161,7 @@ spec:
     spec:
       containers:
       - name: inference
-        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:88d2fc3721a88ac68887d7556aae88237fd8c378aeab667a0a919f03858fdfee
+        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:240631e29c8c1a66a1dfce8a430d0498c805a7a1b4dea1202746b094c289aa47
         imagePullPolicy: Always
         ports:
         - containerPort: 50051

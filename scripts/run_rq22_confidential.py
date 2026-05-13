@@ -404,7 +404,6 @@ class RQ22ConfidentialRunner:
         )
 
     def verify_prerequisites(self) -> None:
-        self.require_command("python")
         if self.args.generate_only:
             return
         self.require_command("az")
@@ -428,7 +427,7 @@ class RQ22ConfidentialRunner:
             "  chmod +x ~/.local/bin/kubectl\n"
             "  curl -L -o /tmp/kubelogin-linux-amd64.zip "
             "https://github.com/Azure/kubelogin/releases/latest/download/kubelogin-linux-amd64.zip\n"
-            "  python - <<'PY'\n"
+            "  python3 - <<'PY'\n"
             "import pathlib, stat, zipfile\n"
             "dst = pathlib.Path.home() / '.local/bin/kubelogin'\n"
             "with zipfile.ZipFile('/tmp/kubelogin-linux-amd64.zip') as zf:\n"

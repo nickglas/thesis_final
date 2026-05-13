@@ -33,6 +33,7 @@ import argparse
 import csv
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -70,6 +71,8 @@ KIND_NAMESPACES = {
     "rq1_4": "rq14",
     "rq1_4b": "rq14b",
 }
+
+KIND_MULTINODE_MIN_INOTIFY_INSTANCES = 256
 
 DEFAULT_ORDER = ["rq1_1", "rq1_2", "rq1_3", "rq1_4", "rq1_4b", "rq1_5", "rq1_5b"]
 
@@ -243,6 +246,51 @@ def kind_delete_cluster(cluster_name: str) -> None:
         return
     log(f"Deleting kind cluster {cluster_name}.")
     subprocess.run(["kind", "delete", "cluster", "--name", cluster_name], check=False)
+
+
+def count_kind_nodes(cluster_config: Path) -> int:
+    return sum(
+        1
+        for line in cluster_config.read_text(encoding="utf-8").splitlines()
+        if re.match(r"^\s*-\s*role:\s*(control-plane|worker)\s*$", line)
+    )
+
+
+def read_linux_sysctl_int(path: str) -> int | None:
+    try:
+        return int(Path(path).read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+
+
+def ensure_kind_inotify_capacity(stage_name: str, cluster_config: Path) -> None:
+    if stage_name != "rq1_4b":
+        return
+    if platform.system().lower() != "linux":
+        return
+
+    current = read_linux_sysctl_int("/proc/sys/fs/inotify/max_user_instances")
+    if current is None:
+        warn(
+            "Could not read /proc/sys/fs/inotify/max_user_instances; skipping rq1_4b "
+            "host inotify preflight."
+        )
+        return
+    if current >= KIND_MULTINODE_MIN_INOTIFY_INSTANCES:
+        return
+
+    node_count = count_kind_nodes(cluster_config)
+    raise StageFailure(
+        f"{stage_name} uses a {node_count}-node kind cluster, but this host only allows "
+        f"fs.inotify.max_user_instances={current}. On Linux this node count can make "
+        'kube-proxy fail during bootstrap with "failed complete: too many open files". '
+        f"Increase fs.inotify.max_user_instances to at least "
+        f"{KIND_MULTINODE_MIN_INOTIFY_INSTANCES} before rerunning. Temporary fix:\n"
+        f"  sudo sysctl -w fs.inotify.max_user_instances={KIND_MULTINODE_MIN_INOTIFY_INSTANCES}\n"
+        "Persistent fix:\n"
+        f"  echo 'fs.inotify.max_user_instances={KIND_MULTINODE_MIN_INOTIFY_INSTANCES}' | "
+        "sudo tee /etc/sysctl.d/99-thesis-kind.conf >/dev/null && sudo sysctl --system"
+    )
 
 
 def condition_client_manifest(output_dir: Path, condition_name: str) -> Path:
@@ -535,6 +583,8 @@ def run_kind_stage(stage_name: str, args: argparse.Namespace) -> None:
     namespace = KIND_NAMESPACES[stage_name]
     cluster_config = KIND_CONFIGS[stage_name]
     experiment_config = CONFIGS[stage_name]
+
+    ensure_kind_inotify_capacity(stage_name, cluster_config)
 
     if kind_cluster_exists(cluster_name):
         warn(f"kind cluster {cluster_name} already exists; deleting before recreating.")
