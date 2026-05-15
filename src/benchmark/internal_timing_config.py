@@ -49,6 +49,7 @@ class WarmupCalibrationConfig:
     """Warmup stabilisation-check parameters."""
     window: int = 10
     cv_threshold: float = 0.02
+    max_extra_iterations: int = -1
 
 
 @dataclass
@@ -159,6 +160,7 @@ def load_internal_timing_config(path: str) -> InternalTimingConfig:
         warmup_calibration=WarmupCalibrationConfig(
             window=warmup_raw.get("window", 10),
             cv_threshold=warmup_raw.get("cv_threshold", 0.02),
+            max_extra_iterations=warmup_raw.get("max_extra_iterations", -1),
         ),
         cpu_stabilisation=cpu_stab,
     )

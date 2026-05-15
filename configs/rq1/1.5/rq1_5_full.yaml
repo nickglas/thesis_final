@@ -90,11 +90,9 @@ parity:
 warmup_calibration:
   window: 10
   cv_threshold: 0.02
-  # Fixed warmup per the thesis methodology: calibration is diagnostic only,
-  # not adaptive. 0 = run exactly warmup_iterations and never extend.
-  # Frozen RQ1.5 thesis-facing run executed total_iterations=50 in every round,
-  # so this matches the actual measured behaviour.
-  max_extra_iterations: 0
+  # Adaptive extra warmup: run at least warmup_iterations, then continue
+  # until the current trailing window is stable. -1 uses the runner safety cap.
+  max_extra_iterations: -1
 
 # Single-threaded fully controlled profile.
 # Governor and turbo disabled — unavailable on AKS managed nodes.

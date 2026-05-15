@@ -81,7 +81,7 @@ parity:
 warmup_calibration:
   window: 10
   cv_threshold: 0.02
-  max_extra_iterations: 0
+  max_extra_iterations: -1
 
 # Single-threaded fully controlled profile (matches RQ1.5 primary so
 # per-node CPU profile is identical between single-node and multinode runs).

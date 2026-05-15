@@ -124,6 +124,7 @@ class InternalTimingRunner:
             n=cfg.benchmark.warmup_iterations,
             window=cfg.warmup_calibration.window,
             cv_threshold=cfg.warmup_calibration.cv_threshold,
+            max_extra_iterations=cfg.warmup_calibration.max_extra_iterations,
         )
         self.logger.save_json("warmup_calibration.json", warmup_result)
         logger.info(

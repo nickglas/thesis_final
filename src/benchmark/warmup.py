@@ -40,7 +40,7 @@ def run_warmup_calibrated(
     n: int,
     window: int = 10,
     cv_threshold: float = 0.02,
-    max_extra_iterations: int = 0,
+    max_extra_iterations: int = -1,
 ) -> Dict[str, Any]:
     """Run warmup iterations with empirical stabilisation detection.
 
@@ -57,8 +57,10 @@ def run_warmup_calibrated(
     cv_threshold : float
         CV below this value indicates stabilisation.
     max_extra_iterations : int
-        Additional iterations allowed beyond n if stabilisation has not yet
-        been detected. The configured n remains the minimum warmup count.
+        Additional iterations allowed beyond n while the current trailing
+        window remains unstable. The configured n remains the minimum warmup
+        count. A negative value means "adaptive until stable", guarded by an
+        internal safety cap.
 
     Returns
     -------
@@ -69,6 +71,8 @@ def run_warmup_calibrated(
           final_window_stabilised (bool or None), stop_reason,
           stabilised_at_iteration (legacy alias),
           extra_iterations_used, max_extra_iterations,
+          requested_max_extra_iterations, effective_max_extra_iterations,
+          adaptive_until_stable, unbounded_extra_iterations,
           final_window_cv, cv_threshold, window_size,
           warmup_latencies_ms (list of all warmup timings).
     """
@@ -77,12 +81,18 @@ def run_warmup_calibrated(
     stabilised = False
     stabilised_at = None
     stop_reason = "iteration_limit_reached"
+    requested_max_extra_iterations = max_extra_iterations
+
     if max_extra_iterations < 0:
+        unbounded_extra_iterations = True
         total_limit = n + _UNLIMITED_WARMUP_CAP
-        max_extra_iterations = _UNLIMITED_WARMUP_CAP  # for reporting
+        effective_max_extra_iterations = _UNLIMITED_WARMUP_CAP
     else:
-        max_extra_iterations = max(0, max_extra_iterations)
-        total_limit = n + max_extra_iterations
+        unbounded_extra_iterations = False
+        effective_max_extra_iterations = max(0, max_extra_iterations)
+        total_limit = n + effective_max_extra_iterations
+
+    adaptive_until_stable = effective_max_extra_iterations > 0
 
     def trailing_cv() -> float | None:
         if len(latencies) < window:
@@ -114,7 +124,7 @@ def run_warmup_calibrated(
             stop_reason = "current_window_stabilised"
             break
 
-        if max_extra_iterations == 0:
+        if effective_max_extra_iterations == 0:
             stop_reason = "minimum_reached_no_extra_allowed"
             break
 
@@ -129,7 +139,7 @@ def run_warmup_calibrated(
         logger.warning(
             f"Warmup final window did not stabilise within {len(latencies)} "
             f"iterations (CV={cv_text}, threshold={cv_threshold}, "
-            f"stop_reason={stop_reason}). Proceeding after the configured "
+            f"stop_reason={stop_reason}). Proceeding after the available "
             "warmup budget."
         )
 
@@ -143,7 +153,11 @@ def run_warmup_calibrated(
         "final_window_stabilised": final_window_stabilised,
         "stop_reason": stop_reason,
         "extra_iterations_used": max(0, len(latencies) - n),
-        "max_extra_iterations": max_extra_iterations,
+        "max_extra_iterations": requested_max_extra_iterations,
+        "requested_max_extra_iterations": requested_max_extra_iterations,
+        "effective_max_extra_iterations": effective_max_extra_iterations,
+        "adaptive_until_stable": adaptive_until_stable,
+        "unbounded_extra_iterations": unbounded_extra_iterations,
         "final_window_cv": final_cv,
         "cv_threshold": cv_threshold,
         "window_size": window,

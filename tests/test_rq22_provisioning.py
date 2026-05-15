@@ -382,6 +382,25 @@ def test_verify_prerequisites_does_not_require_host_python(tmp_path: Path, monke
 
     runner.verify_prerequisites()
 
+    assert checked_commands == ["az", "kubectl", "kubelogin"]
+
+
+def test_verify_prerequisites_requires_terraform_when_provisioning(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    runner = rq22.RQ22ConfidentialRunner(default_args(tmp_path, provision=True))
+    checked_commands: list[str] = []
+
+    def fake_ensure_command(command_name: str):
+        checked_commands.append(command_name)
+
+    monkeypatch.setattr(rq22, "ensure_command", fake_ensure_command)
+    monkeypatch.setattr(
+        rq22,
+        "run_command",
+        lambda args, **_kwargs: subprocess.CompletedProcess(args, 0, stdout="", stderr=""),
+    )
+
+    runner.verify_prerequisites()
+
     assert checked_commands[:4] == ["az", "kubectl", "kubelogin", "terraform"]
 
 
