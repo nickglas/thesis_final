@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess
 from argparse import Namespace
 from pathlib import Path
@@ -6,6 +7,9 @@ from pathlib import Path
 import pytest
 
 import scripts.run_rq22_confidential as rq22
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def default_args(tmp_path: Path, **overrides) -> Namespace:
@@ -75,6 +79,20 @@ def test_terraform_vars_provision_only_service1_foundation(tmp_path: Path):
         "rq": "2.2",
         "rq22-role": "service1-standard",
     }
+
+
+def test_terraform_ignores_aks_feature_drift_for_rq22_reuse():
+    main_tf = (REPO_ROOT / "infra" / "main.tf").read_text(encoding="utf-8")
+
+    assert re.search(
+        r"lifecycle\s*\{\s*ignore_changes = \[\s*oidc_issuer_enabled,\s*service_mesh_profile,\s*default_node_pool\[0\]\.upgrade_settings,\s*\]",
+        main_tf,
+    )
+    assert re.search(
+        r'resource "azurerm_kubernetes_cluster_node_pool" "benchmark" \{.*?lifecycle\s*\{\s*ignore_changes = \[\s*upgrade_settings,\s*\]',
+        main_tf,
+        re.DOTALL,
+    )
 
 
 @pytest.mark.parametrize(

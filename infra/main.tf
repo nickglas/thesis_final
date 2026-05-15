@@ -133,6 +133,14 @@ resource "azurerm_kubernetes_cluster" "rq15" {
   # background pod traffic.  Not needed for thesis measurements.
   http_application_routing_enabled = false
 
+  lifecycle {
+    ignore_changes = [
+      oidc_issuer_enabled,
+      service_mesh_profile,
+      default_node_pool[0].upgrade_settings,
+    ]
+  }
+
   tags = {
     project     = "thesis"
     experiment  = local.experiment_tag
@@ -150,6 +158,12 @@ resource "azurerm_kubernetes_cluster_node_pool" "benchmark" {
   mode                  = "User"
   node_taints           = var.benchmark_node_taint != "" ? [var.benchmark_node_taint] : []
   node_labels           = var.benchmark_node_labels
+
+  lifecycle {
+    ignore_changes = [
+      upgrade_settings,
+    ]
+  }
 
   tags = {
     project     = "thesis"
