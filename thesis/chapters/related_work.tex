@@ -18,8 +18,8 @@ transfer profiles~\cite{neurosurgeon}. JointDNN frames partitioning as an optimi
 problem in which upload and download costs depend on the intermediate tensor at the
 chosen boundary~\cite{jointdnn}. DeeperThings extends this line of work to fully
 distributed CNN inference on constrained edge devices and reinforces the observation
-that early feature maps can be expensive to move because they remain spatially large
-~\cite{deeperthings}.
+that early feature maps can be expensive to move because they remain spatially
+large~\cite{deeperthings}.
 
 More recent work broadens the partitioning objective beyond a single latency value.
 DNNSplit selects split points by jointly considering latency and cost in multi-tier
@@ -27,11 +27,11 @@ settings~\cite{dnnsplit}. Genetic-algorithm and delay-aware approaches likewise 
 the split point as dependent on device capability, bandwidth, throughput, and parallelism
 constraints~\cite{ga_partitioning,delay_aware_inference}. Survey work on DNN
 partitioning and split computing summarizes this literature as a multi-objective problem
-involving activation size, compute allocation, deployment tier, and runtime conditions
-~\cite{survey_partitioning,split_computing_survey}. This thesis adopts that view but
-keeps the optimisation scope deliberately narrow: it studies a fixed ResNet-18 workload
-and evaluates how a small number of architecturally meaningful split choices behave
-across deployment layers.
+involving activation size, compute allocation, deployment tier, and runtime
+conditions~\cite{survey_partitioning}. This thesis adopts that view but keeps the
+optimisation scope deliberately narrow: it studies a fixed ResNet-18 workload and
+evaluates how a small number of architecturally meaningful split choices behave across
+deployment layers.
 
 \section{Granularity and Internal Model Structure}
 \label{sec:rw-granularity}
@@ -40,15 +40,16 @@ Several studies show that coarse layer depth is not enough to explain split perf
 Fine-grained elastic partitioning demonstrates that more detailed placement decisions
 can improve distributed DNN inference when the placement is aware of both computation
 and communication conditions~\cite{fine_grained_partitioning}. Hierarchical
-partitioning similarly combines coarse global structure with local refinement, showing
-that the useful split region can be narrowed before it is refined~\cite{hierarchical_partitioning}.
+partitioning similarly combines global partitioning with local refinement, showing
+that staged decisions can account for heterogeneity at both cluster and node
+levels~\cite{hierarchical_partitioning}.
 Pareto-front analysis of DNN partitioning further shows that execution time can vary
 across blocks inside the same model, so boundaries with similar activation sizes may
 still differ in compute distribution~\cite{pareto_split}. BottleFit and BottleNet++
 approach the problem from the feature-compression side, showing that intermediate
 representations can be compressed or shaped to reduce communication cost, but that the
-position of the boundary remains central to the latency and accuracy trade-off
-~\cite{bottlefit,bottlenet_pp}.
+position of the boundary remains central to the latency and accuracy
+trade-off~\cite{bottlefit,bottlenet_pp}.
 
 The experiments in this thesis use these findings to justify a coarse-to-fine design.
 RQ1.1 evaluates residual-stage boundaries in ResNet-18, and RQ1.2 adds a block-level
@@ -67,8 +68,8 @@ networking. Recent RPC and microservice studies show that communication overhead
 come from layered protocol processing and network-stack traversal, not only from the
 application payload itself~\cite{rpc_overhead_hotos25,notnets_apsys24}. Service-mesh
 work reaches a similar conclusion for proxied microservices: sidecars and data-plane
-components add workload-dependent overhead through additional critical-path processing
-~\cite{meshinsight_socc23}.
+components add workload-dependent overhead through additional critical-path
+processing~\cite{meshinsight_socc23}.
 
 Kubernetes and cloud studies also show why local and managed-cluster results should be
 compared carefully. Managed Kubernetes performance varies across services and
@@ -89,20 +90,21 @@ confidential computing. Policy-driven Kubernetes security work motivates combini
 encrypted communication with explicit authorization policy rather than treating TLS
 alone as the complete protection mechanism~\cite{ashraf2025policy_workflow}. Service
 mesh studies show that sidecar-based mTLS can improve service-to-service trust
-boundaries, but also that it adds latency, CPU, memory, and operational complexity
-~\cite{meshinsight_socc23,bremlerbarr2025mtls}. Work on service-mesh control-plane
+boundaries, but also that it can add latency and CPU/resource overhead, with the
+cost depending on mesh configuration and workload~\cite{meshinsight_socc23,bremlerbarr2025mtls}.
+Work on service-mesh control-plane
 trust further cautions that mesh CAs and control planes remain security-critical
 components~\cite{poudel2025mazu}. RQ2.1 therefore treats mTLS and authorization as a
 bounded communication-hardening layer, not as a complete security solution.
 
 Confidential-computing work motivates the second hardening layer. The motivation
-itself comes from work on activation-level privacy attacks: He~et~al.\
-\cite{he2021_attacking_collaborative} demonstrate that a remote partition holding
-only intermediate feature maps can reconstruct the edge client's input, and that
-simple noise-based defenses fail. This shows that in-transit mTLS alone does not
-protect activations once they reach the downstream segment, although their
-threat model is malicious-remote-service rather than the
-infrastructure-level adversary that confidential VMs address.
+itself comes from work on activation-level privacy attacks:
+He~et~al.~\cite{he2021_attacking_collaborative} demonstrate that a remote partition
+holding only intermediate feature maps can reconstruct the edge client's input, and
+that simple noise-based defenses fail. This shows that in-transit mTLS alone does
+not protect activations once they reach the downstream segment, although their
+threat model is malicious-remote-service rather than the infrastructure-level
+adversary that confidential VMs address.
 
 AMD SEV-SNP provides VM-level memory encryption and integrity protection against
 parts of the host platform~\cite{amd_sevsnp_whitepaper,kaplan2023_hardware_vm}.
@@ -111,7 +113,7 @@ emphasize that these systems have specific attacker models, attestation
 mechanisms, and residual limitations~\cite{guanciale2022_confidential_quartet,misono2024_cvm_explained}.
 Performance studies show that confidential VM overhead is workload-dependent,
 with CPU-bound, memory-intensive, and I/O-heavy workloads affected
-differently~\cite{yan2023_cvm_overheads,akram2021_hpc_tees}. Machine-learning
+differently~\cite{misono2024_cvm_explained,akram2021_hpc_tees}. Machine-learning
 confidential computing surveys identify protected model execution and data
 privacy as important motivations, while also emphasizing deployment and
 performance trade-offs~\cite{mo2024_ml_confidential_computing}. Recent work
