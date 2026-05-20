@@ -95,7 +95,7 @@
 
 % Service 1 on a standard AKS node.
 \node[app] (s1app) at (0,-0.30) {Service 1\\model segment};
-\node[sidecar, below=0.75cm of s1app] (s1proxy) {Istio sidecar\\proxy};
+\node[sidecar] (s1proxy) at (0,-1.95) {Istio sidecar\\proxy};
 
 \begin{pgfonlayer}{background}
 \node[
@@ -109,8 +109,8 @@
 \end{pgfonlayer}
 
 % Service 2 on a confidential AKS node.
-\node[app] (s2app) at (6.8,-0.30) {Service 2\\downstream segment};
-\node[sidecar, below=0.75cm of s2app] (s2proxy) {Istio sidecar\\proxy};
+\node[app] (s2app) at (6.8,-0.20) {Service 2\\downstream segment};
+\node[sidecar] (s2proxy) at (6.8,-1.95) {Istio sidecar\\proxy};
 
 \begin{pgfonlayer}{background}
 \node[
@@ -130,7 +130,7 @@
     anchor=north
 ] at ($(node1.north)+(0,-0.18cm)$) {Standard AKS node};
 \node[
-    font=\scriptsize\bfseries,
+    font=\tiny\bfseries,
     text=green!45!black,
     anchor=north,
     align=center
@@ -147,7 +147,7 @@
     text=purple!70!black,
     text width=2.2cm
 ] {mTLS + identity\\between proxies} (s2proxy.west);
-\draw[plaintextarrow] (s2proxy) -- node[labeltext, right, text width=1.65cm] {plaintext activation} (s2app);
+\draw[plaintextarrow] (s2proxy) -- node[labeltext, right, font=\tiny, text width=1.55cm] {plaintext\\activation\\inside endpoint} (s2app);
 
 % Boundary callouts.
 \coordinate (hostboundarymid) at ($(host.south)!0.55!(cvm.north)$);

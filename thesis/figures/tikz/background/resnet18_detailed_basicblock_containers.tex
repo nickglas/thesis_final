@@ -80,6 +80,17 @@
         thick,
         draw=black!75
     },
+    shortcut/.style={
+        -{Latex[length=1.4mm]},
+        dashed,
+        thick,
+        draw=purple!65!black
+    },
+    shortcutlabel/.style={
+        font=\tiny,
+        text=purple!65!black,
+        align=center
+    },
     node distance=0.40cm
 ]
 
@@ -159,6 +170,20 @@
 
 \draw[arrow] (l41c2)  -- (avg);
 \draw[arrow] (avg)    -- (fc);
+
+% Projection shortcuts used by the downsampling block in layers 2--4.
+\draw[shortcut]
+    ($(bb20.south west)+(0.18,0.28)$) --
+    node[shortcutlabel, above=0.03cm, pos=0.50] {$1{\times}1$ proj, /2}
+    ($(bb20.south east)+(-0.18,0.28)$);
+\draw[shortcut]
+    ($(bb30.south west)+(0.18,0.28)$) --
+    node[shortcutlabel, above=0.03cm, pos=0.50] {$1{\times}1$ proj, /2}
+    ($(bb30.south east)+(-0.18,0.28)$);
+\draw[shortcut]
+    ($(bb40.south west)+(0.18,0.28)$) --
+    node[shortcutlabel, above=0.03cm, pos=0.50] {$1{\times}1$ proj, /2}
+    ($(bb40.south east)+(-0.18,0.28)$);
 
 % Stage braces and labels
 \draw[decorate, decoration={brace, amplitude=5pt}]

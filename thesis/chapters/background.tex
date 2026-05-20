@@ -96,7 +96,8 @@ classification head.
 Each residual stage in ResNet-18 contains two BasicBlock containers, and each
 BasicBlock contains two convolution operations. The first block of layers 2--4 also
 uses a projection shortcut for downsampling. This internal structure is hidden in the
-coarse stage-level view, but it matters when reasoning about finer split boundaries.
+coarse stage-level view, but it matters when reasoning about finer split
+boundaries~\cite{resnet}.
 
 \begin{figure}[htbp]
 \centering
@@ -187,10 +188,10 @@ infrastructure. The single-node and multi-node placements used later are shown i
 \resizebox{0.95\textwidth}{!}{%
 \input{../figures/tikz/background/rq15b_chain5_multinode_placement.tex}%
 }
-\caption{RQ1.4b / RQ1.5b multi-node placement of \texttt{chain\_5svc}.
+\caption{RQ1.5b AKS multi-node placement of \texttt{chain\_5svc}.
 Each chain segment lands on a distinct cluster node; the benchmark
 client pod lands on a sixth dedicated node. Every gRPC hop therefore
-crosses a node boundary, in contrast to the same-figure single-node
+crosses a node boundary, in contrast to the same-node
 layout used for RQ1.4 and RQ1.5
 (\cref{fig:rq14_chain5_kubernetes_placement}).}
 \label{fig:rq15b_chain5_multinode_placement}
@@ -211,7 +212,7 @@ identity to workloads, establish mutually authenticated TLS channels between ser
 and enforce authorization policy based on those identities. This strengthens the
 service-to-service path because a downstream service can reject traffic that does not
 come from the expected peer identity, while the traffic between proxies is encrypted and
-mutually authenticated~\cite{meshinsight_socc23,bremlerbarr2025mtls}.
+mutually authenticated~\cite{ashraf2025policy_workflow,bremlerbarr2025mtls}.
 
 This protection boundary is still a communication boundary. Once a request has reached
 the downstream endpoint and the activation tensor has been deserialized, the plaintext
