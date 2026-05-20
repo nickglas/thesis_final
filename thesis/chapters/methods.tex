@@ -126,14 +126,23 @@ port 50051 with a maximum message size of 16~MiB.
 
 The shared timing protocol consists of 50 warmup iterations followed by 200 measured
 iterations per condition execution, with a five-second cooldown between successive
-conditions, a fixed random seed of 42 for condition ordering within each round, and a
-warmup calibration check using a trailing window of 10 iterations and a
-coefficient-of-variation (CV) threshold of 0.02.
+conditions, a base random seed of 42 from which a per-round permutation seed
+$\mathrm{seed} + \mathrm{round\_index}$ is derived so that condition order is independently
+permuted in each round, and a warmup calibration check using a trailing window of 10
+iterations and a coefficient-of-variation (CV) threshold of 0.02.
 Thesis-facing stages aggregate five rounds or five paired passes, yielding 1,000 measured
 iterations per condition.
-The warmup calibration procedure is not used to terminate warmup adaptively: its purpose
-is to provide evidence that the fixed 50-iteration warmup is sufficient for stable
-measurement in each execution environment.
+
+The warmup calibration is implemented as a minimum-plus-stability rule rather than a fixed
+50-iteration ceiling: the runner always executes at least the configured 50 warmup
+iterations, then continues until the trailing-window CV falls below the 0.02 threshold,
+bounded by a generous safety cap of 10\,000 additional iterations.
+In every thesis-facing frozen run, the trailing-window CV was already below 0.02 at
+iteration~50, so the recorded \texttt{total\_iterations} is 50 and
+\texttt{extra\_iterations\_used} is 0 for every condition.
+The calibration therefore provides empirical evidence that 50 iterations were sufficient
+for stable measurement in each execution environment, rather than being used in practice
+to extend warmup adaptively.
 
 The shared functional validation contract requires local segment validation before
 timing and live gRPC chain validation for any split or Kubernetes deployment, using an
@@ -204,21 +213,44 @@ normalised overhead is the primary comparison metric rather than raw absolute la
 because absolute values are environment-specific and do not transfer across different
 host CPUs, kernels, and virtualisation layers.
 
-Several derived metrics are used in specific stages.
-The boundary-crossing interval captures the split-benchmark cost associated with
-crossing the service boundary, reflecting a composite of serialisation, transport, and
-the work executed on the remote side after the boundary.
-The activation-transfer burden is derived from the model architecture as the
-intermediate tensor size at a split boundary (or cumulative tensor size across all
-boundaries in a chain), not measured by a separate network profiler.
-The inferred non-compute/platform cost is a derived residual used in the Kubernetes,
-AKS, and mTLS analyses to separate platform and communication overhead from model
-computation analytically.
+Several derived metrics are used in specific stages, and three of them deserve an
+explicit caveat because they are \emph{not} directly measured quantities even though they
+appear as numbers in result tables.
+
+The \emph{boundary-crossing interval} is a composite that bundles serialisation,
+transport, and the work executed on the remote side after the boundary. It is not the
+cost of "crossing the wire" alone -- the thesis does not instrument the gRPC stack
+internally -- but the time observed at the client between dispatching the request and
+receiving the response, minus the local pre-boundary compute. Any interpretation as a
+"transport cost" alone is therefore unsafe; it is a from-here-to-there interval, not a
+pure transport measurement.
+
+The \emph{activation-transfer burden} is derived from the model architecture as the
+intermediate tensor size at a split boundary (or the cumulative tensor size across all
+boundaries in a chain). It is an architectural quantity, not a measured one: no network
+profiler is used to confirm the on-wire byte count. The 16~MiB gRPC message limit and
+the parity validation against the monolithic model together ensure that the architectural
+size is what is actually transmitted, but the figure itself is computed from model shapes
+rather than from packet capture.
+
+The \emph{inferred non-compute / platform cost} is an analytical residual:
+\[
+\widehat{\mathrm{non\text{-}compute}} = \mathrm{end\text{-}to\text{-}end} - \widehat{\mathrm{compute}},
+\]
+where the compute estimate comes from per-segment local timing. It is used in the
+Kubernetes, AKS, and mTLS analyses to separate platform and communication overhead from
+model computation. As a residual it inherits the error of the compute estimate; it
+cannot be falsified against a directly measured ground truth and should be interpreted
+as an upper bound on the platform + communication share rather than as a direct
+measurement of it.
+
 In RQ2.1, resource and operational overhead metrics are also reported, including sidecar
 CPU and memory, total pod resource deltas, schedule-to-ready time, and the count of
 added mesh and security objects.
 In RQ2.2, sequential throughput is derived from mean latency as requests per second to
-express the throughput impact of confidential-node placement.
+express the throughput impact of confidential-node placement; this is an algebraic
+restatement of mean latency at batch size one, not an independent throughput
+measurement under load.
 
 \subsection{Cross-Round Consistency}
 
@@ -255,11 +287,12 @@ Compute-degenerate conditions are excluded from main-candidate eligibility becau
 produce structurally unbalanced decompositions that do not constitute meaningful
 microservice partitions, even if their raw latency is low.
 
-The second rule resolves near-ties among non-degenerate candidates.
-When the lowest and second-lowest raw latencies among eligible conditions fall within a
-5\% near-best window, the condition with the better structural balance -- lower
-activation-transfer burden relative to its compute distribution -- is selected as the
-main carry-forward candidate, and the other is retained as the reference candidate.
+The second rule selects two candidates from the eligible (non-degenerate) set inside the
+5\% near-best window: the condition with the lowest mean end-to-end latency is selected
+as the main carry-forward candidate, and the next-lowest is retained as the reference
+candidate. Ties on mean latency are broken in favour of the smaller activation-transfer
+size, so that activation size acts as a structural tie-breaker rather than as a primary
+selection criterion.
 
 Carry-forward is not applicable in RQ1.4 and RQ1.5, which benchmark a predefined chain
 family rather than selecting among candidates.
@@ -284,9 +317,14 @@ Both split services run as separate OS processes communicating via gRPC over
 
 The justification for screening at the coarse architectural level before conducting
 any finer search is that moving directly into an exhaustive layer-by-layer search would
-risk over-fitting the selection to incidental local-execution noise and would not
-align with the partitioning literature, which typically evaluates architecturally
-meaningful boundaries rather than arbitrary layers~\cite{dnnsplit,deeperthings,survey_partitioning}.
+risk over-fitting the selection to incidental local-execution noise.
+The partitioning literature is mixed on this point: per-layer optimisation is the
+canonical formulation in some systems~\cite{neurosurgeon,dnnsplit}, while other work
+reports that the practically useful boundaries cluster at a small number of
+architecturally motivated cut points (e.g.\ residual stages or
+blocks)~\cite{deeperthings,pareto_split,survey_partitioning}.
+This thesis follows the latter line for the screening stage and only refines inside the
+carried-forward region in RQ1.2.
 
 The output of this stage is one main carry-forward candidate and one reference
 candidate, selected using the degeneracy and near-best-window rules defined in
@@ -329,7 +367,7 @@ It uses the same single-threaded CPU-stabilised environment as the split benchma
 with 10 rounds, 50 warmup iterations per round, and 200 measured iterations per round.
 Functional equivalence against the uninstrumented model is verified
 (\texttt{max\_abs\_diff}~$= 0.0$), and instrumentation overhead is measured explicitly
-at approximately 0.645~ms (0.88\% of total forward-pass time), confirming that
+at approximately 0.71~ms (0.94\% of total forward-pass time), confirming that
 profiling does not materially distort the timing distribution.
 
 The justification for this supporting experiment is that split-benchmark
@@ -357,16 +395,55 @@ five synchronously chained ResNet-18 service segments.
 The chain family is predefined rather than selected by carry-forward because the purpose
 of this stage is not to choose among candidates but to characterise the full cost curve
 as a function of service count.
+The split points used are: \texttt{layer2} for chain\_2svc;
+\texttt{layer1}, \texttt{layer3} for chain\_3svc;
+\texttt{layer1}, \texttt{layer2}, \texttt{layer3} for chain\_4svc; and
+\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, \texttt{layer4} for chain\_5svc.
+This family deliberately spans the full range of RQ1.1 activation sizes from 784~KiB
+(\texttt{layer1}) down to 98~KiB (\texttt{layer4}), and consequently re-introduces
+boundaries that RQ1.1 rejected (\texttt{layer1} as too transfer-heavy and
+\texttt{layer4} as compute-degenerate). The resulting cost curve should therefore be
+read as an \emph{upper-bound envelope} on the cost of adding service boundaries -- a
+purely best-boundary chain at each depth would lie below this envelope -- not as a
+generic per-hop cost.
 Service pods are allocated one CPU core and 512~MiB of memory with Guaranteed QoS to
 prevent throttling or migration during measurement windows.
 
 The use of a single-node \texttt{kind} cluster is an acknowledged limitation: it
 eliminates inter-node network hops and does not capture the scheduling and networking
 variability of a multi-node or managed cluster.
-This limitation is addressed in two stages: RQ1.5 re-runs the same chain family on
-managed AKS, and RQ1.5b adds an explicit multi-node sensitivity stage that forces
-every chain hop across a node boundary so the inter-node penalty becomes a measured,
-bounded quantity.
+This limitation is addressed in three stages: RQ1.4b adds a \texttt{kind} CNI-bridge
+sensitivity probe (still single-host, so it does not measure real inter-node networking),
+RQ1.5 re-runs the same chain family on managed AKS to validate ordering, and RQ1.5b adds
+a genuine multi-node sensitivity stage on a six-VM AKS cluster so the real inter-node
+penalty becomes a measured, bounded quantity.
+
+\subsection{RQ1.4b -- kind CNI Sensitivity (appendix-only)}
+\label{sec:methods-rq14b}
+
+RQ1.4b is a supporting sensitivity stage that is reported as appendix-level evidence only,
+not as a headline number.
+
+The stage re-runs the same five-condition chain family from RQ1.4 on a six-worker
+\texttt{kind} cluster with pod anti-affinity enforced so that every chain segment of a
+given condition lands on a distinct kind worker node and the benchmark client lands on a
+sixth dedicated worker. The shared benchmark contract is otherwise unchanged (same model,
+same Guaranteed-QoS pod profile, same five-round / 200-measured-iteration / 50-warmup
+discipline, same image tag).
+
+A methodological caveat governs how this stage should be interpreted. kind's "nodes" are
+Docker containers that share a kernel on a single host machine and communicate over kind's
+CNI bridge; they are not separate physical or virtual hosts. RQ1.4b therefore measures the
+cost of routing inter-service gRPC through the kind CNI bridge under anti-affinity, rather
+than the cost of real cross-host networking. The genuine multi-host inter-node penalty is
+measured separately in RQ1.5b on a multi-node AKS cluster
+(\cref{sec:methods-rq15b}). Round-level cross-condition consistency (round CV) is also
+materially higher in RQ1.4b than in single-node RQ1.4, reflecting kind-CNI variability
+rather than a property of the chain family. Comparisons against RQ1.4 use the per-condition
+penalty
+$\Delta_c = \mathrm{mean}_c^{\mathrm{kind\text{-}cni}} - \mathrm{mean}_c^{\mathrm{single}}$,
+which is read as a kind-CNI sensitivity bound rather than as a deployment-grade multi-node
+result.
 
 \subsection{RQ1.5 -- AKS Transfer Validation}
 \label{sec:methods-rq15}
@@ -448,16 +525,102 @@ of policy object counts; a full-chain positive probe confirming that valid upstr
 downstream requests succeed; and a direct non-mesh denial probe confirming that
 unauthenticated access to protected downstream services is blocked.
 
-The primary topology is \texttt{chain\_2svc} (split after \texttt{layer2}), selected
-because it is the lowest-overhead non-monolithic chain in the preceding stages.
-A \texttt{chain\_5svc} stress topology is included to determine how mTLS overhead
-grows when more service boundaries are protected.
+The primary topology is \texttt{chain\_2svc} (split after \texttt{layer2}). It is the
+lowest-overhead non-monolithic chain in the preceding RQ1.4 / RQ1.5 stages. The split
+point used is \texttt{layer2}, which corresponds to the RQ1.1 \emph{reference}
+carry-forward candidate rather than the main carry-forward (\texttt{layer3}); this is a
+deliberate choice because \texttt{chain\_2svc} in the RQ1.4 / RQ1.5 chain family is built
+on \texttt{layer2}, so reusing the same boundary preserves continuity with the
+already-frozen chain-cost numbers.
 
-A known limitation of sidecar-based mTLS is that it protects the inter-proxy
-communication path but does not prevent plaintext from existing inside the pod boundary
-after TLS termination.
-This limitation is acknowledged explicitly: RQ2.1 is claimed as a communication-level
-hardening layer, not as a complete inter-service secrecy mechanism~\cite{poudel2025mazu}.
+A \texttt{chain\_5svc} stress topology is included to determine how mTLS overhead grows
+when more service boundaries are protected. \texttt{chain\_5svc} reuses the same RQ1.4 /
+RQ1.5 split family (\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, \texttt{layer4}),
+which deliberately includes the RQ1.1-rejected boundaries to span the full activation
+range. The chain\_5svc overhead figure should therefore be read against the same
+upper-bound-envelope caveat introduced in \cref{sec:methods-rq14}.
+
+A known limitation of sidecar-based mTLS is that the proxy terminates TLS at the pod
+boundary, so the proxy-to-application hop inside the pod traverses loopback in
+plaintext~\cite{meshinsight_socc23}.
+A second limitation is that the mesh control plane and certificate authority remain
+trust-critical components even when the data-plane is fully mTLS-protected~\cite{poudel2025mazu}.
+Both limitations are acknowledged explicitly: RQ2.1 is claimed as a communication-level
+hardening layer, not as a complete inter-service secrecy mechanism.
+
+\subsection{RQ2.1 (Ablation) -- Decomposition of the Hardening Bundle}
+\label{sec:methods-rq21-ablation}
+
+RQ2.1's main paired design treats the mTLS configuration as a single bundle: sidecar
+injection, strict peer-authentication, and authorisation-policy enforcement are all applied
+together. An additional ablation campaign is run on \texttt{chain\_2svc} to decompose this
+bundle into its incremental contributions.
+
+The ablation introduces four conditions on the same AKS cluster, same Istio revision
+(\texttt{asm-1-29}), and same strict same-node placement as the primary RQ2.1 design:
+(c0) plain non-mesh; (c1) mesh-default sidecar with automatic mTLS but no AuthorizationPolicy;
+(c2) strict PeerAuthentication mTLS with no AuthorizationPolicy; and (c3) strict mTLS with
+AuthorizationPolicy. The conditions are run as a seeded interleaved campaign with five
+passes per condition (5 passes $\times$ 4 conditions $\times$ 200 measured iterations =
+4{,}000 measured rows).
+
+The adjacent deltas decompose the hardened path as follows. $c3-c0$ is the **full
+hardened-path cost** and $c3-c2$ is the **clean AuthorizationPolicy cost**; both are
+cleanly attributable. $c1-c0$ and $c2-c1$ require a methodological caveat: Istio's
+mesh-default behaviour is automatic mTLS in PERMISSIVE mode, so c1 already encrypts
+sidecar-to-sidecar traffic. The delta $c1-c0$ therefore measures the combined cost of
+**(sidecar process + IPC + auto-mTLS data plane)** over plain non-mesh, and cannot be
+attributed to "sidecar process overhead" alone. The delta $c2-c1$ measures the cost of
+upgrading the policy from PERMISSIVE to STRICT with auto-mTLS already in effect, not the
+cost of "strict mTLS encryption" relative to plaintext sidecar traffic. A clean separation
+of sidecar process cost from mTLS cryptography cost would require a fifth condition with
+the sidecar present but \texttt{PeerAuthentication: DISABLE}; this thesis does not include
+that condition and treats the disentanglement as future work.
+
+This campaign is treated as supporting, not headline. The ablation deltas are internally
+comparable across c0--c3 within the same campaign run, but the absolute numbers must not be
+spliced into the frozen two-condition paired \texttt{chain\_2svc} and \texttt{chain\_5svc}
+results.
+
+\subsection{RQ2.1 (Split Sensitivity) -- Single-Hop mTLS vs Activation Size}
+\label{sec:methods-rq21-splitsens}
+
+A second supporting campaign measures whether the mTLS overhead at a single protected hop
+scales with the size of the activation crossing that hop. The independent variable in this
+campaign is the split point that produces hop 2's activation, varying it across
+\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4} (activation sizes
+802\,816, 401\,408, 200\,704, and 100\,352 bytes respectively, matching the RQ1.1 sizes).
+
+For each split point, a plain condition and an mTLS condition are run as a paired pair,
+yielding eight conditions in total. Only the hop between service 1 and service 2 is
+protected by the mTLS configuration; the same strict same-node placement, Istio revision,
+pod profile, and image digest as the primary RQ2.1 design are otherwise preserved. The
+campaign runs five seeded-interleaved passes across the eight conditions for a total of
+8{,}000 measured rows. The per-split deltas (mean and p95 mTLS overhead, per-split operational
+overhead, and per-split resource summary) are the headline outputs.
+
+This campaign is treated as supporting, not headline, for two reasons. First, the
+\texttt{split\_after\_layer4} condition remains compute-degenerate per the RQ1.1
+degeneracy rule and is retained only as a low-payload diagnostic endpoint, not as a
+candidate deployment. Second, the per-split mTLS deltas are campaign-internal: they may not
+be spliced into the frozen \texttt{chain\_2svc} or \texttt{chain\_5svc} paired numbers.
+
+\subsection{RQ2.1b -- Multi-Node Sensitivity of mTLS Overhead}
+\label{sec:methods-rq21b}
+
+RQ2.1b is a paired sensitivity stage that quantifies how the chain\_2svc mTLS overhead changes
+when the two inference services are forced onto distinct AKS nodes. It mirrors the RQ1.5b
+design at the security layer: the \texttt{chain\_2svc} plain and mTLS conditions are deployed
+on a dedicated AKS node pool with \texttt{multi\_node\_anti\_affinity} placement and a
+dedicated benchmark-client node. The same paired alternation, five-pass budget
+(5 paired passes $\times$ 2 conditions $\times$ 200 measured iterations $= 2{,}000$ rows),
+seeded order, and security-validation contract as the primary RQ2.1 chain2 run are reused.
+
+Compliance with the multi-node placement contract is verified after deployment by reading
+observed \texttt{nodeName} values from the Kubernetes API and rejecting any pass where the
+two service pods share a node or where the client node coincides with either service node.
+The headline output is the multi-node paired mTLS delta (mean, p95, and per-pass spread)
+together with the placement-validation status of every pass.
 
 \subsection{RQ2.2 -- Confidential VM Execution Hardening}
 \label{sec:methods-rq22}
@@ -467,9 +630,17 @@ execution environment of the downstream protected service.
 The confidential condition places \texttt{service2} on an AMD SEV-SNP confidential
 node pool (\texttt{Standard\_DC8as\_v5}); the standard condition uses matched
 non-confidential AMD nodes (\texttt{Standard\_D8as\_v5}) in the same AKS cluster.
-A fresh paired standard baseline is collected rather than reusing older RQ2.1
-data, ensuring that incremental overhead can be attributed unambiguously to the
-confidential-node placement rather than to session-level drift.
+
+The RQ2.2 cluster is deployed in Azure region \texttt{westeurope} rather than the
+\texttt{swedencentral} region used by the RQ1.5, RQ1.5b, and RQ2.1 clusters, because at
+the time of the experiments the AMD SEV-SNP DC-series SKUs (\texttt{Standard\_DC8as\_v5})
+were the constraining resource and were available with the required quota in
+\texttt{westeurope}. This region change is the reason a fresh paired standard baseline is
+collected on the RQ2.2 cluster rather than reusing the RQ1.5 or RQ2.1 mTLS baseline:
+absolute latency between the two regions is not directly comparable, so only the
+within-cluster paired delta between the standard and confidential conditions is reported
+as the incremental TEE overhead, and incremental overhead can be attributed unambiguously
+to the confidential-node placement rather than to region- or session-level drift.
 
 The thesis-facing TEE scope is \texttt{service2\_only}.
 This selective placement isolates the cost of protecting the downstream service
@@ -482,9 +653,9 @@ manifest and is treated as future work rather than measured here.
 
 The protection boundary of AMD SEV-SNP must be stated precisely.
 SEV-SNP provides VM-level memory encryption and integrity protection against an
-untrusted host platform, but the guest operating system, application process,
-PyTorch runtime, model weights, and Istio sidecar all remain inside the same VM
-trust boundary. Recent work additionally shows residual attack surfaces beyond
+untrusted host platform~\cite{amd_sevsnp_whitepaper,kaplan2023_hardware_vm}, but the
+guest operating system, application process, PyTorch runtime, model weights, and Istio
+sidecar all remain inside the same VM trust boundary. Recent work additionally shows residual attack surfaces beyond
 memory encryption, including malicious-interrupt injection from the untrusted
 hypervisor~\cite{schluter2024_heckler}; this thesis does not experimentally
 evaluate such attacks. The motivation for protecting the downstream segment at
@@ -537,12 +708,65 @@ configs; the artifact freeze identifies which run is the thesis-facing primary r
 \section{Limitations and Threats to Validity}
 \label{sec:methods-limitations}
 
-The methodological scope of this study has known limitations covering
-single-node deployment, CPU-only inference, the use of a single model and
-workload, controlled-versus-production variability, and the bounded threat
-models claimed by RQ2.1 (mTLS communication-level hardening) and RQ2.2
-(SEV-SNP VM-level confidential execution). These limitations are consolidated
-and discussed in \cref{sec:analysis-threats}.
+The methodological scope of this study has known limitations covering five themes,
+each of which constrains how the results may be generalised.
+
+\emph{Single-node deployment.} The primary RQ1.4 and RQ1.5 designs colocate all chain
+services on one node so that the measured cost is attributable to orchestration and gRPC
+rather than to wide-area or inter-node networking. RQ1.4b and RQ1.5b are explicit
+multi-node sensitivity stages that bound the cost the single-node design hides; the
+RQ1.5/RQ2.1 primary numbers should not be read as representative of arbitrary multi-node
+deployments.
+
+\emph{CPU-only, single-model, single-workload scope.} All experiments use ResNet-18 in
+FP32 on CPU at batch size one. Results may not transfer quantitatively to GPU
+inference, mixed precision, larger or smaller models, transformer architectures, or
+batched throughput-oriented workloads, although the staged methodology itself is
+model-agnostic.
+
+\emph{Controlled-versus-production variability.} Strict CPU stabilisation is enforceable
+on the local stages but only partially enforceable on AKS (governor and turbo are not
+exposed; \texttt{nice} is denied). The measurement environment is therefore quieter than
+a typical production AKS workload, and absolute numbers may shift under contended
+noisy-neighbour conditions.
+
+\emph{Bounded RQ2.1 threat model.} RQ2.1 measures communication-level hardening only.
+The sidecar terminates TLS at the pod boundary so the proxy-to-application loopback hop
+remains in plaintext, and the mesh control plane plus CA remain trust-critical. RQ2.1
+must therefore be interpreted as a confidentiality and authenticity boundary on the
+inter-service path, not as a complete inter-service secrecy mechanism.
+
+\emph{Bounded RQ2.2 threat model.} RQ2.2 measures the incremental cost of AMD SEV-SNP at
+VM granularity. The guest OS, application, runtime, model weights, and sidecar remain
+inside the VM trust boundary, and residual attack surfaces such as malicious-interrupt
+injection from the untrusted hypervisor are out of experimental scope. RQ2.2 is therefore
+an infrastructure-level confidentiality control against a host-platform adversary, not an
+application-level enclave guarantee.
+
+In addition to the five themes above, several measurement scopes are deliberately out of
+this thesis and should be named explicitly so that the reported numbers are not
+over-generalised. \emph{Concurrency.} All measurements use batch size one and sequential
+request issuance; throughput under concurrent load is not measured, and the cost of
+mTLS, sidecar IPC, and SEV-SNP memory encryption may scale non-linearly when the sidecar
+or the CVM memory controller is contended. \emph{Tail behaviour beyond p95.} With 1{,}000
+measured iterations per condition the p95 estimate is well populated, but only ten
+samples sit beyond the p99 cut and the data do not support reliable claims about p99 or
+deeper tail percentiles. \emph{Cold start and steady state.} Pod startup, sidecar
+bootstrap, CVM boot, and SEV-SNP attestation latency are not part of the measured
+end-to-end interval; the headline numbers describe steady-state behaviour only.
+\emph{Cloud-dollar cost.} The thesis reports resource overhead in CPU-time and memory
+units rather than in Azure billing units; converting to dollar-equivalents at the SKU
+prices used (\texttt{Standard\_D8s\_v3}, \texttt{Standard\_D8as\_v5},
+\texttt{Standard\_DC8as\_v5}) is left to the synthesis discussion in RQ2.3.
+\emph{Sidecar capacity headroom.} The Istio sidecar limits are taken from the managed-mesh
+defaults; whether the sidecar approaches its CPU limit at the measured load is checked
+via the resource sampling captured in the RQ2.1 artefacts and is reported alongside the
+overhead numbers, but no load-stress condition was run to find the sidecar's saturation
+point.
+
+The consolidated discussion of these limitations -- including their implications for
+the synthesis in RQ2.3 and for external validity -- is in
+\cref{sec:analysis-threats}.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Ethical Considerations}
