@@ -6,10 +6,13 @@ files, what each source is used for in the argument, and where it appears.
 Scope notes:
 
 - This is a cited-source index, not a full dump of everything present in `references.bib`.
-- `Used in` lists the thesis sections that rely on the source. `Intro` means the source is
-  used in the introduction outside the numbered RQ sections.
-- `Appendix demo` marks template/example citations in `appendix/showcase.tex`; those are not
-  part of the thesis argument.
+  After the factual-repair pass `references.bib` contains exactly the keys cited in
+  active chapters; entries that were never cited in the prose have been removed.
+- `Used in` lists the thesis sections that rely on the source. `Intro` means the source
+  is used in the introduction outside the numbered RQ sections.
+- The template showcase appendix (`appendix/showcase.tex`) is excluded from the build
+  (`main.tex` does not `\import` it), and any demo `Beck2000a`, `Beck2000b`, `ISO25010`
+  citations inside that file therefore do not appear in the thesis bibliography.
 
 ## Core Partitioning And Model-Structure Sources
 
@@ -37,7 +40,6 @@ Scope notes:
 
 | Key                    | Source                                                                                                                                     | Used in | Purpose in thesis                                                                                                                            |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `k8s_genai_inference`  | Evaluating Kubernetes Performance for GenAI Inference                                                                                      | RQ1.4   | Supports the claim that deployment context can add fixed orchestration or coordination cost beyond model computation alone.                  |
 | `rpc_overhead_hotos25` | Rethinking RPC Communication for Microservices-based Applications                                                                          | RQ1.5   | Used to explain why RPC calls add layered protocol, parsing, and serialization overhead in distributed services.                             |
 | `notnets_apsys24`      | NotNets: Accelerating Microservices by Bypassing the Network                                                                               | RQ1.5   | Supports the claim that network-stack traversal, copies, and communication layers affect microservice latency.                               |
 | `managed_k8s_perf`     | A Performance Evaluation of Containers Running on Managed Kubernetes Services                                                              | RQ1.5   | Used to justify that managed Kubernetes platforms can shift absolute performance through provider-specific behavior.                         |
@@ -48,30 +50,21 @@ Scope notes:
 
 ## Security, Service-Mesh, And Confidential-Execution Sources
 
-| Key                                    | Source                                                                                               | Used in | Purpose in thesis                                                                                                                                        |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ashraf2025policy_workflow`            | A Policy-Driven Approach for Securing Microservices Workflow in Kubernetes Cluster                   | RQ2.1   | Used to justify evaluating mTLS together with policy-driven authorization rather than encryption alone.                                                  |
-| `meshinsight_socc23`                   | Dissecting Overheads of Service Mesh Sidecars                                                        | RQ2.1   | Main service-mesh overhead source for sidecar costs such as IPC, kernel crossings, socket operations, and protocol handling.                             |
-| `bremlerbarr2025mtls`                  | Performance Comparison of Service Mesh Frameworks: the MTLS Test Case                                | RQ2.1   | Used to support the claim that mTLS can materially affect latency and resource use, and that cost is workload-specific.                                  |
-| `poudel2025mazu`                       | Mazu: A Zero Trust Architecture for Service Mesh Control Planes                                      | RQ2.1   | Used to bound the security claim by noting that the mesh control plane and CA remain trust-critical components.                                          |
-| `amd_sevsnp_whitepaper`                | AMD SEV-SNP: Strengthening VM Isolation with Integrity Protection and More                           | RQ2.2   | Primary mechanism and threat-model reference for what SEV-SNP protects and what remains outside the guarantee.                                           |
-| `kaplan2023_hardware_vm`               | Hardware VM Isolation in the Cloud: Enabling Confidential Computing with AMD SEV-SNP Technology      | RQ2.2   | Used to explain SEV-SNP and VM-level isolation in broader cloud-computing terms.                                                                         |
-| `microsoft_aks_cvm_2025`               | Use Confidential Virtual Machines (CVM) in Azure Kubernetes Service (AKS)                            | RQ2.2   | Product/documentation source used to justify the AKS confidential VM deployment path evaluated in the experiment.                                        |
-| `microsoft_aks_confidential_node_pool` | Confidential VM Node Pools Support on AKS with AMD SEV-SNP Confidential VMs                          | RQ2.2   | Used to support the specific claim that AKS confidential node pools can host the selected workload.                                                      |
-| `guanciale2022_confidential_quartet`   | SoK: Confidential Quartet -- Comparison of Platforms for Virtualization-Based Confidential Computing | RQ2.2   | Used to support the argument that virtualization-based confidential-computing systems differ in attacker model, attestation, and residual side channels. |
-| `misono2024_cvm_explained`             | Confidential VMs Explained: An Empirical Analysis of AMD SEV-SNP and Intel TDX                       | RQ2.2   | Used for both trust-boundary nuance and workload-dependent confidential-VM overhead expectations.                                                        |
-| `istio_tls_configuration`              | Understanding TLS Configuration                                                                      | RQ2.2   | Used to explain that mTLS terminates in the proxy and plaintext still exists inside the local pod or VM boundary.                                        |
-| `yan2023_cvm_overheads`                | Performance Overheads of Confidential Virtual Machines                                               | RQ2.2   | Main workload-dependent overhead source for confidential VMs.                                                                                            |
-| `akram2021_hpc_tees`                   | Performance Analysis of Scientific Computing Workloads on General Purpose TEEs                       | RQ2.2   | Used to support the general point that TEE overhead depends on workload characteristics such as memory, I/O, and system-call behavior.                   |
-| `mo2024_ml_confidential_computing`     | Machine Learning with Confidential Computing: A Systematization of Knowledge                         | RQ2.2   | Used to frame why ML systems adopt confidential computing and why practical systems must balance protection with performance and complexity.             |
-
-## Template Or Demo Citations
-
-| Key         | Source                                        | Used in       | Purpose in thesis                                                                                                 |
-| ----------- | --------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `ISO25010`  | ISO/IEC 25010:2011 quality model              | Appendix demo | Template citation example in `appendix/showcase.tex`, not part of the thesis argument.                            |
-| `Beck2000a` | Extreme Programming Explained: Embrace Change | Appendix demo | Template `textcite` example in `appendix/showcase.tex`, not part of the thesis argument.                          |
-| `Beck2000b` | Test Driven Development: By Example           | Appendix demo | Template `citeauthor` / `citetitle` / `cite` example in `appendix/showcase.tex`, not part of the thesis argument. |
+| Key                                  | Source                                                                                               | Used in              | Purpose in thesis                                                                                                                                                                                                                            |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ashraf2025policy_workflow`          | A Policy-Driven Approach for Securing Microservices Workflow in Kubernetes Cluster                   | RQ2.1                | Used to justify evaluating mTLS together with policy-driven authorization rather than encryption alone.                                                                                                                                      |
+| `meshinsight_socc23`                 | Dissecting Overheads of Service Mesh Sidecars                                                        | RQ2.1                | Main service-mesh overhead source for sidecar costs such as IPC, kernel crossings, socket operations, and protocol handling.                                                                                                                 |
+| `bremlerbarr2025mtls`                | Performance Comparison of Service Mesh Frameworks: the MTLS Test Case                                | RQ2.1                | Used to support the claim that mTLS can materially affect latency and resource use, and that cost is workload-specific.                                                                                                                      |
+| `poudel2025mazu`                     | Mazu: A Zero Trust Architecture for Service Mesh Control Planes                                      | RQ2.1                | Used to bound the security claim by noting that the mesh control plane and CA remain trust-critical components.                                                                                                                              |
+| `amd_sevsnp_whitepaper`              | AMD SEV-SNP: Strengthening VM Isolation with Integrity Protection and More                           | RQ2.2                | Primary mechanism and threat-model reference for what SEV-SNP protects and what remains outside the guarantee.                                                                                                                               |
+| `kaplan2023_hardware_vm`             | Hardware VM Isolation in the Cloud: Enabling Confidential Computing with AMD SEV-SNP Technology      | RQ2.2                | Used to explain SEV-SNP and VM-level isolation in broader cloud-computing terms.                                                                                                                                                             |
+| `guanciale2022_confidential_quartet` | SoK: Confidential Quartet -- Comparison of Platforms for Virtualization-Based Confidential Computing | RQ2.2                | Used to support the argument that virtualization-based confidential-computing systems differ in attacker model, attestation, and residual side channels.                                                                                     |
+| `misono2024_cvm_explained`           | Confidential VMs Explained: An Empirical Analysis of AMD SEV-SNP and Intel TDX                       | RQ2.2                | Used for both trust-boundary nuance and workload-dependent confidential-VM overhead expectations.                                                                                                                                            |
+| `yan2023_cvm_overheads`              | Performance Overheads of Confidential Virtual Machines                                               | RQ2.2                | Main workload-dependent overhead source for confidential VMs.                                                                                                                                                                                |
+| `akram2021_hpc_tees`                 | Performance Analysis of Scientific Computing Workloads on General Purpose TEEs                       | RQ2.2                | Used to support the general point that TEE overhead depends on workload characteristics such as memory, I/O, and system-call behavior.                                                                                                       |
+| `mo2024_ml_confidential_computing`   | Machine Learning with Confidential Computing: A Systematization of Knowledge                         | RQ2.2                | Used to frame why ML systems adopt confidential computing and why practical systems must balance protection with performance and complexity.                                                                                                 |
+| `he2021_attacking_collaborative`     | Attacking and Protecting Data Privacy in Edge--Cloud Collaborative Inference Systems                 | Intro, RQ2.2, RQ2.3  | Motivates why intermediate activations need protection beyond in-transit mTLS. Cite as motivation for activation protection; do not present SEV-SNP as a direct solution to its malicious / untrusted remote-service threat model.            |
+| `schluter2024_heckler`               | HECKLER: Breaking Confidential VMs with Malicious Interrupts                                         | Intro, RQ2.2, RQ2.3, Conclusion | Bounds the RQ2.2 / RQ2.3 security claim: confidential VMs still have residual attack surfaces under malicious-host interactions, including malicious interrupt injection. This thesis does not experimentally evaluate the HECKLER attack. |
 
 ## Quick RQ-To-Source Summary
 
@@ -83,13 +76,16 @@ Scope notes:
 | `RQ1.4`        | Cost of adding more boundaries in an in-cluster Kubernetes chain.                                                        |
 | `RQ1.5`        | Transfer validation from local Kubernetes to AKS under managed-cloud overhead and noise.                                 |
 | `RQ2.1`        | Service identity, mTLS, authorization policy, and sidecar overhead in AKS.                                               |
-| `RQ2.2`        | Confidential VM / SEV-SNP execution, AKS confidential nodes, trust-boundary limits, and workload-dependent TEE overhead. |
+| `RQ2.2`        | Confidential VM / SEV-SNP execution (selective `service2_only` scope), trust-boundary limits, and workload-dependent TEE overhead. |
+| `RQ2.3`        | Synthesis of plain AKS / mTLS / selective TEE trade-off; full two-service TEE is future work.                            |
 
 ## Maintenance Notes
 
-- `references.bib` currently contains duplicate entries for several RQ1-era keys. This
-  file intentionally lists the cited sources once per key.
-- `meshinsight_socc23` and `zhu2023_meshinsight` refer to the same SoCC 2023 paper in
-  the bibliography. The current thesis text uses `meshinsight_socc23`.
-- If a source is added to a literature-context section later, update both the relevant
-  table row and the `Used in` column here.
+- `references.bib` has been pruned to match the citation graph of the active chapter
+  files. Re-running `bibtex`/`biber` should not report missing keys.
+- The literature claim matrix and the evidence manifest remain the canonical
+  reference for Core / Opt / Bg / Superseded / Duplicate tagging per paper:
+  [papers/literature_claim_matrix.md](papers/literature_claim_matrix.md) and
+  [papers/thesis_evidence_manifest.md](papers/thesis_evidence_manifest.md).
+- If a new source is added to a chapter later, update both the relevant table row
+  here and the corresponding bib entry.

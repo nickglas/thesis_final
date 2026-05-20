@@ -23,14 +23,18 @@ deployment overhead is discussed in
 \subsection{Experimental Setup}
 
 The thesis-facing RQ1.4 benchmark used the frozen controlled local Kubernetes run
-exported on 2026-04-21. The environment snapshot records an Ubuntu/Linux runtime
-(\texttt{Linux-6.17.0-22-generic-x86\_64-with-glibc2.41}), Python~3.10.20, and
-PyTorch~2.11.0+cu130. Deployment metadata shows that the benchmark ran in namespace
-\texttt{rq14} on a single-node \texttt{kind} cluster
-(\texttt{kind-thesis-rq14}); for every condition, all service pods were scheduled on the
-same node, \texttt{thesis-rq14-control-plane}. The evaluated model was pretrained
-ResNet-18 with CPU-only FP32 execution and input shape
-$1 \times 3 \times 224 \times 224$.
+\texttt{rq1\_4\_fully\_controlled\_20260515\_141036}. The environment snapshot
+(\texttt{merged\_results/environment.json}) records an Ubuntu/Linux runtime
+(\texttt{Linux-6.17.0-23-generic-x86\_64-with-glibc2.41}), Python~3.10.20, and
+PyTorch~2.11.0+cpu. Deployment metadata
+(\texttt{merged\_results/deployment\_metadata.json}) shows that the benchmark ran
+in namespace \texttt{rq14} on a single-node \texttt{kind} cluster
+(\texttt{kind-thesis-rq14}); for every condition, all service pods were scheduled
+on the same node, \texttt{thesis-rq14-control-plane}. The container image is the
+mutable local tag \texttt{thesis-inference:latest} with pull policy
+\texttt{IfNotPresent}, as documented in the manifest's reproducibility note
+(\cref{sec:methods-artifacts}). The evaluated model was pretrained ResNet-18
+with CPU-only FP32 execution and input shape $1 \times 3 \times 224 \times 224$.
 
 \begin{table}[ht]
 \centering
@@ -104,17 +108,17 @@ states that carry-forward is defined only for the two-service split-selection ex
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4 summary of mean latency and overhead vs.\ Kubernetes monolithic baseline}
+\caption{RQ1.4 summary of mean latency and overhead vs.\ Kubernetes monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
 \label{tab:rq14_results}
 \begin{tabular}{lccccc}
 \toprule
 \textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 81.447 & 79.648 & 4.061 & 89.444 & --- \\
-\texttt{chain\_2svc}           & 84.189 & 82.880 & 3.294 & 90.538 & +2.742 / +3.4\% \\
-\texttt{chain\_3svc}           & 87.608 & 85.487 & 4.274 & 96.083 & +6.161 / +7.6\% \\
-\texttt{chain\_4svc}           & 92.312 & 90.594 & 4.942 & 101.223 & +10.865 / +13.3\% \\
-\texttt{chain\_5svc}           & 92.624 & 90.312 & 4.318 & 99.398 & +11.177 / +13.7\% \\
+\texttt{monolithic\_k8s\_1svc} & 81.066 & 79.506 & 4.017 & 88.250 & --- \\
+\texttt{chain\_2svc}           & 83.387 & 81.803 & 3.525 & 90.189 & +2.321 / +2.9\% \\
+\texttt{chain\_3svc}           & 87.728 & 85.775 & 4.233 & 95.269 & +6.662 / +8.2\% \\
+\texttt{chain\_4svc}           & 90.572 & 88.675 & 3.929 & 97.713 & +9.506 / +11.7\% \\
+\texttt{chain\_5svc}           & 92.535 & 90.456 & 3.965 & 99.491 & +11.469 / +14.1\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -124,7 +128,12 @@ states that carry-forward is defined only for the two-service split-selection ex
 \resizebox{0.92\textwidth}{!}{%
 \input{figures/tikz/results/rq14_kubernetes_chain_latency}
 }
-\caption{Mean end-to-end latency for the RQ1.4 local Kubernetes chain family. Latency increases as additional synchronous service boundaries are introduced, but the increase is not strictly linear. The smallest marginal increase occurs between the four-service and five-service chains, where the added late-stage boundary contributes comparatively little additional activation-transfer burden.}
+\caption{Mean end-to-end latency for the RQ1.4 local Kubernetes chain family
+(\texttt{rq1\_4\_fully\_controlled\_20260515\_141036}). Latency increases as
+additional synchronous service boundaries are introduced, but the increase is
+not strictly linear. The marginal increases shrink as the chain grows because
+the additional late-stage boundaries transfer progressively smaller
+activations.}
 \label{fig:rq14_kubernetes_chain_latency}
 \end{figure}
 
@@ -134,32 +143,32 @@ five-service configuration.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4 overhead and inferred non-compute/platform cost breakdown}
+\caption{RQ1.4 overhead and inferred non-compute/platform cost breakdown. Activation totals are taken from \texttt{total\_activation\_bytes\_mean} in \texttt{merged\_results/condition\_summaries.csv} and converted to KB (1024 bytes/KB).}
 \label{tab:rq14_overhead}
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Condition} & \textbf{Overhead (ms)} & \textbf{Overhead (\%)} & \textbf{Cumul.\ Activation (KB)} & \textbf{Inferred Non-Compute / Platform (ms)} \\
 \midrule
-\texttt{chain\_2svc} & 2.742  & 3.4  & 980  & 6.285 \\
-\texttt{chain\_3svc} & 6.161  & 7.6  & 1568 & 9.646 \\
-\texttt{chain\_4svc} & 10.865 & 13.3 & 1960 & 12.231 \\
-\texttt{chain\_5svc} & 11.177 & 13.7 & 2058 & 13.893 \\
+\texttt{chain\_2svc} & 2.321  & 2.9  & 980  & 6.215 \\
+\texttt{chain\_3svc} & 6.662  & 8.2  & 1568 & 9.435 \\
+\texttt{chain\_4svc} & 9.506  & 11.7 & 1960 & 12.088 \\
+\texttt{chain\_5svc} & 11.469 & 14.1 & 2058 & 13.633 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4 effect sizes relative to monolithic baseline}
+\caption{RQ1.4 effect sizes relative to monolithic baseline. Source: \texttt{merged\_results/effect\_sizes.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
 \label{tab:rq14_effects}
 \begin{tabular}{lccc}
 \toprule
 \textbf{Condition} & \textbf{Cohen's $d$} & \textbf{Interpretation} & \textbf{Mann-Whitney $p$} \\
 \midrule
-\texttt{chain\_2svc} & 0.742 & medium & $2.38 \times 10^{-81}$ \\
-\texttt{chain\_3svc} & 1.478 & large  & $6.82 \times 10^{-150}$ \\
-\texttt{chain\_4svc} & 2.402 & large  & $3.03 \times 10^{-282}$ \\
-\texttt{chain\_5svc} & 2.667 & large  & $3.50 \times 10^{-291}$ \\
+\texttt{chain\_2svc} & 0.614 & medium & $7.66 \times 10^{-77}$ \\
+\texttt{chain\_3svc} & 1.614 & large  & $4.02 \times 10^{-181}$ \\
+\texttt{chain\_4svc} & 2.392 & large  & $3.23 \times 10^{-276}$ \\
+\texttt{chain\_5svc} & 2.874 & large  & $1.75 \times 10^{-301}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -174,27 +183,27 @@ result stability and methodological validity.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4 cross-round consistency}
+\caption{RQ1.4 cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
 \label{tab:rq14_rounds}
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 81.447 & 1.3193 & 3.0408 & 0.0162 \\
-\texttt{chain\_2svc}           & 84.189 & 1.1876 & 3.0546 & 0.0141 \\
-\texttt{chain\_3svc}           & 87.608 & 1.4250 & 3.7465 & 0.0163 \\
-\texttt{chain\_4svc}           & 92.312 & 1.6107 & 3.7851 & 0.0174 \\
-\texttt{chain\_5svc}           & 92.624 & 0.6942 & 1.7056 & 0.0075 \\
+\texttt{monolithic\_k8s\_1svc} & 81.066 & 0.6864 & 1.8009 & 0.0085 \\
+\texttt{chain\_2svc}           & 83.387 & 0.8288 & 2.0200 & 0.0099 \\
+\texttt{chain\_3svc}           & 87.728 & 1.4109 & 3.8162 & 0.0161 \\
+\texttt{chain\_4svc}           & 90.572 & 0.8826 & 2.0073 & 0.0097 \\
+\texttt{chain\_5svc}           & 92.535 & 0.6820 & 1.6288 & 0.0074 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The frozen controlled local Kubernetes run was stable across rounds. Round CVs remained low for all
-five conditions: 0.0162 for \texttt{monolithic\_k8s\_1svc}, 0.0141 for
-\texttt{chain\_2svc}, 0.0163 for \texttt{chain\_3svc}, 0.0174 for
-\texttt{chain\_4svc}, and 0.0075 for \texttt{chain\_5svc}. Together with the parity
-checks above, this supports treating the reported condition means as representative of
-the local in-cluster benchmark.
+The frozen controlled local Kubernetes run was stable across rounds. Round CVs
+remained low for all five conditions: 0.0085 for \texttt{monolithic\_k8s\_1svc},
+0.0099 for \texttt{chain\_2svc}, 0.0161 for \texttt{chain\_3svc}, 0.0097 for
+\texttt{chain\_4svc}, and 0.0074 for \texttt{chain\_5svc}. Together with the
+parity checks above, this supports treating the reported condition means as
+representative of the local in-cluster benchmark.
 
 The interpretation of these results and the answer to RQ1.4 are presented in
 \cref{sec:analysis-rq14}.

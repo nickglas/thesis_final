@@ -27,6 +27,7 @@
 % = Chapter headings =
 % ====================
 \RequirePackage{graphicx}
+\RequirePackage{tabularx}
 \chapterstyle{madsen}
 \pagestyle{companion}
 \setsecnumdepth{subsection}
@@ -72,11 +73,17 @@
 
 % Host organisation
 \newif\if@hashostorganisation
+\newif\if@hashostorganisationlogo
 \gdef\@hostorganisation{}
 
 \NewDocumentCommand{\hostorganisation}{mm}{%
   \@hashostorganisationtrue
+  \@hashostorganisationlogofalse
   \gdef\@hostorganisationlogo{#1}\gdef\@hostorganisation{#2}
+  \if\relax\detokenize{#1}\relax
+  \else
+    \@hashostorganisationlogotrue
+  \fi
 }
 
 % Cover picture
@@ -134,23 +141,28 @@ Amsterdam, The Netherlands
         \vskip 2.5em
         \MONTH{} \the\year
     		\null\vfill
-        \ifdefined\@hostorganisation
+        \if@hashostorganisation
           \end{center}
-          \begin{tabular}{@{}l@{}r@{}}
-            \begin{minipage}[b]{.54\textwidth}\@university\end{minipage} & 
-            \begin{minipage}[b]{.46\textwidth}\begin{flushright}
-              \includegraphics[height=2cm,keepaspectratio]{\@hostorganisationlogo}\\
+          \noindent
+          \begin{minipage}[b]{.54\textwidth}
+            \@university
+          \end{minipage}\hfill
+          \begin{minipage}[b]{.44\textwidth}
+            \begin{flushright}
+              \if@hashostorganisationlogo
+                \includegraphics[height=2cm,keepaspectratio]{\@hostorganisationlogo}\\
+              \fi
               \@hostorganisation
-            \end{flushright}\end{minipage}
-          \end{tabular}
+            \end{flushright}
+          \end{minipage}\par
         \else
           \@university
           \end{center}
         \fi
         \newpage
         \thispagestyle{empty}
-        \noindent\begin{tabular}{@{}lp{.8\textwidth{}}@{}}
-        \emph{Thesis Committee}\\\\
+        \noindent\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+        \multicolumn{2}{@{}l@{}}{\emph{Thesis Committee}}\\[1ex]
         Examiner (chair): & \@examinername{} (\@examineraffiliation{})\\
         Second Reviewer: & \@reviewername{} (\@revieweraffilication{})\\
         \ifdefined\@dailysupervisorname
@@ -162,7 +174,7 @@ Amsterdam, The Netherlands
         \ifdefined\@othermemberslist
           Other members: & \@othermemberslist{} \\
         \fi
-        \end{tabular}
+        \end{tabularx}
         \null\vfill
         \footnotesize
         \setlength{\parindent}{0pt}

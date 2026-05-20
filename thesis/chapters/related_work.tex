@@ -95,20 +95,34 @@ trust further cautions that mesh CAs and control planes remain security-critical
 components~\cite{poudel2025mazu}. RQ2.1 therefore treats mTLS and authorization as a
 bounded communication-hardening layer, not as a complete security solution.
 
-Confidential-computing work motivates the second hardening layer. AMD SEV-SNP provides
-VM-level memory encryption and integrity protection against parts of the host platform
-~\cite{amd_sevsnp_whitepaper,kaplan2023_hardware_vm}. Comparative studies of
-virtualization-based confidential-computing platforms emphasize that these systems have
-specific attacker models, attestation mechanisms, and residual limitations
-~\cite{guanciale2022_confidential_quartet,misono2024_cvm_explained}. Performance
-studies show that confidential VM overhead is workload-dependent, with CPU-bound,
-memory-intensive, and I/O-heavy workloads affected differently
-~\cite{yan2023_cvm_overheads,akram2021_hpc_tees}. Machine-learning confidential
-computing surveys identify protected model execution and data privacy as important
-motivations, while also emphasizing deployment and performance trade-offs
-~\cite{mo2024_ml_confidential_computing}. RQ2.2 follows this bounded framing by
-measuring VM-level confidential execution on AKS rather than claiming application-level
-enclave isolation.
+Confidential-computing work motivates the second hardening layer. The motivation
+itself comes from work on activation-level privacy attacks: He~et~al.\
+\cite{he2021_attacking_collaborative} demonstrate that a remote partition holding
+only intermediate feature maps can reconstruct the edge client's input, and that
+simple noise-based defenses fail. This shows that in-transit mTLS alone does not
+protect activations once they reach the downstream segment, although their
+threat model is malicious-remote-service rather than the
+infrastructure-level adversary that confidential VMs address.
+
+AMD SEV-SNP provides VM-level memory encryption and integrity protection against
+parts of the host platform~\cite{amd_sevsnp_whitepaper,kaplan2023_hardware_vm}.
+Comparative studies of virtualization-based confidential-computing platforms
+emphasize that these systems have specific attacker models, attestation
+mechanisms, and residual limitations~\cite{guanciale2022_confidential_quartet,misono2024_cvm_explained}.
+Performance studies show that confidential VM overhead is workload-dependent,
+with CPU-bound, memory-intensive, and I/O-heavy workloads affected
+differently~\cite{yan2023_cvm_overheads,akram2021_hpc_tees}. Machine-learning
+confidential computing surveys identify protected model execution and data
+privacy as important motivations, while also emphasizing deployment and
+performance trade-offs~\cite{mo2024_ml_confidential_computing}. Recent work
+additionally shows that the hypervisor remains a meaningful adversary even
+under SEV-SNP: HECKLER~\cite{schluter2024_heckler} bypasses authentication and
+breaks execution integrity on production SEV-SNP and TDX systems through
+malicious-interrupt injection, an attack surface that hardware memory
+encryption alone does not cover. RQ2.2 follows this bounded framing by
+measuring VM-level confidential execution on AKS for the downstream service
+only, rather than claiming application-level enclave isolation or evaluating
+those residual attack surfaces.
 
 \section{Positioning of This Thesis}
 

@@ -24,30 +24,31 @@ managed cloud execution is discussed in \cref{sec:rw-cloud-native}.
 \subsection{Experimental Setup}
 
 The thesis-facing RQ1.5 benchmark used the frozen controlled AKS
-transfer-validation benchmark exported on 2026-05-08. The deployment ran in
-namespace \texttt{rq15} on a single-node AKS cluster using Kubernetes~1.34, a
-\texttt{Standard\_D8s\_v3} node in the \texttt{swedencentral} Azure region, and
-\texttt{kubenet} networking. Deployment metadata confirms that pod colocation was
-enforced: for every condition, the benchmark client and all service pods were
-scheduled on the same AKS node. All AKS conditions used the same pinned container
-image digest:
-\texttt{sha256:1f002f8a8f816a1ca5c8}\allowbreak
-\texttt{ee05c3a1d2429822eb0de7405e7f3781}\allowbreak
-\texttt{621cd7406bed}.
+transfer-validation benchmark \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.
+The deployment ran in namespace \texttt{rq15} on a single-node AKS cluster,
+with \texttt{Standard\_D8s\_v3} nodes (per
+\texttt{deployment\_metadata.json}, \texttt{node\_instance\_type}) in the
+\texttt{swedencentral} Azure region. Deployment metadata confirms that pod
+colocation was enforced: for every condition, the benchmark client and all
+service pods were scheduled on the same AKS node
+(\texttt{aks-rq15pool-42653082-vmss000000}). All AKS conditions used the same
+pinned container image digest:
+\texttt{sha256:d292aef407ee8a15da2b}\allowbreak
+\texttt{daa680de1cc24b0975e7de81d27e1fc3}\allowbreak
+\texttt{a7d128b8736b}.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5 AKS benchmark configuration}
+\caption{RQ1.5 AKS benchmark configuration. Source: \texttt{merged\_results/config.yaml} and \texttt{deployment\_metadata.json} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
 \label{tab:rq15_config}
 \begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
 \toprule
 \textbf{Setting} & \textbf{Value} \\
 \midrule
 Runtime & Azure Kubernetes Service benchmark \\
-Cluster & Single-node AKS cluster, Kubernetes~1.34 \\
+Cluster & Single-node AKS cluster \texttt{thesis-rq15} \\
 Node type & \texttt{Standard\_D8s\_v3} \\
 Region & \texttt{swedencentral} \\
-Network plugin & \texttt{kubenet} \\
 Namespace & \texttt{rq15} \\
 Conditions & Five predefined configurations from \texttt{monolithic\_k8s\_1svc} to \texttt{chain\_5svc} \\
 Execution mode & In-cluster rolling orchestration with teardown between conditions \\
@@ -110,18 +111,18 @@ deployment family in AKS rather than choosing a new split point.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5 AKS summary of mean latency and overhead vs.\ AKS monolithic baseline}
+\caption{RQ1.5 AKS summary of mean latency and overhead vs.\ AKS monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
 \label{tab:rq15_results}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lccccc}
 \toprule
 \textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 57.963 & 57.759 & 2.824 & 62.568 & --- \\
-\texttt{chain\_2svc}           & 63.367 & 62.981 & 2.470 & 67.795 & +5.404 / +9.3\% \\
-\texttt{chain\_3svc}           & 66.543 & 66.096 & 2.953 & 71.406 & +8.580 / +14.8\% \\
-\texttt{chain\_4svc}           & 70.698 & 70.234 & 3.302 & 76.335 & +12.735 / +22.0\% \\
-\texttt{chain\_5svc}           & 71.480 & 70.968 & 3.142 & 76.815 & +13.517 / +23.3\% \\
+\texttt{monolithic\_k8s\_1svc} & 70.802 & 70.224 & 2.659 & 75.151 & --- \\
+\texttt{chain\_2svc}           & 73.437 & 73.124 & 1.831 & 76.602 & +2.635 / +3.7\% \\
+\texttt{chain\_3svc}           & 75.410 & 75.043 & 1.971 & 78.301 & +4.608 / +6.5\% \\
+\texttt{chain\_4svc}           & 78.294 & 77.923 & 2.190 & 81.698 & +7.492 / +10.6\% \\
+\texttt{chain\_5svc}           & 80.519 & 80.078 & 2.158 & 84.635 & +9.717 / +13.7\% \\
 \bottomrule
 \end{tabular}
 }
@@ -129,17 +130,17 @@ deployment family in AKS rather than choosing a new split point.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5 AKS overhead and inferred non-compute/platform cost breakdown}
+\caption{RQ1.5 AKS overhead and inferred non-compute/platform cost breakdown. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}; the platform column is \texttt{non\_compute\_overhead\_ms\_mean}.}
 \label{tab:rq15_overhead}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Condition} & \textbf{Overhead (ms)} & \textbf{Overhead (\%)} & \textbf{Cumul.\ Activation (KB)} & \textbf{Inferred Non-Compute / Platform (ms)} \\
 \midrule
-\texttt{chain\_2svc} & 5.404  & 9.3  & 980  & 5.527 \\
-\texttt{chain\_3svc} & 8.580  & 14.8 & 1568 & 8.433 \\
-\texttt{chain\_4svc} & 12.735 & 22.0 & 1960 & 10.832 \\
-\texttt{chain\_5svc} & 13.517 & 23.3 & 2058 & 12.346 \\
+\texttt{chain\_2svc} & 2.635 & 3.7  & 980  & 4.489 \\
+\texttt{chain\_3svc} & 4.608 & 6.5  & 1568 & 7.073 \\
+\texttt{chain\_4svc} & 7.492 & 10.6 & 1960 & 9.138 \\
+\texttt{chain\_5svc} & 9.717 & 13.7 & 2058 & 10.490 \\
 \bottomrule
 \end{tabular}
 }
@@ -147,18 +148,18 @@ deployment family in AKS rather than choosing a new split point.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5 transfer comparison between local Kubernetes and AKS}
+\caption{RQ1.5 transfer comparison between local Kubernetes and AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036} and \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
 \label{tab:rq15_transfer}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Condition} & \textbf{Local mean (ms)} & \textbf{AKS mean (ms)} & \textbf{Local overhead} & \textbf{AKS overhead} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 81.447 & 57.963 & 0.0\%  & 0.0\% \\
-\texttt{chain\_2svc}           & 84.189 & 63.367 & 3.4\%  & 9.3\% \\
-\texttt{chain\_3svc}           & 87.608 & 66.543 & 7.6\%  & 14.8\% \\
-\texttt{chain\_4svc}           & 92.312 & 70.698 & 13.3\% & 22.0\% \\
-\texttt{chain\_5svc}           & 92.624 & 71.480 & 13.7\% & 23.3\% \\
+\texttt{monolithic\_k8s\_1svc} & 81.066 & 70.802 & 0.0\%  & 0.0\% \\
+\texttt{chain\_2svc}           & 83.387 & 73.437 & 2.9\%  & 3.7\% \\
+\texttt{chain\_3svc}           & 87.728 & 75.410 & 8.2\%  & 6.5\% \\
+\texttt{chain\_4svc}           & 90.572 & 78.294 & 11.7\% & 10.6\% \\
+\texttt{chain\_5svc}           & 92.535 & 80.519 & 14.1\% & 13.7\% \\
 \bottomrule
 \end{tabular}
 }
@@ -185,28 +186,29 @@ overhead trend are preserved.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5 AKS cross-round consistency}
+\caption{RQ1.5 AKS cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
 \label{tab:rq15_rounds}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 57.963 & 1.3069 & 2.7250 & 0.0225 \\
-\texttt{chain\_2svc}           & 63.367 & 0.4787 & 1.1978 & 0.0076 \\
-\texttt{chain\_3svc}           & 66.543 & 0.5018 & 1.2214 & 0.0075 \\
-\texttt{chain\_4svc}           & 70.698 & 1.0266 & 2.8378 & 0.0145 \\
-\texttt{chain\_5svc}           & 71.480 & 0.9935 & 2.4923 & 0.0139 \\
+\texttt{monolithic\_k8s\_1svc} & 70.802 & 0.8255 & 1.9646 & 0.0117 \\
+\texttt{chain\_2svc}           & 73.437 & 0.1398 & 0.3183 & 0.0019 \\
+\texttt{chain\_3svc}           & 75.410 & 0.1879 & 0.5187 & 0.0025 \\
+\texttt{chain\_4svc}           & 78.294 & 0.1960 & 0.4629 & 0.0025 \\
+\texttt{chain\_5svc}           & 80.519 & 0.4911 & 1.1659 & 0.0061 \\
 \bottomrule
 \end{tabular}
 }
 \end{table}
 
-The AKS run is stable across measured rounds for all chained conditions, with round
-CVs of 0.0075--0.0145. The monolithic baseline shows a higher round CV of 0.0225;
-this elevated single-pod variability is consistent with managed-cloud noise on the
-\texttt{Standard\_D8s\_v3} VM and does not propagate into the chained conditions, where
-the cumulative compute window dominates per-round variation. Warmup calibration
+The AKS run is stable across measured rounds for all chained conditions, with
+round CVs of 0.0019--0.0061. The monolithic baseline shows a slightly higher
+round CV of 0.0117; this elevated single-pod variability is consistent with
+managed-cloud noise on the \texttt{Standard\_D8s\_v3} VM and does not propagate
+into the chained conditions, where the cumulative compute window dominates
+per-round variation. Warmup calibration
 indicated that each run reached a stable trailing-window CV at least once before
 measurement, while the cross-round CVs of the measured iterations provide the stronger
 stability evidence for the final reported means. As in the previous stage, effect sizes
@@ -253,11 +255,12 @@ pod-to-node assignment changes.}
 \subsection{Experimental Setup}
 
 The thesis-facing RQ1.5b benchmark used the frozen multi-node sensitivity run
-exported on 2026-05-08. The deployment ran in namespace \texttt{rq15b} on a six-node
-AKS cluster in the \texttt{swedencentral} Azure region with Kubernetes~1.34 and
-\texttt{kubenet} networking. All six worker nodes were \texttt{Standard\_D8s\_v3}
-(8~vCPUs, 32~GiB) and shared one node pool, one VNet, and one availability zone, so
-the only intentional difference from RQ1.5 is the pod-to-node assignment.
+\texttt{rq1\_5b\_multinode\_20260515\_152628}. The deployment ran in namespace
+\texttt{rq15b} on a multi-node AKS cluster in the \texttt{swedencentral} Azure
+region. All worker nodes were \texttt{Standard\_D8s\_v3} (per
+\texttt{node\_instance\_type} in \texttt{deployment\_metadata.json}) and shared
+one node pool, so the only intentional difference from RQ1.5 is the
+pod-to-node assignment.
 
 Multi-node placement was enforced by Kubernetes pod anti-affinity. Each service pod
 of a given condition repels every other service pod of that condition keyed on
@@ -278,7 +281,7 @@ The shared benchmark contract is otherwise unchanged from RQ1.5: ResNet-18 with
 pretrained weights, CPU FP32 inference, the same five chain conditions, the same
 five-round / 200-iteration / 50-warmup discipline, the same Guaranteed-QoS pod
 profile (1~vCPU + 1~GiB per pod), and the same image used in RQ1.5
-(\texttt{sha256:c5d44bd08783fc78177c}\allowbreak\texttt{2fc4b5d9209d08258309f9d907fc}\allowbreak\texttt{b02cd1315e0fe1de}).
+(\texttt{sha256:d292aef407ee8a15da2b}\allowbreak\texttt{daa680de1cc24b0975e7de81d27e1fc3}\allowbreak\texttt{a7d128b8736b}).
 
 \subsection{Conditions}
 
@@ -294,18 +297,18 @@ direct comparison shown in \cref{tab:rq15b_delta}.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5b AKS multi-node summary of mean latency and overhead vs.\ AKS multi-node monolithic baseline}
+\caption{RQ1.5b AKS multi-node summary of mean latency and overhead vs.\ AKS multi-node monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
 \label{tab:rq15b_results}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lccccc}
 \toprule
 \textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 70.118 & 69.807 & 2.277 & 73.249 & --- \\
-\texttt{chain\_2svc}           & 73.408 & 72.949 & 1.952 & 76.959 & +3.290 / +4.7\% \\
-\texttt{chain\_3svc}           & 75.593 & 75.289 & 1.450 & 77.996 & +5.475 / +7.8\% \\
-\texttt{chain\_4svc}           & 79.342 & 78.981 & 1.730 & 82.521 & +9.224 / +13.2\% \\
-\texttt{chain\_5svc}           & 81.172 & 80.826 & 1.656 & 84.156 & +11.054 / +15.8\% \\
+\texttt{monolithic\_k8s\_1svc} & 73.108 & 72.403 & 3.707 & 79.598 & --- \\
+\texttt{chain\_2svc}           & 76.470 & 75.653 & 3.435 & 82.696 & +3.362 / +4.6\% \\
+\texttt{chain\_3svc}           & 77.541 & 76.848 & 2.786 & 83.041 & +4.433 / +6.1\% \\
+\texttt{chain\_4svc}           & 82.103 & 81.660 & 2.355 & 86.394 & +8.995 / +12.3\% \\
+\texttt{chain\_5svc}           & 84.605 & 84.131 & 2.497 & 89.186 & +11.497 / +15.7\% \\
 \bottomrule
 \end{tabular}
 }
@@ -313,18 +316,18 @@ direct comparison shown in \cref{tab:rq15b_delta}.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5b multi-node penalty, condition-by-condition vs.\ frozen RQ1.5 single-node AKS}
+\caption{RQ1.5b multi-node penalty, condition-by-condition vs.\ frozen RQ1.5 single-node AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954} and \texttt{rq1\_5b\_multinode\_20260515\_152628}; overhead points are with respect to each environment's own monolithic baseline (\cref{tab:rq15_results,tab:rq15b_results}).}
 \label{tab:rq15b_delta}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Condition} & \textbf{Single-node mean (ms)} & \textbf{Multi-node mean (ms)} & \textbf{$\Delta$ (ms)} & \textbf{$\Delta$ overhead (pp)} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 57.963 & 70.118 & +12.155 & --- \\
-\texttt{chain\_2svc}           & 63.367 & 73.408 & +10.041 & $-$4.6 \\
-\texttt{chain\_3svc}           & 66.543 & 75.593 &  +9.050 & $-$7.0 \\
-\texttt{chain\_4svc}           & 70.698 & 79.342 &  +8.644 & $-$8.8 \\
-\texttt{chain\_5svc}           & 71.480 & 81.172 &  +9.692 & $-$7.5 \\
+\texttt{monolithic\_k8s\_1svc} & 70.802 & 73.108 & +2.306 & --- \\
+\texttt{chain\_2svc}           & 73.437 & 76.470 & +3.033 & +0.9 \\
+\texttt{chain\_3svc}           & 75.410 & 77.541 & +2.131 & $-$0.4 \\
+\texttt{chain\_4svc}           & 78.294 & 82.103 & +3.809 & +1.7 \\
+\texttt{chain\_5svc}           & 80.519 & 84.605 & +4.086 & +2.0 \\
 \bottomrule
 \end{tabular}
 }
@@ -332,18 +335,18 @@ direct comparison shown in \cref{tab:rq15b_delta}.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5b AKS multi-node cross-round consistency}
+\caption{RQ1.5b AKS multi-node cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
 \label{tab:rq15b_rounds}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 70.118 & 0.5062 & 1.3566 & 0.0072 \\
-\texttt{chain\_2svc}           & 73.408 & 0.7281 & 1.9613 & 0.0099 \\
-\texttt{chain\_3svc}           & 75.593 & 0.3520 & 0.7515 & 0.0047 \\
-\texttt{chain\_4svc}           & 79.342 & 0.1593 & 0.4062 & 0.0020 \\
-\texttt{chain\_5svc}           & 81.172 & 0.2617 & 0.7378 & 0.0032 \\
+\texttt{monolithic\_k8s\_1svc} & 73.108 & 0.6134 & 1.5076 & 0.0084 \\
+\texttt{chain\_2svc}           & 76.470 & 0.9679 & 2.3363 & 0.0127 \\
+\texttt{chain\_3svc}           & 77.541 & 0.4388 & 0.9236 & 0.0057 \\
+\texttt{chain\_4svc}           & 82.103 & 0.3757 & 0.9645 & 0.0046 \\
+\texttt{chain\_5svc}           & 84.605 & 0.3047 & 0.6512 & 0.0036 \\
 \bottomrule
 \end{tabular}
 }
@@ -353,10 +356,9 @@ The within-environment ordering is preserved
 (\texttt{monolithic\_k8s\_1svc}~$<$~\texttt{chain\_2svc}~$<$~\texttt{chain\_3svc}~$<$~\texttt{chain\_4svc}~$<$~\texttt{chain\_5svc}),
 and the bounded-non-linearity finding from RQ1.4 reproduces under multi-node
 execution: the \texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is
-1.830~ms, smaller than the preceding 3.749~ms step. Cross-round CVs are tighter than
-in the single-node RQ1.5 run (0.0020--0.0099 across all chained conditions), an
-expected consequence of placing each pod on its own dedicated VM with no neighbour
-contention.
+2.502~ms, broadly comparable to the preceding 4.562~ms step. Cross-round CVs are
+0.0036--0.0127 across all chained conditions, consistent with placing each pod on
+its own dedicated VM rather than sharing a single host.
 
 \begin{figure}[htbp]
 \centering
@@ -364,26 +366,24 @@ contention.
 \input{figures/tikz/results/rq15b_multinode_delta}
 }
 \caption{RQ1.5b multi-node penalty per condition. Same SKU
-(\texttt{Standard\_D8s\_v3}), same region (\texttt{swedencentral}), same day; the
+(\texttt{Standard\_D8s\_v3}), same region (\texttt{swedencentral}); the
 only difference is single-node colocation versus
-\texttt{multi\_node\_anti\_affinity} placement. The penalty is dominated by the
-first inter-node hop (the client$\rightarrow$service-1 transfer of the 600~KiB input
-tensor over the VNet); per-condition deltas in the chained conditions stay in the
-narrow band of 8.6--10.0~ms.}
+\texttt{multi\_node\_anti\_affinity} placement. Per-condition deltas range
+from 2.131~ms (\texttt{chain\_3svc}) to 4.086~ms (\texttt{chain\_5svc}), and
+the monolithic-baseline penalty is 2.306~ms.}
 \label{fig:rq15b_multinode_delta}
 \end{figure}
 
 \Cref{tab:rq15b_delta} and \cref{fig:rq15b_multinode_delta} summarise the
-per-condition multi-node penalty. The penalty
-is dominated by the first inter-node hop: the monolithic baseline alone gains
-12.155~ms of latency relative to the same-day single-node monolithic, because the
-client now ships a 600~KiB input tensor over the VNet rather than over a loopback
-socket. Adding chain hops with smaller intermediate activations (784, 392, 196,
-98~KiB) yields per-condition deltas in the narrow band of 8.6--10.0~ms, i.e. the
-inter-node cost flattens once the first-hop tax has been paid. The relative overhead
-in fact \emph{decreases} from $+9.3\%$ to $+4.7\%$ at \texttt{chain\_2svc} (and
-similarly at later chains) because the multi-node baseline is itself larger than the
-single-node baseline by exactly that first-hop cost.
+per-condition multi-node penalty. The penalty is positive across all
+conditions and grows with chain depth. The monolithic baseline alone gains
+2.306~ms relative to the same single-node monolithic, because the client
+now ships a 600~KiB input tensor across the Azure VNet rather than across
+a loopback socket. Adding chain hops with smaller intermediate activations
+(784, 392, 196, 98~KiB) yields per-condition deltas between 2.131~ms and
+4.086~ms, with the deepest \texttt{chain\_5svc} configuration carrying the
+largest absolute penalty. The within-environment monotonic ordering is
+preserved.
 
 The interpretation of these results and the answer to RQ1.5b are presented in
 \cref{sec:analysis-rq15b}.

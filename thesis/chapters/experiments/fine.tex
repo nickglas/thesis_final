@@ -76,27 +76,51 @@ An important structural observation motivates this design. The coarse boundary a
 \subsection{Results}
 \label{sec:rq12-results}
 
-The measured results are summarised in \cref{tab:rq12-results}. Monolithic execution achieved the lowest mean end-to-end latency at 76.291~ms. Among the three refined split conditions, \texttt{split\_after\_layer2} achieved the lowest mean split latency at 78.689~ms, followed by \texttt{split\_after\_layer3\_block0} at 78.691~ms and \texttt{split\_after\_layer3} at 78.853~ms. This corresponds to overhead relative to monolithic execution of approximately 3.1\%, 3.1\%, and 3.4\%, respectively.
+The thesis-facing RQ1.2 benchmark used the frozen artifact
+\texttt{rq1\_2\_20260515\_112636} (source:
+\texttt{results/frozen\_new/rq1\_2\_20260515\_112636/condition\_summaries.csv}).
+The measured results are summarised in \cref{tab:rq12-results}. Monolithic
+execution achieved the lowest mean end-to-end latency at 77.565~ms. Among
+the three refined split conditions, \texttt{split\_after\_layer3\_block0}
+achieved the lowest mean split latency at 80.157~ms, followed by
+\texttt{split\_after\_layer2} at 80.348~ms and \texttt{split\_after\_layer3}
+at 80.392~ms. This corresponds to overhead relative to monolithic execution
+of approximately 3.3\%, 3.6\%, and 3.6\%, respectively.
 
 \begin{table}[t]
 \centering
-\caption{RQ1.2 summary of mean latency, overhead, and activation-transfer burden}
+\caption{RQ1.2 summary of mean latency, overhead, and activation-transfer burden. Source: \texttt{condition\_summaries.csv} in \texttt{rq1\_2\_20260515\_112636}.}
 \label{tab:rq12-results}
 \begin{tabular}{lrrrrr}
 \toprule
 \textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std.\ Dev.\ (ms)} & \textbf{Overhead} & \textbf{Activation (KB)} \\
 \midrule
-Monolithic                    & 76.291 & 73.778 & 3.578 & ---   & --- \\
-Split after layer2            & 78.689 & 77.615 & 2.669 & 3.1\% & 392 \\
-Split after layer3\_block0    & 78.691 & 77.999 & 2.715 & 3.1\% & 196 \\
-Split after layer3            & 78.853 & 77.836 & 2.677 & 3.4\% & 196 \\
+Monolithic                    & 77.565 & 75.641 & 3.663 & ---   & --- \\
+Split after layer2            & 80.348 & 79.570 & 2.510 & 3.6\% & 392 \\
+Split after layer3\_block0    & 80.157 & 79.379 & 2.564 & 3.3\% & 196 \\
+Split after layer3            & 80.392 & 79.687 & 2.475 & 3.6\% & 196 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The boundary-crossing interval measurements reveal a notable difference between the two conditions that share the same activation size. \texttt{split\_after\_layer3\_block0} exhibited a boundary-crossing interval of 33.135~ms, while \texttt{split\_after\_layer3} exhibited a boundary-crossing interval of 25.718~ms. Despite producing activation tensors of the same size (approximately 196~KB), the two conditions differ by more than 7.4~ms in boundary-crossing cost. The earlier split (\texttt{layer2}) had the largest boundary-crossing interval at 39.937~ms, consistent with its larger activation tensor of 392~KB.
+The boundary-crossing interval measurements reveal a notable difference between
+the two conditions that share the same activation size.
+\texttt{split\_after\_layer3\_block0} exhibited a boundary-crossing interval of
+33.97~ms, while \texttt{split\_after\_layer3} exhibited a boundary-crossing
+interval of 26.16~ms. Despite producing activation tensors of the same size
+(approximately 196~KB), the two conditions differ by approximately 7.8~ms in
+boundary-crossing cost. The earlier split (\texttt{layer2}) had the largest
+boundary-crossing interval at 40.86~ms, consistent with its larger activation
+tensor of 392~KB.
 
-Cross-round consistency was strong across all conditions. The monolithic condition had a round coefficient of variation (CV) of 0.001, while the split conditions had round CVs of 0.003 (\texttt{split\_after\_layer2}), 0.004 (\texttt{split\_after\_layer3}), and 0.015 (\texttt{split\_after\_layer3\_block0}). The slightly higher variability of \texttt{split\_after\_layer3\_block0} is attributable to a favourable first round; from round~2 onward its per-round means were consistent with the other split conditions.
+Cross-round consistency was strong across all conditions, per
+\texttt{round\_consistency.json} in the same artifact. The monolithic condition
+had a round coefficient of variation (CV) of 0.0017, while the split conditions
+had round CVs of 0.0046 (\texttt{split\_after\_layer2}), 0.0033
+(\texttt{split\_after\_layer3}), and 0.0070
+(\texttt{split\_after\_layer3\_block0}). The reported means can therefore be
+treated as representative of the run rather than as artefacts of a single
+favourable round.
 
 The interpretation of these results and the answer to RQ1.2 are presented in
 \cref{sec:analysis-rq12}.

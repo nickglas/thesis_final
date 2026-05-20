@@ -67,21 +67,32 @@ These stage boundaries provide a coarse sweep across the network from earlier to
 
 \subsection{Results}
 \label{sec:rq11-results}
-The measured results show that monolithic execution achieved the lowest mean end-to-end latency at 76.12 ms. The four split conditions yielded mean latencies of 79.65 ms for \texttt{split\_after\_layer1}, 78.63 ms for \texttt{split\_after\_layer2}, 78.50 ms for \texttt{split\_after\_layer3}, and 77.26 ms for \texttt{split\_after\_layer4}. This corresponds to relative overheads of approximately 4.6\%, 3.3\%, 3.1\%, and 1.5\%, respectively, compared to monolithic execution.
+The thesis-facing RQ1.1 benchmark used the frozen artifact
+\texttt{rq1\_1\_20260515\_111428} (source:
+\texttt{results/frozen\_new/rq1\_1\_20260515\_111428/condition\_summaries.csv}).
+Monolithic execution achieved the lowest mean end-to-end latency at
+77.24~ms. The four split conditions yielded mean latencies of 80.88~ms
+for \texttt{split\_after\_layer1}, 80.12~ms for
+\texttt{split\_after\_layer2}, 79.08~ms for \texttt{split\_after\_layer3},
+and 79.58~ms for \texttt{split\_after\_layer4}. This corresponds to
+relative overheads of approximately 4.7\%, 3.7\%, 2.4\%, and 3.0\%,
+respectively, compared to monolithic execution.
 
 \begin{table}[htbp]
 \centering
-\caption{RQ1.1 summary of mean latency and overhead}
+\caption{RQ1.1 summary of mean latency and overhead. Source:
+\texttt{condition\_summaries.csv} in
+\texttt{rq1\_1\_20260515\_111428}.}
 \label{tab:rq11-results}
 \begin{tabular}{lrrrr}
 \toprule
 \textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std. Dev. (ms)} & \textbf{Overhead vs. Monolithic} \\
 \midrule
-Monolithic & 76.12 & 74.04 & 3.89 & -- \\
-Split after layer1 & 79.65 & 78.77 & 2.28 & 4.6\% \\
-Split after layer2 & 78.63 & 77.65 & 2.73 & 3.3\% \\
-Split after layer3 & 78.50 & 77.56 & 2.74 & 3.1\% \\
-Split after layer4 & 77.26 & 76.09 & 2.65 & 1.5\% \\
+Monolithic & 77.24 & 75.29 & 3.59 & -- \\
+Split after layer1 & 80.88 & 80.24 & 2.27 & 4.7\% \\
+Split after layer2 & 80.12 & 79.60 & 2.40 & 3.7\% \\
+Split after layer3 & 79.08 & 78.38 & 2.31 & 2.4\% \\
+Split after layer4 & 79.58 & 78.85 & 2.43 & 3.0\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -91,20 +102,21 @@ Split after layer4 & 77.26 & 76.09 & 2.65 & 1.5\% \\
 \resizebox{0.92\textwidth}{!}{%
 \input{figures/tikz/results/rq11_coarse_split_results}
 }
-\caption{RQ1.1 coarse split latency results under controlled local execution. Although \texttt{split\_after\_layer4} has the lowest mean latency among split configurations, it is rejected by the compute-degeneracy rule. The selected carry-forward candidates are \texttt{split\_after\_layer3} and \texttt{split\_after\_layer2}.}
+\caption{RQ1.1 coarse split latency results under controlled local execution. \texttt{split\_after\_layer3} is the raw-fastest non-degenerate split; \texttt{split\_after\_layer4} is rejected by the compute-degeneracy rule despite its small intermediate activation. The carry-forward decision (see \texttt{carry\_forward.json} for \texttt{rq1\_1\_20260515\_111428}) selects \texttt{split\_after\_layer3} as the main candidate and \texttt{split\_after\_layer2} as the reference candidate.}
 \label{fig:rq11_coarse_split_results}
 \end{figure}
 
 \Cref{fig:rq11_coarse_split_results} visualises the latency pattern reported in
-\cref{tab:rq11-results}. The raw fastest split is the latest boundary, but the
-carry-forward decision depends on both latency and structural compute balance rather
-than latency alone.
+\cref{tab:rq11-results}. In this frozen run the raw fastest split is the
+mid-to-late boundary after \texttt{layer3}, not the latest boundary, and the
+carry-forward decision still depends on both latency and structural compute
+balance rather than latency alone.
 
-All split configurations therefore introduced positive latency overhead relative to monolithic inference. However, the magnitude and character of this overhead varied substantially with split location. The earliest split, after \texttt{layer1}, performed worst because it crossed the largest intermediate activation and exhibited the highest boundary-crossing cost. The latest split, after \texttt{layer4}, minimized activation-transfer size and achieved the lowest raw split latency. However, it left only a minimal residual computation segment on the second service (under 1 ms), making it structurally compute-degenerate despite its low transfer burden. The mid-to-late splits, after \texttt{layer2} and \texttt{layer3}, formed the strongest non-degenerate candidates in the coarse sweep.
+All split configurations therefore introduced positive latency overhead relative to monolithic inference. However, the magnitude and character of this overhead varied substantially with split location. The earliest split, after \texttt{layer1}, performed worst because it crossed the largest intermediate activation and exhibited the highest boundary-crossing cost. The latest split, after \texttt{layer4}, minimized activation-transfer size but left only a minimal residual computation segment on the second service (well under 1~ms of remote compute according to the per-service compute means in \texttt{condition\_summaries.csv}), making it structurally compute-degenerate despite its low transfer burden. The mid-to-late splits, after \texttt{layer2} and \texttt{layer3}, formed the strongest non-degenerate candidates in the coarse sweep, with \texttt{split\_after\_layer3} also yielding the lowest raw split mean in this run.
 
-The boundary-crossing measurements further support this interpretation. The split after \texttt{layer1} incurred the largest boundary-crossing interval at 53.03 ms, followed by \texttt{layer2} at 39.96 ms and \texttt{layer3} at 25.73 ms, while \texttt{layer4} was much smaller at 2.13 ms. This descending pattern is consistent with the reduction in activation-transfer burden from 784 KB at \texttt{layer1} to 98 KB at \texttt{layer4}. At the same time, the late \texttt{layer4} split shows that minimizing transfer burden alone does not determine overall suitability as a microservice decomposition, because the downstream service becomes too small to represent a meaningful balanced distribution.
+The boundary-crossing measurements further support this interpretation. The split after \texttt{layer1} incurred the largest boundary-crossing interval at 53.81~ms, followed by \texttt{layer2} at 40.85~ms and \texttt{layer3} at 26.06~ms, while \texttt{layer4} was much smaller at 2.22~ms. This descending pattern is consistent with the reduction in activation-transfer burden from 784~KB at \texttt{layer1} to 98~KB at \texttt{layer4}. At the same time, the late \texttt{layer4} split shows that minimizing transfer burden alone does not determine overall suitability as a microservice decomposition, because the downstream service becomes too small to represent a meaningful balanced distribution.
 
-Cross-round consistency was strong across all configurations, indicating stable execution behavior. The monolithic condition had a round coefficient of variation (CV) of 0.013, while \texttt{split\_after\_layer2}, \texttt{split\_after\_layer3}, and \texttt{split\_after\_layer4} had round CVs of 0.007, 0.008, and 0.008, respectively. The split after \texttt{layer1} also remained stable with a round CV of 0.009.
+Cross-round consistency was strong across all configurations, indicating stable execution behavior. Per \texttt{round\_consistency.json} for the same artifact, the monolithic condition had a round coefficient of variation (CV) of 0.002, while \texttt{split\_after\_layer1}, \texttt{split\_after\_layer2}, \texttt{split\_after\_layer3}, and \texttt{split\_after\_layer4} had round CVs of 0.005, 0.011, 0.003, and 0.005, respectively.
 
 The interpretation of these results and the answer to RQ1.1 are presented in
 \cref{sec:analysis-rq11}.

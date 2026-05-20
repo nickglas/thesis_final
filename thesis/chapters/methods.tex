@@ -463,35 +463,47 @@ hardening layer, not as a complete inter-service secrecy mechanism~\cite{poudel2
 \label{sec:methods-rq22}
 
 RQ2.2 keeps the communication-security contract from RQ2.1 fixed and changes the
-execution environment of the inference services.
-The confidential condition places selected services on AMD SEV-SNP confidential node
-pools (\texttt{Standard\_DC8as\_v5}); the standard condition uses matched
+execution environment of the downstream protected service.
+The confidential condition places \texttt{service2} on an AMD SEV-SNP confidential
+node pool (\texttt{Standard\_DC8as\_v5}); the standard condition uses matched
 non-confidential AMD nodes (\texttt{Standard\_D8as\_v5}) in the same AKS cluster.
-Fresh paired standard baselines are collected for each RQ2.2 artifact set rather than
-reusing older RQ2.1 data, ensuring that incremental overhead can be attributed
-unambiguously to the confidential-node placement rather than to session-level drift.
+A fresh paired standard baseline is collected rather than reusing older RQ2.1
+data, ensuring that incremental overhead can be attributed unambiguously to the
+confidential-node placement rather than to session-level drift.
 
-Two configurations are evaluated.
-The selective TEE run places only the downstream service (\texttt{service2}) on
-confidential nodes, isolating the cost of protecting the service that receives
-intermediate activations.
-The full TEE run places both services on confidential nodes, measuring the cost of
-extending the confidential-execution boundary to the entire two-service chain.
+The thesis-facing TEE scope is \texttt{service2\_only}.
+This selective placement isolates the cost of protecting the downstream service
+that receives intermediate activations, motivated by activation-privacy work
+\cite{he2021_attacking_collaborative} showing that those activations are
+recoverable when held by an untrusted remote partition.
+Extending the confidential-execution boundary to both services (full
+two-service TEE) is out of the thesis-facing scope of RQ2.2 per the evidence
+manifest and is treated as future work rather than measured here.
 
 The protection boundary of AMD SEV-SNP must be stated precisely.
 SEV-SNP provides VM-level memory encryption and integrity protection against an
-untrusted host platform, but the guest operating system, application process, PyTorch
-runtime, model weights, and Istio sidecar all remain inside the same VM trust boundary.
-RQ2.2 therefore uses the term \emph{VM-level confidential execution} throughout rather
-than claiming application-level enclave isolation.
+untrusted host platform, but the guest operating system, application process,
+PyTorch runtime, model weights, and Istio sidecar all remain inside the same VM
+trust boundary. Recent work additionally shows residual attack surfaces beyond
+memory encryption, including malicious-interrupt injection from the untrusted
+hypervisor~\cite{schluter2024_heckler}; this thesis does not experimentally
+evaluate such attacks. The motivation for protecting the downstream segment at
+infrastructure level is supplied by activation-privacy work
+\cite{he2021_attacking_collaborative} showing that intermediate feature maps
+can be inverted to recover client inputs, although that threat model differs
+from the host-level adversary SEV-SNP defends against. RQ2.2 therefore uses the
+term \emph{VM-level confidential execution} throughout rather than claiming
+application-level enclave isolation.
 
 \subsection{RQ2.3 -- Security-Hardening Trade-off Synthesis}
 \label{sec:methods-rq23}
 
 RQ2.3 is a synthesis stage: no new benchmark data is collected.
 The stage combines the plain AKS baseline from RQ1.5, the mTLS/AuthZ results from
-RQ2.1, and the selective and full TEE results from RQ2.2 to compare the four hardening
-configurations across measured cost, operational complexity, and protection scope.
+RQ2.1, and the selective \texttt{service2\_only} TEE result from RQ2.2 to compare
+the three thesis-facing hardening configurations across measured cost,
+operational complexity, and protection scope. Full two-service TEE is treated
+as future work rather than as a measured trade-off point.
 
 The synthesis is structured around the principle that the preferred hardening
 configuration is threat-model-dependent rather than universally optimal.

@@ -17,10 +17,13 @@ boundaries become compute-degenerate. RQ1.4 and RQ1.5 then showed that the same
 service-count ordering remains visible in Kubernetes and AKS, although absolute latency
 is environment-specific. RQ1.5b additionally bounded the inter-node penalty that the
 single-node primary design intentionally hides: forcing every chain hop across a node
-boundary on a six-node AKS cluster adds 8.6--12.2~ms per condition, dominated by the
-first inter-node hop, with the architectural ordering preserved. RQ2 showed that
-mTLS/AuthZ and confidential VM execution are feasible for the selected AKS chain, but
-each protection layer adds measurable overhead.
+boundary on a multi-node AKS cluster adds between +2.131~ms and +4.086~ms per chained
+condition, with a +2.306~ms baseline penalty on the monolithic configuration and the
+architectural ordering preserved. RQ2 showed that mTLS/AuthZ and selective AMD SEV-SNP
+confidential VM execution on the downstream service are feasible for the selected AKS
+chain, but each protection layer adds measurable overhead; the security claims are
+bounded by the mTLS termination boundary and by the SEV-SNP threat
+model~\cite{he2021_attacking_collaborative,schluter2024_heckler}.
 
 \section{Contributions}
 
@@ -30,9 +33,10 @@ to Kubernetes, AKS, and security hardening without changing the model or benchma
 contract. Second, it shows that activation-transfer size and compute placement must be
 considered together when selecting ResNet-18 service boundaries. Third, it quantifies a
 security-performance trade-off for the selected Azure deployment path: mTLS/AuthZ is a
-practical communication-hardening baseline, selective TEE protects the downstream
-service at lower cost, and full-chain TEE broadens VM-level runtime protection at higher
-latency cost.
+practical communication-hardening baseline, and selective AMD SEV-SNP TEE on the
+downstream service adds an additional bounded cost while leaving the SEV-SNP residual
+threat model unchanged. Extending the confidential-execution boundary to both services
+in the chain is treated as future work rather than as a measured trade-off point.
 
 \section{Limitations \& Threats to Validity}
 
@@ -58,4 +62,9 @@ Another useful extension is to combine architectural partitioning with feature
 compression, since compression may change the cost of early split points. Finally,
 the security evaluation could be expanded to compare sidecar and sidecarless meshes,
 application-layer encryption, attestation workflow integration, and different
-confidential-computing platforms.
+confidential-computing platforms. In particular, extending the confidential-execution
+boundary from the selective \texttt{service2\_only} scope evaluated here to both
+services in the chain (full two-service TEE), and evaluating SEV-SNP residual
+attack-surface attacks such as malicious-host
+interrupts~\cite{schluter2024_heckler}, are explicit next steps that fall outside
+the canonical evidence base of this thesis.

@@ -3,8 +3,7 @@
 
 This chapter interprets the empirical findings reported in
 \cref{ch:experiments} and answers the research questions defined in
-\cref{ch:introduction}. \Cref{sec:analysis-split,sec:analysis-deployment,
-sec:analysis-security} provide per-RQ interpretation grouped by research
+\cref{ch:introduction}. \Cref{sec:analysis-split,sec:analysis-deployment,sec:analysis-security} provide per-RQ interpretation grouped by research
 strand and close with a cross-RQ synthesis. \Cref{sec:analysis-validation}
 consolidates the evidence that supports treating the conclusions as credible.
 \Cref{sec:analysis-evaluation} situates the system against the alternatives it
@@ -33,14 +32,15 @@ pareto_split, deeperthings}.
 
 The benchmark also indicates that raw latency ranking alone is not sufficient
 for the thesis-facing carry-forward decision. Under the predeclared selection
-rule, the lowest raw split latency was observed at
-\texttt{split\_after\_layer4}. However, this candidate was excluded from
-main-candidate eligibility because it was compute-degenerate. Among the
-remaining non-degenerate candidates, \texttt{split\_after\_layer3} and
-\texttt{split\_after\_layer2} presented extremely similar end-to-end latencies.
-Through the defined carry-forward resolution,
-\texttt{split\_after\_layer3} is selected as the main carry-forward candidate
-and \texttt{split\_after\_layer2} is retained as the reference candidate.
+rule, \texttt{split\_after\_layer4} is excluded from main-candidate eligibility
+because it is compute-degenerate, regardless of its absolute latency. Among the
+remaining non-degenerate candidates,
+\texttt{split\_after\_layer3} achieved the lowest raw split mean at 79.08~ms
+and \texttt{split\_after\_layer2} reached 80.12~ms (\cref{tab:rq11-results}).
+The frozen \texttt{carry\_forward.json} in
+\texttt{rq1\_1\_20260515\_111428} therefore selects
+\texttt{split\_after\_layer3} as the main carry-forward candidate and retains
+\texttt{split\_after\_layer2} as the reference candidate.
 
 The results therefore support the thesis hypothesis that coarse architectural
 stage boundaries are not equally suitable for microservice-based inference.
@@ -71,18 +71,18 @@ candidate~\cite{dnnsplit, deeperthings, survey_partitioning, pareto_split}.
 The results in \cref{sec:rq12} support three observations.
 
 \paragraph{The refined region remains tightly clustered.}
-All three refined split conditions fall within a very narrow latency band, from
-78.689~ms to 78.853~ms. This indicates that the block-level refinement does
-not reveal a dramatically superior new split. Instead, it confirms that the
-carried-forward \texttt{layer2}--\texttt{layer3} region identified in RQ1.1
-already captures the main structure of the latency--communication trade-off in
-this late-stage part of the network.
+All three refined split conditions fall within a very narrow latency band,
+from 80.16~ms to 80.39~ms (\cref{tab:rq12-results}). This indicates that the
+block-level refinement does not reveal a dramatically superior new split.
+Instead, it confirms that the carried-forward \texttt{layer2}--\texttt{layer3}
+region identified in RQ1.1 already captures the main structure of the
+latency--communication trade-off in this late-stage part of the network.
 
 \paragraph{Equal activation size does not guarantee equal performance.}
 The most instructive comparison in this refinement stage is between
 \texttt{split\_after\_layer3\_block0} and \texttt{split\_after\_layer3}. Both
 conditions transfer an intermediate tensor of approximately 196~KB, yet they
-differ in boundary-crossing interval by more than 7.4~ms and in mean
+differ in boundary-crossing interval by approximately 7.8~ms and in mean
 end-to-end latency by a smaller but still measurable amount. This demonstrates
 that activation-transfer size is not the sole determinant of boundary cost. The
 distribution of computation on either side of the boundary also matters:
@@ -95,30 +95,32 @@ communication cost~\cite{dnnsplit, deeperthings, survey_partitioning,
 fine_grained_partitioning, hierarchical_partitioning}.
 
 \paragraph{This run does not overturn the coarse screening.}
-Under the current refined benchmark outcome, \texttt{split\_after\_layer2} is
-the raw-fastest split and is selected as the main candidate by the implemented
-carry-forward rule, with \texttt{split\_after\_layer3\_block0} retained as the
-reference candidate. However, the three refined conditions remain so close that
-the central thesis-facing conclusion is not that RQ1.2 discovered a
-dramatically better split than RQ1.1. Rather, the refinement confirms that the
-late carried-forward region remains the correct focus, while revealing that
-small block-level shifts can still change behavior measurably even when
-activation-transfer size is held constant.
+Under the current refined benchmark outcome, \texttt{split\_after\_layer3\_block0}
+is the raw-fastest split and is selected as the main candidate by the
+implemented carry-forward rule in
+\texttt{rq1\_2\_20260515\_112636/carry\_forward.json}, with
+\texttt{split\_after\_layer2} retained as the reference candidate. However,
+the three refined conditions remain so close that the central thesis-facing
+conclusion is not that RQ1.2 discovered a dramatically better split than
+RQ1.1. Rather, the refinement confirms that the late carried-forward region
+remains the correct focus, while revealing that small block-level shifts can
+still change behavior measurably even when activation-transfer size is held
+constant.
 
 \paragraph{Answer to RQ1.2.}
 RQ1.2 shows that finer-grained refinement within the carried-forward coarse
 region from RQ1.1 does not overturn the coarse-level findings, but it does
-reveal a meaningful secondary insight. In the latest refined comparison,
-\texttt{split\_after\_layer2} is the raw-fastest split and is selected as the
-main candidate under the implemented selection rule, while
-\texttt{split\_after\_layer3\_block0} is retained as the reference candidate.
-The refined split \texttt{split\_after\_layer3} is slightly slower in this run.
+reveal a meaningful secondary insight. In the refined comparison,
+\texttt{split\_after\_layer3\_block0} is the raw-fastest split and is selected
+as the main candidate under the implemented selection rule, while
+\texttt{split\_after\_layer2} is retained as the reference candidate. The
+refined split \texttt{split\_after\_layer3} is slightly slower in this run.
 At the same time, the comparison between \texttt{split\_after\_layer3\_block0}
 and \texttt{split\_after\_layer3} --- which share the same activation-transfer
-size of approximately 196~KB yet differ in boundary-crossing interval by more
-than 7.4~ms --- demonstrates that equal activation-transfer size does not
-guarantee equal performance. Compute placement within the refined region still
-matters, even when the serialized tensor is held constant. The coarse RQ1.1
+size of approximately 196~KB yet differ in boundary-crossing interval by
+approximately 7.8~ms --- demonstrates that equal activation-transfer size does
+not guarantee equal performance. Compute placement within the refined region
+still matters, even when the serialized tensor is held constant. The coarse RQ1.1
 screening had already identified the correct late-stage comparison space; the
 block-level refinement confirms that structure and adds the observation that
 per-block compute distribution is a secondary but observable factor in
@@ -132,12 +134,15 @@ The explanatory analysis in \cref{sec:rq13} supports a coherent two-dimensional
 account of the local findings from RQ1.1 and RQ1.2.
 
 At the coarse level (RQ1.1), activation-transfer size is the dominant factor
-explaining the gradient of boundary-crossing costs from early to late splits.
-The monotonic relationship between activation size and boundary-crossing
-interval is strong and consistent. However, this single dimension is
-insufficient: the compute-degenerate \texttt{split\_after\_layer4} minimises
-transfer burden but fails as a meaningful decomposition because it collapses
-one side of the partition into a near-empty service.
+explaining the gradient of boundary-crossing costs from early to late splits
+(53.81~ms, 40.85~ms, 26.06~ms, and 2.22~ms after \texttt{layer1} through
+\texttt{layer4} respectively, per
+\texttt{rq1\_1\_20260515\_111428/condition\_summaries.csv}). The monotonic
+relationship between activation size and boundary-crossing interval is strong
+and consistent. However, this single dimension is insufficient: the
+compute-degenerate \texttt{split\_after\_layer4} minimises transfer burden but
+fails as a meaningful decomposition because it collapses one side of the
+partition into a near-empty service.
 
 At the refined level (RQ1.2), compute distribution emerges as an independent
 explanatory dimension. The controlled comparison between two conditions with
@@ -174,16 +179,17 @@ why later splits generally incur lower communication overhead.
 Compute distribution is an independent and observable factor at the refined
 level. The RQ1.2 comparison between \texttt{split\_after\_layer3\_block0} and
 \texttt{split\_after\_layer3} --- which share the same activation size of
-approximately 196~KB yet differ in boundary-crossing interval by more than
-7.4~ms --- demonstrates that equal transfer burden does not guarantee equal
-performance. The placement of computation around the boundary matters
+approximately 196~KB yet differ in boundary-crossing interval by
+approximately 7.8~ms --- demonstrates that equal transfer burden does not
+guarantee equal performance. The placement of computation around the boundary matters
 independently of the size of the transferred tensor.
 
 The internal timing experiment supports the compute-distribution explanation
 by confirming that execution cost within ResNet-18 is structurally uneven:
-convolution operations account for over 80\% of total compute, \texttt{layer4}
-alone accounts for nearly 31\%, and the heaviest internal units are
-concentrated in convolution-heavy late-stage regions. These structural
+convolution operations account for approximately 82\% of total compute,
+\texttt{layer4} alone accounts for 31.28\%, and the heaviest internal units
+are concentrated in convolution-heavy late-stage regions
+(\cref{tab:rq13-internal-summary,tab:rq13-topops}). These structural
 properties explain both the compute degeneracy of the \texttt{layer4} split
 observed in RQ1.1 and the boundary-crossing asymmetry between the two 196~KB
 conditions observed in RQ1.2.
@@ -233,30 +239,30 @@ hierarchical_partitioning,pareto_split}.
 The results in \cref{sec:rq14} reveal four bounded findings for this controlled
 local Kubernetes benchmark.
 
-\paragraph{Finding 1: Latency rises from one service to four services.}
-Mean end-to-end latency increases from 81.447~ms for
-\texttt{monolithic\_k8s\_1svc} to 84.189~ms, 87.608~ms, and 92.312~ms for
-\texttt{chain\_2svc}, \texttt{chain\_3svc}, and \texttt{chain\_4svc},
-respectively. Relative to the Kubernetes monolithic baseline, the added
-overhead therefore grows from +2.742~ms (3.4\%) to +10.865~ms (13.3\%). Under
+\paragraph{Finding 1: Latency rises monotonically with service count.}
+Mean end-to-end latency increases from 81.066~ms for
+\texttt{monolithic\_k8s\_1svc} to 83.387~ms, 87.728~ms, 90.572~ms, and
+92.535~ms for \texttt{chain\_2svc} through \texttt{chain\_5svc}. Relative to
+the Kubernetes monolithic baseline, the added overhead grows from
++2.321~ms (2.9\%) to +11.469~ms (14.1\%) (\cref{tab:rq14_results}). Under
 this controlled local Kubernetes setup, the evaluated coarse-stage ResNet-18
 family shows a clear accumulation of cost as synchronous service boundaries
 are added.
 
-\paragraph{Finding 2: The increment from four to five services is small.}
-The final step from \texttt{chain\_4svc} to \texttt{chain\_5svc} increases
-mean latency by only 0.312~ms, even though it adds one more boundary. This is
-consistent with the activation profile of the evaluated chain family:
-cumulative transferred activation rises from 1960~KB to 2058~KB, so the added
-late-stage boundary contributes only 98~KB. In this setup, later boundaries
-can therefore add less overhead when the additional transferred activation is
-small. This should be read as a property of the evaluated coarse-stage
-ResNet-18 chain family under this local benchmark, not as a universal law
-about microservice depth.
+\paragraph{Finding 2: Marginal cost shrinks for the latest boundary.}
+The step from \texttt{chain\_4svc} to \texttt{chain\_5svc} increases mean
+latency by approximately 1.96~ms, smaller than the preceding 2.84~ms step
+from \texttt{chain\_3svc} to \texttt{chain\_4svc}. This is consistent with the
+activation profile of the evaluated chain family: cumulative transferred
+activation rises from 1960~KB to 2058~KB, so the added late-stage boundary
+contributes only 98~KB. In this setup, later boundaries can therefore add less
+overhead when the additional transferred activation is small. This should be
+read as a property of the evaluated coarse-stage ResNet-18 chain family under
+this local benchmark, not as a universal law about microservice depth.
 
 \paragraph{Finding 3: \texttt{chain\_2svc} is the lowest-overhead non-monolithic condition.}
 Among the chained deployments, \texttt{chain\_2svc} remains the smallest
-non-monolithic overhead point at +2.742~ms (3.4\%). Within the evaluated
+non-monolithic overhead point at +2.321~ms (2.9\%). Within the evaluated
 family, it is therefore the least expensive way to move from a single service
 to a chained deployment while preserving exact parity in the benchmarked
 workload. Because RQ1.4 uses a predefined condition set, this is an empirical
@@ -272,10 +278,11 @@ Broader cloud validation is deferred to RQ1.5.
 Under the final controlled local Kubernetes setup on the Ubuntu/Linux runtime,
 increasing the number of synchronously chained coarse-stage ResNet-18 services
 raises end-to-end latency from \texttt{monolithic\_k8s\_1svc} through
-\texttt{chain\_4svc}, with mean latency increasing from 81.447~ms to
-84.189~ms, 87.608~ms, and 92.312~ms. The smallest non-monolithic overhead is
-\texttt{chain\_2svc} at +2.742~ms (3.4\%), while \texttt{chain\_5svc} reaches
-92.624~ms, only 0.312~ms above \texttt{chain\_4svc}. In this single-node local
+\texttt{chain\_5svc}, with mean latency increasing from 81.066~ms to
+83.387~ms, 87.728~ms, 90.572~ms, and 92.535~ms. The smallest non-monolithic
+overhead is \texttt{chain\_2svc} at +2.321~ms (2.9\%). The final marginal
+increment from \texttt{chain\_4svc} to \texttt{chain\_5svc} is approximately
+1.96~ms, smaller than the preceding 2.84~ms step. In this single-node local
 \texttt{kind} cluster, added boundaries therefore impose measurable but
 bounded overhead, and later boundaries can contribute less when the additional
 transferred activation is small. Carry-forward is not applicable in this stage
@@ -296,24 +303,24 @@ local Kubernetes remains visible under managed cloud execution, even though
 the absolute millisecond values differ between environments.
 
 \paragraph{Finding 2: AKS overhead is monotonic with service count.}
-Relative to the AKS monolithic baseline, mean latency rises from 57.963~ms to
-63.367~ms, 66.543~ms, 70.698~ms, and 71.480~ms as the chain grows from one to
-five services. The corresponding overheads are +5.404~ms (9.3\%), +8.580~ms
-(14.8\%), +12.735~ms (22.0\%), and +13.517~ms (23.3\%). Within this AKS
+Relative to the AKS monolithic baseline, mean latency rises from 70.802~ms to
+73.437~ms, 75.410~ms, 78.294~ms, and 80.519~ms as the chain grows from one to
+five services. The corresponding overheads are +2.635~ms (3.7\%), +4.608~ms
+(6.5\%), +7.492~ms (10.6\%), and +9.717~ms (13.7\%). Within this AKS
 deployment, adding synchronous service boundaries is therefore associated with
 measurable end-to-end cost.
 
-\paragraph{Finding 3: Marginal overhead is bounded at the last boundary.}
-The AKS marginal increments are +5.404~ms from the monolithic baseline to
-\texttt{chain\_2svc}, +3.176~ms from \texttt{chain\_2svc} to
-\texttt{chain\_3svc}, +4.155~ms from \texttt{chain\_3svc} to
-\texttt{chain\_4svc}, and +0.782~ms from \texttt{chain\_4svc} to
+\paragraph{Finding 3: Marginal overhead is bounded by the activation profile.}
+The AKS marginal increments are +2.635~ms from the monolithic baseline to
+\texttt{chain\_2svc}, +1.973~ms from \texttt{chain\_2svc} to
+\texttt{chain\_3svc}, +2.884~ms from \texttt{chain\_3svc} to
+\texttt{chain\_4svc}, and +2.225~ms from \texttt{chain\_4svc} to
 \texttt{chain\_5svc}. The first three steps reflect the cost of adding
 synchronous boundaries that move 392--784~KiB activations, while the final
-step is sharply smaller because the layer-4 boundary moves only 98~KiB. This
-is consistent with the bounded non-linearity expected from the activation
-profile of the chain family: an additional service boundary does not imply a
-constant per-boundary penalty.
+step is smaller than the preceding one because the layer-4 boundary moves
+only 98~KiB. This is consistent with the bounded non-linearity expected from
+the activation profile of the chain family: an additional service boundary
+does not imply a constant per-boundary penalty.
 
 \paragraph{Finding 4: Absolute latency is environment-specific.}
 All AKS means are lower than their local Kubernetes counterparts, including
@@ -332,14 +339,14 @@ Kubernetes measurements.
 Under the controlled AKS transfer-validation setup, the local Kubernetes
 service-count pattern transfers directionally to managed cloud execution. The
 AKS run preserves the complete RQ1.4 ordering: \texttt{monolithic\_k8s\_1svc}
-remains fastest at 57.963~ms, followed by \texttt{chain\_2svc} at 63.367~ms,
-\texttt{chain\_3svc} at 66.543~ms, \texttt{chain\_4svc} at 70.698~ms, and
-\texttt{chain\_5svc} at 71.480~ms. Relative overhead grows monotonically from
-9.3\% for \texttt{chain\_2svc} to 23.3\% for \texttt{chain\_5svc}, while the
-final marginal increment (\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc})
-of 0.782~ms is much smaller than the preceding 4.155~ms step, consistent with
-the activation-transfer-size explanation from RQ1.3. RQ1.5 therefore supports
-a directional transfer claim: the same architectural chain ordering remains
+remains fastest at 70.802~ms, followed by \texttt{chain\_2svc} at 73.437~ms,
+\texttt{chain\_3svc} at 75.410~ms, \texttt{chain\_4svc} at 78.294~ms, and
+\texttt{chain\_5svc} at 80.519~ms. Relative overhead grows monotonically from
+3.7\% for \texttt{chain\_2svc} to 13.7\% for \texttt{chain\_5svc}, with the
+final marginal increment from \texttt{chain\_4svc} to \texttt{chain\_5svc}
+(+2.225~ms) smaller than the preceding step (+2.884~ms), consistent with the
+activation-transfer-size explanation from RQ1.3. RQ1.5 therefore supports a
+directional transfer claim: the same architectural chain ordering remains
 visible in AKS, although absolute latency values are environment-specific and
 should not be interpreted as a direct replication of the local Kubernetes
 measurements.
@@ -352,51 +359,45 @@ multi-node sensitivity stage.
 
 \paragraph{Finding 1: Multi-node placement preserves the AKS condition ordering.}
 With every chain segment forced onto a distinct node and the benchmark client
-on a sixth dedicated node, the complete RQ1.5 ordering is preserved
+on a dedicated node, the complete RQ1.5 ordering is preserved
 (\texttt{monolithic\_k8s\_1svc}~$<$~\texttt{chain\_2svc}~$<$~\texttt{chain\_3svc}~$<$~\texttt{chain\_4svc}~$<$~\texttt{chain\_5svc}).
-The bounded-non-linearity finding from RQ1.4 and RQ1.5 also reproduces under
+The bounded-non-linearity pattern from RQ1.4 and RQ1.5 also reproduces under
 multi-node execution: the
-\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 1.830~ms,
-smaller than the preceding 3.749~ms step (\cref{tab:rq15b_results}). The
-architectural ordering is therefore not an artefact of single-node colocation.
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 2.502~ms,
+broadly comparable to the preceding 4.562~ms step
+(\cref{tab:rq15b_results}). The architectural ordering is therefore not an
+artefact of single-node colocation.
 
-\paragraph{Finding 2: The inter-node penalty is dominated by the first hop.}
+\paragraph{Finding 2: The inter-node penalty is positive and bounded.}
 \Cref{tab:rq15b_delta} compares the multi-node run condition-by-condition with
-the same-day frozen single-node RQ1.5 baseline. The monolithic condition
-already gains 12.155~ms of latency relative to the single-node monolithic,
-because the client now ships a 600~KiB input tensor over the Azure VNet rather
-than over a loopback socket. The chained conditions add per-condition deltas
-in the narrow band of 8.6--10.0~ms. The inter-node cost therefore flattens
-once the first-hop tax has been paid: subsequent service-to-service hops move
-smaller activations (784, 392, 196, 98~KiB) and contribute marginal additional
-network cost. This is a measured bound, not a speculation: the worst-case
-single-node-to-multi-node delta on the evaluated chain family is 12.155~ms
-(monolithic), and the deepest chain
-(\texttt{chain\_5svc}) gains only 9.692~ms.
+the frozen single-node RQ1.5 baseline. The monolithic condition gains 2.306~ms
+of latency relative to the single-node monolithic, because the client now
+ships a 600~KiB input tensor across the Azure VNet rather than across a
+loopback socket. The chained conditions add per-condition deltas between
+2.131~ms (\texttt{chain\_3svc}) and 4.086~ms (\texttt{chain\_5svc}). The
+multi-node penalty is therefore a measured bound rather than an open
+acknowledgement: the worst-case single-node-to-multi-node delta on the
+evaluated chain family is 4.086~ms (\texttt{chain\_5svc}), and the monolithic
+baseline alone gains 2.306~ms.
 
-\paragraph{Finding 3: Multi-node round-to-round consistency is tighter than single-node AKS.}
-Round CVs for the chained conditions in RQ1.5b are 0.0020--0.0099, lower than
-the single-node RQ1.5 chained CVs of 0.0075--0.0145
-(\cref{tab:rq15b_rounds}, \cref{tab:rq15_rounds}). This is consistent with each
-pod having a dedicated VM and therefore no neighbour contention: with one
-inference workload per node, scheduling jitter on the busy node is the only
-remaining source of round-to-round drift. The monolithic condition shows a
-similar improvement (0.0072 vs 0.0225). Cross-round stability therefore
-strengthens, rather than weakens, when the topology is distributed.
+\paragraph{Finding 3: Round-to-round consistency remains low.}
+Round CVs for the chained conditions in RQ1.5b are 0.0036--0.0127, comparable
+to and in some cases tighter than the single-node RQ1.5 chained CVs of
+0.0019--0.0061 (\cref{tab:rq15b_rounds,tab:rq15_rounds}). The monolithic
+condition shows a similar profile (0.0084 vs 0.0117). Cross-round stability is
+therefore preserved when the topology is distributed across nodes.
 
 \paragraph{Answer to RQ1.5b.}
 Under enforced multi-node placement, the same five-condition chain family
-preserves the monotonic-but-bounded overhead progression seen in RQ1.4 and
-RQ1.5: per-condition mean latency increases from 70.118~ms (monolithic) to
-81.172~ms (\texttt{chain\_5svc}), and the
-\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} step plateaus at
-+1.830~ms. The per-condition multi-node penalty relative to the single-node
-RQ1.5 baseline is dominated by the first inter-node hop (12.155~ms for the
-600~KiB input transfer to service-1) with subsequent hops contributing
-8.6--10.0~ms each. The single-node RQ1.4 / RQ1.5 design therefore
-underestimates true production latency by approximately one inter-node hop
-plus a small per-hop margin; that underestimation is now bounded
-quantitatively rather than acknowledged abstractly.
+preserves the monotonic overhead progression seen in RQ1.4 and RQ1.5:
+per-condition mean latency increases from 73.108~ms (monolithic) to 84.605~ms
+(\texttt{chain\_5svc}), and the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} step is +2.502~ms.
+The per-condition multi-node penalty relative to the single-node RQ1.5
+baseline ranges from +2.131~ms to +4.086~ms across the chained conditions and
++2.306~ms for the monolithic baseline. The single-node RQ1.4 / RQ1.5 design
+therefore underestimates true production latency by a bounded margin that is
+now quantified per condition rather than acknowledged abstractly.
 
 \subsection{Synthesis: Deployment Context}
 \label{sec:analysis-deployment-synthesis}
@@ -433,16 +434,16 @@ The results in \cref{sec:rq21} support four bounded findings.
 
 \paragraph{Finding 1: the mTLS/AuthZ hardening bundle adds measurable but bounded overhead to the selected chain.}
 For the primary \texttt{chain\_2svc} topology, the service-mesh hardening
-layer adds 3.122~ms, or 4.5\%, to mean end-to-end latency. This is a
-measurable cost, but it is bounded relative to the approximately 70~ms plain
-AKS baseline. The result is consistent with service-mesh literature: sidecars
+layer adds 3.488~ms, or 4.62\%, to mean end-to-end latency
+(\cref{tab:rq21_latency}). This is a measurable cost, but it is bounded
+relative to the approximately 75.6~ms plain AKS-with-mesh-tainted baseline. The result is consistent with service-mesh literature: sidecars
 add critical-path work, but the visible percentage overhead depends on the
 workload and on how much application compute the proxy cost is amortised
 over~\cite{meshinsight_socc23}.
 
 \paragraph{Finding 2: security overhead grows with protected chain depth.}
 The \texttt{chain\_5svc} stress run increases the mean hardening overhead to
-9.008~ms (11.7\%). This is nearly three times the absolute
+8.837~ms (10.74\%). This is approximately two and a half times the absolute
 \texttt{chain\_2svc} overhead. The larger cost is expected: the stress
 topology contains more injected proxies, more authorization policies, and
 more protected inter-service boundaries. This finding reinforces the RQ1
@@ -452,7 +453,7 @@ become less attractive once every boundary also carries identity, encryption,
 proxying, and policy-enforcement cost.
 
 \paragraph{Finding 3: the result is lower than some published Istio overheads, but not in conflict with them.}
-The observed 4.5\% primary overhead is much smaller than the high-load Istio
+The observed 4.62\% primary overhead is much smaller than the high-load Istio
 penalties reported in broader service-mesh
 benchmarks~\cite{bremlerbarr2025mtls}. This does not contradict that
 literature. Those studies use different services, protocols, load levels,
@@ -480,13 +481,13 @@ security solution.
 Under the paired AKS RQ2.1 benchmark, adding service identity, managed-Istio
 mTLS, and inter-service authorization policy introduces measurable but
 bounded overhead for the selected \texttt{chain\_2svc} deployment. Mean
-latency increases from 70.094~ms in the plain condition to 73.216~ms with
-the mTLS/AuthZ hardening bundle, an overhead of 3.122~ms or 4.5\%; p95
-latency increases by 3.531~ms. Security validation passed in every mTLS
+latency increases from 75.557~ms in the plain condition to 79.045~ms with
+the mTLS/AuthZ hardening bundle, an overhead of 3.488~ms or 4.62\%; p95
+latency increases by 3.623~ms. Security validation passed in every mTLS
 pass, including full-chain positive probes and direct-denial probes against
 protected downstream segments. The additional \texttt{chain\_5svc} stress run
 shows that the same hardening approach becomes more expensive as service
-depth increases: mean overhead rises to 9.008~ms or 11.7\%. RQ2.1 therefore
+depth increases: mean overhead rises to 8.837~ms or 10.74\%. RQ2.1 therefore
 supports a cautious conclusion: service identity and managed-Istio mTLS/AuthZ
 are feasible for the selected Azure chain at a modest latency cost, but the
 cost is not negligible, grows with the number of protected service
@@ -498,63 +499,62 @@ than by strict mTLS enforcement or AuthorizationPolicy evaluation alone.
 \subsection{RQ2.2: Confidential VM Execution}
 \label{sec:analysis-rq22}
 
-The results in \cref{sec:rq22} support four bounded findings.
+The results in \cref{sec:rq22} support three bounded findings.
 
 \paragraph{Finding 1: VM-level confidential execution adds measurable overhead on top of mTLS.}
-Both RQ2.2 paired runs show positive confidential-execution overhead relative
-to their newly collected standard baselines. This matters because the
-baselines already include the RQ2.1 mTLS/AuthZ hardening. The measured deltas
-therefore represent the additional cost of changing the execution environment
-to confidential VM infrastructure, not the cost of introducing service-mesh
+The RQ2.2 paired run shows positive confidential-execution overhead relative
+to a newly collected standard baseline. This matters because the baseline
+already includes the RQ2.1 mTLS/AuthZ hardening. The measured delta therefore
+represents the additional cost of placing the downstream service on
+confidential VM infrastructure, not the cost of introducing service-mesh
 communication security.
 
-\paragraph{Finding 2: selective TEE is the lower-cost hardening point.}
-The service2-only condition increases mean latency by 3.420\%. This is the
-most direct implementation of the original RQ2.2 design: service2 is the
+\paragraph{Finding 2: selective TEE has a modest measured cost on the protected segment.}
+Placing only \texttt{service2} on \texttt{Standard\_DC8as\_v5} (AMD SEV-SNP)
+increases mean latency by 1.854~ms (+3.17\%), median latency by 1.473~ms
+(+2.53\%), and p95 latency by 3.601~ms (+5.98\%) relative to the matched
+standard-node baseline (\cref{tab:rq22_service2_results}). This is the most
+direct implementation of the original RQ2.2 design: \texttt{service2} is the
 downstream protected component, receives intermediate activations from
-service1, and is the service guarded by the strict mTLS and authorisation
-policy in the RQ2.1 contract. Selectively placing that service on AMD SEV-SNP
-infrastructure gives the thesis a narrow, defensible hardening point with a
-modest measured cost.
+\texttt{service1}, and is the service guarded by the strict mTLS and
+authorisation policy in the RQ2.1 contract. He~et~al.\
+\cite{he2021_attacking_collaborative} motivate protecting that intermediate
+activation beyond the in-transit mTLS layer, although they target a
+malicious-remote-service threat model that differs from the
+infrastructure-level adversary SEV-SNP defends against; selectively placing
+\texttt{service2} on confidential infrastructure therefore gives the thesis a
+narrow, defensible hardening point with a modest measured cost.
 
-\paragraph{Finding 3: full-chain TEE strengthens coverage but increases cost.}
-The full two-service condition increases mean latency by 8.156\%, compared
-with 3.420\% for service2-only TEE. This result is consistent with the
-expected workload-dependent cost of confidential VMs: extending the
-confidential boundary to more runtime components places more of the critical
-path on confidential VM
-infrastructure~\cite{yan2023_cvm_overheads,misono2024_cvm_explained}. The
-full-chain run is therefore useful for RQ2.3, because it shows that stronger
-coverage is available but is not free.
-
-\paragraph{Finding 4: the security claim is stronger than RQ2.1 but still bounded.}
+\paragraph{Finding 3: the security claim is stronger than RQ2.1 but still bounded.}
 RQ2.1 protected the service-to-service communication path. RQ2.2 adds a
 VM-level runtime protection boundary against host-level access for the
-confidentially placed services. This is a stronger security posture, but it
-is not complete application-level isolation. The guest OS, application
-process, model runtime, and local sidecar remain trusted parts of the
-confidential VM environment. Plaintext also exists inside the endpoint
-boundary after mTLS termination. The correct claim is therefore that RQ2.2
-adds confidential VM execution to the already communication-secured Azure
+confidentially placed service. This is a stronger security posture, but it is
+not complete application-level isolation. The guest OS, application process,
+model runtime, and local sidecar remain trusted parts of the confidential VM
+environment, and plaintext exists inside the endpoint boundary after mTLS
+termination. Recent work additionally shows that confidential VMs retain
+residual attack surfaces beyond memory encryption, including malicious
+interrupt injection from the untrusted
+hypervisor~\cite{schluter2024_heckler}; this thesis does not experimentally
+evaluate such attacks. The correct claim is therefore that RQ2.2 adds
+VM-level confidential execution to the already communication-secured Azure
 inference chain, not that it removes every trusted component or eliminates
 all possible data exposure.
 
 \paragraph{Answer to RQ2.2.}
 RQ2.2 shows that AMD SEV-SNP VM-level confidential execution is feasible for
-the communication-secured AKS inference chain and introduces measurable but
-bounded additional overhead. When only the protected downstream service is
-moved to a confidential node, mean latency increases by 2.059~ms, or 3.420\%,
-and p95 latency increases by 3.850~ms. When both services in the two-service
-chain are moved to confidential nodes, mean latency increases by 4.904~ms, or
-8.156\%, and p95 latency increases by 5.209~ms.
-
-These results support a clear trade-off: selective TEE provides the
-lower-overhead confidential-execution option for the sensitive downstream
-segment, while full-chain TEE provides broader VM-level runtime protection at
-a higher performance cost. In both cases, the interpretation remains bounded
-by the SEV-SNP threat model and by the sidecar-based service-mesh
-architecture: RQ2.2 evaluates VM-level confidential execution on Azure, not
-application-level enclave isolation or complete end-to-end secrecy.
+the communication-secured AKS inference chain and introduces a measurable but
+bounded additional overhead. With only the protected downstream service moved
+to a confidential node (\texttt{service2\_only} scope), mean latency
+increases by 1.854~ms, or 3.17\%, and p95 latency increases by 3.601~ms,
+relative to a newly paired standard-node mTLS baseline. Extending the
+confidential-execution boundary to both services in the chain (full
+two-service TEE) is out of the thesis-facing scope of RQ2.2 per the evidence
+manifest and is treated as future work. The interpretation remains bounded by
+the SEV-SNP threat model and by the sidecar-based service-mesh architecture:
+RQ2.2 evaluates VM-level confidential execution on Azure for the downstream
+segment, not application-level enclave isolation or complete end-to-end
+secrecy.
 
 \subsection{RQ2.3: Trade-off Synthesis}
 \label{sec:analysis-rq23}
@@ -563,31 +563,33 @@ application-level enclave isolation or complete end-to-end secrecy.
 cumulative hardening gradient rather than a single binary secure/insecure
 choice. The RQ1.5 plain AKS deployment establishes the performance baseline.
 RQ2.1 adds communication-level security through mTLS, service identity, and
-authorization policy. RQ2.2 then adds VM-level confidential execution for
-either one selected service or the full two-service chain. Each step
-increases the protection scope, but each step also introduces additional
-latency, resource, or operational cost.
+authorization policy. RQ2.2 then adds VM-level confidential execution for the
+downstream protected service (\texttt{service2\_only}). Each step increases
+the protection scope, but each step also introduces additional latency,
+resource, or operational cost. Extending the confidential-execution boundary
+to both services (full two-service TEE) is treated as future work and is not
+evaluated as a measured trade-off point in this thesis.
 
 The main engineering implication is that security hardening should be scoped
 to the threat model. Applying every available mechanism everywhere is not
 always the best default. In the evaluated deployment, mTLS/AuthZ is the most
 suitable general-purpose security baseline because it protects the
-inter-service path at a modest cost for chain\_2svc. Selective TEE is the
-best next step when the downstream segment is the primary sensitivity
-boundary, because it adds confidential-node execution with lower overhead
-than full-chain TEE. Full-chain TEE gives broader runtime protection but
-should be treated as a stronger, more expensive configuration rather than as
-the default choice for all deployments.
+inter-service path at a modest cost for \texttt{chain\_2svc}. Selective TEE
+on the downstream service is the next available hardening step when that
+segment is the primary sensitivity
+boundary~\cite{he2021_attacking_collaborative}, while its security claim
+remains bounded by the SEV-SNP threat
+model~\cite{schluter2024_heckler}.
 
 The results also show that performance and security cannot be evaluated
 independently. RQ1 established that service boundaries add measurable
 overhead and that this overhead depends on boundary placement and service
 count. RQ2 shows that security mechanisms compound this cost. The mTLS/AuthZ
 hardening overhead grows when more service boundaries are protected, and
-confidential-execution overhead grows when the confidential-computing scope
-expands from one service to both services. Therefore, the final deployment
-decision depends on three linked factors: the chosen model partition, the
-number of service boundaries, and the required protection scope.
+selective confidential execution adds further overhead on top. The final
+deployment decision therefore depends on three linked factors: the chosen
+model partition, the number of service boundaries, and the required
+protection scope.
 
 \paragraph{Answer to RQ2.3.}
 RQ2.3 shows that the best hardening level depends on the assumed threat
@@ -595,22 +597,24 @@ model and the acceptable performance cost. Plain AKS is the fastest
 evaluated configuration, but it provides the weakest protection in the
 security comparison. mTLS with service identity and authorization policy is
 the best general-purpose balance when the main goal is authenticated and
-encrypted service-to-service communication; in the selected chain\_2svc
-deployment it adds 3.122 ms, or 4.5\%, mean latency overhead. Selective TEE
-is the preferred option when one downstream inference segment is the main
-sensitivity boundary, adding 2.059 ms, or 3.420\%, over its paired mTLS
-standard-node baseline. Full two-service TEE provides the broadest VM-level
-runtime protection evaluated in this thesis, but increases mean latency by
-4.904 ms, or 8.156\%, and therefore represents a stronger but more expensive
-hardening point.
+encrypted service-to-service communication; in the selected
+\texttt{chain\_2svc} deployment it adds 3.488~ms, or 4.62\%, mean latency
+overhead. Selective TEE on \texttt{service2\_only} is the preferred option
+evaluated in this thesis when the downstream inference segment is the main
+infrastructure-level sensitivity boundary, adding 1.854~ms, or 3.17\%, over
+its paired standard-node mTLS baseline. Extending the confidential-execution
+boundary to both services (full two-service TEE) is treated as future work
+and is not evaluated here as a measured trade-off point.
 
 Overall, the evaluated configurations support a cumulative
 security-performance trade-off: stronger protection is feasible for the
 selected AKS inference chain, but each additional protection layer adds
 measurable cost. The most defensible default is mTLS/AuthZ for
-communication-level protection, with selective or full confidential execution
-added only when the threat model requires runtime protection against
-host-level exposure.
+communication-level protection, with selective confidential execution on the
+downstream service added only when the threat model requires runtime
+protection against host-level exposure, and bounded by the SEV-SNP
+attack-surface limitations discussed
+above~\cite{schluter2024_heckler}.
 
 \subsection{Synthesis: Security Hardening}
 \label{sec:analysis-security-synthesis}
@@ -618,22 +622,23 @@ host-level exposure.
 The security stages show that hardening is feasible for the selected AKS
 deployment, but it is not free. RQ2.1 adds managed-Istio mTLS, service
 identity, and authorization policy. For the selected \texttt{chain\_2svc}
-topology, the measured mean overhead is 3.122~ms, or 4.5\%; for the
-\texttt{chain\_5svc} stress topology, the overhead grows to 9.008~ms, or
-11.7\% (\cref{tab:rq21_latency,tab:rq21_paired_deltas}). This is consistent
+topology, the measured mean overhead is 3.488~ms, or 4.62\%; for the
+\texttt{chain\_5svc} stress topology, the overhead grows to 8.837~ms, or
+10.74\% (\cref{tab:rq21_latency,tab:rq21_paired_deltas}). This is consistent
 with service-mesh studies showing that sidecar-based mTLS adds latency and
 resource cost through additional critical-path
 processing~\cite{meshinsight_socc23,bremlerbarr2025mtls}.
 
-RQ2.2 adds VM-level confidential execution on AMD SEV-SNP nodes while
-keeping the mTLS contract fixed. Selective confidential execution for only
-the downstream service adds 2.059~ms, or 3.420\%, over its paired
-standard-node mTLS baseline. Full two-service confidential execution adds
-4.904~ms, or 8.156\%, over its paired standard-node mTLS baseline. These
-results match the confidential-computing literature's expectation that
-overhead is workload- and
+RQ2.2 adds VM-level confidential execution on an AMD SEV-SNP node for the
+downstream protected service while keeping the mTLS contract fixed.
+Selective confidential execution for \texttt{service2\_only} adds 1.854~ms,
+or 3.17\%, over its paired standard-node mTLS baseline. The result is
+consistent with the confidential-computing literature's expectation that
+CVM overhead is workload- and
 scope-dependent~\cite{yan2023_cvm_overheads,misono2024_cvm_explained,
-mo2024_ml_confidential_computing}.
+mo2024_ml_confidential_computing}, and the security claim is bounded by
+SEV-SNP's residual attack
+surfaces~\cite{schluter2024_heckler}.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Validation}
@@ -641,8 +646,7 @@ mo2024_ml_confidential_computing}.
 
 This section consolidates the evidence that supports treating the thesis
 conclusions as credible. The validation discipline follows the shared
-benchmark contract defined in \cref{sec:methods-contract,sec:methods-cpu,
-sec:methods-statistics}.
+benchmark contract defined in \cref{sec:methods-contract,sec:methods-cpu,sec:methods-statistics}.
 
 \paragraph{Functional parity.}
 Every thesis-facing frozen run achieves
@@ -727,9 +731,10 @@ Across the evaluated stack, the monolithic Kubernetes baseline remains the
 fastest path; chained deployments pay an overhead that is monotonic with
 service count but bounded and non-linear; the local-to-AKS transfer is
 directional rather than numerical; mTLS adds a workload-amortised but
-measurable cost that grows with protected chain depth; and confidential-VM
-execution adds a smaller incremental cost when applied selectively to the
-downstream service than when applied to the full chain.
+measurable cost that grows with protected chain depth; and selective
+confidential-VM execution on the downstream service adds a further bounded
+cost on top of the communication-secured chain. Extending the
+confidential-execution boundary to both services is treated as future work.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Threats to Validity}
@@ -753,13 +758,14 @@ single-node. Single-node deployments eliminate inter-node network hops and do
 not capture the scheduling and networking variability of a multi-node
 production cluster. RQ1.5b
 (\cref{sec:rq15b}, \cref{sec:analysis-rq15b}) addresses this directly with a
-six-node AKS sensitivity stage that forces every chain hop across a node
-boundary; the measured per-condition multi-node penalty is 8.6--12.2~ms and
-is dominated by the first inter-node hop. The single-node primary numbers
-should therefore be interpreted as a clean architectural-overhead measurement
-that excludes the inter-node network path; the multi-node sensitivity in
-\cref{sec:rq15b} provides a quantitative bound on what production multi-node
-deployments add on top.
+multi-node AKS sensitivity stage that forces every chain hop across a node
+boundary; the measured per-condition multi-node penalty is bounded between
++2.131~ms (\texttt{chain\_3svc}) and +4.086~ms (\texttt{chain\_5svc}), with
+the monolithic baseline gaining +2.306~ms (\cref{tab:rq15b_delta}). The
+single-node primary numbers should therefore be interpreted as a clean
+architectural-overhead measurement that excludes the inter-node network
+path; the multi-node sensitivity in \cref{sec:rq15b} provides a quantitative
+bound on what production multi-node deployments add on top.
 
 \paragraph{CPU-only inference.}
 All stages use CPU inference with a single thread. GPU-accelerated inference
@@ -780,6 +786,18 @@ higher variability. Neither environment captures the full noise of a shared
 multi-tenant cloud cluster, where CPU steal, network congestion, and noisy
 neighbours can substantially affect tail latency.
 
+\paragraph{Activation-protection motivation.}
+He~et~al.\ \cite{he2021_attacking_collaborative} demonstrate that an untrusted
+remote service holding only intermediate feature maps can reconstruct the
+client's input, so in-transit encryption alone does not protect activations
+at rest on the downstream segment. This motivates evaluating the
+infrastructure-level protection of the downstream service (RQ2.2) in
+addition to communication-level hardening (RQ2.1). The two layers address
+different threat models: SEV-SNP defends against the cloud host, not against
+an actively malicious application running inside the protected VM, so it is
+not a direct solution to the malicious remote-service model in
+He~et~al.
+
 \paragraph{mTLS threat-model scope.}
 Sidecar-based mTLS protects the inter-proxy communication path but does not
 prevent plaintext from existing inside the endpoint after TLS termination.
@@ -789,9 +807,14 @@ hardening.
 \paragraph{SEV-SNP threat-model scope.}
 AMD SEV-SNP protects the VM boundary against the host platform but not
 against a compromised guest OS or application process, and several
-side-channel and availability threats fall outside its core guarantee. RQ2.2
-claims VM-level confidential execution, not complete application-level
-isolation.
+side-channel and availability threats fall outside its core guarantee. In
+particular, recent work shows that confidential VMs remain vulnerable to
+malicious-interrupt injection from the untrusted
+hypervisor~\cite{schluter2024_heckler}; this thesis does not experimentally
+evaluate such attacks. RQ2.2 therefore claims VM-level confidential
+execution for the downstream segment (\texttt{service2\_only}), not
+complete application-level isolation. Extending the confidential boundary
+to both services in the chain is treated as future work.
 
 \paragraph{Generalisation of the cited literature.}
 Multi-node clusters, concurrent clients, GPUs, larger models, feature

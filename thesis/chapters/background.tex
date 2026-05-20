@@ -2,21 +2,15 @@
 \label{ch:background}
 
 This chapter introduces the technical concepts needed to interpret the staged
-experiments. It focuses on three pieces of background: the ResNet-18 architecture used
-as the inference workload, the meaning of a split boundary in distributed DNN
-inference, and the Kubernetes-style service chain used in the later deployment stages.
-The more comparative discussion of prior work appears in \cref{ch:related}.
+experiments. It explains the ResNet-18 architecture used as the inference workload,
+the meaning of a split boundary in distributed DNN inference, the difference between
+coarse and block-level split granularity, and the service-chain execution model used
+in the Kubernetes and AKS stages. The chapter refers to literature where it clarifies
+a technique or concept; the more comparative discussion of prior work appears in
+\cref{ch:related}.
 
-
-
-\begin{figure}[htbp]
-\centering
-\resizebox{\textwidth}{!}{%
-\input{../figures/tikz/background/resnet18_pipeline.tex}%
-}
-\caption{Top-level ResNet-18 inference pipeline used in this thesis. The model is treated as a stem, four residual stages, and a classification head.}
-\label{fig:resnet18_pipeline}
-\end{figure}
+\section{ResNet-18 as the Inference Workload}
+\label{sec:bg-resnet18}
 
 ResNet-18 can be viewed as three major parts for the purposes of this thesis:
 an initial stem, four residual stages, and a classification head. The stem performs
@@ -28,22 +22,60 @@ average pooling and applies the final fully connected classifier. This stage-bas
 view follows the residual-network design introduced by He~et~al., where successive
 stages reduce spatial resolution while increasing channel depth~\cite{resnet}.
 
-This structure motivates the coarse split choices used later in RQ1.1. The thesis
-does not treat every primitive operation as an equally meaningful split candidate.
-Instead, the initial coarse sweep uses the four residual-stage boundaries after
-\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. These boundaries
-preserve the architectural stage structure of ResNet-18 and provide a controlled
-progression from early, high-activation regions to later, lower-activation regions.
-Splits inside the stem are excluded from the primary coarse sweep because they
-would place boundaries between tightly coupled primitive operations before
-substantial activation-size reduction. Splits inside the classification head are also
-excluded because the head contains only the final pooling and linear classification
-operations, leaving one side of the partition with negligible computation. This choice
-matches the broader partitioning literature, which treats split selection as a
-trade-off among activation-transfer cost, compute placement, and deployment context
-rather than as a search over depth alone~\cite{dnnsplit,deeperthings,survey_partitioning}.
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\input{../figures/tikz/background/resnet18_pipeline.tex}%
+}
+\caption{Top-level ResNet-18 inference pipeline used in this thesis. The model is treated as a stem, four residual stages, and a classification head.}
+\label{fig:resnet18_pipeline}
+\end{figure}
 
-%%split point image
+\section{Split Inference and Partition Boundaries}
+\label{sec:bg-split-inference}
+
+In split inference, a neural network forward pass is divided into execution segments.
+An upstream segment computes an intermediate activation tensor, transfers that tensor
+to another execution environment, and a downstream segment completes the forward pass.
+Prior split-inference systems use this same basic abstraction when partitioning neural
+network inference across devices, edge nodes, or cloud resources~\cite{neurosurgeon,jointdnn}.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\input{../figures/tikz/background/split_after_layer2_two_segments.tex}%
+}
+\caption{Example two-segment decomposition produced by a split after \texttt{layer2}. The first segment executes the stem through \texttt{layer2}; the second segment receives the intermediate activation tensor and executes \texttt{layer3} through the classification head.}
+\label{fig:split_after_layer2_two_segments}
+\end{figure}
+
+A split boundary is therefore both an architectural position in the model and a
+runtime interface between two execution segments. For example,
+\texttt{split\_after\_layer2} creates the two-segment decomposition shown in
+\cref{fig:split_after_layer2_two_segments}: the first segment executes the model up
+to the boundary, and the second segment resumes computation from the transferred
+activation tensor.
+
+\section{Coarse Split Points in ResNet-18}
+\label{sec:bg-coarse-splits}
+
+The stage structure of ResNet-18 motivates the coarse split choices used later in
+RQ1.1. The thesis does not treat every primitive operation as an equally meaningful
+split candidate. Instead, the initial coarse sweep uses the four residual-stage
+boundaries after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and
+\texttt{layer4}. These boundaries preserve the architectural stage structure of
+ResNet-18 and provide a controlled progression from early, high-activation regions
+to later, lower-activation regions.
+
+Splits inside the stem are excluded from the primary coarse sweep because they would
+place boundaries between tightly coupled primitive operations before substantial
+activation-size reduction. Splits inside the classification head are also excluded
+because the head contains only the final pooling and linear classification operations,
+leaving one side of the partition with negligible computation. This framing follows
+partitioning literature that treats split selection as a trade-off among
+activation-transfer cost, compute placement, and deployment context rather than as a
+search over depth alone~\cite{dnnsplit,deeperthings,survey_partitioning}.
+
 \begin{figure}[htbp]
 \centering
 \resizebox{\textwidth}{!}{%
@@ -57,22 +89,59 @@ As shown in \cref{fig:rq11_coarse_split_boundaries}, RQ1.1 evaluates split
 points after the four major residual stages rather than inside the stem or
 classification head.
 
-%%segmented image of resnet18 after layer2 split
+\section{Block-Level Structure and Fine-Grained Splits}
+\label{sec:bg-block-granularity}
+
+Each residual stage in ResNet-18 contains two BasicBlock containers, and each
+BasicBlock contains two convolution operations. The first block of layers 2--4 also
+uses a projection shortcut for downsampling. This internal structure is hidden in the
+coarse stage-level view, but it matters when reasoning about finer split boundaries.
+
 \begin{figure}[htbp]
 \centering
 \resizebox{\textwidth}{!}{%
-\input{../figures/tikz/background/split_after_layer2_two_segments.tex}%
+\input{../figures/tikz/background/resnet18_block_structure.tex}%
 }
-\caption{Example two-segment decomposition produced by a split after \texttt{layer2}. The first segment executes the stem through \texttt{layer2}; the second segment receives the intermediate activation tensor and executes \texttt{layer3} through the classification head.}
-\label{fig:split_after_layer2_two_segments}
+\caption{Simplified ResNet-18 block structure. The stem and classification head are shown as single components, while each residual stage is shown as two basic blocks.}
+\label{fig:resnet18_block_structure}
 \end{figure}
-A split boundary creates two execution segments, as illustrated for
-\texttt{split\_after\_layer2} in \cref{fig:split_after_layer2_two_segments}.
-Prior split-inference systems use the same basic abstraction: an upstream segment
-computes an intermediate activation, transfers it to another execution environment, and
-the downstream segment completes the forward pass~\cite{neurosurgeon,jointdnn}.
 
-%% service-boundary / RPC cost figure
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\input{../figures/tikz/background/resnet18_detailed_basicblock_containers.tex}%
+}
+\caption{Detailed ResNet-18 structure with BasicBlock containers. Each residual stage contains two BasicBlocks, and each BasicBlock contains two convolution operations. The first block of layers 2--4 includes a projection shortcut for downsampling.}
+\label{fig:resnet18_detailed_basicblock_containers}
+\end{figure}
+
+The block-level view matters because two boundaries with the same activation tensor can
+still assign different amounts of computation to the upstream and downstream services.
+The refined boundary inside \texttt{layer3} used later in the thesis should therefore
+be read as a compute-placement distinction, not only as an activation-size
+distinction. Prior work on fine-grained and hierarchical DNN partitioning similarly
+argues that useful split selection requires awareness of the model's internal
+computational structure~\cite{fine_grained_partitioning,hierarchical_partitioning,pareto_split}.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\input{../figures/tikz/background/rq12_split_after_layer3_block0_segments.tex}%
+}
+\caption{Block-level two-segment decomposition used in RQ1.2. The refined split point is placed inside \texttt{layer3}, after the first residual block. Segment 1 executes the stem through \texttt{layer3.0}; Segment 2 receives the intermediate activation tensor and executes \texttt{layer3.1} through the classification head.}
+\label{fig:rq12_split_after_layer3_block0_segments}
+\end{figure}
+
+\section{Service Boundaries and RPC Cost}
+\label{sec:bg-service-boundaries}
+
+A split boundary becomes a service boundary when the execution segments are packaged
+as independently addressable services. In that setting, the boundary-crossing interval
+used later in the thesis should be read as a compound systems cost rather than as
+network transfer alone. It includes tensor serialization, RPC handling, transport
+through the service interface, downstream deserialization, remote computation after the
+boundary, and response handling.
+
 \begin{figure}[htbp]
 \centering
 \resizebox{0.96\textwidth}{!}{%
@@ -88,51 +157,29 @@ reconstruction.}
 \label{fig:service_boundary_rpc_cost}
 \end{figure}
 
-The boundary-crossing interval used later in the thesis should therefore be read as a
-compound systems cost rather than as network transfer alone. It includes tensor
-serialization, RPC handling, transport through the service interface, downstream
-deserialization, remote computation after the boundary, and response handling. Recent
-microservice systems work shows that RPC paths can accumulate overhead through protocol
-processing, memory copies, socket operations, and network-stack traversal, even before
-the application-specific computation is considered~\cite{rpc_overhead_hotos25,notnets_apsys24}.
+Recent microservice systems work shows that RPC paths can accumulate overhead through
+protocol processing, memory copies, socket operations, and network-stack traversal,
+even before the application-specific computation is considered~\cite{rpc_overhead_hotos25,notnets_apsys24}.
 
-%%split inside layer3 image
+\section{Kubernetes Service Chains}
+\label{sec:bg-kubernetes-chains}
+
+In the Kubernetes and AKS stages, each model segment is packaged as a separate service
+and communicates through synchronous gRPC forwarding. This makes the inference pipeline
+closer to a cloud-native microservice deployment, but it also introduces platform
+effects from container execution, service networking, CNI behavior, and managed-cluster
+infrastructure. The single-node and multi-node placements used later are shown in
+\cref{fig:rq14_chain5_kubernetes_placement,fig:rq15b_chain5_multinode_placement}.
+
+%% RQ1.4 Kubernetes 5-service pod/service placement figure
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
-\input{../figures/tikz/background/resnet18_block_structure.tex}%
+\resizebox{0.98\textwidth}{!}{%
+\input{../figures/tikz/background/rq14_chain5_kubernetes_placement.tex}%
 }
-\caption{Simplified ResNet-18 block structure. The stem and classification head are shown as single components, while each residual stage is shown as two basic blocks.}
-\label{fig:resnet18_block_structure}
+\caption{Kubernetes pod and service placement for the RQ1.4 five-service chain. The benchmark client and all inference pods are placed on the same Kubernetes node, while each model segment is exposed through a Kubernetes Service and communicates using synchronous gRPC forwarding. The labels above the arrows show the activation-transfer size at each coarse ResNet-18 boundary.}
+\label{fig:rq14_chain5_kubernetes_placement}
 \end{figure}
-
-%%split inside layer3 image with split after block0
-\begin{figure}[htbp]
-\centering
-\resizebox{\textwidth}{!}{%
-\input{../figures/tikz/background/rq12_split_after_layer3_block0_segments.tex}%
-}
-\caption{Block-level two-segment decomposition used in RQ1.2. The refined split point is placed inside \texttt{layer3}, after the first residual block. Segment 1 executes the stem through \texttt{layer3.0}; Segment 2 receives the intermediate activation tensor and executes \texttt{layer3.1} through the classification head.}
-\label{fig:rq12_split_after_layer3_block0_segments}
-\end{figure}
-
-%%all detailed layers 
-\begin{figure}[htbp]
-\centering
-\resizebox{\textwidth}{!}{%
-\input{../figures/tikz/background/resnet18_detailed_basicblock_containers.tex}%
-}
-\caption{Detailed ResNet-18 structure with BasicBlock containers. Each residual stage contains two BasicBlocks, and each BasicBlock contains two convolution operations. The first block of layers 2--4 includes a projection shortcut for downsampling.}
-\label{fig:resnet18_detailed_basicblock_containers}
-\end{figure}
-
-The block-level view matters because two boundaries with the same activation tensor can
-still assign different amounts of computation to the upstream and downstream services.
-This is why the thesis later evaluates a refined boundary inside \texttt{layer3} rather
-than treating activation size as the only explanatory variable. Prior work on
-fine-grained and hierarchical DNN partitioning similarly argues that useful split
-selection requires awareness of the model's internal computational structure
-~\cite{fine_grained_partitioning,hierarchical_partitioning,pareto_split}.
 
 \begin{figure}[htbp]
 \centering
@@ -148,22 +195,8 @@ layout used for RQ1.4 and RQ1.5
 \label{fig:rq15b_chain5_multinode_placement}
 \end{figure}
 
-
-%% RQ1.4 Kubernetes 5-service pod/service placement figure
-\begin{figure}[htbp]
-\centering
-\resizebox{0.98\textwidth}{!}{%
-\input{../figures/tikz/background/rq14_chain5_kubernetes_placement.tex}%
-}
-\caption{Kubernetes pod and service placement for the RQ1.4 five-service chain. The benchmark client and all inference pods are placed on the same Kubernetes node, while each model segment is exposed through a Kubernetes Service and communicates using synchronous gRPC forwarding. The labels above the arrows show the activation-transfer size at each coarse ResNet-18 boundary.}
-\label{fig:rq14_chain5_kubernetes_placement}
-\end{figure}
-
-In the Kubernetes and AKS stages, each model segment is packaged as a separate service
-and communicates through synchronous gRPC forwarding. This makes the inference pipeline
-closer to a cloud-native microservice deployment, but it also introduces platform
-effects from container execution, service networking, CNI behavior, and managed-cluster
-infrastructure. Prior Kubernetes and cloud-performance studies show that these layers
-can affect measured latency and variability, which is why this thesis separates local
-process benchmarks, local Kubernetes benchmarks, and managed AKS benchmarks into
-distinct stages~\cite{managed_k8s_perf,cni_k8s_ic2e21,noise_in_clouds}.
+Prior Kubernetes and cloud-performance studies show that container execution, service
+networking, CNI behavior, and managed infrastructure can affect measured latency and
+variability. This is why the terminology in this thesis distinguishes local process
+benchmarks, local Kubernetes benchmarks, and managed AKS benchmarks as separate
+execution contexts~\cite{managed_k8s_perf,cni_k8s_ic2e21,noise_in_clouds}.
