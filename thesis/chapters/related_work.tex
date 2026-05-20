@@ -118,10 +118,11 @@ confidential computing surveys identify protected model execution and data
 privacy as important motivations, while also emphasizing deployment and
 performance trade-offs~\cite{mo2024_ml_confidential_computing}. Recent work
 additionally shows that the hypervisor remains a meaningful adversary even
-under SEV-SNP: HECKLER~\cite{schluter2024_heckler} bypasses authentication and
-breaks execution integrity on production SEV-SNP and TDX systems through
-malicious-interrupt injection, an attack surface that hardware memory
-encryption alone does not cover. RQ2.2 follows this bounded framing by
+under SEV-SNP: HECKLER~\cite{schluter2024_heckler} uses malicious-interrupt
+injection to bypass OpenSSH and sudo authentication on production SEV-SNP
+and TDX, and additionally breaks execution integrity of analytical
+workloads on SEV-SNP, an attack surface that hardware memory encryption
+alone does not cover. RQ2.2 follows this bounded framing by
 measuring VM-level confidential execution on AKS for the downstream service
 only, rather than claiming application-level enclave isolation or evaluating
 those residual attack surfaces.
