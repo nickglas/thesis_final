@@ -82,6 +82,14 @@ Warmup calibration & Trailing window $= 10$, CV threshold $= 0.02$ \\
 \end{tabular}
 \end{table}
 
+The service-pod memory request and limit were raised from 512~MiB in RQ1.4 to
+1~GiB in RQ1.5. This is a within-experimenter configuration change rather than
+a managed-cloud constraint: it affects pod admission and the cgroup memory
+ceiling but not the single-threaded ResNet-18 CPU inference path itself. The
+client memory profile (1~GiB request / limit) is unchanged from RQ1.4, and the
+Guaranteed QoS class, CPU request/limit, image, and pull policy are otherwise
+identical to the RQ1.4 carry-forward setup.
+
 Threading, affinity, and priority controls followed the same stabilisation intent as
 the preceding stages and were applied where the managed AKS runtime allowed.
 Threading controls for PyTorch, OpenMP, MKL, and OpenBLAS were requested and observed
@@ -277,8 +285,8 @@ The thesis-facing RQ1.5b benchmark used the frozen multi-node sensitivity run
 \texttt{rq15b} on a multi-node AKS cluster in the \texttt{swedencentral} Azure
 region. All worker nodes were \texttt{Standard\_D8s\_v3} (per
 \texttt{node\_instance\_type} in \texttt{deployment\_metadata.json}) and shared
-one node pool, so the only intentional difference from RQ1.5 is the
-pod-to-node assignment.
+one node pool, so the only intentional experimental difference from RQ1.5 is
+the pod-to-node assignment.
 
 Multi-node placement was enforced by Kubernetes pod anti-affinity. Each service pod
 of a given condition repels every other service pod of that condition keyed on
@@ -287,10 +295,14 @@ of a given condition repels every other service pod of that condition keyed on
 \texttt{chain\_5svc} condition all five service segments land on distinct nodes and
 the client lands on a sixth dedicated node, so every gRPC hop in the inference path
 crosses the Azure VNet rather than staying loopback. Compliance was verified after
-deployment by reading observed \texttt{nodeName} values from the Kubernetes API. For
+deployment by reading observed \texttt{nodeName} values from the Kubernetes API for
+each pod and by checking the runner's aggregated multi-node validation flag. For
 every condition, the recorded service nodes were pairwise disjoint and the client
-node was distinct from every service node; no condition was promoted to the merge
-phase without this check passing. Functional parity was independently verified:
+node was distinct from every service node, as preserved in
+\texttt{merged\_results/deployment\_metadata.json}; the aggregated
+\texttt{multi\_node\_validation} entry in
+\texttt{merged\_results/environment.json} records
+\texttt{passed=True} for the run as a whole. Functional parity was independently verified:
 \texttt{max\_abs\_diff}~$=0.0$ at \texttt{atol}~$=1\times10^{-5}$ for all five
 conditions in both the local segment validation and the live gRPC chain validation
 (\texttt{num\_inputs}~$=5$).
@@ -375,7 +387,11 @@ The within-environment ordering is preserved
 and the per-hop addition does not keep growing: the
 \texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 2.502~ms,
 smaller than the preceding 4.562~ms step, mirroring the saturating per-hop
-behaviour observed in RQ1.4 (\cref{tab:rq14_results}). Cross-round CVs are
+behaviour observed in RQ1.4 (\cref{tab:rq14_results}). The same pattern is
+visible in the single-node RQ1.5 run, where the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 2.225~ms
+versus a preceding 2.884~ms step (\cref{tab:rq15_results}), so the saturating
+last step is consistent across RQ1.4, RQ1.5, and RQ1.5b. Cross-round CVs are
 0.0036--0.0127 across all chained conditions. Because the placement metadata
 confirms distinct AKS nodes for the service pods, these CVs show that the
 distributed placement did not introduce large round-to-round drift in this
@@ -414,11 +430,11 @@ while the largest absolute penalty appears at \texttt{chain\_5svc}. The
 \texttt{monolithic\_k8s\_1svc} baseline is 2.305~ms slower in the multi-node
 placement than in the single-node RQ1.5 baseline. This is compatible with
 the client now shipping a 588~KiB input tensor across the Azure VNet rather
-than over loopback; the cited RPC studies support the general mechanism that
+than over loopback; the cited RPC study supports the general mechanism that
 layered RPC stacks can add transport, parsing, copying, and serialisation
-work on top of the payload bytes themselves~\cite{rpc_overhead_hotos25,notnets_apsys24}.
-The chained conditions, with smaller intermediate activations
-(784, 392, 196, 98~KiB), yield per-condition deltas between 2.131~ms and
+work on top of the payload bytes themselves~\cite{rpc_overhead_hotos25}.
+The chained conditions, with intermediate activations of
+784, 392, 196 and 98~KiB, yield per-condition deltas between 2.131~ms and
 4.086~ms, with the deepest \texttt{chain\_5svc} configuration carrying the
 largest absolute penalty. The within-environment monotonic ordering is
 preserved.
