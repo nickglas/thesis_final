@@ -57,7 +57,7 @@ All CPU stabilisation controls from RQ1.1 were applied identically: single-threa
 
 The experiment followed the same repeated-measures protocol as RQ1.1: 5~rounds of 200 measured iterations per condition, preceded by 50 warmup iterations and separated by 5-second cooldowns. Condition ordering was randomised within each round using a fixed seed. Functional equivalence between monolithic and split executions was enforced through both local and gRPC parity checks using five inputs and an absolute tolerance of $1.0 \times 10^{-5}$. A warmup calibration procedure using a trailing window of 10~iterations and a coefficient-of-variation threshold of 0.02 was applied to verify that latency had stabilised before measurement.
 
-The key difference from RQ1.1 is the composition of the condition set. Rather than sweeping across all coarse stage boundaries, RQ1.2 evaluates a targeted set of three refined split conditions anchored by the RQ1.1 carry-forward candidates, with one new block-level split point inserted between them.
+The key difference from RQ1.1 is the composition of the condition set. Rather than sweeping across all coarse stage boundaries, RQ1.2 evaluates a targeted set of three refined split conditions anchored by the RQ1.1 carry-forward candidates, with one new block-level split point inserted between them~\cite{fine_grained_partitioning}.
 
 \subsection{Refined Partition Conditions}
 \label{sec:rq12-conditions}
@@ -65,16 +65,16 @@ The key difference from RQ1.1 is the composition of the condition set. Rather th
 The RQ1.2 condition set consists of one monolithic baseline and three split configurations:
 
 \begin{itemize}
-    \item \textbf{split\_after\_layer2:} The first service executes the stem and \texttt{layer1}--\texttt{layer2}, and the second service executes \texttt{layer3} through the classifier head. This is the RQ1.1 reference carry-forward candidate. The intermediate activation tensor is approximately $128 \times 28 \times 28$, or 392~KiB in FP32.
+    \item \textbf{split\_after\_layer2:} The first service executes the stem and \texttt{layer1}--\texttt{layer2}, and the second service executes \texttt{layer3} through the classifier head. This is the RQ1.1 reference carry-forward candidate. The intermediate activation tensor is of exact shape $1 \times 128 \times 28 \times 28$, $401{,}408$ bytes ($392$ KiB) in FP32.
 
-    \item \textbf{split\_after\_layer3\_block0:} The first service executes the stem and \texttt{layer1}--\texttt{layer3.0} (i.e., the first residual block of \texttt{layer3}), and the second service executes from \texttt{layer3.1} onward through the classifier head. This is the single new finer-grained split point introduced in RQ1.2. It bisects the coarse \texttt{layer3} stage at its internal block boundary. The intermediate activation tensor is approximately $256 \times 14 \times 14$, or 196~KiB in FP32 --- the same size as the tensor produced at the end of the full \texttt{layer3} stage.
+    \item \textbf{split\_after\_layer3\_block0:} The first service executes the stem and \texttt{layer1}--\texttt{layer3.0} (i.e., the first residual block of \texttt{layer3}), and the second service executes from \texttt{layer3.1} onward through the classifier head. This is the single new finer-grained split point introduced in RQ1.2. It bisects the coarse \texttt{layer3} stage at its internal block boundary. The intermediate activation tensor is of exact shape $1 \times 256 \times 14 \times 14$, $200{,}704$ bytes ($196$ KiB) in FP32 --- the same size as the tensor produced at the end of the full \texttt{layer3} stage.
 
-    \item \textbf{split\_after\_layer3:} The first service executes the stem and \texttt{layer1}--\texttt{layer3}, and the second service executes \texttt{layer4} plus pooling and classification. This is the RQ1.1 main carry-forward candidate. The intermediate activation tensor is approximately $256 \times 14 \times 14$, or 196~KiB in FP32.
+    \item \textbf{split\_after\_layer3:} The first service executes the stem and \texttt{layer1}--\texttt{layer3}, and the second service executes \texttt{layer4} plus pooling and classification. This is the RQ1.1 main carry-forward candidate. The intermediate activation tensor is of exact shape $1 \times 256 \times 14 \times 14$, $200{,}704$ bytes ($196$ KiB) in FP32.
 \end{itemize}
 
 The monolithic baseline is retained for reference so that all overhead values remain anchored to the same absolute comparison. Together, these four conditions form a targeted refinement set rather than an exhaustive within-stage search: \texttt{split\_after\_layer2} and \texttt{split\_after\_layer3} anchor the carried-forward coarse space, while \texttt{split\_after\_layer3\_block0} probes the single meaningful block-level internal boundary between them.
 
-An important structural observation motivates this design. The coarse boundary after \texttt{layer3} and the block-level boundary after \texttt{layer3.0} produce intermediate activation tensors of the same size (both approximately 196~KiB). This creates a controlled comparison in which the activation-transfer burden is held constant while the distribution of computation across the two services differs. If the two conditions yield different end-to-end latencies or boundary-crossing intervals, the comparison points to compute placement as a plausible explanatory factor rather than to activation size alone; it does not by itself establish compute placement as the only source of the difference.
+An important structural observation motivates this design. The coarse boundary after \texttt{layer3} and the block-level boundary after \texttt{layer3.0} produce intermediate activation tensors of the same exact size (both $200{,}704$~B / $196$~KiB). This creates a controlled comparison in which the activation-transfer burden is held constant while the distribution of computation across the two services differs. If the two conditions yield different end-to-end latencies or boundary-crossing intervals, the comparison points to compute placement as a plausible explanatory factor rather than to activation size alone~\cite{pareto_split}; it does not by itself establish compute placement as the only source of the difference.
 
 \subsection{Results}
 \label{sec:rq12-results}
@@ -97,16 +97,16 @@ materially separated ranking.
 
 \begin{table}[t]
 \centering
-\caption{RQ1.2 summary of mean latency, overhead, and activation-transfer burden. Source files: \texttt{condition\_summaries.csv}, \texttt{cross\_condition.csv}, and \texttt{round\_consistency.json} in the frozen artifact \texttt{rq1\_2\_20260515\_112636}.}
+\caption{RQ1.2 summary of mean latency, dispersion, descriptive within-run per-iteration 95\% confidence interval on the mean, overhead, and activation-transfer burden. Source files: \texttt{condition\_summaries.csv}, \texttt{cross\_condition.csv}, and \texttt{round\_consistency.json} in the frozen artifact \texttt{rq1\_2\_20260515\_112636}. Confidence intervals are reported from the \texttt{ci95\_lower\_ms} / \texttt{ci95\_upper\_ms} columns of \texttt{condition\_summaries.csv} and summarise per-iteration variation within this run.}
 \label{tab:rq12-results}
-\begin{tabular}{lrrrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std.\ Dev.\ (ms)} & \textbf{Overhead} & \textbf{Activation (KiB)} \\
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std.\ Dev.\ (ms)} & \textbf{Within-run 95\% CI (ms)} & \textbf{Overhead} & \textbf{Activation (KiB)} \\
 \midrule
-Monolithic                    & 77.565 & 75.641 & 3.663 & ---   & --- \\
-Split after layer2            & 80.348 & 79.570 & 2.510 & 3.6\% & 392 \\
-Split after layer3\_block0    & 80.157 & 79.379 & 2.564 & 3.3\% & 196 \\
-Split after layer3            & 80.392 & 79.687 & 2.475 & 3.6\% & 196 \\
+Monolithic                    & 77.565 & 75.641 & 3.663 & $[77.338,\ 77.792]$ & ---   & --- \\
+Split after layer2            & 80.348 & 79.570 & 2.510 & $[80.192,\ 80.504]$ & 3.6\% & 392 \\
+Split after layer3\_block0    & 80.157 & 79.379 & 2.564 & $[79.998,\ 80.316]$ & 3.3\% & 196 \\
+Split after layer3            & 80.392 & 79.687 & 2.475 & $[80.238,\ 80.545]$ & 3.6\% & 196 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -115,11 +115,21 @@ The boundary-crossing interval measurements reveal a notable difference between
 the two conditions that share the same activation size.
 \texttt{split\_after\_layer3\_block0} exhibited a boundary-crossing interval of
 33.97~ms, while \texttt{split\_after\_layer3} exhibited a boundary-crossing
-interval of 26.16~ms. Despite producing activation tensors of the same size
-(approximately 196~KiB), the two conditions differ by approximately 7.8~ms in
-boundary-crossing cost. The earlier split (\texttt{layer2}) had the largest
-boundary-crossing interval at 40.86~ms, consistent with its larger activation
-tensor of 392~KiB.
+interval of 26.16~ms. Despite producing activation tensors of the same exact
+size ($200{,}704$~B / $196$~KiB), the two conditions differ by approximately
+7.8~ms in boundary-crossing cost. As restated from the measurement contract in
+\cref{sec:methods-contract}, the boundary-crossing interval is a composite that
+includes the remote service-B compute alongside activation serialisation, gRPC
+transport, and response deserialisation. In this run, the per-service compute
+means in \texttt{cross\_condition.csv} show service-B compute of 31.87~ms for
+\texttt{split\_after\_layer3\_block0} and 24.06~ms for \texttt{split\_after\_layer3}
+(a 7.81~ms gap), while the non-compute residual is approximately 2.1~ms for both
+conditions. The 7.8~ms boundary-crossing difference is therefore dominated by
+the service-B compute component rather than by a transport or serialisation
+difference, which is consistent with treating compute placement (not activation
+size or wire cost) as the proximate explanatory factor for this pair.
+The earlier split (\texttt{layer2}) had the largest boundary-crossing interval
+at 40.86~ms, consistent with its larger activation tensor of 392~KiB.
 
 Within-run cross-round consistency was strong across all conditions, per
 \texttt{round\_consistency.json} in the same artifact. The monolithic condition
