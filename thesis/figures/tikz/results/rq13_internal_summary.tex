@@ -57,19 +57,19 @@
 % Data source: RQ1.3 internal timing report.
 %
 % Stage-level compute share:
-% layer4       30.70%
-% layer3       18.56%
-% layer1       17.72%
-% stem         16.31%
-% layer2       16.23%
+% layer4       31.28%
+% layer3       18.52%
+% layer1       17.42%
+% stem         16.15%
+% layer2       16.15%
 % avgpool+fc    0.44%
 %
 % x scale: x = percentage * 0.20
-% 30.70 -> 6.140
-% 18.56 -> 3.712
-% 17.72 -> 3.544
-% 16.31 -> 3.262
-% 16.23 -> 3.246
+% 31.28 -> 6.256
+% 18.52 -> 3.704
+% 17.42 -> 3.484
+% 16.15 -> 3.230
+% 16.15 -> 3.230
 % 0.44  -> 0.088
 % ------------------------------------------------------------------
 
@@ -106,11 +106,11 @@
 ] at (-1.85,3.15) {ResNet-18 component};
 
 % Bars
-\draw[layerfourbar] (0,5.20) rectangle (6.140,5.70);
-\draw[stagebar]     (0,4.40) rectangle (3.712,4.90);
-\draw[stagebar]     (0,3.60) rectangle (3.544,4.10);
-\draw[stagebar]     (0,2.80) rectangle (3.262,3.30);
-\draw[stagebar]     (0,2.00) rectangle (3.246,2.50);
+\draw[layerfourbar] (0,5.20) rectangle (6.256,5.70);
+\draw[stagebar]     (0,4.40) rectangle (3.704,4.90);
+\draw[stagebar]     (0,3.60) rectangle (3.484,4.10);
+\draw[stagebar]     (0,2.80) rectangle (3.230,3.30);
+\draw[stagebar]     (0,2.00) rectangle (3.230,2.50);
 \draw[headbar]      (0,1.20) rectangle (0.088,1.70);
 
 % Y labels
@@ -122,11 +122,11 @@
 \node[label, anchor=east] at (-0.15,1.45) {Classification head};
 
 % Value labels
-\node[vallabel, anchor=west] at (6.24,5.45) {30.70\%};
-\node[vallabel, anchor=west] at (3.82,4.65) {18.56\%};
-\node[vallabel, anchor=west] at (3.65,3.85) {17.72\%};
-\node[vallabel, anchor=west] at (3.37,3.05) {16.31\%};
-\node[vallabel, anchor=west] at (3.35,2.25) {16.23\%};
+\node[vallabel, anchor=west] at (6.36,5.45) {31.28\%};
+\node[vallabel, anchor=west] at (3.81,4.65) {18.52\%};
+\node[vallabel, anchor=west] at (3.59,3.85) {17.42\%};
+\node[vallabel, anchor=west] at (3.34,3.05) {16.15\%};
+\node[vallabel, anchor=west] at (3.34,2.25) {16.15\%};
 \node[vallabel, anchor=west] at (0.22,1.45) {0.44\%};
 
 % Annotation for the degenerate downstream segment
