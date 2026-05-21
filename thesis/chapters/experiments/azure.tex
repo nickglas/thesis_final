@@ -18,7 +18,12 @@ condition ordering between the frozen RQ1.4 local Kubernetes run and the frozen 
 AKS run.
 
 The literature framing for transfer-validation between local Kubernetes and
-managed cloud execution is discussed in \cref{sec:rw-cloud-native}.
+managed cloud execution is discussed in \cref{sec:rw-cloud-native}: managed
+Kubernetes, CNI, and cloud-network studies motivate treating local-to-cloud
+transfer as a directional comparison rather than a millisecond-identical
+reproduction~\cite{managed_k8s_perf,cni_k8s_ic2e21,noise_in_clouds}, while
+benchmarking guidance motivates reporting ranking, tails, and cross-round
+stability alongside means~\cite{benchmarking_sc15}.
 
 
 \subsection{Experimental Setup}
@@ -63,7 +68,7 @@ Cooldown between conditions & 5 seconds \\
 Random seed & 42 \\
 Communication & gRPC (in-cluster Kubernetes) \\
 gRPC port & 50051 \\
-Maximum message size & 16~MB \\
+Maximum message size & 16~MiB \\
 Service pod CPU request / limit & 1 core / 1 core \\
 Service pod memory request / limit & 1~GiB / 1~GiB \\
 Client CPU request / limit & 1 core / 1 core \\
@@ -77,15 +82,16 @@ Warmup calibration & Trailing window $= 10$, CV threshold $= 0.02$ \\
 \end{tabular}
 \end{table}
 
-CPU stabilisation controls were requested consistently with the preceding stages, and
-were applied where the managed AKS runtime allowed. Threading controls for PyTorch,
-OpenMP, MKL, and OpenBLAS were requested and observed at one thread. CPU affinity was
-applied to one physical core with SMT excluded; the observed affinity set was core~0.
-Process priority \texttt{nice~-5} was requested but could not be applied due to
-insufficient privileges, so the benchmark ran at \texttt{nice=0}. CPU governor and
-turbo controls were unavailable through the exposed sysfs interface in AKS. These
-constraints are treated as realistic cloud-environment limitations of managed or
-virtualised execution, not as architectural effects of the microservice decomposition.
+Threading, affinity, and priority controls followed the same stabilisation intent as
+the preceding stages and were applied where the managed AKS runtime allowed.
+Threading controls for PyTorch, OpenMP, MKL, and OpenBLAS were requested and observed
+at one thread. CPU affinity was applied to one physical core with SMT excluded; the
+observed affinity set was core~0. Process priority \texttt{nice~-5} was requested but
+could not be applied due to insufficient privileges, so the benchmark ran at
+\texttt{nice=0}. CPU governor and turbo controls were deliberately disabled in the AKS
+configuration because the relevant sysfs interfaces were unavailable. These constraints
+are treated as realistic cloud-environment limitations of managed or virtualised
+execution, not as architectural effects of the microservice decomposition.
 
 Before timing, both local chain-segment validation and live gRPC validation passed for
 every condition with \texttt{max\_abs\_diff} $= 0.0$ and
@@ -98,14 +104,18 @@ RQ1.5 reused the same predefined chain family as RQ1.4:
 
 \begin{itemize}
     \item \textbf{\texttt{monolithic\_k8s\_1svc}}: Full ResNet-18 inference in a single Kubernetes service.
-    \item \textbf{\texttt{chain\_2svc}}: Two services with a split after \texttt{layer2}. Cumulative transferred activation per request: 980~KB.
-    \item \textbf{\texttt{chain\_3svc}}: Three services with splits after \texttt{layer1} and \texttt{layer3}. Cumulative transferred activation per request: 1568~KB.
-    \item \textbf{\texttt{chain\_4svc}}: Four services with splits after \texttt{layer1}, \texttt{layer2}, and \texttt{layer3}. Cumulative transferred activation per request: 1960~KB.
-    \item \textbf{\texttt{chain\_5svc}}: Five services with splits after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. Cumulative transferred activation per request: 2058~KB.
+    \item \textbf{\texttt{chain\_2svc}}: Two services with a split after \texttt{layer2}. Recorded tensor bytes per request: 980~KiB.
+    \item \textbf{\texttt{chain\_3svc}}: Three services with splits after \texttt{layer1} and \texttt{layer3}. Recorded tensor bytes per request: 1568~KiB.
+    \item \textbf{\texttt{chain\_4svc}}: Four services with splits after \texttt{layer1}, \texttt{layer2}, and \texttt{layer3}. Recorded tensor bytes per request: 1960~KiB.
+    \item \textbf{\texttt{chain\_5svc}}: Five services with splits after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. Recorded tensor bytes per request: 2058~KiB.
 \end{itemize}
 
 Carry-forward is not applicable in this stage. The experiment evaluates a fixed
 deployment family in AKS rather than choosing a new split point.
+As in RQ1.4, the recorded tensor-byte totals are taken from the runner metadata and
+include the input tensor as well as hop activations; they are therefore used as a
+consistent input-inclusive traffic proxy, not as a boundary-only activation-transfer
+size.
 
 \subsection{Results}
 
@@ -135,7 +145,7 @@ deployment family in AKS rather than choosing a new split point.
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Condition} & \textbf{Overhead (ms)} & \textbf{Overhead (\%)} & \textbf{Cumul.\ Activation (KB)} & \textbf{Inferred Non-Compute / Platform (ms)} \\
+\textbf{Condition} & \textbf{Overhead (ms)} & \textbf{Overhead (\%)} & \textbf{Recorded Tensor Bytes (KiB)} & \textbf{Inferred Non-Compute / Platform (ms)} \\
 \midrule
 \texttt{chain\_2svc} & 2.635 & 3.7  & 980  & 4.489 \\
 \texttt{chain\_3svc} & 4.608 & 6.5  & 1568 & 7.073 \\
@@ -145,6 +155,10 @@ deployment family in AKS rather than choosing a new split point.
 \end{tabular}
 }
 \end{table}
+
+The transfer comparison was derived directly from the frozen RQ1.4 and RQ1.5 summary
+CSV artifacts, because the generated RQ1.5 report does not itself embed the
+cross-stage comparison.
 
 \begin{table}[ht]
 \centering
@@ -186,7 +200,7 @@ overhead trend are preserved.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5 AKS cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
+\caption{RQ1.5 AKS cross-round consistency. Source: frozen RQ1.5 \texttt{merged\_results/round\_consistency.json}.}
 \label{tab:rq15_rounds}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -205,10 +219,10 @@ overhead trend are preserved.
 
 The AKS run is stable across measured rounds for all chained conditions, with
 round CVs of 0.0019--0.0061. The monolithic baseline shows a slightly higher
-round CV of 0.0117; this elevated single-pod variability is consistent with
-managed-cloud noise on the \texttt{Standard\_D8s\_v3} VM and does not propagate
-into the chained conditions, where the cumulative compute window dominates
-per-round variation. Warmup calibration
+round CV of 0.0117. This pattern is compatible with managed-cloud variability on
+the \texttt{Standard\_D8s\_v3} VM, but the run does not isolate a single cause; in
+this frozen measurement, the chained conditions show lower round-level CVs than the
+monolithic baseline. Warmup calibration
 indicated that each run reached a stable trailing-window CV at least once before
 measurement, while the cross-round CVs of the measured iterations provide the stronger
 stability evidence for the final reported means. As in the previous stage, effect sizes
