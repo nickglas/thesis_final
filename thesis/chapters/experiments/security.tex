@@ -268,7 +268,7 @@ measured here.
 
 The purpose of this stage is therefore incremental. It does not ask whether
 mTLS is useful; that was answered in RQ2.1. Instead, it asks what extra cost is
-paid when runtime protection against a stronger infrastructure threat model is
+paid when runtime protection against an additional infrastructure-level threat model is
 added on top of the already secured service-to-service path.
 
 The literature framing for AMD SEV-SNP, VM-level confidential computing, and
@@ -333,10 +333,10 @@ every per-pass \texttt{parity\_validation.json}.
 \toprule
 \textbf{Condition} & \textbf{Service2 VM} & \textbf{n} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{p95 (ms)} \\
 \midrule
-\texttt{standard}     & \texttt{Standard\_D8as\_v5}  & 1000 & 58.492 & 58.283 & 60.255 \\
+\texttt{standard}     & \texttt{Standard\_D8as\_v5}  & 1000 & 58.492 & 58.289 & 60.255 \\
 \texttt{confidential} & \texttt{Standard\_DC8as\_v5} & 1000 & 60.346 & 59.756 & 63.856 \\
 \midrule
-\textbf{Delta} & --- & --- & \textbf{+1.854 / +3.17\%} & \textbf{+1.473 / +2.53\%} & \textbf{+3.601 / +5.98\%} \\
+\textbf{Delta} & --- & --- & \textbf{+1.854 / +3.17\%} & \textbf{+1.467 / +2.52\%} & \textbf{+3.601 / +5.98\%} \\
 \bottomrule
 \end{tabular}
 }
@@ -344,9 +344,9 @@ every per-pass \texttt{parity\_validation.json}.
 
 In the service2-only TEE run, mean end-to-end latency increased from 58.492~ms
 to 60.346~ms. The mean overhead was therefore 1.854~ms, or 3.17\%. Median
-latency increased by 1.473~ms, and p95 latency increased by 3.601~ms.
+latency increased by 1.467~ms, and p95 latency increased by 3.601~ms.
 Sequential throughput, computed from the mean latency, decreased from
-17.097~req/s to 16.571~req/s, a reduction of approximately 3.08\%.
+17.096~req/s to 16.571~req/s, a reduction of approximately 3.07\%.
 
 This is the only confidential-execution scope evaluated in the thesis. The
 evidence manifest scopes RQ2.2 to \texttt{service2\_only} and explicitly treats
