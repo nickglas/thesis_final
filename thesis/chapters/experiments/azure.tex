@@ -250,7 +250,11 @@ RQ1.5b is a sensitivity stage. It does not replace RQ1.5; the frozen single-node
 results in \cref{sec:rq15} remain the thesis-facing primary numbers. The role of
 RQ1.5b is to quantify, in milliseconds, the inter-node penalty that the single-node
 design intentionally hides, so that the single-node deployment threat to validity
-becomes a bounded, measured cost rather than an unspecified one.
+becomes a bounded, measured cost rather than an unspecified one. Public-cloud
+networks exhibit performance variability that can shift absolute latency without
+changing the application~\cite{noise_in_clouds}, which is precisely why this
+sensitivity stage measures the multi-node penalty directly rather than assuming
+it.
 
 \begin{figure}[htbp]
 \centering
@@ -368,11 +372,21 @@ direct comparison shown in \cref{tab:rq15b_delta}.
 
 The within-environment ordering is preserved
 (\texttt{monolithic\_k8s\_1svc}~$<$~\texttt{chain\_2svc}~$<$~\texttt{chain\_3svc}~$<$~\texttt{chain\_4svc}~$<$~\texttt{chain\_5svc}),
-and the bounded-non-linearity finding from RQ1.4 reproduces under multi-node
-execution: the \texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is
-2.502~ms, broadly comparable to the preceding 4.562~ms step. Cross-round CVs are
+and the per-hop addition does not keep growing: the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 2.502~ms,
+smaller than the preceding 4.562~ms step, mirroring the saturating per-hop
+behaviour observed in RQ1.4 (\cref{tab:rq14_results}). Cross-round CVs are
 0.0036--0.0127 across all chained conditions, consistent with placing each pod on
 its own dedicated VM rather than sharing a single host.
+
+\paragraph{Effect-size note.} Per-iteration Cohen's $d$ and Mann--Whitney
+statistics are emitted alongside the frozen artefact in
+\texttt{merged\_results/effect\_sizes.csv} for completeness, but RQ1.5b is framed
+as a sensitivity stage on the single-node RQ1.5 primary. The headline numbers in
+this section are therefore the per-condition multi-node penalty
+(\cref{tab:rq15b_delta}) and the cross-round CVs (\cref{tab:rq15b_rounds}); a
+full effect-size table analogous to \cref{tab:rq14_effects} is intentionally
+omitted to avoid implying that RQ1.5b is a second primary result.
 
 \begin{figure}[htbp]
 \centering
@@ -390,10 +404,13 @@ the monolithic-baseline penalty is 2.306~ms.}
 
 \Cref{tab:rq15b_delta} and \cref{fig:rq15b_multinode_delta} summarise the
 per-condition multi-node penalty. The penalty is positive across all
-conditions and grows with chain depth. The monolithic baseline alone gains
-2.306~ms relative to the same single-node monolithic, because the client
-now ships a 600~KiB input tensor across the Azure VNet rather than across
-a loopback socket. Adding chain hops with smaller intermediate activations
+conditions and grows with chain depth. The \texttt{monolithic\_k8s\_1svc}
+baseline is 2.306~ms slower in the multi-node placement than in the
+single-node RQ1.5 baseline, consistent with the client now shipping a
+588~KiB input tensor across the Azure VNet rather than over loopback,
+since gRPC-over-network introduces non-trivial transport and parsing cost
+on top of the payload bytes themselves~\cite{rpc_overhead_hotos25,notnets_apsys24}.
+Adding chain hops with smaller intermediate activations
 (784, 392, 196, 98~KiB) yields per-condition deltas between 2.131~ms and
 4.086~ms, with the deepest \texttt{chain\_5svc} configuration carrying the
 largest absolute penalty. The within-environment monotonic ordering is
