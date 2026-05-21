@@ -14,7 +14,9 @@ The literature framing for coarse architectural boundary selection is discussed
 in \cref{sec:rw-split-computing,sec:rw-granularity}.
 
 \subsection{Experimental Setup}
-The RQ1.1 benchmark used the fully controlled local CPU-only configuration in order to minimize variance and isolate the effect of the partition boundary itself. The evaluated model was ResNet-18 with pretrained weights, executed on CPU in FP32 precision with an input shape of $1 \times 3 \times 224 \times 224$. The benchmark compared one monolithic baseline against four two-part split configurations, each corresponding to a coarse architectural stage boundary in ResNet-18.
+The RQ1.1 benchmark used the fully controlled local CPU-only configuration in order to minimize variance and isolate the effect of the partition boundary itself. The source configuration file is \texttt{configs/rq1/1.1/rq1\_1\_fully\_controlled.yaml}; an exact byte-for-byte snapshot is preserved alongside the frozen results as \texttt{config.yaml} in the artifact directory. The evaluated model was ResNet-18 with pretrained weights, executed on CPU in FP32 precision with an input shape of $1 \times 3 \times 224 \times 224$. The benchmark compared one monolithic baseline against four two-part split configurations, each corresponding to a coarse architectural stage boundary in ResNet-18.
+
+Activation-tensor sizes in this section are quoted in binary kibibytes (KiB, $1024$ bytes) for consistency with the gRPC message-size limit, which is also a binary quantity. Three further configuration files are present under \texttt{configs/rq1/1.1/} but do not contribute to the local-controlled RQ1.1 thesis-facing result reported here: \texttt{rq1\_1\_experimental.yaml} (a smoke test with minimal iterations, used only for pipeline validation), \texttt{rq1\_1\_threaded.yaml} (a four-core ancillary profile retained as a historical comparison point), and \texttt{rq1\_1\_azure\_fully\_controlled.yaml} (an AKS-backed coarse-split variant driven by \texttt{scripts/run\_rq11\_azure\_fully\_controlled.py}, retained for completeness but not part of the local single-host result reported in this section).
 
 \begin{table}[htbp]
 \centering
@@ -35,7 +37,7 @@ Measured iterations & 200 \\
 Cooldown between conditions & 5 seconds \\
 Random seed & 42 \\
 Communication & gRPC over localhost (\texttt{127.0.0.1:50051}) \\
-Maximum message size & 16 MB \\
+Maximum message size & 16 MiB ($16777216$ bytes) \\
 Parity tolerance & $1.0 \times 10^{-5}$ \\
 Parity inputs & 5 \\
 Warmup window & 10 iterations \\
@@ -49,21 +51,25 @@ The benchmark was configured to use a single-threaded PyTorch execution model pi
 \subsection{Benchmark Design}
 The experiment followed a repeated-measures design with five conditions: a monolithic baseline and four split configurations. The split points were selected after the major architectural stages of ResNet-18, namely after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. These boundaries are meaningful because they preserve the stage structure of the network while allowing the evaluation of progressively later partition points.
 
-The benchmark protocol consisted of 5 rounds. For each round and condition, 50 warmup iterations were executed before 200 measured iterations were recorded. A 5-second cooldown separated successive conditions. The ordering of conditions was randomized using a fixed seed to reduce ordering bias. Functional equivalence between monolithic and split executions was enforced as a mandatory precondition through both local and gRPC parity checks using five inputs and an absolute tolerance of $1.0 \times 10^{-5}$.
+The benchmark protocol consisted of 5 rounds. For each round and condition, 50 warmup iterations were executed before 200 measured iterations were recorded. A 5-second cooldown separated successive conditions. The ordering of conditions was randomized using deterministic per-round seeds derived from the configured seed and round index to reduce ordering bias. Functional equivalence between monolithic and split executions was enforced as a mandatory precondition through both local and gRPC parity checks using five inputs and an absolute tolerance of $1.0 \times 10^{-5}$.
 
-A warmup calibration procedure was used to monitor whether latency had stabilized. This procedure used a trailing window of 10 iterations and a coefficient-of-variation threshold of 0.02. The goal was not to terminate warmup adaptively, but to provide evidence that the fixed warmup count was sufficient for stable measurement.
+A warmup calibration procedure was used to monitor whether latency had stabilized. This procedure used a trailing window of 10 iterations and a coefficient-of-variation threshold of 0.02. The implementation could extend warmup adaptively beyond the configured minimum if the trailing window remained unstable; in this frozen run, all condition-round pairs stabilized within the configured 50 iterations, so no extra warmup iterations were used.
 
 \subsection{Partition Conditions}
 The four split conditions corresponded to the following coarse stage boundaries in ResNet-18:
 
 \begin{itemize}
-    \item \textbf{split\_after\_layer1:} The first service executes the stem and \texttt{layer1}, and the second service executes \texttt{layer2} through the classifier head. This split transfers a large intermediate tensor, approximately $64 \times 56 \times 56$, corresponding to roughly 784 KB in FP32.
-    \item \textbf{split\_after\_layer2:} The first service executes the stem and \texttt{layer1--layer2}, and the second service executes \texttt{layer3} through the classifier head. The intermediate tensor is approximately $128 \times 28 \times 28$, or 392 KB.
-    \item \textbf{split\_after\_layer3:} The first service executes the stem and \texttt{layer1--layer3}, and the second service executes \texttt{layer4} plus pooling and classification. The intermediate tensor is approximately $256 \times 14 \times 14$, or 196 KB.
-    \item \textbf{split\_after\_layer4:} The first service executes the stem and \texttt{layer1--layer4}, and the second service executes only average pooling and the final linear layer. The intermediate tensor is approximately $512 \times 7 \times 7$, or 98 KB.
+    \item \textbf{split\_after\_layer1:} The first service executes the stem and \texttt{layer1}, and the second service executes \texttt{layer2} through the classifier head. This split transfers the largest intermediate tensor, of exact shape $1 \times 64 \times 56 \times 56$, corresponding to $802{,}816$ bytes ($784$ KiB) in FP32.
+    \item \textbf{split\_after\_layer2:} The first service executes the stem and \texttt{layer1--layer2}, and the second service executes \texttt{layer3} through the classifier head. The intermediate tensor is of exact shape $1 \times 128 \times 28 \times 28$, $401{,}408$ bytes ($392$ KiB).
+    \item \textbf{split\_after\_layer3:} The first service executes the stem and \texttt{layer1--layer3}, and the second service executes \texttt{layer4} plus pooling and classification. The intermediate tensor is of exact shape $1 \times 256 \times 14 \times 14$, $200{,}704$ bytes ($196$ KiB).
+    \item \textbf{split\_after\_layer4:} The first service executes the stem and \texttt{layer1--layer4}, and the second service executes only average pooling and the final linear layer. The intermediate tensor is of exact shape $1 \times 512 \times 7 \times 7$, $100{,}352$ bytes ($98$ KiB).
 \end{itemize}
 
-These stage boundaries provide a coarse sweep across the network from earlier to later partition points. This design is consistent with partitioning research that typically evaluates a limited set of architecturally meaningful split points rather than all layers exhaustively \cite{dnnsplit, deeperthings, survey_partitioning}.
+These stage boundaries provide a coarse sweep across the network from earlier to later partition points. This design is consistent with partitioning research that treats split placement as a search-space and granularity decision shaped by computation, communication, and deployment constraints, rather than as an unconstrained exhaustive sweep over every internal operation \cite{dnnsplit, pareto_split, survey_partitioning}.
+
+\paragraph{Carry-forward rule.} The decision of which coarse boundary to promote to the next stage is governed by a predeclared two-part rule applied to the per-condition mean end-to-end latencies and the per-service compute measurements (see \cref{sec:methods-carryforward} for the full statement). In short: (i) the \emph{near-best window} comprises every split whose mean latency lies within $5\%$ of the raw-fastest split; (ii) a split is treated as \emph{compute-degenerate} when the smaller of the two per-service mean compute times contributes less than $10\%$ of the total split compute, i.e.\ $\min(A,B)/(A+B) < 0.10$ for service-A compute $A$ and service-B compute $B$. The main carry-forward candidate is the non-degenerate split with the lowest mean latency in the near-best window; the next-best non-degenerate split is retained as the reference candidate. The frozen rule outputs for this run are recorded in \texttt{carry\_forward.json}.
+
+\paragraph{Boundary-crossing interval.} The \emph{boundary-crossing interval} reported for each split condition is the client-observed interval that begins immediately before the intermediate-tensor serialisation and ends immediately after the response deserialisation. It is a composite of activation serialisation, gRPC transport, the remote service-B compute, and response deserialisation, and is implemented by the timer block in \texttt{src/client/split\_client.py} (see \cref{sec:methods-contract} for the full measurement contract). It is not a pure ``wire'' cost.
 
 \subsection{Results}
 \label{sec:rq11-results}
@@ -80,19 +86,19 @@ respectively, compared to monolithic execution.
 
 \begin{table}[htbp]
 \centering
-\caption{RQ1.1 summary of mean latency and overhead. Source:
+\caption{RQ1.1 summary of mean latency, dispersion, descriptive within-run per-iteration 95\% confidence interval on the mean, and overhead vs.\ monolithic. Source:
 \texttt{condition\_summaries.csv} in
-\texttt{rq1\_1\_20260515\_111428}.}
+\texttt{rq1\_1\_20260515\_111428}. Confidence intervals are reported from the same artifact's \texttt{ci95\_lower\_ms} / \texttt{ci95\_upper\_ms} columns and summarise per-iteration variation within this run.}
 \label{tab:rq11-results}
-\begin{tabular}{lrrrr}
+\begin{tabular}{lrrrrr}
 \toprule
-\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std. Dev. (ms)} & \textbf{Overhead vs. Monolithic} \\
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std. Dev. (ms)} & \textbf{Within-run 95\% CI (ms)} & \textbf{Overhead vs. Monolithic} \\
 \midrule
-Monolithic & 77.24 & 75.29 & 3.59 & -- \\
-Split after layer1 & 80.88 & 80.24 & 2.27 & 4.7\% \\
-Split after layer2 & 80.12 & 79.60 & 2.40 & 3.7\% \\
-Split after layer3 & 79.08 & 78.38 & 2.31 & 2.4\% \\
-Split after layer4 & 79.58 & 78.85 & 2.43 & 3.0\% \\
+Monolithic & 77.24 & 75.29 & 3.59 & $[77.01,\ 77.46]$ & -- \\
+Split after layer1 & 80.88 & 80.24 & 2.27 & $[80.74,\ 81.02]$ & 4.7\% \\
+Split after layer2 & 80.12 & 79.60 & 2.40 & $[79.97,\ 80.27]$ & 3.7\% \\
+Split after layer3 & 79.08 & 78.38 & 2.31 & $[78.94,\ 79.23]$ & 2.4\% \\
+Split after layer4 & 79.58 & 78.85 & 2.43 & $[79.43,\ 79.73]$ & 3.0\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -102,21 +108,23 @@ Split after layer4 & 79.58 & 78.85 & 2.43 & 3.0\% \\
 \resizebox{0.92\textwidth}{!}{%
 \input{figures/tikz/results/rq11_coarse_split_results}
 }
-\caption{RQ1.1 coarse split latency results under controlled local execution. \texttt{split\_after\_layer3} is the raw-fastest non-degenerate split; \texttt{split\_after\_layer4} is rejected by the compute-degeneracy rule despite its small intermediate activation. The carry-forward decision (see \texttt{carry\_forward.json} for \texttt{rq1\_1\_20260515\_111428}) selects \texttt{split\_after\_layer3} as the main candidate and \texttt{split\_after\_layer2} as the reference candidate.}
+\caption{RQ1.1 coarse split latency results under controlled local execution. Bar heights are the mean end-to-end latency per condition for the frozen run \texttt{rq1\_1\_20260515\_111428}; bar colours encode the role assigned by the carry-forward rule (baseline, selected\_main, selected\_reference, rejected, degenerate). \texttt{split\_after\_layer3} is the raw-fastest split in this run and is also non-degenerate; \texttt{split\_after\_layer4} is excluded by the compute-degeneracy rule despite its small intermediate activation. The carry-forward decision (see \texttt{carry\_forward.json} for the same run) selects \texttt{split\_after\_layer3} as the main candidate and \texttt{split\_after\_layer2} as the reference candidate. The figure is generated deterministically from the frozen \texttt{condition\_summaries.csv} and \texttt{carry\_forward.json} by \texttt{scripts/render\_rq11\_figure.py}.}
 \label{fig:rq11_coarse_split_results}
 \end{figure}
 
 \Cref{fig:rq11_coarse_split_results} visualises the latency pattern reported in
-\cref{tab:rq11-results}. In this frozen run the raw fastest split is the
+\cref{tab:rq11-results}. In this frozen run the raw-fastest split is the
 mid-to-late boundary after \texttt{layer3}, not the latest boundary, and the
 carry-forward decision still depends on both latency and structural compute
 balance rather than latency alone.
 
-All split configurations therefore introduced positive latency overhead relative to monolithic inference. However, the magnitude and character of this overhead varied substantially with split location. The earliest split, after \texttt{layer1}, performed worst because it crossed the largest intermediate activation and exhibited the highest boundary-crossing cost. The latest split, after \texttt{layer4}, minimized activation-transfer size but left only a minimal residual computation segment on the second service (well under 1~ms of remote compute according to the per-service compute means in \texttt{condition\_summaries.csv}), making it structurally compute-degenerate despite its low transfer burden. The mid-to-late splits, after \texttt{layer2} and \texttt{layer3}, formed the strongest non-degenerate candidates in the coarse sweep, with \texttt{split\_after\_layer3} also yielding the lowest raw split mean in this run.
+All split configurations therefore introduced positive latency overhead relative to monolithic inference. However, the magnitude and character of this overhead varied substantially with split location. The earliest split, after \texttt{layer1}, performed worst because it crossed the largest intermediate activation and exhibited the highest boundary-crossing cost. The latest split, after \texttt{layer4}, minimized activation-transfer size but left only a minimal residual computation segment on the second service (well under 1~ms of remote compute according to the per-service compute means in \texttt{condition\_summaries.csv}), making it structurally compute-degenerate despite its low transfer burden. The mid-to-late splits, after \texttt{layer2} and \texttt{layer3}, formed the strongest non-degenerate candidates in the coarse sweep, with \texttt{split\_after\_layer3} also yielding the lowest raw split mean in this frozen run.
 
-The boundary-crossing measurements further support this interpretation. The split after \texttt{layer1} incurred the largest boundary-crossing interval at 53.81~ms, followed by \texttt{layer2} at 40.85~ms and \texttt{layer3} at 26.06~ms, while \texttt{layer4} was much smaller at 2.22~ms. This descending pattern is consistent with the reduction in activation-transfer burden from 784~KB at \texttt{layer1} to 98~KB at \texttt{layer4}. At the same time, the late \texttt{layer4} split shows that minimizing transfer burden alone does not determine overall suitability as a microservice decomposition, because the downstream service becomes too small to represent a meaningful balanced distribution.
+The boundary-crossing measurements further support this interpretation. The split after \texttt{layer1} incurred the largest boundary-crossing interval at 53.81~ms, followed by \texttt{layer2} at 40.85~ms and \texttt{layer3} at 26.06~ms, while \texttt{layer4} was much smaller at 2.22~ms. This descending pattern is consistent with the joint reduction in activation-transfer burden and downstream service-B compute as the boundary moves later, from $784$~KiB at \texttt{layer1} to $98$~KiB at \texttt{layer4}. At the same time, the late \texttt{layer4} split shows that minimizing transfer burden alone does not determine overall suitability as a microservice decomposition, because the downstream service becomes too small to represent a meaningful balanced distribution.
 
 Cross-round consistency was strong across all configurations, indicating stable execution behavior. Per \texttt{round\_consistency.json} for the same artifact, the monolithic condition had a round coefficient of variation (CV) of 0.002, while \texttt{split\_after\_layer1}, \texttt{split\_after\_layer2}, \texttt{split\_after\_layer3}, and \texttt{split\_after\_layer4} had round CVs of 0.005, 0.011, 0.003, and 0.005, respectively.
+
+\paragraph{Scope caveat.} The numbers reported in this section are derived from a single frozen artifact (\texttt{rq1\_1\_20260515\_111428}) generated by a single benchmark run with the fixed seed $42$. The five rounds within that run randomise condition order but do not vary the input seed, the host, or the build, and cross-host or cross-seed replication is not in scope for RQ1.1. The mean-latency differences between the non-degenerate split conditions are small relative to their per-iteration standard deviation. Although the descriptive within-run per-iteration 95\% confidence intervals in \cref{tab:rq11-results} do not overlap between \texttt{split\_after\_layer3} and \texttt{split\_after\_layer2}, those intervals should not be read as host-independent uncertainty estimates. The absolute ranking within the non-degenerate set should therefore be read as ``the strongest carry-forward candidate observed in this frozen run'' rather than as a general ordering. The carry-forward decision is stated in terms of the predeclared rule (\cref{sec:methods-carryforward}) applied to this artifact, and the ranking is carried forward for refinement in RQ1.2 rather than treated as a final answer.
 
 The interpretation of these results and the answer to RQ1.1 are presented in
 \cref{sec:analysis-rq11}.

@@ -1,56 +1,72 @@
+% Auto-generated from results/frozen_new/rq1_1_20260515_111428/condition_summaries.csv and carry_forward.json
+% via scripts/render_rq11_figure.py. Do not edit by hand -- re-run the script.
 \begin{tikzpicture}[
     font=\small,
     axis/.style={thick, draw=black!70, -{Latex[length=2mm]}},
     grid/.style={draw=black!12, thin},
-    bar/.style={draw=blue!65!black, fill=blue!18, rounded corners=2pt, thick},
     baselinebar/.style={draw=black!60, fill=black!10, rounded corners=2pt, thick},
-    selectedbar/.style={draw=green!45!black, fill=green!18, rounded corners=2pt, thick},
+    selectedmainbar/.style={draw=green!45!black, fill=green!22, rounded corners=2pt, thick},
+    selectedrefbar/.style={draw=green!40!black, fill=green!10, rounded corners=2pt, thick},
     rejectedbar/.style={draw=red!70!black, fill=red!10, rounded corners=2pt, thick},
+    degeneratebar/.style={draw=orange!75!black, fill=orange!15, rounded corners=2pt, thick},
     label/.style={font=\scriptsize, text=black!75, align=center},
     vallabel/.style={font=\scriptsize\bfseries, text=black!75},
     note/.style={font=\scriptsize, text=black!65, align=center}
 ]
 
-% y scale: y = (latency - 75) * 1.1
-% monolithic 76.120 -> 1.232
-% layer1     79.652 -> 5.117
-% layer2     78.629 -> 3.992
-% layer3     78.500 -> 3.850
-% layer4     77.258 -> 2.484
+% Frozen means (ms) used for this figure:
+%   monolithic: 77.2375
+%   split_after_layer1: 80.8774
+%   split_after_layer2: 80.1176
+%   split_after_layer3: 79.0843
+%   split_after_layer4: 79.5831
+% Raw fastest split: split_after_layer3
+% Selected main: split_after_layer3
+% Selected reference: split_after_layer2
+% Degenerate candidates: ['split_after_layer4']
+% Rejected: ['split_after_layer1', 'split_after_layer4']
 
-\foreach \lat/\y in {75/0,76/1.1,77/2.2,78/3.3,79/4.4,80/5.5,81/6.6} {
-    \draw[grid] (0,\y) -- (10.5,\y);
-    \node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,\y) {\lat};
-}
+\draw[grid] (0,0.000) -- (9.300,0.000);
+\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,0.000) {76};
+\draw[grid] (0,1.000) -- (9.300,1.000);
+\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,1.000) {77};
+\draw[grid] (0,2.000) -- (9.300,2.000);
+\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,2.000) {78};
+\draw[grid] (0,3.000) -- (9.300,3.000);
+\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,3.000) {79};
+\draw[grid] (0,4.000) -- (9.300,4.000);
+\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,4.000) {80};
+\draw[grid] (0,5.000) -- (9.300,5.000);
+\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,5.000) {81};
+\draw[grid] (0,6.000) -- (9.300,6.000);
+\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,6.000) {82};
 
-\draw[axis] (0,0) -- (10.8,0);
-\draw[axis] (0,0) -- (0,6.9);
+\draw[axis] (0,0) -- (9.600,0);
+\draw[axis] (0,0) -- (0,6.400);
 
-\node[rotate=90, font=\small, text=black!75] at (-0.85,3.45) {Mean end-to-end latency (ms)};
-\node[font=\small, text=black!75] at (5.25,-1.15) {RQ1.1 condition};
+\node[rotate=90, font=\small, text=black!75] at (-0.85,3.000) {Mean end-to-end latency (ms)};
+\node[font=\small, text=black!75] at (5.050,-1.15) {RQ1.1 condition};
 
-\draw[baselinebar] (0.8,0) rectangle (1.8,1.232);
-\draw[rejectedbar] (2.6,0) rectangle (3.6,5.117);
-\draw[selectedbar] (4.4,0) rectangle (5.4,3.992);
-\draw[selectedbar] (6.2,0) rectangle (7.2,3.850);
-\draw[rejectedbar] (8.0,0) rectangle (9.0,2.484);
+\draw[baselinebar] (0.800,0) rectangle (1.800,1.238);
+\draw[rejectedbar] (2.600,0) rectangle (3.600,4.877);
+\draw[selectedrefbar] (4.400,0) rectangle (5.400,4.118);
+\draw[selectedmainbar] (6.200,0) rectangle (7.200,3.084);
+\draw[degeneratebar] (8.000,0) rectangle (9.000,3.583);
 
-\node[vallabel, above] at (1.3,1.232) {76.120};
-\node[vallabel, above] at (3.1,5.117) {79.652};
-\node[vallabel, above] at (4.9,3.992) {78.629};
-\node[vallabel, above] at (6.7,3.850) {78.500};
-\node[vallabel, above] at (8.5,2.484) {77.258};
+\node[vallabel, above] at (1.300,1.238) {77.24};
+\node[vallabel, above] at (3.100,4.877) {80.88};
+\node[vallabel, above] at (4.900,4.118) {80.12};
+\node[vallabel, above] at (6.700,3.084) {79.08};
+\node[vallabel, above] at (8.500,3.583) {79.58};
 
-\node[label] at (1.3,-0.45) {\texttt{mono}};
-\node[label] at (3.1,-0.45) {\texttt{layer1}\\rejected};
-\node[label] at (4.9,-0.45) {\texttt{layer2}\\reference};
-\node[label] at (6.7,-0.45) {\texttt{layer3}\\selected};
-\node[label] at (8.5,-0.45) {\texttt{layer4}\\degenerate};
+\node[label] at (1.300,-0.45) {\texttt{mono}};
+\node[label] at (3.100,-0.45) {\texttt{layer1}\\rejected};
+\node[label] at (4.900,-0.45) {\texttt{layer2}\\reference};
+\node[label] at (6.700,-0.45) {\texttt{layer3}\\selected};
+\node[label] at (8.500,-0.45) {\texttt{layer4}\\degenerate};
 
-\node[note, text width=9.2cm] at (5.25,-1.85) {
-    \texttt{split\_after\_layer4} is the raw fastest split, but is rejected as compute-degenerate.
-    The carry-forward rule selects \texttt{split\_after\_layer3} as the main candidate and
-    \texttt{split\_after\_layer2} as the reference candidate.
+\node[note, text width=9.2cm] at (5.050,-1.85) {
+    \texttt{split\_after\_layer3} is the raw-fastest split. \texttt{split\_after\_layer4} is excluded by the compute-degeneracy rule (minor side $<$ 10\% of split compute). The carry-forward rule (5\% near-best window) selects \texttt{split\_after\_layer3} as the main candidate and \texttt{split\_after\_layer2} as the reference candidate.
 };
 
 \end{tikzpicture}

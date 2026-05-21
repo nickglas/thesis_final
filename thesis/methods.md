@@ -185,7 +185,7 @@ states otherwise.
 - Internal timing protocol: 10 rounds; 50 warmup iterations; 200 measured iterations;
   same seed philosophy as the main benchmark line.
 - Additional validation: equivalence against the uninstrumented model;
-  `max_abs_diff = 0.0`; measured instrumentation overhead about 0.645 ms or 0.88 percent
+  `max_abs_diff = 0.0`; measured instrumentation overhead about 0.71 ms or 0.94 percent
   of model total.
 - Data gathered: per-stage timings; per-block timings; selected operation-level timings;
   stage shares of model total; heavy internal compute units; convolution and batch-norm
@@ -316,8 +316,8 @@ states otherwise.
 
 ### RQ2.2 Confidential VM Execution Hardening
 
-- Goal: measure the additional cost of placing part or all of the already mTLS-protected
-  AKS inference chain on AMD SEV-SNP confidential VM infrastructure.
+- Goal: measure the additional cost of placing the downstream service of the already
+  mTLS-protected AKS inference chain on AMD SEV-SNP confidential VM infrastructure.
 - Why this data is collected: mTLS protects the communication path, but not the runtime
   memory boundary of the service. This stage measures the incremental cost of VM-level
   confidential execution.
@@ -331,27 +331,25 @@ states otherwise.
   `Standard_D8as_v5`; confidential comparator `Standard_DC8as_v5`.
 - Base topology: `chain_2svc` with split after `layer2`.
 - Experimental design:
-  - Selective TEE run: service1 stays on standard nodes; service2 moves to confidential
-    nodes. This isolates the cost of protecting the downstream service.
-  - Full TEE run: both services move to confidential nodes. This measures the cost of
-    protecting the full two-service chain.
-- Paired execution volume: 5 paired passes per artifact; 200 measured iterations per
+- Thesis-facing TEE scope: `service2_only`; service1 stays on standard nodes and
+  service2 moves to confidential nodes. This isolates the cost of protecting the
+  downstream service that receives intermediate activations.
+- Full two-service TEE is out of thesis-facing scope and treated as future work.
+- Paired execution volume: 5 paired passes; 200 measured iterations per
   condition execution; 1,000 measured iterations per condition after merging.
-- Artifact sets named in the chapter:
-  - Selective TEE artifact: `frozen_rq2_2_confidential_20260502_200835_1_tee`.
-  - Full TEE artifact: `frozen_rq2_2_confidential_20260503_085320_full_tee`.
+- Artifact set named in the chapter: `results/frozen_new/rq2_2_confidential_20260516_135726/`.
 - Validation contract: the RQ2.1 communication-security policy remains fixed; new paired
   standard baselines are collected instead of reusing older RQ2.1 data.
-- Data gathered: paired standard vs confidential latency data for the service2-only and
-  full-chain confidential configurations.
+- Data gathered: paired standard vs confidential latency data for the service2-only
+  confidential configuration.
 - Metrics reported: mean latency; median latency; p95 latency; absolute and percentage
   deltas; sequential throughput derived from mean latency; throughput delta.
 - Protection-boundary interpretation built into the method: this is VM-level confidential
   execution, not application-level enclave isolation; the guest OS, runtime, process, and
   local sidecar remain inside the same trust boundary.
-- Output of the stage: direct comparison between selective confidential execution and full
-  confidential execution, with cost expressed as incremental overhead on top of the RQ2.1
-  communication-security baseline.
+- Output of the stage: direct comparison between the standard and service2-only
+  confidential conditions, with cost expressed as incremental overhead on top of the
+  fixed RQ2.1 communication-security contract.
 
 ### RQ2.3 Security-Hardening Trade-off Synthesis
 
@@ -363,14 +361,14 @@ states otherwise.
 - Data sources combined:
   - Plain AKS baseline from RQ1.5.
   - mTLS/AuthZ results from RQ2.1.
-  - Selective and full confidential-execution results from RQ2.2.
+  - Selective `service2_only` confidential-execution result from RQ2.2.
 - Data gathered: no new per-iteration timing data. The stage reuses previously collected
   means, deltas, resource/operational overheads, and protection-scope descriptions.
 - Metrics compared: measured cost; scope of protection; operational complexity; chain-depth
   sensitivity; confidential-boundary coverage.
-- Output of the stage: a trade-off matrix that says when plain AKS, mTLS/AuthZ,
-  mTLS/AuthZ plus selective TEE, or mTLS/AuthZ plus full two-service TEE is the most
-  appropriate configuration.
+- Output of the stage: a trade-off matrix that says when plain AKS, mTLS/AuthZ, or
+  mTLS/AuthZ plus selective TEE is the most appropriate thesis-facing configuration;
+  full two-service TEE is listed as future work rather than as a measured option.
 
 ## 5. Supporting Repo Entry Points By Stage
 

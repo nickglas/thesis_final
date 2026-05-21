@@ -26,9 +26,9 @@ after \texttt{layer4} shows that minimizing activation size alone is not
 sufficient; a split must also preserve a meaningful compute balance across
 services~\cite{pareto_split, split_object_detectors}. Third, the favorable
 position of \texttt{split\_after\_layer2} and \texttt{split\_after\_layer3} is
-consistent with prior work that often identifies mid-network partitions as
-plausible trade-offs between communication and computation~\cite{dnnsplit,
-pareto_split, deeperthings}.
+consistent with prior work that treats split placement as a trade-off between
+communication and computation rather than as a pure activation-size
+minimization problem~\cite{dnnsplit, pareto_split, survey_partitioning}.
 
 The benchmark also indicates that raw latency ranking alone is not sufficient
 for the thesis-facing carry-forward decision. Under the predeclared selection
@@ -49,7 +49,7 @@ burden without collapsing the second partition into a near-empty remainder. In
 this experiment, the strongest balanced carry-forward region lies in the
 mid-to-late coarse portion of the network around \texttt{layer2} and
 \texttt{layer3}, while the latest split after \texttt{layer4} remains
-informative as the raw-fastest but structurally degenerate boundary.
+informative as a low-transfer, structurally degenerate boundary.
 
 \paragraph{Answer to RQ1.1.}
 RQ1.1 shows that coarse architectural stage boundaries are not equally suitable
@@ -63,7 +63,7 @@ credible trade-off between end-to-end latency, communication-related cost, and
 compute distribution. According to the screening logic,
 \texttt{split\_after\_layer3} is selected as the main coarse carry-forward
 candidate, with \texttt{split\_after\_layer2} retained as the reference
-candidate~\cite{dnnsplit, deeperthings, survey_partitioning, pareto_split}.
+candidate~\cite{dnnsplit, pareto_split, survey_partitioning}.
 
 \subsection{RQ1.2: Fine-Grained Refinement}
 \label{sec:analysis-rq12}

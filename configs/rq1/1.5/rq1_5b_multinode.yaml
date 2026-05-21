@@ -3,7 +3,7 @@
 #
 # Purpose: Sensitivity analysis to bound the inter-node communication penalty
 #   that the single-node thesis-facing RQ1.5 run cannot capture.
-#   5 rounds × 200 measured iterations × 5 conditions = 5,000 iterations.
+#   5 rounds x 200 measured iterations x 5 conditions = 5,000 iterations.
 #   This is NOT a replacement for the frozen single-node RQ1.5 primary run.
 #   Its role is to convert the single-node threat-to-validity from
 #   "unknown" to a bounded, measured cost reported alongside the primary
@@ -16,8 +16,8 @@
 #   - Distinct namespace, cluster name, resource group so the two AKS runs
 #     do not collide if both are alive at once
 #
-# vCPU footprint: 6 × Standard_D8s_v3 = 48 vCPUs in westeurope
-#   (Total Regional vCPUs ≥ 48; Standard DSv3 Family vCPUs ≥ 48).
+# vCPU footprint: 6 x Standard_D8s_v3 = 48 vCPUs in swedencentral
+#   (Total Regional vCPUs >= 48; Standard DSv3 Family vCPUs >= 48).
 #
 # Run sequence:
 #   python scripts/run_rq15_fully_controlled.py \
