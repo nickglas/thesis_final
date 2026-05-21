@@ -1,0 +1,108 @@
+{
+  "captured_at": "2026-05-16T10:48:48.259882+00:00",
+  "condition": "chain_2svc_split_l1_plain",
+  "condition_key": "l1_plain",
+  "started_at": "2026-05-16T10:48:21.447616+00:00",
+  "ended_at": "2026-05-16T10:48:47.393813+00:00",
+  "duration_seconds": 25.946184707998327,
+  "available": true,
+  "summary": {
+    "service_app_cpu_mcores": 547.0908405128323,
+    "sidecar_cpu_mcores": 0.0,
+    "client_cpu_mcores": 185.61017946177762,
+    "total_pod_cpu_mcores": 547.0908405128323
+  },
+  "measurements": [
+    {
+      "namespace": "rq21-ms-l1-plain",
+      "pod_name": "chain-2svc-split-l1-plain-svc-1-5756569497-ngpsp",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 3026469000,
+      "end_usage_core_nanoseconds": 9628006000,
+      "delta_core_nanoseconds": 6601537000,
+      "cpu_mcores": 254.431897186216
+    },
+    {
+      "namespace": "rq21-ms-l1-plain",
+      "pod_name": "chain-2svc-split-l1-plain-svc-2-7fdc64bb45-b66j5",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 3009501000,
+      "end_usage_core_nanoseconds": 10602884000,
+      "delta_core_nanoseconds": 7593383000,
+      "cpu_mcores": 292.6589433266163
+    },
+    {
+      "namespace": "rq21-ms-l1-plain-client",
+      "pod_name": "benchmark-client",
+      "container_name": "client",
+      "role": "client",
+      "start_usage_core_nanoseconds": 1821761000,
+      "end_usage_core_nanoseconds": 6637637000,
+      "delta_core_nanoseconds": 4815876000,
+      "cpu_mcores": 185.61017946177762
+    }
+  ],
+  "start_snapshot": {
+    "captured_at": "2026-05-16T10:48:21.097378+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq15pool-53575030-vmss000000",
+        "namespace": "rq21-ms-l1-plain",
+        "pod_name": "chain-2svc-split-l1-plain-svc-1-5756569497-ngpsp",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 3026469000
+      },
+      {
+        "node_name": "aks-rq15pool-53575030-vmss000000",
+        "namespace": "rq21-ms-l1-plain",
+        "pod_name": "chain-2svc-split-l1-plain-svc-2-7fdc64bb45-b66j5",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 3009501000
+      },
+      {
+        "node_name": "aks-rq15pool-53575030-vmss000000",
+        "namespace": "rq21-ms-l1-plain-client",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 1821761000
+      }
+    ],
+    "errors": []
+  },
+  "end_snapshot": {
+    "captured_at": "2026-05-16T10:48:47.914443+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq15pool-53575030-vmss000000",
+        "namespace": "rq21-ms-l1-plain",
+        "pod_name": "chain-2svc-split-l1-plain-svc-1-5756569497-ngpsp",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 9628006000
+      },
+      {
+        "node_name": "aks-rq15pool-53575030-vmss000000",
+        "namespace": "rq21-ms-l1-plain",
+        "pod_name": "chain-2svc-split-l1-plain-svc-2-7fdc64bb45-b66j5",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 10602884000
+      },
+      {
+        "node_name": "aks-rq15pool-53575030-vmss000000",
+        "namespace": "rq21-ms-l1-plain-client",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 6637637000
+      }
+    ],
+    "errors": []
+  },
+  "errors": []
+}

@@ -1,0 +1,135 @@
+{
+  "captured_at": "2026-05-16T10:08:09.286498+00:00",
+  "condition": "chain_2svc_split_l4_mtls",
+  "condition_key": "l4_mtls",
+  "service_pods": [
+    {
+      "pod_name": "chain-2svc-split-l4-mtls-svc-1-64d8db6547-82z22",
+      "node_name": "aks-rq15pool-53575030-vmss000000",
+      "creation_timestamp": "2026-05-16T10:07:41Z",
+      "scheduled_timestamp": "2026-05-16T10:07:41+00:00",
+      "ready_timestamp": "2026-05-16T10:07:51+00:00",
+      "app_started_timestamp": "2026-05-16T10:07:44+00:00",
+      "sidecar_started_timestamp": "2026-05-16T10:07:42+00:00",
+      "scheduling_delay_seconds": 0.0,
+      "schedule_to_ready_seconds": 10.0,
+      "app_started_delay_seconds": 3.0,
+      "sidecar_started_delay_seconds": 1.0,
+      "sidecar_present": true,
+      "sidecar_container_type": "init",
+      "sidecar_native_init": true,
+      "sidecar_ready": true,
+      "sidecar_restart_count": 0,
+      "failed_scheduling_events": [],
+      "app_cpu_mcores_total": 1000.0,
+      "app_memory_mib_total": 1024.0,
+      "sidecar_cpu_mcores_total": 100.0,
+      "sidecar_memory_mib_total": 128.0,
+      "pod_cpu_mcores_total": 1100.0,
+      "pod_memory_mib_total": 1152.0
+    },
+    {
+      "pod_name": "chain-2svc-split-l4-mtls-svc-2-767d487c6c-dzt5c",
+      "node_name": "aks-rq15pool-53575030-vmss000000",
+      "creation_timestamp": "2026-05-16T10:07:41Z",
+      "scheduled_timestamp": "2026-05-16T10:07:41+00:00",
+      "ready_timestamp": "2026-05-16T10:07:51+00:00",
+      "app_started_timestamp": "2026-05-16T10:07:44+00:00",
+      "sidecar_started_timestamp": "2026-05-16T10:07:42+00:00",
+      "scheduling_delay_seconds": 0.0,
+      "schedule_to_ready_seconds": 10.0,
+      "app_started_delay_seconds": 3.0,
+      "sidecar_started_delay_seconds": 1.0,
+      "sidecar_present": true,
+      "sidecar_container_type": "init",
+      "sidecar_native_init": true,
+      "sidecar_ready": true,
+      "sidecar_restart_count": 0,
+      "failed_scheduling_events": [],
+      "app_cpu_mcores_total": 1000.0,
+      "app_memory_mib_total": 1024.0,
+      "sidecar_cpu_mcores_total": 100.0,
+      "sidecar_memory_mib_total": 128.0,
+      "pod_cpu_mcores_total": 1100.0,
+      "pod_memory_mib_total": 1152.0
+    }
+  ],
+  "client": {
+    "pod_name": "benchmark-client",
+    "node_name": "aks-rq15pool-53575030-vmss000000",
+    "app_cpu_mcores_total": 100.0,
+    "app_memory_mib_total": 1024.0,
+    "sidecar_cpu_mcores_total": 0.0,
+    "sidecar_memory_mib_total": 0.0,
+    "pod_cpu_mcores_total": 100.0,
+    "pod_memory_mib_total": 1024.0
+  },
+  "node_allocatable": {
+    "aks-rq15pool-53575030-vmss000000": {
+      "node_name": "aks-rq15pool-53575030-vmss000000",
+      "cpu_mcores": 7820.0,
+      "memory_mib": 29739.76171875
+    }
+  },
+  "summary": {
+    "service_pod_count": 2,
+    "service_nodes": [
+      "aks-rq15pool-53575030-vmss000000"
+    ],
+    "service_scheduling_delay_seconds_mean": 0.0,
+    "service_schedule_to_ready_seconds_mean": 10.0,
+    "service_app_started_delay_seconds_mean": 3.0,
+    "service_sidecar_started_delay_seconds_mean": 1.0,
+    "service_failed_scheduling_event_count": 0,
+    "service_app_requested_cpu_mcores_total": 2000.0,
+    "service_sidecar_requested_cpu_mcores_total": 200.0,
+    "service_total_requested_cpu_mcores_total": 2200.0,
+    "service_app_requested_memory_mib_total": 2048.0,
+    "service_sidecar_requested_memory_mib_total": 256.0,
+    "service_total_requested_memory_mib_total": 2304.0,
+    "client_requested_cpu_mcores_total": 100.0,
+    "client_requested_memory_mib_total": 1024.0,
+    "benchmark_requested_cpu_mcores_total": 2300.0,
+    "benchmark_requested_memory_mib_total": 3328.0,
+    "node_request_headroom_cpu_mcores": 5520.0,
+    "node_request_headroom_memory_mib": 26411.76171875,
+    "mesh_control_plane_shares_benchmark_node": false,
+    "mesh_control_plane_shared_node_names": [],
+    "mesh_control_plane_shared_pod_names": []
+  },
+  "deployment_complexity": {
+    "aks_enablement_step_count": 1,
+    "kubernetes_object_count": 13,
+    "kubernetes_object_counts_by_kind": {
+      "AuthorizationPolicy": 1,
+      "Deployment": 2,
+      "Namespace": 2,
+      "PeerAuthentication": 2,
+      "Pod": 2,
+      "Service": 2,
+      "ServiceAccount": 2
+    },
+    "always_on_control_plane_pod_count": 2,
+    "per_workload_injected_container_count": 1.0,
+    "total_injected_container_count": 2
+  },
+  "operational_complexity": {
+    "mesh_revision": "asm-1-29",
+    "sidecar_readiness_failure_count": 0,
+    "sidecar_restart_total": 0
+  },
+  "control_plane_colocation": {
+    "shares_benchmark_node": false,
+    "shares_avoidable_istio_control_plane": false,
+    "isolated_pool_contract_required": true,
+    "violates_isolated_pool_contract": false,
+    "benchmark_node_names": [
+      "aks-rq15pool-53575030-vmss000000"
+    ],
+    "shared_node_names": [],
+    "control_plane_pod_names": [],
+    "avoidable_istio_control_plane_pod_names": [],
+    "control_plane_pods_on_shared_nodes": [],
+    "avoidable_istio_control_plane_pods_on_shared_nodes": []
+  }
+}

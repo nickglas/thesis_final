@@ -1,0 +1,62 @@
+{
+  "local_validation": {
+    "layer1": {
+      "match": true,
+      "max_abs_diff": 0.0,
+      "atol": 1e-05,
+      "num_inputs": 5,
+      "method": "local_partA_partB"
+    },
+    "layer2": {
+      "match": true,
+      "max_abs_diff": 0.0,
+      "atol": 1e-05,
+      "num_inputs": 5,
+      "method": "local_partA_partB"
+    },
+    "layer3": {
+      "match": true,
+      "max_abs_diff": 0.0,
+      "atol": 1e-05,
+      "num_inputs": 5,
+      "method": "local_partA_partB"
+    },
+    "layer4": {
+      "match": true,
+      "max_abs_diff": 0.0,
+      "atol": 1e-05,
+      "num_inputs": 5,
+      "method": "local_partA_partB"
+    }
+  },
+  "grpc_validation": {
+    "layer1": {
+      "match": true,
+      "max_abs_diff": 0.0,
+      "atol": 1e-05,
+      "num_inputs": 5,
+      "method": "grpc_round_trip"
+    },
+    "layer4": {
+      "match": true,
+      "max_abs_diff": 0.0,
+      "atol": 1e-05,
+      "num_inputs": 5,
+      "method": "grpc_round_trip"
+    },
+    "layer3": {
+      "match": true,
+      "max_abs_diff": 0.0,
+      "atol": 1e-05,
+      "num_inputs": 5,
+      "method": "grpc_round_trip"
+    },
+    "layer2": {
+      "match": true,
+      "max_abs_diff": 0.0,
+      "atol": 1e-05,
+      "num_inputs": 5,
+      "method": "grpc_round_trip"
+    }
+  }
+}

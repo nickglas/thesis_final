@@ -1,0 +1,30 @@
+{
+  "target": "chain-2svc-mesh-strict-mtls-no-authz-svc-1.rq21-ab-c2-strict.svc.cluster.local:50051",
+  "response_shape": [
+    1,
+    1000
+  ],
+  "hop_count": 2,
+  "hop_indexes": [
+    1,
+    2
+  ],
+  "hop_timings": [
+    {
+      "hop_index": 1,
+      "deserialize_ms": 0.7915999999568157,
+      "compute_ms": 39.8885770000561,
+      "serialize_ms": 0.07499999992433004,
+      "forward_ms": 78.22595399966303,
+      "activation_bytes": 602112
+    },
+    {
+      "hop_index": 2,
+      "deserialize_ms": 0.5473989999700279,
+      "compute_ms": 37.68627799991009,
+      "serialize_ms": 0.04369999987829942,
+      "forward_ms": 0.0,
+      "activation_bytes": 401408
+    }
+  ]
+}

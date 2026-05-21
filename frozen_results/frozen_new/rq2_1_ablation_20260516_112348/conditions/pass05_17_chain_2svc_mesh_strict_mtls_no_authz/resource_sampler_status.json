@@ -1,0 +1,18 @@
+{
+  "started_at": "2026-05-16T12:22:36.733024+00:00",
+  "command": [
+    "/home/nick/Desktop/thesis_final/.venv/bin/python",
+    "/home/nick/Desktop/thesis_final/scripts/sample_k8s_resources.py",
+    "--all-namespaces",
+    "--interval-seconds",
+    "5.0",
+    "--samples",
+    "100000",
+    "--output",
+    "/home/nick/Desktop/thesis_final/results/rq2_1_ablation_20260516_112348/conditions/pass05_17_chain_2svc_mesh_strict_mtls_no_authz/resource_samples.csv"
+  ],
+  "output_csv": "/home/nick/Desktop/thesis_final/results/rq2_1_ablation_20260516_112348/conditions/pass05_17_chain_2svc_mesh_strict_mtls_no_authz/resource_samples.csv",
+  "stopped_at": "2026-05-16T12:23:07.505397+00:00",
+  "returncode": -15,
+  "samples_file_exists": true
+}

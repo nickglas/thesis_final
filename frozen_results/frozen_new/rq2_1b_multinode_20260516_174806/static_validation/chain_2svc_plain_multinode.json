@@ -1,0 +1,16 @@
+{
+  "condition": "chain_2svc_plain_multinode",
+  "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_10_chain_2svc_plain_multinode/manifests",
+  "kinds": [
+    "Namespace",
+    "Namespace",
+    "Pod",
+    "Pod",
+    "Service",
+    "Deployment",
+    "Service",
+    "Deployment"
+  ],
+  "passed": true,
+  "errors": []
+}

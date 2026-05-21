@@ -1,0 +1,60 @@
+{
+  "condition": "chain_5svc_plain",
+  "started_at": "2026-05-17T12:10:21.481363+00:00",
+  "updated_at": "2026-05-17T12:10:28.402949+00:00",
+  "ready": true,
+  "attempts": 2,
+  "elapsed_seconds": 6.922,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21-chain5-plain": {
+      "chain-5svc-plain-svc-1-cd99c9549-kqtg4": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-2-d6767685b-nt4sv": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-3-5b9b5844dc-cbn25": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-4-d4bff7c86-cvq6g": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-5-8596f68c49-ww6qx": [
+        "inference"
+      ]
+    },
+    "rq21-client-chain5-plain": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21-chain5-plain": {
+      "chain-5svc-plain-svc-1-cd99c9549-kqtg4": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-2-d6767685b-nt4sv": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-3-5b9b5844dc-cbn25": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-4-d4bff7c86-cvq6g": [
+        "inference"
+      ],
+      "chain-5svc-plain-svc-5-8596f68c49-ww6qx": [
+        "inference"
+      ]
+    },
+    "rq21-client-chain5-plain": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

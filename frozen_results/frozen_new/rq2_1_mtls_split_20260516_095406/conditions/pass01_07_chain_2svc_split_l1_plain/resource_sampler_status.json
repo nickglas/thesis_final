@@ -1,0 +1,18 @@
+{
+  "started_at": "2026-05-16T10:10:22.693609+00:00",
+  "command": [
+    "/home/nick/Desktop/thesis_final/.venv/bin/python",
+    "/home/nick/Desktop/thesis_final/scripts/sample_k8s_resources.py",
+    "--all-namespaces",
+    "--interval-seconds",
+    "5.0",
+    "--samples",
+    "100000",
+    "--output",
+    "/home/nick/Desktop/thesis_final/results/rq2_1_mtls_split_20260516_095406/conditions/pass01_07_chain_2svc_split_l1_plain/resource_samples.csv"
+  ],
+  "output_csv": "/home/nick/Desktop/thesis_final/results/rq2_1_mtls_split_20260516_095406/conditions/pass01_07_chain_2svc_split_l1_plain/resource_samples.csv",
+  "stopped_at": "2026-05-16T10:10:51.095399+00:00",
+  "returncode": -15,
+  "samples_file_exists": true
+}

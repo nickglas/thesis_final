@@ -1,0 +1,22 @@
+{
+  "target": "chain-2svc-split-l2-plain-svc-1.rq21-ms-l2-plain.svc.cluster.local:50051",
+  "response_shape": [
+    1,
+    1000
+  ],
+  "hop_count": 2,
+  "hop_indexes": [
+    1,
+    2
+  ],
+  "hop_timings": [
+    {
+      "hop_index": 1,
+      "activation_bytes": 602112
+    },
+    {
+      "hop_index": 2,
+      "activation_bytes": 401408
+    }
+  ]
+}

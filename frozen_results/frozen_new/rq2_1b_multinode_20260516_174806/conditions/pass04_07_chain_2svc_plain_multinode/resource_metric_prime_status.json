@@ -1,0 +1,42 @@
+{
+  "condition": "chain_2svc_plain_multinode",
+  "started_at": "2026-05-16T18:15:22.907680+00:00",
+  "updated_at": "2026-05-16T18:15:46.887651+00:00",
+  "ready": true,
+  "attempts": 5,
+  "elapsed_seconds": 23.98,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21b-chain2-plain": {
+      "chain-2svc-plain-multinode-svc-1-859d5ff55f-tlc6v": [
+        "inference"
+      ],
+      "chain-2svc-plain-multinode-svc-2-755db8fc77-4w5h5": [
+        "inference"
+      ]
+    },
+    "rq21b-client-plain": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21b-chain2-plain": {
+      "chain-2svc-plain-multinode-svc-1-859d5ff55f-tlc6v": [
+        "inference"
+      ],
+      "chain-2svc-plain-multinode-svc-2-755db8fc77-4w5h5": [
+        "inference"
+      ]
+    },
+    "rq21b-client-plain": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

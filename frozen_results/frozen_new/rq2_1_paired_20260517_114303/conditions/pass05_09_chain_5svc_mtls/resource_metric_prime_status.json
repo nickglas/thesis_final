@@ -1,0 +1,70 @@
+{
+  "condition": "chain_5svc_mtls",
+  "started_at": "2026-05-17T12:18:15.734829+00:00",
+  "updated_at": "2026-05-17T12:18:16.611409+00:00",
+  "ready": true,
+  "attempts": 1,
+  "elapsed_seconds": 0.877,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21-chain5-mtls": {
+      "chain-5svc-mtls-svc-1-84b5769f94-9h7z9": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-5svc-mtls-svc-2-68679c65fc-52dvw": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-5svc-mtls-svc-3-75965b8cbd-kk2s2": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-5svc-mtls-svc-4-7b845cfbb7-gdkcp": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-5svc-mtls-svc-5-8675b46f94-w5sll": [
+        "inference",
+        "istio-proxy"
+      ]
+    },
+    "rq21-client-chain5-mtls": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21-chain5-mtls": {
+      "chain-5svc-mtls-svc-1-84b5769f94-9h7z9": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-5svc-mtls-svc-2-68679c65fc-52dvw": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-5svc-mtls-svc-3-75965b8cbd-kk2s2": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-5svc-mtls-svc-4-7b845cfbb7-gdkcp": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-5svc-mtls-svc-5-8675b46f94-w5sll": [
+        "inference",
+        "istio-proxy"
+      ]
+    },
+    "rq21-client-chain5-mtls": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

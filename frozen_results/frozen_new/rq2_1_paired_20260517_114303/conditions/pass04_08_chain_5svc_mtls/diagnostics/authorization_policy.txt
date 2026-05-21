@@ -1,0 +1,137 @@
+apiVersion: v1
+items:
+- apiVersion: security.istio.io/v1
+  kind: AuthorizationPolicy
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"AuthorizationPolicy","metadata":{"annotations":{},"labels":{"app":"thesis-inference","condition":"chain_5svc_mtls","experiment":"rq21-chain5-mtls","experiment-condition":"chain_5svc_mtls","mesh-enabled":"true","security-condition":"mtls","segment-index":"2","workload-role":"mesh-policy"},"name":"service2-service1-only","namespace":"rq21-chain5-mtls"},"spec":{"action":"ALLOW","rules":[{"from":[{"source":{"principals":["cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc1"]}}]}],"selector":{"matchLabels":{"condition":"chain_5svc_mtls","segment-index":"2","workload-role":"service"}}}}
+    creationTimestamp: "2026-05-17T12:14:01Z"
+    generation: 1
+    labels:
+      app: thesis-inference
+      condition: chain_5svc_mtls
+      experiment: rq21-chain5-mtls
+      experiment-condition: chain_5svc_mtls
+      mesh-enabled: "true"
+      security-condition: mtls
+      segment-index: "2"
+      workload-role: mesh-policy
+    name: service2-service1-only
+    namespace: rq21-chain5-mtls
+    resourceVersion: "12610"
+    uid: 168c8b4d-1352-4c45-9ce6-98d1daaa0741
+  spec:
+    action: ALLOW
+    rules:
+    - from:
+      - source:
+          principals:
+          - cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc1
+    selector:
+      matchLabels:
+        condition: chain_5svc_mtls
+        segment-index: "2"
+        workload-role: service
+- apiVersion: security.istio.io/v1
+  kind: AuthorizationPolicy
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"AuthorizationPolicy","metadata":{"annotations":{},"labels":{"app":"thesis-inference","condition":"chain_5svc_mtls","experiment":"rq21-chain5-mtls","experiment-condition":"chain_5svc_mtls","mesh-enabled":"true","security-condition":"mtls","segment-index":"3","workload-role":"mesh-policy"},"name":"service3-service2-only","namespace":"rq21-chain5-mtls"},"spec":{"action":"ALLOW","rules":[{"from":[{"source":{"principals":["cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc2"]}}]}],"selector":{"matchLabels":{"condition":"chain_5svc_mtls","segment-index":"3","workload-role":"service"}}}}
+    creationTimestamp: "2026-05-17T12:14:01Z"
+    generation: 1
+    labels:
+      app: thesis-inference
+      condition: chain_5svc_mtls
+      experiment: rq21-chain5-mtls
+      experiment-condition: chain_5svc_mtls
+      mesh-enabled: "true"
+      security-condition: mtls
+      segment-index: "3"
+      workload-role: mesh-policy
+    name: service3-service2-only
+    namespace: rq21-chain5-mtls
+    resourceVersion: "12633"
+    uid: 664a7815-0678-41f1-8495-ad610e397112
+  spec:
+    action: ALLOW
+    rules:
+    - from:
+      - source:
+          principals:
+          - cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc2
+    selector:
+      matchLabels:
+        condition: chain_5svc_mtls
+        segment-index: "3"
+        workload-role: service
+- apiVersion: security.istio.io/v1
+  kind: AuthorizationPolicy
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"AuthorizationPolicy","metadata":{"annotations":{},"labels":{"app":"thesis-inference","condition":"chain_5svc_mtls","experiment":"rq21-chain5-mtls","experiment-condition":"chain_5svc_mtls","mesh-enabled":"true","security-condition":"mtls","segment-index":"4","workload-role":"mesh-policy"},"name":"service4-service3-only","namespace":"rq21-chain5-mtls"},"spec":{"action":"ALLOW","rules":[{"from":[{"source":{"principals":["cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc3"]}}]}],"selector":{"matchLabels":{"condition":"chain_5svc_mtls","segment-index":"4","workload-role":"service"}}}}
+    creationTimestamp: "2026-05-17T12:14:01Z"
+    generation: 1
+    labels:
+      app: thesis-inference
+      condition: chain_5svc_mtls
+      experiment: rq21-chain5-mtls
+      experiment-condition: chain_5svc_mtls
+      mesh-enabled: "true"
+      security-condition: mtls
+      segment-index: "4"
+      workload-role: mesh-policy
+    name: service4-service3-only
+    namespace: rq21-chain5-mtls
+    resourceVersion: "12637"
+    uid: ea54ed98-aedc-4f05-8159-873f5df5ebc2
+  spec:
+    action: ALLOW
+    rules:
+    - from:
+      - source:
+          principals:
+          - cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc3
+    selector:
+      matchLabels:
+        condition: chain_5svc_mtls
+        segment-index: "4"
+        workload-role: service
+- apiVersion: security.istio.io/v1
+  kind: AuthorizationPolicy
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"AuthorizationPolicy","metadata":{"annotations":{},"labels":{"app":"thesis-inference","condition":"chain_5svc_mtls","experiment":"rq21-chain5-mtls","experiment-condition":"chain_5svc_mtls","mesh-enabled":"true","security-condition":"mtls","segment-index":"5","workload-role":"mesh-policy"},"name":"service5-service4-only","namespace":"rq21-chain5-mtls"},"spec":{"action":"ALLOW","rules":[{"from":[{"source":{"principals":["cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc4"]}}]}],"selector":{"matchLabels":{"condition":"chain_5svc_mtls","segment-index":"5","workload-role":"service"}}}}
+    creationTimestamp: "2026-05-17T12:14:01Z"
+    generation: 1
+    labels:
+      app: thesis-inference
+      condition: chain_5svc_mtls
+      experiment: rq21-chain5-mtls
+      experiment-condition: chain_5svc_mtls
+      mesh-enabled: "true"
+      security-condition: mtls
+      segment-index: "5"
+      workload-role: mesh-policy
+    name: service5-service4-only
+    namespace: rq21-chain5-mtls
+    resourceVersion: "12639"
+    uid: 4cb76857-7e1d-4bc7-bc7a-9b4fd281a258
+  spec:
+    action: ALLOW
+    rules:
+    - from:
+      - source:
+          principals:
+          - cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc4
+    selector:
+      matchLabels:
+        condition: chain_5svc_mtls
+        segment-index: "5"
+        workload-role: service
+kind: List
+metadata:
+  resourceVersion: ""

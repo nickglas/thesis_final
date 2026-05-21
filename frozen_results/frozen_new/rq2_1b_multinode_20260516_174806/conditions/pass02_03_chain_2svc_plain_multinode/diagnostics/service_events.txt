@@ -1,0 +1,15 @@
+LAST SEEN   TYPE     REASON              OBJECT                                                   MESSAGE
+64s         Normal   Scheduled           pod/chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd    Successfully assigned rq21b-chain2-plain/chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd to aks-rq21bpool-33797924-vmss000002
+64s         Normal   Scheduled           pod/chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp    Successfully assigned rq21b-chain2-plain/chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp to aks-rq21bpool-33797924-vmss000001
+64s         Normal   Pulling             pod/chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+64s         Normal   ScalingReplicaSet   deployment/chain-2svc-plain-multinode-svc-2              Scaled up replica set chain-2svc-plain-multinode-svc-2-755db8fc77 from 0 to 1
+64s         Normal   SuccessfulCreate    replicaset/chain-2svc-plain-multinode-svc-2-755db8fc77   Created pod: chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd
+64s         Normal   SuccessfulCreate    replicaset/chain-2svc-plain-multinode-svc-1-859d5ff55f   Created pod: chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp
+64s         Normal   ScalingReplicaSet   deployment/chain-2svc-plain-multinode-svc-1              Scaled up replica set chain-2svc-plain-multinode-svc-1-859d5ff55f from 0 to 1
+63s         Normal   Created             pod/chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp    Created container: inference
+63s         Normal   Pulling             pod/chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+63s         Normal   Pulled              pod/chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 122ms (122ms including waiting). Image size: 413013146 bytes.
+63s         Normal   Created             pod/chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd    Created container: inference
+63s         Normal   Started             pod/chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd    Started container inference
+63s         Normal   Started             pod/chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp    Started container inference
+63s         Normal   Pulled              pod/chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 120ms (120ms including waiting). Image size: 413013146 bytes.

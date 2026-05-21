@@ -1,0 +1,28 @@
+{
+  "condition": "chain_2svc_split_l4_plain",
+  "condition_key": "l4_plain",
+  "split_key": "l4",
+  "security_mode": "plain",
+  "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1_mtls_split_20260516_095406/conditions/pass05_37_chain_2svc_split_l4_plain/manifests",
+  "expected_shape": {
+    "mesh": false,
+    "service_accounts": 0,
+    "peer": 0,
+    "strict": 0,
+    "authz": 0
+  },
+  "kinds": [
+    "Namespace",
+    "Namespace",
+    "Pod",
+    "Pod",
+    "Service",
+    "Deployment",
+    "Service",
+    "Deployment"
+  ],
+  "passed": true,
+  "errors": [],
+  "peer_authentication_validation": {},
+  "authorization_policy_validation": {}
+}

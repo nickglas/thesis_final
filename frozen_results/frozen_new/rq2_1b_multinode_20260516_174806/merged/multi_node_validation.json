@@ -1,0 +1,209 @@
+{
+  "mode": "multi_node",
+  "strategy": "multi_node_anti_affinity",
+  "required": true,
+  "passed": true,
+  "records": [
+    {
+      "pass": 1,
+      "execution_index": 1,
+      "condition_key": "mtls",
+      "condition": "chain_2svc_mtls_multinode",
+      "strategy": "multi_node_anti_affinity",
+      "service_pod_node_placement": {
+        "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-wlsg4": "aks-rq21bpool-33797924-vmss000000",
+        "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-9mt5s": "aks-rq21bpool-33797924-vmss000002"
+      },
+      "service_pod_nodes": [
+        "aks-rq21bpool-33797924-vmss000000",
+        "aks-rq21bpool-33797924-vmss000002"
+      ],
+      "client_node": "aks-rq21bpool-33797924-vmss000001",
+      "service_nodes_distinct": true,
+      "dedicated_client_node": true,
+      "passed": true,
+      "errors": []
+    },
+    {
+      "pass": 1,
+      "execution_index": 2,
+      "condition_key": "plain",
+      "condition": "chain_2svc_plain_multinode",
+      "strategy": "multi_node_anti_affinity",
+      "service_pod_node_placement": {
+        "chain-2svc-plain-multinode-svc-1-859d5ff55f-qsn9r": "aks-rq21bpool-33797924-vmss000000",
+        "chain-2svc-plain-multinode-svc-2-755db8fc77-nmz2g": "aks-rq21bpool-33797924-vmss000002"
+      },
+      "service_pod_nodes": [
+        "aks-rq21bpool-33797924-vmss000000",
+        "aks-rq21bpool-33797924-vmss000002"
+      ],
+      "client_node": "aks-rq21bpool-33797924-vmss000001",
+      "service_nodes_distinct": true,
+      "dedicated_client_node": true,
+      "passed": true,
+      "errors": []
+    },
+    {
+      "pass": 2,
+      "execution_index": 3,
+      "condition_key": "plain",
+      "condition": "chain_2svc_plain_multinode",
+      "strategy": "multi_node_anti_affinity",
+      "service_pod_node_placement": {
+        "chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp": "aks-rq21bpool-33797924-vmss000001",
+        "chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd": "aks-rq21bpool-33797924-vmss000002"
+      },
+      "service_pod_nodes": [
+        "aks-rq21bpool-33797924-vmss000001",
+        "aks-rq21bpool-33797924-vmss000002"
+      ],
+      "client_node": "aks-rq21bpool-33797924-vmss000000",
+      "service_nodes_distinct": true,
+      "dedicated_client_node": true,
+      "passed": true,
+      "errors": []
+    },
+    {
+      "pass": 2,
+      "execution_index": 4,
+      "condition_key": "mtls",
+      "condition": "chain_2svc_mtls_multinode",
+      "strategy": "multi_node_anti_affinity",
+      "service_pod_node_placement": {
+        "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm": "aks-rq21bpool-33797924-vmss000000",
+        "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf": "aks-rq21bpool-33797924-vmss000002"
+      },
+      "service_pod_nodes": [
+        "aks-rq21bpool-33797924-vmss000000",
+        "aks-rq21bpool-33797924-vmss000002"
+      ],
+      "client_node": "aks-rq21bpool-33797924-vmss000001",
+      "service_nodes_distinct": true,
+      "dedicated_client_node": true,
+      "passed": true,
+      "errors": []
+    },
+    {
+      "pass": 3,
+      "execution_index": 5,
+      "condition_key": "mtls",
+      "condition": "chain_2svc_mtls_multinode",
+      "strategy": "multi_node_anti_affinity",
+      "service_pod_node_placement": {
+        "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-2j5xf": "aks-rq21bpool-33797924-vmss000000",
+        "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-cpqsz": "aks-rq21bpool-33797924-vmss000002"
+      },
+      "service_pod_nodes": [
+        "aks-rq21bpool-33797924-vmss000000",
+        "aks-rq21bpool-33797924-vmss000002"
+      ],
+      "client_node": "aks-rq21bpool-33797924-vmss000001",
+      "service_nodes_distinct": true,
+      "dedicated_client_node": true,
+      "passed": true,
+      "errors": []
+    },
+    {
+      "pass": 3,
+      "execution_index": 6,
+      "condition_key": "plain",
+      "condition": "chain_2svc_plain_multinode",
+      "strategy": "multi_node_anti_affinity",
+      "service_pod_node_placement": {
+        "chain-2svc-plain-multinode-svc-1-859d5ff55f-p9rg5": "aks-rq21bpool-33797924-vmss000002",
+        "chain-2svc-plain-multinode-svc-2-755db8fc77-sh944": "aks-rq21bpool-33797924-vmss000000"
+      },
+      "service_pod_nodes": [
+        "aks-rq21bpool-33797924-vmss000000",
+        "aks-rq21bpool-33797924-vmss000002"
+      ],
+      "client_node": "aks-rq21bpool-33797924-vmss000001",
+      "service_nodes_distinct": true,
+      "dedicated_client_node": true,
+      "passed": true,
+      "errors": []
+    },
+    {
+      "pass": 4,
+      "execution_index": 7,
+      "condition_key": "plain",
+      "condition": "chain_2svc_plain_multinode",
+      "strategy": "multi_node_anti_affinity",
+      "service_pod_node_placement": {
+        "chain-2svc-plain-multinode-svc-1-859d5ff55f-tlc6v": "aks-rq21bpool-33797924-vmss000002",
+        "chain-2svc-plain-multinode-svc-2-755db8fc77-4w5h5": "aks-rq21bpool-33797924-vmss000001"
+      },
+      "service_pod_nodes": [
+        "aks-rq21bpool-33797924-vmss000001",
+        "aks-rq21bpool-33797924-vmss000002"
+      ],
+      "client_node": "aks-rq21bpool-33797924-vmss000000",
+      "service_nodes_distinct": true,
+      "dedicated_client_node": true,
+      "passed": true,
+      "errors": []
+    },
+    {
+      "pass": 4,
+      "execution_index": 8,
+      "condition_key": "mtls",
+      "condition": "chain_2svc_mtls_multinode",
+      "strategy": "multi_node_anti_affinity",
+      "service_pod_node_placement": {
+        "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-cjz4m": "aks-rq21bpool-33797924-vmss000000",
+        "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-nkh6m": "aks-rq21bpool-33797924-vmss000002"
+      },
+      "service_pod_nodes": [
+        "aks-rq21bpool-33797924-vmss000000",
+        "aks-rq21bpool-33797924-vmss000002"
+      ],
+      "client_node": "aks-rq21bpool-33797924-vmss000001",
+      "service_nodes_distinct": true,
+      "dedicated_client_node": true,
+      "passed": true,
+      "errors": []
+    },
+    {
+      "pass": 5,
+      "execution_index": 9,
+      "condition_key": "mtls",
+      "condition": "chain_2svc_mtls_multinode",
+      "strategy": "multi_node_anti_affinity",
+      "service_pod_node_placement": {
+        "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft": "aks-rq21bpool-33797924-vmss000000",
+        "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd": "aks-rq21bpool-33797924-vmss000002"
+      },
+      "service_pod_nodes": [
+        "aks-rq21bpool-33797924-vmss000000",
+        "aks-rq21bpool-33797924-vmss000002"
+      ],
+      "client_node": "aks-rq21bpool-33797924-vmss000001",
+      "service_nodes_distinct": true,
+      "dedicated_client_node": true,
+      "passed": true,
+      "errors": []
+    },
+    {
+      "pass": 5,
+      "execution_index": 10,
+      "condition_key": "plain",
+      "condition": "chain_2svc_plain_multinode",
+      "strategy": "multi_node_anti_affinity",
+      "service_pod_node_placement": {
+        "chain-2svc-plain-multinode-svc-1-859d5ff55f-5zswx": "aks-rq21bpool-33797924-vmss000001",
+        "chain-2svc-plain-multinode-svc-2-755db8fc77-ccqhf": "aks-rq21bpool-33797924-vmss000000"
+      },
+      "service_pod_nodes": [
+        "aks-rq21bpool-33797924-vmss000000",
+        "aks-rq21bpool-33797924-vmss000001"
+      ],
+      "client_node": "aks-rq21bpool-33797924-vmss000002",
+      "service_nodes_distinct": true,
+      "dedicated_client_node": true,
+      "passed": true,
+      "errors": []
+    }
+  ],
+  "failures": []
+}

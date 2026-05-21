@@ -1,0 +1,4 @@
+## segment 2 -> chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051
+probing chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051 from a non-meshed pod
+EXPECTED_FAILURE: direct non-meshed gRPC channel was not ready: FutureTimeoutError 
+command terminated with exit code 42

@@ -1,0 +1,128 @@
+{
+  "timestamp": "2026-05-15T14:11:50.318497",
+  "platform": "Linux-6.17.0-23-generic-x86_64-with-glibc2.41",
+  "processor": "",
+  "python_version": "3.10.20",
+  "torch_version": "2.11.0+cpu",
+  "cpu_count": 16,
+  "git_commit": "unknown",
+  "cpu_stabilisation": {
+    "threading": {
+      "requested": {
+        "pytorch_intra_op": 1,
+        "pytorch_inter_op": 1,
+        "omp_num_threads": 1,
+        "mkl_num_threads": 1,
+        "openblas_num_threads": 1
+      },
+      "applied": {
+        "pytorch_intra_op": 1,
+        "pytorch_inter_op": 1,
+        "omp_num_threads": "1",
+        "mkl_num_threads": "1",
+        "openblas_num_threads": "1"
+      }
+    },
+    "affinity": {
+      "requested": {
+        "enabled": true,
+        "num_cores": 1,
+        "avoid_smt": true,
+        "explicit_cpus": null
+      },
+      "detected": {
+        "physical_cores_available": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14
+        ],
+        "total_cpus": 16
+      },
+      "applied": true,
+      "applied_cores": [
+        0
+      ],
+      "method": "auto-detected physical cores (SMT excluded), first 1"
+    },
+    "priority": {
+      "requested": {
+        "enabled": true,
+        "nice_value": -5
+      },
+      "detected": {
+        "current_nice": 0
+      },
+      "applied": true,
+      "applied_nice": -5,
+      "method": "direct"
+    },
+    "governor": {
+      "requested": {
+        "set_governor": true,
+        "requested_mode": "performance"
+      },
+      "detected": "performance",
+      "applied": false,
+      "error": "OS error writing to /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor: [Errno 30] Read-only file system: '/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'",
+      "method": "failed"
+    },
+    "turbo": {
+      "requested": {
+        "disable_turbo": true
+      },
+      "detected": {
+        "interface": "cpufreq_boost",
+        "boost": "0",
+        "turbo_enabled": false
+      },
+      "applied": false,
+      "error": "OS error writing to /sys/devices/system/cpu/cpufreq/boost: [Errno 30] Read-only file system: '/sys/devices/system/cpu/cpufreq/boost'",
+      "method": "failed"
+    },
+    "aslr": {
+      "detected": "2",
+      "note": "Detection only; disabling requires root and has negligible impact on wall-clock inference latency."
+    }
+  },
+  "deployment": {
+    "type": "kubernetes",
+    "cluster_type": "kind",
+    "node_count": 1,
+    "namespace": "rq14",
+    "pod_colocation_enforced": true,
+    "pod_placement": {
+      "benchmark-client": "thesis-rq14-control-plane",
+      "monolithic-k8s-1svc-svc-1": "thesis-rq14-control-plane",
+      "chain-2svc-svc-1": "thesis-rq14-control-plane",
+      "chain-2svc-svc-2": "thesis-rq14-control-plane",
+      "chain-3svc-svc-1": "thesis-rq14-control-plane",
+      "chain-3svc-svc-2": "thesis-rq14-control-plane",
+      "chain-3svc-svc-3": "thesis-rq14-control-plane",
+      "chain-4svc-svc-1": "thesis-rq14-control-plane",
+      "chain-4svc-svc-2": "thesis-rq14-control-plane",
+      "chain-4svc-svc-3": "thesis-rq14-control-plane",
+      "chain-4svc-svc-4": "thesis-rq14-control-plane",
+      "chain-5svc-svc-1": "thesis-rq14-control-plane",
+      "chain-5svc-svc-2": "thesis-rq14-control-plane",
+      "chain-5svc-svc-3": "thesis-rq14-control-plane",
+      "chain-5svc-svc-4": "thesis-rq14-control-plane",
+      "chain-5svc-svc-5": "thesis-rq14-control-plane"
+    }
+  },
+  "rolling_orchestration": {
+    "enabled": true,
+    "conditions": [
+      "monolithic_k8s_1svc",
+      "chain_2svc",
+      "chain_3svc",
+      "chain_4svc",
+      "chain_5svc"
+    ],
+    "partial_results_root": "/home/nick/Desktop/thesis_final/results/rq1_4_fully_controlled_20260515_141036/partial_results"
+  }
+}

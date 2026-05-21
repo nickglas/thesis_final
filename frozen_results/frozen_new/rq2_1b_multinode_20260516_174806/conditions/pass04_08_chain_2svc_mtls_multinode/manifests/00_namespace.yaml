@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rq21b-chain2-mtls
+  labels:
+    experiment: rq21b-chain2-mtls
+    workload-role: inference
+    security-condition: mtls
+    mesh-enabled: 'true'
+    istio.io/rev: asm-1-29
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rq21b-client-mtls
+  labels:
+    experiment: rq21b-chain2-mtls
+    workload-role: benchmark-client
+    security-condition: mtls
+    mesh-enabled: 'false'

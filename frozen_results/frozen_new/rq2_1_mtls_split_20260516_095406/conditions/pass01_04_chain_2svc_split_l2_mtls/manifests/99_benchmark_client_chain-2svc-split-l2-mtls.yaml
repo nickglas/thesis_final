@@ -1,0 +1,66 @@
+# Generated benchmark client pod.
+# Regenerate from the experiment config before applying.
+# Condition-specific placement manifest for chain_2svc_split_l2_mtls.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: benchmark-client
+  namespace: rq21-ms-l2-mtls-client
+  labels:
+    app: thesis-inference
+    experiment: rq21-ms-l2-mtls
+    workload-role: client
+    security-condition: mtls
+    mesh-enabled: 'false'
+    role: client
+    condition: chain_2svc_split_l2_mtls
+    experiment-condition: chain_2svc_split_l2_mtls
+  annotations:
+    sidecar.istio.io/inject: 'false'
+spec:
+  restartPolicy: Never
+  containers:
+  - name: client
+    image: thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b
+    imagePullPolicy: Always
+    command:
+    - sleep
+    - infinity
+    env:
+    - name: PYTORCH_INTRA_OP_THREADS
+      value: '1'
+    - name: PYTORCH_INTER_OP_THREADS
+      value: '1'
+    - name: OMP_NUM_THREADS
+      value: '1'
+    - name: MKL_NUM_THREADS
+      value: '1'
+    - name: OPENBLAS_NUM_THREADS
+      value: '1'
+    - name: MY_POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: MY_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: MY_POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+    resources:
+      requests:
+        cpu: 100m
+        memory: 1Gi
+      limits:
+        cpu: '1'
+        memory: 1Gi
+  nodeSelector:
+    agentpool: rq15pool
+    workload: benchmark
+  tolerations:
+  - key: workload
+    operator: Equal
+    value: benchmark
+    effect: NoSchedule

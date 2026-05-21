@@ -1,0 +1,3 @@
+NAME                                              READY   STATUS    RESTARTS   AGE   IP             NODE                               NOMINATED NODE   READINESS GATES
+chain-2svc-split-l2-mtls-svc-1-569848b65c-5hplx   2/2     Running   0          66s   10.244.1.139   aks-rq15pool-53575030-vmss000000   <none>           <none>
+chain-2svc-split-l2-mtls-svc-2-6cf87c7545-r65zt   2/2     Running   0          66s   10.244.1.140   aks-rq15pool-53575030-vmss000000   <none>           <none>

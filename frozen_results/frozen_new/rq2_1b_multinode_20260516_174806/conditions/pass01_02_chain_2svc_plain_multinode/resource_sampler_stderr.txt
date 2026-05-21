@@ -1,0 +1,1 @@
+Resource sampling unavailable: Unable to collect container resource metrics with kubectl top. Confirm metrics-server is installed and ready. kubectl output: error: Metrics API not available

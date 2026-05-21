@@ -1,0 +1,49 @@
+{
+  "condition": "chain_2svc_mtls_multinode",
+  "started_at": "2026-05-16T18:11:42.023646+00:00",
+  "updated_at": "2026-05-16T18:11:42.727970+00:00",
+  "ready": true,
+  "attempts": 1,
+  "elapsed_seconds": 0.704,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21b-chain2-mtls": {
+      "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-2j5xf": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-cpqsz": [
+        "inference",
+        "istio-proxy"
+      ]
+    },
+    "rq21b-client-mtls": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21b-chain2-mtls": {
+      "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-2j5xf": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-cpqsz": [
+        "inference",
+        "istio-proxy"
+      ]
+    },
+    "rq21b-client-mtls": {
+      "benchmark-client": [
+        "client"
+      ],
+      "rq21-direct-deny-20260516181121": [
+        "debug"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

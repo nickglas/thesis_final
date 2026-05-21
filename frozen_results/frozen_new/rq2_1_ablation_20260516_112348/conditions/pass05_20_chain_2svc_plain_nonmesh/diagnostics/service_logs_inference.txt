@@ -1,0 +1,2 @@
+[pod/chain-2svc-plain-nonmesh-svc-1-65db99bffc-cqktg/inference] READY
+[pod/chain-2svc-plain-nonmesh-svc-2-7f8894d69b-xzkbb/inference] READY

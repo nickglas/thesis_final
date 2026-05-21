@@ -1,0 +1,119 @@
+{
+  "monolithic_k8s_1svc": {
+    "namespace": "rq14",
+    "condition": "monolithic_k8s_1svc",
+    "num_services": 1,
+    "split_points": [],
+    "services": [
+      {
+        "service_name": "monolithic-k8s-1svc-svc-1",
+        "address": "monolithic-k8s-1svc-svc-1.rq14.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "monolithic-k8s-1svc-svc-1-7f56dddbbf-xfgwg",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.6",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesis-inference:latest",
+      "image_pull_policy": "IfNotPresent",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "kind-thesis-rq14",
+    "cluster_info": "Kubernetes control plane is running at https://127.0.0.1:45363",
+    "cluster_deployment": {},
+    "namespaces": {},
+    "mesh": {},
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "thesis-rq14-control-plane",
+      "pod_ip": "10.244.0.5",
+      "image": "thesis-inference:latest",
+      "image_id": "unknown",
+      "image_pull_policy": "IfNotPresent",
+      "qos_class": "unknown",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesis-inference:latest"
+      ],
+      "service_image_pull_policies": [
+        "IfNotPresent"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.5",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        }
+      }
+    },
+    "collected_at": "2026-05-15T14:11:50.548300"
+  }
+}

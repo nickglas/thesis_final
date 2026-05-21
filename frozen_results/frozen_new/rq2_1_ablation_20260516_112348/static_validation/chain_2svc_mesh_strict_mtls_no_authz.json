@@ -1,0 +1,43 @@
+{
+  "condition": "chain_2svc_mesh_strict_mtls_no_authz",
+  "condition_key": "c2",
+  "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1_ablation_20260516_112348/conditions/pass05_17_chain_2svc_mesh_strict_mtls_no_authz/manifests",
+  "expected_shape": {
+    "mesh": true,
+    "service_accounts": 2,
+    "peer": 2,
+    "strict": 1,
+    "authz": 0
+  },
+  "kinds": [
+    "Namespace",
+    "Namespace",
+    "ServiceAccount",
+    "ServiceAccount",
+    "Pod",
+    "Pod",
+    "Service",
+    "Deployment",
+    "Service",
+    "Deployment",
+    "PeerAuthentication",
+    "PeerAuthentication"
+  ],
+  "passed": true,
+  "errors": [],
+  "peer_authentication_validation": {
+    "namespace_default_permissive": true,
+    "expected_peer_authentication_count": 2,
+    "observed_peer_authentication_count": 2,
+    "expected_strict_segments": [
+      "2"
+    ],
+    "observed_strict_segments": [
+      "2"
+    ],
+    "strict_peer_count_by_segment": {
+      "2": 1
+    }
+  },
+  "authorization_policy_validation": {}
+}

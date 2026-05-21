@@ -1,0 +1,27 @@
+LAST SEEN   TYPE     REASON              OBJECT                                        MESSAGE
+94s         Normal   Scheduled           pod/chain-2svc-mtls-svc-1-6f977dd587-t5xns    Successfully assigned rq21-chain2-mtls/chain-2svc-mtls-svc-1-6f977dd587-t5xns to aks-rq15pool-95166063-vmss000000
+94s         Normal   Scheduled           pod/chain-2svc-mtls-svc-2-774bd69559-9xxzr    Successfully assigned rq21-chain2-mtls/chain-2svc-mtls-svc-2-774bd69559-9xxzr to aks-rq15pool-95166063-vmss000000
+95s         Normal   SuccessfulCreate    replicaset/chain-2svc-mtls-svc-1-6f977dd587   Created pod: chain-2svc-mtls-svc-1-6f977dd587-t5xns
+95s         Normal   Pulled              pod/chain-2svc-mtls-svc-1-6f977dd587-t5xns    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+95s         Normal   Created             pod/chain-2svc-mtls-svc-1-6f977dd587-t5xns    Created container: istio-init
+95s         Normal   Started             pod/chain-2svc-mtls-svc-1-6f977dd587-t5xns    Started container istio-init
+95s         Normal   ScalingReplicaSet   deployment/chain-2svc-mtls-svc-2              Scaled up replica set chain-2svc-mtls-svc-2-774bd69559 from 0 to 1
+95s         Normal   SuccessfulCreate    replicaset/chain-2svc-mtls-svc-2-774bd69559   Created pod: chain-2svc-mtls-svc-2-774bd69559-9xxzr
+95s         Normal   ScalingReplicaSet   deployment/chain-2svc-mtls-svc-1              Scaled up replica set chain-2svc-mtls-svc-1-6f977dd587 from 0 to 1
+94s         Normal   Started             pod/chain-2svc-mtls-svc-1-6f977dd587-t5xns    Started container istio-proxy
+94s         Normal   Created             pod/chain-2svc-mtls-svc-2-774bd69559-9xxzr    Created container: istio-proxy
+94s         Normal   Pulled              pod/chain-2svc-mtls-svc-1-6f977dd587-t5xns    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+94s         Normal   Created             pod/chain-2svc-mtls-svc-1-6f977dd587-t5xns    Created container: istio-proxy
+94s         Normal   Started             pod/chain-2svc-mtls-svc-2-774bd69559-9xxzr    Started container istio-proxy
+94s         Normal   Pulled              pod/chain-2svc-mtls-svc-2-774bd69559-9xxzr    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+94s         Normal   Created             pod/chain-2svc-mtls-svc-2-774bd69559-9xxzr    Created container: istio-init
+94s         Normal   Started             pod/chain-2svc-mtls-svc-2-774bd69559-9xxzr    Started container istio-init
+94s         Normal   Pulled              pod/chain-2svc-mtls-svc-2-774bd69559-9xxzr    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+92s         Normal   Started             pod/chain-2svc-mtls-svc-1-6f977dd587-t5xns    Started container inference
+92s         Normal   Pulling             pod/chain-2svc-mtls-svc-1-6f977dd587-t5xns    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+92s         Normal   Pulling             pod/chain-2svc-mtls-svc-2-774bd69559-9xxzr    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+92s         Normal   Pulled              pod/chain-2svc-mtls-svc-2-774bd69559-9xxzr    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 281ms (281ms including waiting). Image size: 413013146 bytes.
+92s         Normal   Created             pod/chain-2svc-mtls-svc-2-774bd69559-9xxzr    Created container: inference
+92s         Normal   Started             pod/chain-2svc-mtls-svc-2-774bd69559-9xxzr    Started container inference
+92s         Normal   Pulled              pod/chain-2svc-mtls-svc-1-6f977dd587-t5xns    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 313ms (313ms including waiting). Image size: 413013146 bytes.
+92s         Normal   Created             pod/chain-2svc-mtls-svc-1-6f977dd587-t5xns    Created container: inference

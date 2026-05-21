@@ -1,0 +1,19 @@
+{
+  "provision_requested": true,
+  "provisioned": true,
+  "destroyed": true,
+  "destroy_reason": "successful paired benchmark",
+  "destroyed_at": "2026-05-17T12:26:43.930212+00:00",
+  "resource_group": "rg-thesis-rq15",
+  "cluster_name": "thesis-rq15",
+  "acr_name": "thesisrq15acr",
+  "nodepool": "rq15pool",
+  "node_count": 1,
+  "node_vm_size": "Standard_D8s_v3",
+  "isolated_node_pools": true,
+  "system_nodepool": "systempool",
+  "system_node_count": 1,
+  "system_node_vm_size": "Standard_D2s_v3",
+  "benchmark_taint": "workload=benchmark:NoSchedule",
+  "mesh_revision": "asm-1-29"
+}

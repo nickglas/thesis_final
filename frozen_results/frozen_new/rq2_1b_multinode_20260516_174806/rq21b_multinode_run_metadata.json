@@ -1,0 +1,4123 @@
+{
+  "generated_at": "2026-05-16T18:28:00.595328+00:00",
+  "completed": true,
+  "smoke": false,
+  "topology": "chain2",
+  "stage": "RQ2.1b",
+  "experiment_signature": "rq2_1b_multinode",
+  "placement_mode": "multi_node",
+  "placement_strategy": "multi_node_anti_affinity",
+  "artifact_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806",
+  "plain_config": "/home/nick/Desktop/thesis_final/configs/rq2/2.1/multinode/rq2_1b_chain2_plain_multinode.yaml",
+  "mtls_config": "/home/nick/Desktop/thesis_final/configs/rq2/2.1/multinode/rq2_1b_chain2_mtls_multinode.yaml",
+  "effective_configs": {
+    "plain": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/effective_configs/chain_2svc_plain_multinode_effective.yaml",
+    "mtls": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/effective_configs/chain_2svc_mtls_multinode_effective.yaml"
+  },
+  "image_ref": "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b",
+  "mesh_revision": "asm-1-29",
+  "nodepool": "rq21bpool",
+  "isolated_node_pools": true,
+  "system_nodepool": "systempool",
+  "system_node_count": 1,
+  "system_node_vm_size": "Standard_D2s_v3",
+  "benchmark_taint": "workload=benchmark:NoSchedule",
+  "provision_requested": true,
+  "infrastructure_provisioned": true,
+  "destroy_infrastructure_on_success": true,
+  "destroy_infrastructure_on_failure": true,
+  "infrastructure_destroyed": true,
+  "resource_group": "rg-thesis-rq21b",
+  "cluster_name": "thesis-rq21b",
+  "acr_name": "thesisrq15acr",
+  "execution_plan": {
+    "order_mode": "seeded",
+    "order_seed": 42,
+    "paired_passes": 5,
+    "passes": [
+      {
+        "pass": 1,
+        "order": [
+          "mtls",
+          "plain"
+        ]
+      },
+      {
+        "pass": 2,
+        "order": [
+          "plain",
+          "mtls"
+        ]
+      },
+      {
+        "pass": 3,
+        "order": [
+          "mtls",
+          "plain"
+        ]
+      },
+      {
+        "pass": 4,
+        "order": [
+          "plain",
+          "mtls"
+        ]
+      },
+      {
+        "pass": 5,
+        "order": [
+          "mtls",
+          "plain"
+        ]
+      }
+    ]
+  },
+  "completed_conditions": [
+    {
+      "pass": 1,
+      "execution_index": 1,
+      "condition_key": "mtls",
+      "condition": "chain_2svc_mtls_multinode",
+      "condition_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_01_chain_2svc_mtls_multinode",
+      "benchmark_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_01_chain_2svc_mtls_multinode/benchmark",
+      "resource_samples": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_01_chain_2svc_mtls_multinode/resource_samples.csv",
+      "static_manifest_validation": {
+        "condition": "chain_2svc_mtls_multinode",
+        "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_01_chain_2svc_mtls_multinode/manifests",
+        "kinds": [
+          "Namespace",
+          "Namespace",
+          "ServiceAccount",
+          "ServiceAccount",
+          "Pod",
+          "Pod",
+          "Service",
+          "Deployment",
+          "Service",
+          "Deployment",
+          "PeerAuthentication",
+          "PeerAuthentication",
+          "AuthorizationPolicy"
+        ],
+        "passed": true,
+        "errors": [],
+        "peer_authentication_validation": {
+          "namespace_default_permissive": true,
+          "expected_peer_authentication_count": 2,
+          "observed_peer_authentication_count": 2,
+          "expected_strict_segments": [
+            "2"
+          ],
+          "observed_strict_segments": [
+            "2"
+          ],
+          "strict_peer_count_by_segment": {
+            "2": 1
+          }
+        },
+        "authorization_policy_validation": {
+          "expected_policy_count": 1,
+          "expected_policy_names": [
+            "downstream-service1-only"
+          ],
+          "observed_policy_names": [
+            "downstream-service1-only"
+          ],
+          "policies": [
+            {
+              "expected_policy_name": "downstream-service1-only",
+              "expected_source_segment_index": "1",
+              "expected_downstream_segment_index": "2",
+              "expected_allowed_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+              "present": true,
+              "selects_downstream_service": true,
+              "allows_only_expected_principal": true,
+              "observed_selector": {
+                "condition": "chain_2svc_mtls_multinode",
+                "segment-index": "2",
+                "workload-role": "service"
+              },
+              "observed_action": "ALLOW",
+              "observed_allowed_principals": [
+                "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+              ],
+              "unrestricted_source_rule": false,
+              "unexpected_source_constraints": []
+            }
+          ],
+          "selects_downstream_service2": true,
+          "allows_only_service1_principal": true,
+          "all_policies_valid": true
+        }
+      },
+      "runtime_validation": {
+        "condition": "chain_2svc_mtls_multinode",
+        "passed": true,
+        "errors": [],
+        "service_pod_nodes": [
+          "aks-rq21bpool-33797924-vmss000000",
+          "aks-rq21bpool-33797924-vmss000002"
+        ],
+        "client_node": "aks-rq21bpool-33797924-vmss000001",
+        "placement_validation": {
+          "strategy": "multi_node_anti_affinity",
+          "service_pod_node_placement": {
+            "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-wlsg4": "aks-rq21bpool-33797924-vmss000000",
+            "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-9mt5s": "aks-rq21bpool-33797924-vmss000002"
+          },
+          "service_pod_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "client_node": "aks-rq21bpool-33797924-vmss000001",
+          "service_nodes_distinct": true,
+          "dedicated_client_node": true,
+          "min_nodes": 3
+        },
+        "peer_authentication_count": 2,
+        "authorization_policy_count": 1,
+        "peer_authentication_validation": {
+          "namespace_default_permissive": true,
+          "expected_peer_authentication_count": 2,
+          "observed_peer_authentication_count": 2,
+          "expected_strict_segments": [
+            "2"
+          ],
+          "observed_strict_segments": [
+            "2"
+          ],
+          "strict_peer_count_by_segment": {
+            "2": 1
+          }
+        },
+        "authorization_policy_validation": {
+          "expected_policy_count": 1,
+          "expected_policy_names": [
+            "downstream-service1-only"
+          ],
+          "observed_policy_names": [
+            "downstream-service1-only"
+          ],
+          "policies": [
+            {
+              "expected_policy_name": "downstream-service1-only",
+              "expected_source_segment_index": "1",
+              "expected_downstream_segment_index": "2",
+              "expected_allowed_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+              "present": true,
+              "selects_downstream_service": true,
+              "allows_only_expected_principal": true,
+              "observed_selector": {
+                "condition": "chain_2svc_mtls_multinode",
+                "segment-index": "2",
+                "workload-role": "service"
+              },
+              "observed_action": "ALLOW",
+              "observed_allowed_principals": [
+                "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+              ],
+              "unrestricted_source_rule": false,
+              "unexpected_source_constraints": []
+            }
+          ],
+          "selects_downstream_service2": true,
+          "allows_only_service1_principal": true,
+          "all_policies_valid": true
+        }
+      },
+      "operational_overhead": {
+        "captured_at": "2026-05-16T18:04:02.129793+00:00",
+        "condition": "chain_2svc_mtls_multinode",
+        "condition_key": "mtls",
+        "service_pods": [
+          {
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-wlsg4",
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "creation_timestamp": "2026-05-16T18:02:53Z",
+            "scheduled_timestamp": "2026-05-16T18:02:53+00:00",
+            "ready_timestamp": "2026-05-16T18:03:24+00:00",
+            "app_started_timestamp": "2026-05-16T18:03:17+00:00",
+            "sidecar_started_timestamp": "2026-05-16T18:03:00+00:00",
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 31.0,
+            "app_started_delay_seconds": 24.0,
+            "sidecar_started_delay_seconds": 7.0,
+            "sidecar_present": true,
+            "sidecar_container_type": "init",
+            "sidecar_native_init": true,
+            "sidecar_ready": true,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 100.0,
+            "sidecar_memory_mib_total": 128.0,
+            "pod_cpu_mcores_total": 1100.0,
+            "pod_memory_mib_total": 1152.0
+          },
+          {
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-9mt5s",
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "creation_timestamp": "2026-05-16T18:02:53Z",
+            "scheduled_timestamp": "2026-05-16T18:02:53+00:00",
+            "ready_timestamp": "2026-05-16T18:03:29+00:00",
+            "app_started_timestamp": "2026-05-16T18:03:23+00:00",
+            "sidecar_started_timestamp": "2026-05-16T18:03:00+00:00",
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 36.0,
+            "app_started_delay_seconds": 30.0,
+            "sidecar_started_delay_seconds": 7.0,
+            "sidecar_present": true,
+            "sidecar_container_type": "init",
+            "sidecar_native_init": true,
+            "sidecar_ready": true,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 100.0,
+            "sidecar_memory_mib_total": 128.0,
+            "pod_cpu_mcores_total": 1100.0,
+            "pod_memory_mib_total": 1152.0
+          }
+        ],
+        "client": {
+          "pod_name": "benchmark-client",
+          "node_name": "aks-rq21bpool-33797924-vmss000001",
+          "app_cpu_mcores_total": 100.0,
+          "app_memory_mib_total": 1024.0,
+          "sidecar_cpu_mcores_total": 0.0,
+          "sidecar_memory_mib_total": 0.0,
+          "pod_cpu_mcores_total": 100.0,
+          "pod_memory_mib_total": 1024.0
+        },
+        "node_allocatable": {
+          "aks-rq21bpool-33797924-vmss000000": {
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          },
+          "aks-rq21bpool-33797924-vmss000002": {
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          }
+        },
+        "summary": {
+          "service_pod_count": 2,
+          "service_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "service_scheduling_delay_seconds_mean": 0.0,
+          "service_schedule_to_ready_seconds_mean": 33.5,
+          "service_app_started_delay_seconds_mean": 27.0,
+          "service_sidecar_started_delay_seconds_mean": 7.0,
+          "service_failed_scheduling_event_count": 0,
+          "service_app_requested_cpu_mcores_total": 2000.0,
+          "service_sidecar_requested_cpu_mcores_total": 200.0,
+          "service_total_requested_cpu_mcores_total": 2200.0,
+          "service_app_requested_memory_mib_total": 2048.0,
+          "service_sidecar_requested_memory_mib_total": 256.0,
+          "service_total_requested_memory_mib_total": 2304.0,
+          "client_requested_cpu_mcores_total": 100.0,
+          "client_requested_memory_mib_total": 1024.0,
+          "benchmark_requested_cpu_mcores_total": 2200.0,
+          "benchmark_requested_memory_mib_total": 2304.0,
+          "node_request_headroom_cpu_mcores": null,
+          "node_request_headroom_memory_mib": null,
+          "mesh_control_plane_shares_benchmark_node": false,
+          "mesh_control_plane_shared_node_names": [],
+          "mesh_control_plane_shared_pod_names": []
+        },
+        "deployment_complexity": {
+          "aks_enablement_step_count": 1,
+          "kubernetes_object_count": 13,
+          "kubernetes_object_counts_by_kind": {
+            "AuthorizationPolicy": 1,
+            "Deployment": 2,
+            "Namespace": 2,
+            "PeerAuthentication": 2,
+            "Pod": 2,
+            "Service": 2,
+            "ServiceAccount": 2
+          },
+          "always_on_control_plane_pod_count": 2,
+          "per_workload_injected_container_count": 1.0,
+          "total_injected_container_count": 2
+        },
+        "operational_complexity": {
+          "mesh_revision": "asm-1-29",
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": [],
+          "control_plane_pods_on_shared_nodes": [],
+          "avoidable_istio_control_plane_pods_on_shared_nodes": []
+        }
+      },
+      "cpu_counter_metrics": {
+        "captured_at": "2026-05-16T18:04:41.637935+00:00",
+        "condition": "chain_2svc_mtls_multinode",
+        "condition_key": "mtls",
+        "started_at": "2026-05-16T18:04:11.510287+00:00",
+        "ended_at": "2026-05-16T18:04:40.196144+00:00",
+        "duration_seconds": 28.68584582299809,
+        "available": true,
+        "summary": {
+          "service_app_cpu_mcores": 567.5209683706835,
+          "sidecar_cpu_mcores": 30.360966358598912,
+          "client_cpu_mcores": 156.29105126144145,
+          "total_pod_cpu_mcores": 597.8819347292824
+        },
+        "measurements": [
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-wlsg4",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2641287000,
+            "end_usage_core_nanoseconds": 11511105000,
+            "delta_core_nanoseconds": 8869818000,
+            "cpu_mcores": 309.2053849389676
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-wlsg4",
+            "container_name": "istio-proxy",
+            "role": "sidecar",
+            "start_usage_core_nanoseconds": 394252000,
+            "end_usage_core_nanoseconds": 1017431000,
+            "delta_core_nanoseconds": 623179000,
+            "cpu_mcores": 21.724267914052003
+          },
+          {
+            "namespace": "rq21b-client-mtls",
+            "pod_name": "benchmark-client",
+            "container_name": "client",
+            "role": "client",
+            "start_usage_core_nanoseconds": 1578625000,
+            "end_usage_core_nanoseconds": 6061966000,
+            "delta_core_nanoseconds": 4483341000,
+            "cpu_mcores": 156.29105126144145
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-9mt5s",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2651144000,
+            "end_usage_core_nanoseconds": 10061145000,
+            "delta_core_nanoseconds": 7410001000,
+            "cpu_mcores": 258.3155834317158
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-9mt5s",
+            "container_name": "istio-proxy",
+            "role": "sidecar",
+            "start_usage_core_nanoseconds": 414430000,
+            "end_usage_core_nanoseconds": 662181000,
+            "delta_core_nanoseconds": 247751000,
+            "cpu_mcores": 8.636698444546909
+          }
+        ],
+        "start_snapshot": {
+          "captured_at": "2026-05-16T18:04:10.577458+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-wlsg4",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2641287000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-wlsg4",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 394252000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-mtls",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 1578625000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-9mt5s",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2651144000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-9mt5s",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 414430000
+            }
+          ],
+          "errors": []
+        },
+        "end_snapshot": {
+          "captured_at": "2026-05-16T18:04:40.715820+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-wlsg4",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 11511105000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-wlsg4",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 1017431000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-mtls",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 6061966000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-9mt5s",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 10061145000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-9mt5s",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 662181000
+            }
+          ],
+          "errors": []
+        },
+        "errors": []
+      },
+      "security_preflight_artifact": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_01_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_180333",
+      "security_validation": {
+        "passed": true,
+        "artifact_path": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_01_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_180333",
+        "metadata_path": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_01_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_180333/rq21_preflight_metadata.json",
+        "preflight_passed": true,
+        "enforcement_validation_passed": true,
+        "full_chain_positive_probe_passed": true,
+        "full_chain_hop_count": 2,
+        "full_chain_hop_indexes": [
+          1,
+          2
+        ],
+        "non_mesh_direct_denial_probe_passed": true,
+        "non_mesh_direct_denial_blocked_segments": [
+          2
+        ],
+        "non_mesh_direct_denial_target_results": [
+          {
+            "segment_index": 2,
+            "target": "chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051",
+            "returncode": 42,
+            "blocked_as_expected": true,
+            "succeeded_unexpectedly": false
+          }
+        ],
+        "authorization_policy_expected_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+        "authorization_policy_expected_principals": [
+          "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+        ],
+        "control_plane_isolation": {
+          "required": true,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "avoidable_istio_control_plane_pods_on_benchmark_node": [],
+          "violates_isolated_pool_contract": false
+        },
+        "errors": [],
+        "limitations": []
+      },
+      "security_validation_passed": true,
+      "service_namespace": "rq21b-chain2-mtls",
+      "client_namespace": "rq21b-client-mtls",
+      "resource_cpu_measurement": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_01_chain_2svc_mtls_multinode/resource_cpu_measurement.json",
+      "resource_metric_prime": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_01_chain_2svc_mtls_multinode/resource_metric_prime_status.json"
+    },
+    {
+      "pass": 1,
+      "execution_index": 2,
+      "condition_key": "plain",
+      "condition": "chain_2svc_plain_multinode",
+      "condition_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_02_chain_2svc_plain_multinode",
+      "benchmark_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_02_chain_2svc_plain_multinode/benchmark",
+      "resource_samples": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_02_chain_2svc_plain_multinode/resource_samples.csv",
+      "static_manifest_validation": {
+        "condition": "chain_2svc_plain_multinode",
+        "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_02_chain_2svc_plain_multinode/manifests",
+        "kinds": [
+          "Namespace",
+          "Namespace",
+          "Pod",
+          "Pod",
+          "Service",
+          "Deployment",
+          "Service",
+          "Deployment"
+        ],
+        "passed": true,
+        "errors": []
+      },
+      "runtime_validation": {
+        "condition": "chain_2svc_plain_multinode",
+        "passed": true,
+        "errors": [],
+        "service_pod_nodes": [
+          "aks-rq21bpool-33797924-vmss000000",
+          "aks-rq21bpool-33797924-vmss000002"
+        ],
+        "client_node": "aks-rq21bpool-33797924-vmss000001",
+        "placement_validation": {
+          "strategy": "multi_node_anti_affinity",
+          "service_pod_node_placement": {
+            "chain-2svc-plain-multinode-svc-1-859d5ff55f-qsn9r": "aks-rq21bpool-33797924-vmss000000",
+            "chain-2svc-plain-multinode-svc-2-755db8fc77-nmz2g": "aks-rq21bpool-33797924-vmss000002"
+          },
+          "service_pod_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "client_node": "aks-rq21bpool-33797924-vmss000001",
+          "service_nodes_distinct": true,
+          "dedicated_client_node": true,
+          "min_nodes": 3
+        }
+      },
+      "operational_overhead": {
+        "captured_at": "2026-05-16T18:05:13.926777+00:00",
+        "condition": "chain_2svc_plain_multinode",
+        "condition_key": "plain",
+        "service_pods": [
+          {
+            "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-qsn9r",
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "creation_timestamp": "2026-05-16T18:05:02Z",
+            "scheduled_timestamp": "2026-05-16T18:05:02+00:00",
+            "ready_timestamp": "2026-05-16T18:05:09+00:00",
+            "app_started_timestamp": "2026-05-16T18:05:03+00:00",
+            "sidecar_started_timestamp": null,
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 7.0,
+            "app_started_delay_seconds": 1.0,
+            "sidecar_started_delay_seconds": null,
+            "sidecar_present": false,
+            "sidecar_container_type": null,
+            "sidecar_native_init": false,
+            "sidecar_ready": false,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 0.0,
+            "sidecar_memory_mib_total": 0.0,
+            "pod_cpu_mcores_total": 1000.0,
+            "pod_memory_mib_total": 1024.0
+          },
+          {
+            "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-nmz2g",
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "creation_timestamp": "2026-05-16T18:05:02Z",
+            "scheduled_timestamp": "2026-05-16T18:05:02+00:00",
+            "ready_timestamp": "2026-05-16T18:05:09+00:00",
+            "app_started_timestamp": "2026-05-16T18:05:03+00:00",
+            "sidecar_started_timestamp": null,
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 7.0,
+            "app_started_delay_seconds": 1.0,
+            "sidecar_started_delay_seconds": null,
+            "sidecar_present": false,
+            "sidecar_container_type": null,
+            "sidecar_native_init": false,
+            "sidecar_ready": false,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 0.0,
+            "sidecar_memory_mib_total": 0.0,
+            "pod_cpu_mcores_total": 1000.0,
+            "pod_memory_mib_total": 1024.0
+          }
+        ],
+        "client": {
+          "pod_name": "benchmark-client",
+          "node_name": "aks-rq21bpool-33797924-vmss000001",
+          "app_cpu_mcores_total": 100.0,
+          "app_memory_mib_total": 1024.0,
+          "sidecar_cpu_mcores_total": 0.0,
+          "sidecar_memory_mib_total": 0.0,
+          "pod_cpu_mcores_total": 100.0,
+          "pod_memory_mib_total": 1024.0
+        },
+        "node_allocatable": {
+          "aks-rq21bpool-33797924-vmss000000": {
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          },
+          "aks-rq21bpool-33797924-vmss000002": {
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          }
+        },
+        "summary": {
+          "service_pod_count": 2,
+          "service_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "service_scheduling_delay_seconds_mean": 0.0,
+          "service_schedule_to_ready_seconds_mean": 7.0,
+          "service_app_started_delay_seconds_mean": 1.0,
+          "service_sidecar_started_delay_seconds_mean": null,
+          "service_failed_scheduling_event_count": 0,
+          "service_app_requested_cpu_mcores_total": 2000.0,
+          "service_sidecar_requested_cpu_mcores_total": 0.0,
+          "service_total_requested_cpu_mcores_total": 2000.0,
+          "service_app_requested_memory_mib_total": 2048.0,
+          "service_sidecar_requested_memory_mib_total": 0.0,
+          "service_total_requested_memory_mib_total": 2048.0,
+          "client_requested_cpu_mcores_total": 100.0,
+          "client_requested_memory_mib_total": 1024.0,
+          "benchmark_requested_cpu_mcores_total": 2000.0,
+          "benchmark_requested_memory_mib_total": 2048.0,
+          "node_request_headroom_cpu_mcores": null,
+          "node_request_headroom_memory_mib": null,
+          "mesh_control_plane_shares_benchmark_node": false,
+          "mesh_control_plane_shared_node_names": [],
+          "mesh_control_plane_shared_pod_names": []
+        },
+        "deployment_complexity": {
+          "aks_enablement_step_count": 0,
+          "kubernetes_object_count": 8,
+          "kubernetes_object_counts_by_kind": {
+            "Deployment": 2,
+            "Namespace": 2,
+            "Pod": 2,
+            "Service": 2
+          },
+          "always_on_control_plane_pod_count": 0,
+          "per_workload_injected_container_count": 0.0,
+          "total_injected_container_count": 0
+        },
+        "operational_complexity": {
+          "mesh_revision": null,
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": [],
+          "control_plane_pods_on_shared_nodes": [],
+          "avoidable_istio_control_plane_pods_on_shared_nodes": []
+        }
+      },
+      "cpu_counter_metrics": {
+        "captured_at": "2026-05-16T18:06:20.205173+00:00",
+        "condition": "chain_2svc_plain_multinode",
+        "condition_key": "plain",
+        "started_at": "2026-05-16T18:05:50.744980+00:00",
+        "ended_at": "2026-05-16T18:06:18.812484+00:00",
+        "duration_seconds": 28.0674912100003,
+        "available": true,
+        "summary": {
+          "service_app_cpu_mcores": 545.5563122985598,
+          "sidecar_cpu_mcores": 0.0,
+          "client_cpu_mcores": 159.15284221799004,
+          "total_pod_cpu_mcores": 545.5563122985598
+        },
+        "measurements": [
+          {
+            "namespace": "rq21b-chain2-plain",
+            "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-qsn9r",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2598791000,
+            "end_usage_core_nanoseconds": 10291956000,
+            "delta_core_nanoseconds": 7693165000,
+            "cpu_mcores": 274.0952136562518
+          },
+          {
+            "namespace": "rq21b-client-plain",
+            "pod_name": "benchmark-client",
+            "container_name": "client",
+            "role": "client",
+            "start_usage_core_nanoseconds": 84103000,
+            "end_usage_core_nanoseconds": 4551124000,
+            "delta_core_nanoseconds": 4467021000,
+            "cpu_mcores": 159.15284221799004
+          },
+          {
+            "namespace": "rq21b-chain2-plain",
+            "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-nmz2g",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2613198000,
+            "end_usage_core_nanoseconds": 10232430000,
+            "delta_core_nanoseconds": 7619232000,
+            "cpu_mcores": 271.4610986423079
+          }
+        ],
+        "start_snapshot": {
+          "captured_at": "2026-05-16T18:05:49.788997+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-qsn9r",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2598791000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-plain",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 84103000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-nmz2g",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2613198000
+            }
+          ],
+          "errors": []
+        },
+        "end_snapshot": {
+          "captured_at": "2026-05-16T18:06:19.321365+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-qsn9r",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 10291956000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-plain",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 4551124000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-nmz2g",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 10232430000
+            }
+          ],
+          "errors": []
+        },
+        "errors": []
+      },
+      "security_preflight_artifact": null,
+      "security_validation": null,
+      "security_validation_passed": null,
+      "service_namespace": "rq21b-chain2-plain",
+      "client_namespace": "rq21b-client-plain",
+      "resource_cpu_measurement": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_02_chain_2svc_plain_multinode/resource_cpu_measurement.json",
+      "resource_metric_prime": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_02_chain_2svc_plain_multinode/resource_metric_prime_status.json"
+    },
+    {
+      "pass": 2,
+      "execution_index": 3,
+      "condition_key": "plain",
+      "condition": "chain_2svc_plain_multinode",
+      "condition_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_03_chain_2svc_plain_multinode",
+      "benchmark_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_03_chain_2svc_plain_multinode/benchmark",
+      "resource_samples": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_03_chain_2svc_plain_multinode/resource_samples.csv",
+      "static_manifest_validation": {
+        "condition": "chain_2svc_plain_multinode",
+        "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_03_chain_2svc_plain_multinode/manifests",
+        "kinds": [
+          "Namespace",
+          "Namespace",
+          "Pod",
+          "Pod",
+          "Service",
+          "Deployment",
+          "Service",
+          "Deployment"
+        ],
+        "passed": true,
+        "errors": []
+      },
+      "runtime_validation": {
+        "condition": "chain_2svc_plain_multinode",
+        "passed": true,
+        "errors": [],
+        "service_pod_nodes": [
+          "aks-rq21bpool-33797924-vmss000001",
+          "aks-rq21bpool-33797924-vmss000002"
+        ],
+        "client_node": "aks-rq21bpool-33797924-vmss000000",
+        "placement_validation": {
+          "strategy": "multi_node_anti_affinity",
+          "service_pod_node_placement": {
+            "chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp": "aks-rq21bpool-33797924-vmss000001",
+            "chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd": "aks-rq21bpool-33797924-vmss000002"
+          },
+          "service_pod_nodes": [
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "client_node": "aks-rq21bpool-33797924-vmss000000",
+          "service_nodes_distinct": true,
+          "dedicated_client_node": true,
+          "min_nodes": 3
+        }
+      },
+      "operational_overhead": {
+        "captured_at": "2026-05-16T18:07:24.194098+00:00",
+        "condition": "chain_2svc_plain_multinode",
+        "condition_key": "plain",
+        "service_pods": [
+          {
+            "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp",
+            "node_name": "aks-rq21bpool-33797924-vmss000001",
+            "creation_timestamp": "2026-05-16T18:07:12Z",
+            "scheduled_timestamp": "2026-05-16T18:07:12+00:00",
+            "ready_timestamp": "2026-05-16T18:07:20+00:00",
+            "app_started_timestamp": "2026-05-16T18:07:13+00:00",
+            "sidecar_started_timestamp": null,
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 8.0,
+            "app_started_delay_seconds": 1.0,
+            "sidecar_started_delay_seconds": null,
+            "sidecar_present": false,
+            "sidecar_container_type": null,
+            "sidecar_native_init": false,
+            "sidecar_ready": false,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 0.0,
+            "sidecar_memory_mib_total": 0.0,
+            "pod_cpu_mcores_total": 1000.0,
+            "pod_memory_mib_total": 1024.0
+          },
+          {
+            "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd",
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "creation_timestamp": "2026-05-16T18:07:12Z",
+            "scheduled_timestamp": "2026-05-16T18:07:12+00:00",
+            "ready_timestamp": "2026-05-16T18:07:19+00:00",
+            "app_started_timestamp": "2026-05-16T18:07:13+00:00",
+            "sidecar_started_timestamp": null,
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 7.0,
+            "app_started_delay_seconds": 1.0,
+            "sidecar_started_delay_seconds": null,
+            "sidecar_present": false,
+            "sidecar_container_type": null,
+            "sidecar_native_init": false,
+            "sidecar_ready": false,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 0.0,
+            "sidecar_memory_mib_total": 0.0,
+            "pod_cpu_mcores_total": 1000.0,
+            "pod_memory_mib_total": 1024.0
+          }
+        ],
+        "client": {
+          "pod_name": "benchmark-client",
+          "node_name": "aks-rq21bpool-33797924-vmss000000",
+          "app_cpu_mcores_total": 100.0,
+          "app_memory_mib_total": 1024.0,
+          "sidecar_cpu_mcores_total": 0.0,
+          "sidecar_memory_mib_total": 0.0,
+          "pod_cpu_mcores_total": 100.0,
+          "pod_memory_mib_total": 1024.0
+        },
+        "node_allocatable": {
+          "aks-rq21bpool-33797924-vmss000001": {
+            "node_name": "aks-rq21bpool-33797924-vmss000001",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.890625
+          },
+          "aks-rq21bpool-33797924-vmss000002": {
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          }
+        },
+        "summary": {
+          "service_pod_count": 2,
+          "service_nodes": [
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "service_scheduling_delay_seconds_mean": 0.0,
+          "service_schedule_to_ready_seconds_mean": 7.5,
+          "service_app_started_delay_seconds_mean": 1.0,
+          "service_sidecar_started_delay_seconds_mean": null,
+          "service_failed_scheduling_event_count": 0,
+          "service_app_requested_cpu_mcores_total": 2000.0,
+          "service_sidecar_requested_cpu_mcores_total": 0.0,
+          "service_total_requested_cpu_mcores_total": 2000.0,
+          "service_app_requested_memory_mib_total": 2048.0,
+          "service_sidecar_requested_memory_mib_total": 0.0,
+          "service_total_requested_memory_mib_total": 2048.0,
+          "client_requested_cpu_mcores_total": 100.0,
+          "client_requested_memory_mib_total": 1024.0,
+          "benchmark_requested_cpu_mcores_total": 2000.0,
+          "benchmark_requested_memory_mib_total": 2048.0,
+          "node_request_headroom_cpu_mcores": null,
+          "node_request_headroom_memory_mib": null,
+          "mesh_control_plane_shares_benchmark_node": false,
+          "mesh_control_plane_shared_node_names": [],
+          "mesh_control_plane_shared_pod_names": []
+        },
+        "deployment_complexity": {
+          "aks_enablement_step_count": 0,
+          "kubernetes_object_count": 8,
+          "kubernetes_object_counts_by_kind": {
+            "Deployment": 2,
+            "Namespace": 2,
+            "Pod": 2,
+            "Service": 2
+          },
+          "always_on_control_plane_pod_count": 0,
+          "per_workload_injected_container_count": 0.0,
+          "total_injected_container_count": 0
+        },
+        "operational_complexity": {
+          "mesh_revision": null,
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": [],
+          "control_plane_pods_on_shared_nodes": [],
+          "avoidable_istio_control_plane_pods_on_shared_nodes": []
+        }
+      },
+      "cpu_counter_metrics": {
+        "captured_at": "2026-05-16T18:08:14.509311+00:00",
+        "condition": "chain_2svc_plain_multinode",
+        "condition_key": "plain",
+        "started_at": "2026-05-16T18:07:44.985360+00:00",
+        "ended_at": "2026-05-16T18:08:13.087647+00:00",
+        "duration_seconds": 28.10227492499689,
+        "available": true,
+        "summary": {
+          "service_app_cpu_mcores": 440.13152077585295,
+          "sidecar_cpu_mcores": 0.0,
+          "client_cpu_mcores": 153.20958931229575,
+          "total_pod_cpu_mcores": 440.13152077585295
+        },
+        "measurements": [
+          {
+            "namespace": "rq21b-client-plain",
+            "pod_name": "benchmark-client",
+            "container_name": "client",
+            "role": "client",
+            "start_usage_core_nanoseconds": 85069000,
+            "end_usage_core_nanoseconds": 4390607000,
+            "delta_core_nanoseconds": 4305538000,
+            "cpu_mcores": 153.20958931229575
+          },
+          {
+            "namespace": "rq21b-chain2-plain",
+            "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2622397000,
+            "end_usage_core_nanoseconds": 9540666000,
+            "delta_core_nanoseconds": 6918269000,
+            "cpu_mcores": 246.18181333946814
+          },
+          {
+            "namespace": "rq21b-chain2-plain",
+            "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2572343000,
+            "end_usage_core_nanoseconds": 8022771000,
+            "delta_core_nanoseconds": 5450428000,
+            "cpu_mcores": 193.9497074363848
+          }
+        ],
+        "start_snapshot": {
+          "captured_at": "2026-05-16T18:07:44.125800+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-client-plain",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 85069000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2622397000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2572343000
+            }
+          ],
+          "errors": []
+        },
+        "end_snapshot": {
+          "captured_at": "2026-05-16T18:08:13.620605+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-client-plain",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 4390607000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-xskwp",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 9540666000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-9t7jd",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 8022771000
+            }
+          ],
+          "errors": []
+        },
+        "errors": []
+      },
+      "security_preflight_artifact": null,
+      "security_validation": null,
+      "security_validation_passed": null,
+      "service_namespace": "rq21b-chain2-plain",
+      "client_namespace": "rq21b-client-plain",
+      "resource_cpu_measurement": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_03_chain_2svc_plain_multinode/resource_cpu_measurement.json",
+      "resource_metric_prime": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_03_chain_2svc_plain_multinode/resource_metric_prime_status.json"
+    },
+    {
+      "pass": 2,
+      "execution_index": 4,
+      "condition_key": "mtls",
+      "condition": "chain_2svc_mtls_multinode",
+      "condition_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode",
+      "benchmark_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/benchmark",
+      "resource_samples": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/resource_samples.csv",
+      "static_manifest_validation": {
+        "condition": "chain_2svc_mtls_multinode",
+        "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/manifests",
+        "kinds": [
+          "Namespace",
+          "Namespace",
+          "ServiceAccount",
+          "ServiceAccount",
+          "Pod",
+          "Pod",
+          "Service",
+          "Deployment",
+          "Service",
+          "Deployment",
+          "PeerAuthentication",
+          "PeerAuthentication",
+          "AuthorizationPolicy"
+        ],
+        "passed": true,
+        "errors": [],
+        "peer_authentication_validation": {
+          "namespace_default_permissive": true,
+          "expected_peer_authentication_count": 2,
+          "observed_peer_authentication_count": 2,
+          "expected_strict_segments": [
+            "2"
+          ],
+          "observed_strict_segments": [
+            "2"
+          ],
+          "strict_peer_count_by_segment": {
+            "2": 1
+          }
+        },
+        "authorization_policy_validation": {
+          "expected_policy_count": 1,
+          "expected_policy_names": [
+            "downstream-service1-only"
+          ],
+          "observed_policy_names": [
+            "downstream-service1-only"
+          ],
+          "policies": [
+            {
+              "expected_policy_name": "downstream-service1-only",
+              "expected_source_segment_index": "1",
+              "expected_downstream_segment_index": "2",
+              "expected_allowed_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+              "present": true,
+              "selects_downstream_service": true,
+              "allows_only_expected_principal": true,
+              "observed_selector": {
+                "condition": "chain_2svc_mtls_multinode",
+                "segment-index": "2",
+                "workload-role": "service"
+              },
+              "observed_action": "ALLOW",
+              "observed_allowed_principals": [
+                "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+              ],
+              "unrestricted_source_rule": false,
+              "unexpected_source_constraints": []
+            }
+          ],
+          "selects_downstream_service2": true,
+          "allows_only_service1_principal": true,
+          "all_policies_valid": true
+        }
+      },
+      "runtime_validation": {
+        "condition": "chain_2svc_mtls_multinode",
+        "passed": true,
+        "errors": [],
+        "service_pod_nodes": [
+          "aks-rq21bpool-33797924-vmss000000",
+          "aks-rq21bpool-33797924-vmss000002"
+        ],
+        "client_node": "aks-rq21bpool-33797924-vmss000001",
+        "placement_validation": {
+          "strategy": "multi_node_anti_affinity",
+          "service_pod_node_placement": {
+            "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm": "aks-rq21bpool-33797924-vmss000000",
+            "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf": "aks-rq21bpool-33797924-vmss000002"
+          },
+          "service_pod_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "client_node": "aks-rq21bpool-33797924-vmss000001",
+          "service_nodes_distinct": true,
+          "dedicated_client_node": true,
+          "min_nodes": 3
+        },
+        "peer_authentication_count": 2,
+        "authorization_policy_count": 1,
+        "peer_authentication_validation": {
+          "namespace_default_permissive": true,
+          "expected_peer_authentication_count": 2,
+          "observed_peer_authentication_count": 2,
+          "expected_strict_segments": [
+            "2"
+          ],
+          "observed_strict_segments": [
+            "2"
+          ],
+          "strict_peer_count_by_segment": {
+            "2": 1
+          }
+        },
+        "authorization_policy_validation": {
+          "expected_policy_count": 1,
+          "expected_policy_names": [
+            "downstream-service1-only"
+          ],
+          "observed_policy_names": [
+            "downstream-service1-only"
+          ],
+          "policies": [
+            {
+              "expected_policy_name": "downstream-service1-only",
+              "expected_source_segment_index": "1",
+              "expected_downstream_segment_index": "2",
+              "expected_allowed_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+              "present": true,
+              "selects_downstream_service": true,
+              "allows_only_expected_principal": true,
+              "observed_selector": {
+                "condition": "chain_2svc_mtls_multinode",
+                "segment-index": "2",
+                "workload-role": "service"
+              },
+              "observed_action": "ALLOW",
+              "observed_allowed_principals": [
+                "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+              ],
+              "unrestricted_source_rule": false,
+              "unexpected_source_constraints": []
+            }
+          ],
+          "selects_downstream_service2": true,
+          "allows_only_service1_principal": true,
+          "all_policies_valid": true
+        }
+      },
+      "operational_overhead": {
+        "captured_at": "2026-05-16T18:09:51.077577+00:00",
+        "condition": "chain_2svc_mtls_multinode",
+        "condition_key": "mtls",
+        "service_pods": [
+          {
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm",
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "creation_timestamp": "2026-05-16T18:09:07Z",
+            "scheduled_timestamp": "2026-05-16T18:09:07+00:00",
+            "ready_timestamp": "2026-05-16T18:09:17+00:00",
+            "app_started_timestamp": "2026-05-16T18:09:10+00:00",
+            "sidecar_started_timestamp": "2026-05-16T18:09:08+00:00",
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 10.0,
+            "app_started_delay_seconds": 3.0,
+            "sidecar_started_delay_seconds": 1.0,
+            "sidecar_present": true,
+            "sidecar_container_type": "init",
+            "sidecar_native_init": true,
+            "sidecar_ready": true,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 100.0,
+            "sidecar_memory_mib_total": 128.0,
+            "pod_cpu_mcores_total": 1100.0,
+            "pod_memory_mib_total": 1152.0
+          },
+          {
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf",
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "creation_timestamp": "2026-05-16T18:09:07Z",
+            "scheduled_timestamp": "2026-05-16T18:09:07+00:00",
+            "ready_timestamp": "2026-05-16T18:09:18+00:00",
+            "app_started_timestamp": "2026-05-16T18:09:11+00:00",
+            "sidecar_started_timestamp": "2026-05-16T18:09:09+00:00",
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 11.0,
+            "app_started_delay_seconds": 4.0,
+            "sidecar_started_delay_seconds": 2.0,
+            "sidecar_present": true,
+            "sidecar_container_type": "init",
+            "sidecar_native_init": true,
+            "sidecar_ready": true,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 100.0,
+            "sidecar_memory_mib_total": 128.0,
+            "pod_cpu_mcores_total": 1100.0,
+            "pod_memory_mib_total": 1152.0
+          }
+        ],
+        "client": {
+          "pod_name": "benchmark-client",
+          "node_name": "aks-rq21bpool-33797924-vmss000001",
+          "app_cpu_mcores_total": 100.0,
+          "app_memory_mib_total": 1024.0,
+          "sidecar_cpu_mcores_total": 0.0,
+          "sidecar_memory_mib_total": 0.0,
+          "pod_cpu_mcores_total": 100.0,
+          "pod_memory_mib_total": 1024.0
+        },
+        "node_allocatable": {
+          "aks-rq21bpool-33797924-vmss000000": {
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          },
+          "aks-rq21bpool-33797924-vmss000002": {
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          }
+        },
+        "summary": {
+          "service_pod_count": 2,
+          "service_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "service_scheduling_delay_seconds_mean": 0.0,
+          "service_schedule_to_ready_seconds_mean": 10.5,
+          "service_app_started_delay_seconds_mean": 3.5,
+          "service_sidecar_started_delay_seconds_mean": 1.5,
+          "service_failed_scheduling_event_count": 0,
+          "service_app_requested_cpu_mcores_total": 2000.0,
+          "service_sidecar_requested_cpu_mcores_total": 200.0,
+          "service_total_requested_cpu_mcores_total": 2200.0,
+          "service_app_requested_memory_mib_total": 2048.0,
+          "service_sidecar_requested_memory_mib_total": 256.0,
+          "service_total_requested_memory_mib_total": 2304.0,
+          "client_requested_cpu_mcores_total": 100.0,
+          "client_requested_memory_mib_total": 1024.0,
+          "benchmark_requested_cpu_mcores_total": 2200.0,
+          "benchmark_requested_memory_mib_total": 2304.0,
+          "node_request_headroom_cpu_mcores": null,
+          "node_request_headroom_memory_mib": null,
+          "mesh_control_plane_shares_benchmark_node": false,
+          "mesh_control_plane_shared_node_names": [],
+          "mesh_control_plane_shared_pod_names": []
+        },
+        "deployment_complexity": {
+          "aks_enablement_step_count": 1,
+          "kubernetes_object_count": 13,
+          "kubernetes_object_counts_by_kind": {
+            "AuthorizationPolicy": 1,
+            "Deployment": 2,
+            "Namespace": 2,
+            "PeerAuthentication": 2,
+            "Pod": 2,
+            "Service": 2,
+            "ServiceAccount": 2
+          },
+          "always_on_control_plane_pod_count": 2,
+          "per_workload_injected_container_count": 1.0,
+          "total_injected_container_count": 2
+        },
+        "operational_complexity": {
+          "mesh_revision": "asm-1-29",
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": [],
+          "control_plane_pods_on_shared_nodes": [],
+          "avoidable_istio_control_plane_pods_on_shared_nodes": []
+        }
+      },
+      "cpu_counter_metrics": {
+        "captured_at": "2026-05-16T18:10:30.041556+00:00",
+        "condition": "chain_2svc_mtls_multinode",
+        "condition_key": "mtls",
+        "started_at": "2026-05-16T18:09:59.874400+00:00",
+        "ended_at": "2026-05-16T18:10:28.567615+00:00",
+        "duration_seconds": 28.693202784001187,
+        "available": true,
+        "summary": {
+          "service_app_cpu_mcores": 610.2163335270029,
+          "sidecar_cpu_mcores": 30.895958414732938,
+          "client_cpu_mcores": 157.33945889502598,
+          "total_pod_cpu_mcores": 641.1122919417359
+        },
+        "measurements": [
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2661112000,
+            "end_usage_core_nanoseconds": 12759201000,
+            "delta_core_nanoseconds": 10098089000,
+            "cpu_mcores": 351.93314165787416
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm",
+            "container_name": "istio-proxy",
+            "role": "sidecar",
+            "start_usage_core_nanoseconds": 379603000,
+            "end_usage_core_nanoseconds": 879318000,
+            "delta_core_nanoseconds": 499715000,
+            "cpu_mcores": 17.415797175442265
+          },
+          {
+            "namespace": "rq21b-client-mtls",
+            "pod_name": "benchmark-client",
+            "container_name": "client",
+            "role": "client",
+            "start_usage_core_nanoseconds": 1567709000,
+            "end_usage_core_nanoseconds": 6082282000,
+            "delta_core_nanoseconds": 4514573000,
+            "cpu_mcores": 157.33945889502598
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2629983000,
+            "end_usage_core_nanoseconds": 10040955000,
+            "delta_core_nanoseconds": 7410972000,
+            "cpu_mcores": 258.2831918691288
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf",
+            "container_name": "istio-proxy",
+            "role": "sidecar",
+            "start_usage_core_nanoseconds": 401285000,
+            "end_usage_core_nanoseconds": 788074000,
+            "delta_core_nanoseconds": 386789000,
+            "cpu_mcores": 13.480161239290672
+          }
+        ],
+        "start_snapshot": {
+          "captured_at": "2026-05-16T18:09:58.950010+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2661112000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 379603000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-mtls",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 1567709000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2629983000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 401285000
+            }
+          ],
+          "errors": []
+        },
+        "end_snapshot": {
+          "captured_at": "2026-05-16T18:10:29.080425+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 12759201000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 879318000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-mtls",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 6082282000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 10040955000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 788074000
+            }
+          ],
+          "errors": []
+        },
+        "errors": []
+      },
+      "security_preflight_artifact": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_180920",
+      "security_validation": {
+        "passed": true,
+        "artifact_path": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_180920",
+        "metadata_path": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_180920/rq21_preflight_metadata.json",
+        "preflight_passed": true,
+        "enforcement_validation_passed": true,
+        "full_chain_positive_probe_passed": true,
+        "full_chain_hop_count": 2,
+        "full_chain_hop_indexes": [
+          1,
+          2
+        ],
+        "non_mesh_direct_denial_probe_passed": true,
+        "non_mesh_direct_denial_blocked_segments": [
+          2
+        ],
+        "non_mesh_direct_denial_target_results": [
+          {
+            "segment_index": 2,
+            "target": "chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051",
+            "returncode": 42,
+            "blocked_as_expected": true,
+            "succeeded_unexpectedly": false
+          }
+        ],
+        "authorization_policy_expected_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+        "authorization_policy_expected_principals": [
+          "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+        ],
+        "control_plane_isolation": {
+          "required": true,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "avoidable_istio_control_plane_pods_on_benchmark_node": [],
+          "violates_isolated_pool_contract": false
+        },
+        "errors": [],
+        "limitations": []
+      },
+      "security_validation_passed": true,
+      "service_namespace": "rq21b-chain2-mtls",
+      "client_namespace": "rq21b-client-mtls",
+      "resource_cpu_measurement": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/resource_cpu_measurement.json",
+      "resource_metric_prime": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/resource_metric_prime_status.json"
+    },
+    {
+      "pass": 3,
+      "execution_index": 5,
+      "condition_key": "mtls",
+      "condition": "chain_2svc_mtls_multinode",
+      "condition_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_05_chain_2svc_mtls_multinode",
+      "benchmark_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_05_chain_2svc_mtls_multinode/benchmark",
+      "resource_samples": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_05_chain_2svc_mtls_multinode/resource_samples.csv",
+      "static_manifest_validation": {
+        "condition": "chain_2svc_mtls_multinode",
+        "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_05_chain_2svc_mtls_multinode/manifests",
+        "kinds": [
+          "Namespace",
+          "Namespace",
+          "ServiceAccount",
+          "ServiceAccount",
+          "Pod",
+          "Pod",
+          "Service",
+          "Deployment",
+          "Service",
+          "Deployment",
+          "PeerAuthentication",
+          "PeerAuthentication",
+          "AuthorizationPolicy"
+        ],
+        "passed": true,
+        "errors": [],
+        "peer_authentication_validation": {
+          "namespace_default_permissive": true,
+          "expected_peer_authentication_count": 2,
+          "observed_peer_authentication_count": 2,
+          "expected_strict_segments": [
+            "2"
+          ],
+          "observed_strict_segments": [
+            "2"
+          ],
+          "strict_peer_count_by_segment": {
+            "2": 1
+          }
+        },
+        "authorization_policy_validation": {
+          "expected_policy_count": 1,
+          "expected_policy_names": [
+            "downstream-service1-only"
+          ],
+          "observed_policy_names": [
+            "downstream-service1-only"
+          ],
+          "policies": [
+            {
+              "expected_policy_name": "downstream-service1-only",
+              "expected_source_segment_index": "1",
+              "expected_downstream_segment_index": "2",
+              "expected_allowed_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+              "present": true,
+              "selects_downstream_service": true,
+              "allows_only_expected_principal": true,
+              "observed_selector": {
+                "condition": "chain_2svc_mtls_multinode",
+                "segment-index": "2",
+                "workload-role": "service"
+              },
+              "observed_action": "ALLOW",
+              "observed_allowed_principals": [
+                "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+              ],
+              "unrestricted_source_rule": false,
+              "unexpected_source_constraints": []
+            }
+          ],
+          "selects_downstream_service2": true,
+          "allows_only_service1_principal": true,
+          "all_policies_valid": true
+        }
+      },
+      "runtime_validation": {
+        "condition": "chain_2svc_mtls_multinode",
+        "passed": true,
+        "errors": [],
+        "service_pod_nodes": [
+          "aks-rq21bpool-33797924-vmss000000",
+          "aks-rq21bpool-33797924-vmss000002"
+        ],
+        "client_node": "aks-rq21bpool-33797924-vmss000001",
+        "placement_validation": {
+          "strategy": "multi_node_anti_affinity",
+          "service_pod_node_placement": {
+            "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-2j5xf": "aks-rq21bpool-33797924-vmss000000",
+            "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-cpqsz": "aks-rq21bpool-33797924-vmss000002"
+          },
+          "service_pod_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "client_node": "aks-rq21bpool-33797924-vmss000001",
+          "service_nodes_distinct": true,
+          "dedicated_client_node": true,
+          "min_nodes": 3
+        },
+        "peer_authentication_count": 2,
+        "authorization_policy_count": 1,
+        "peer_authentication_validation": {
+          "namespace_default_permissive": true,
+          "expected_peer_authentication_count": 2,
+          "observed_peer_authentication_count": 2,
+          "expected_strict_segments": [
+            "2"
+          ],
+          "observed_strict_segments": [
+            "2"
+          ],
+          "strict_peer_count_by_segment": {
+            "2": 1
+          }
+        },
+        "authorization_policy_validation": {
+          "expected_policy_count": 1,
+          "expected_policy_names": [
+            "downstream-service1-only"
+          ],
+          "observed_policy_names": [
+            "downstream-service1-only"
+          ],
+          "policies": [
+            {
+              "expected_policy_name": "downstream-service1-only",
+              "expected_source_segment_index": "1",
+              "expected_downstream_segment_index": "2",
+              "expected_allowed_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+              "present": true,
+              "selects_downstream_service": true,
+              "allows_only_expected_principal": true,
+              "observed_selector": {
+                "condition": "chain_2svc_mtls_multinode",
+                "segment-index": "2",
+                "workload-role": "service"
+              },
+              "observed_action": "ALLOW",
+              "observed_allowed_principals": [
+                "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+              ],
+              "unrestricted_source_rule": false,
+              "unexpected_source_constraints": []
+            }
+          ],
+          "selects_downstream_service2": true,
+          "allows_only_service1_principal": true,
+          "all_policies_valid": true
+        }
+      },
+      "operational_overhead": {
+        "captured_at": "2026-05-16T18:11:35.207789+00:00",
+        "condition": "chain_2svc_mtls_multinode",
+        "condition_key": "mtls",
+        "service_pods": [
+          {
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-2j5xf",
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "creation_timestamp": "2026-05-16T18:10:51Z",
+            "scheduled_timestamp": "2026-05-16T18:10:51+00:00",
+            "ready_timestamp": "2026-05-16T18:11:01+00:00",
+            "app_started_timestamp": "2026-05-16T18:10:54+00:00",
+            "sidecar_started_timestamp": "2026-05-16T18:10:52+00:00",
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 10.0,
+            "app_started_delay_seconds": 3.0,
+            "sidecar_started_delay_seconds": 1.0,
+            "sidecar_present": true,
+            "sidecar_container_type": "init",
+            "sidecar_native_init": true,
+            "sidecar_ready": true,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 100.0,
+            "sidecar_memory_mib_total": 128.0,
+            "pod_cpu_mcores_total": 1100.0,
+            "pod_memory_mib_total": 1152.0
+          },
+          {
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-cpqsz",
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "creation_timestamp": "2026-05-16T18:10:51Z",
+            "scheduled_timestamp": "2026-05-16T18:10:51+00:00",
+            "ready_timestamp": "2026-05-16T18:11:02+00:00",
+            "app_started_timestamp": "2026-05-16T18:10:55+00:00",
+            "sidecar_started_timestamp": "2026-05-16T18:10:53+00:00",
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 11.0,
+            "app_started_delay_seconds": 4.0,
+            "sidecar_started_delay_seconds": 2.0,
+            "sidecar_present": true,
+            "sidecar_container_type": "init",
+            "sidecar_native_init": true,
+            "sidecar_ready": true,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 100.0,
+            "sidecar_memory_mib_total": 128.0,
+            "pod_cpu_mcores_total": 1100.0,
+            "pod_memory_mib_total": 1152.0
+          }
+        ],
+        "client": {
+          "pod_name": "benchmark-client",
+          "node_name": "aks-rq21bpool-33797924-vmss000001",
+          "app_cpu_mcores_total": 100.0,
+          "app_memory_mib_total": 1024.0,
+          "sidecar_cpu_mcores_total": 0.0,
+          "sidecar_memory_mib_total": 0.0,
+          "pod_cpu_mcores_total": 100.0,
+          "pod_memory_mib_total": 1024.0
+        },
+        "node_allocatable": {
+          "aks-rq21bpool-33797924-vmss000000": {
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          },
+          "aks-rq21bpool-33797924-vmss000002": {
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          }
+        },
+        "summary": {
+          "service_pod_count": 2,
+          "service_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "service_scheduling_delay_seconds_mean": 0.0,
+          "service_schedule_to_ready_seconds_mean": 10.5,
+          "service_app_started_delay_seconds_mean": 3.5,
+          "service_sidecar_started_delay_seconds_mean": 1.5,
+          "service_failed_scheduling_event_count": 0,
+          "service_app_requested_cpu_mcores_total": 2000.0,
+          "service_sidecar_requested_cpu_mcores_total": 200.0,
+          "service_total_requested_cpu_mcores_total": 2200.0,
+          "service_app_requested_memory_mib_total": 2048.0,
+          "service_sidecar_requested_memory_mib_total": 256.0,
+          "service_total_requested_memory_mib_total": 2304.0,
+          "client_requested_cpu_mcores_total": 100.0,
+          "client_requested_memory_mib_total": 1024.0,
+          "benchmark_requested_cpu_mcores_total": 2200.0,
+          "benchmark_requested_memory_mib_total": 2304.0,
+          "node_request_headroom_cpu_mcores": null,
+          "node_request_headroom_memory_mib": null,
+          "mesh_control_plane_shares_benchmark_node": false,
+          "mesh_control_plane_shared_node_names": [],
+          "mesh_control_plane_shared_pod_names": []
+        },
+        "deployment_complexity": {
+          "aks_enablement_step_count": 1,
+          "kubernetes_object_count": 13,
+          "kubernetes_object_counts_by_kind": {
+            "AuthorizationPolicy": 1,
+            "Deployment": 2,
+            "Namespace": 2,
+            "PeerAuthentication": 2,
+            "Pod": 2,
+            "Service": 2,
+            "ServiceAccount": 2
+          },
+          "always_on_control_plane_pod_count": 2,
+          "per_workload_injected_container_count": 1.0,
+          "total_injected_container_count": 2
+        },
+        "operational_complexity": {
+          "mesh_revision": "asm-1-29",
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": [],
+          "control_plane_pods_on_shared_nodes": [],
+          "avoidable_istio_control_plane_pods_on_shared_nodes": []
+        }
+      },
+      "cpu_counter_metrics": {
+        "captured_at": "2026-05-16T18:12:14.328176+00:00",
+        "condition": "chain_2svc_mtls_multinode",
+        "condition_key": "mtls",
+        "started_at": "2026-05-16T18:11:44.128853+00:00",
+        "ended_at": "2026-05-16T18:12:12.812217+00:00",
+        "duration_seconds": 28.683349396000267,
+        "available": true,
+        "summary": {
+          "service_app_cpu_mcores": 616.2370285272466,
+          "sidecar_cpu_mcores": 39.74591615018897,
+          "client_cpu_mcores": 157.90750018307097,
+          "total_pod_cpu_mcores": 655.9829446774355
+        },
+        "measurements": [
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-2j5xf",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2689984000,
+            "end_usage_core_nanoseconds": 12767804000,
+            "delta_core_nanoseconds": 10077820000,
+            "cpu_mcores": 351.3473918567298
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-2j5xf",
+            "container_name": "istio-proxy",
+            "role": "sidecar",
+            "start_usage_core_nanoseconds": 421153000,
+            "end_usage_core_nanoseconds": 1127535000,
+            "delta_core_nanoseconds": 706382000,
+            "cpu_mcores": 24.626900793479198
+          },
+          {
+            "namespace": "rq21b-client-mtls",
+            "pod_name": "benchmark-client",
+            "container_name": "client",
+            "role": "client",
+            "start_usage_core_nanoseconds": 1587897000,
+            "end_usage_core_nanoseconds": 6117213000,
+            "delta_core_nanoseconds": 4529316000,
+            "cpu_mcores": 157.90750018307097
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-cpqsz",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2637047000,
+            "end_usage_core_nanoseconds": 10234969000,
+            "delta_core_nanoseconds": 7597922000,
+            "cpu_mcores": 264.88963667051684
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-cpqsz",
+            "container_name": "istio-proxy",
+            "role": "sidecar",
+            "start_usage_core_nanoseconds": 381121000,
+            "end_usage_core_nanoseconds": 814785000,
+            "delta_core_nanoseconds": 433664000,
+            "cpu_mcores": 15.119015356709772
+          }
+        ],
+        "start_snapshot": {
+          "captured_at": "2026-05-16T18:11:43.252736+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-2j5xf",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2689984000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-2j5xf",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 421153000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-mtls",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 1587897000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-cpqsz",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2637047000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-cpqsz",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 381121000
+            }
+          ],
+          "errors": []
+        },
+        "end_snapshot": {
+          "captured_at": "2026-05-16T18:12:13.359560+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-2j5xf",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 12767804000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-2j5xf",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 1127535000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-mtls",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 6117213000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-cpqsz",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 10234969000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-cpqsz",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 814785000
+            }
+          ],
+          "errors": []
+        },
+        "errors": []
+      },
+      "security_preflight_artifact": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_05_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181105",
+      "security_validation": {
+        "passed": true,
+        "artifact_path": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_05_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181105",
+        "metadata_path": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_05_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181105/rq21_preflight_metadata.json",
+        "preflight_passed": true,
+        "enforcement_validation_passed": true,
+        "full_chain_positive_probe_passed": true,
+        "full_chain_hop_count": 2,
+        "full_chain_hop_indexes": [
+          1,
+          2
+        ],
+        "non_mesh_direct_denial_probe_passed": true,
+        "non_mesh_direct_denial_blocked_segments": [
+          2
+        ],
+        "non_mesh_direct_denial_target_results": [
+          {
+            "segment_index": 2,
+            "target": "chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051",
+            "returncode": 42,
+            "blocked_as_expected": true,
+            "succeeded_unexpectedly": false
+          }
+        ],
+        "authorization_policy_expected_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+        "authorization_policy_expected_principals": [
+          "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+        ],
+        "control_plane_isolation": {
+          "required": true,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "avoidable_istio_control_plane_pods_on_benchmark_node": [],
+          "violates_isolated_pool_contract": false
+        },
+        "errors": [],
+        "limitations": []
+      },
+      "security_validation_passed": true,
+      "service_namespace": "rq21b-chain2-mtls",
+      "client_namespace": "rq21b-client-mtls",
+      "resource_cpu_measurement": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_05_chain_2svc_mtls_multinode/resource_cpu_measurement.json",
+      "resource_metric_prime": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_05_chain_2svc_mtls_multinode/resource_metric_prime_status.json"
+    },
+    {
+      "pass": 3,
+      "execution_index": 6,
+      "condition_key": "plain",
+      "condition": "chain_2svc_plain_multinode",
+      "condition_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_06_chain_2svc_plain_multinode",
+      "benchmark_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_06_chain_2svc_plain_multinode/benchmark",
+      "resource_samples": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_06_chain_2svc_plain_multinode/resource_samples.csv",
+      "static_manifest_validation": {
+        "condition": "chain_2svc_plain_multinode",
+        "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_06_chain_2svc_plain_multinode/manifests",
+        "kinds": [
+          "Namespace",
+          "Namespace",
+          "Pod",
+          "Pod",
+          "Service",
+          "Deployment",
+          "Service",
+          "Deployment"
+        ],
+        "passed": true,
+        "errors": []
+      },
+      "runtime_validation": {
+        "condition": "chain_2svc_plain_multinode",
+        "passed": true,
+        "errors": [],
+        "service_pod_nodes": [
+          "aks-rq21bpool-33797924-vmss000000",
+          "aks-rq21bpool-33797924-vmss000002"
+        ],
+        "client_node": "aks-rq21bpool-33797924-vmss000001",
+        "placement_validation": {
+          "strategy": "multi_node_anti_affinity",
+          "service_pod_node_placement": {
+            "chain-2svc-plain-multinode-svc-1-859d5ff55f-p9rg5": "aks-rq21bpool-33797924-vmss000002",
+            "chain-2svc-plain-multinode-svc-2-755db8fc77-sh944": "aks-rq21bpool-33797924-vmss000000"
+          },
+          "service_pod_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "client_node": "aks-rq21bpool-33797924-vmss000001",
+          "service_nodes_distinct": true,
+          "dedicated_client_node": true,
+          "min_nodes": 3
+        }
+      },
+      "operational_overhead": {
+        "captured_at": "2026-05-16T18:13:18.605573+00:00",
+        "condition": "chain_2svc_plain_multinode",
+        "condition_key": "plain",
+        "service_pods": [
+          {
+            "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-p9rg5",
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "creation_timestamp": "2026-05-16T18:13:06Z",
+            "scheduled_timestamp": "2026-05-16T18:13:06+00:00",
+            "ready_timestamp": "2026-05-16T18:13:13+00:00",
+            "app_started_timestamp": "2026-05-16T18:13:07+00:00",
+            "sidecar_started_timestamp": null,
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 7.0,
+            "app_started_delay_seconds": 1.0,
+            "sidecar_started_delay_seconds": null,
+            "sidecar_present": false,
+            "sidecar_container_type": null,
+            "sidecar_native_init": false,
+            "sidecar_ready": false,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 0.0,
+            "sidecar_memory_mib_total": 0.0,
+            "pod_cpu_mcores_total": 1000.0,
+            "pod_memory_mib_total": 1024.0
+          },
+          {
+            "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-sh944",
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "creation_timestamp": "2026-05-16T18:13:06Z",
+            "scheduled_timestamp": "2026-05-16T18:13:06+00:00",
+            "ready_timestamp": "2026-05-16T18:13:14+00:00",
+            "app_started_timestamp": "2026-05-16T18:13:07+00:00",
+            "sidecar_started_timestamp": null,
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 8.0,
+            "app_started_delay_seconds": 1.0,
+            "sidecar_started_delay_seconds": null,
+            "sidecar_present": false,
+            "sidecar_container_type": null,
+            "sidecar_native_init": false,
+            "sidecar_ready": false,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 0.0,
+            "sidecar_memory_mib_total": 0.0,
+            "pod_cpu_mcores_total": 1000.0,
+            "pod_memory_mib_total": 1024.0
+          }
+        ],
+        "client": {
+          "pod_name": "benchmark-client",
+          "node_name": "aks-rq21bpool-33797924-vmss000001",
+          "app_cpu_mcores_total": 100.0,
+          "app_memory_mib_total": 1024.0,
+          "sidecar_cpu_mcores_total": 0.0,
+          "sidecar_memory_mib_total": 0.0,
+          "pod_cpu_mcores_total": 100.0,
+          "pod_memory_mib_total": 1024.0
+        },
+        "node_allocatable": {
+          "aks-rq21bpool-33797924-vmss000000": {
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          },
+          "aks-rq21bpool-33797924-vmss000002": {
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          }
+        },
+        "summary": {
+          "service_pod_count": 2,
+          "service_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "service_scheduling_delay_seconds_mean": 0.0,
+          "service_schedule_to_ready_seconds_mean": 7.5,
+          "service_app_started_delay_seconds_mean": 1.0,
+          "service_sidecar_started_delay_seconds_mean": null,
+          "service_failed_scheduling_event_count": 0,
+          "service_app_requested_cpu_mcores_total": 2000.0,
+          "service_sidecar_requested_cpu_mcores_total": 0.0,
+          "service_total_requested_cpu_mcores_total": 2000.0,
+          "service_app_requested_memory_mib_total": 2048.0,
+          "service_sidecar_requested_memory_mib_total": 0.0,
+          "service_total_requested_memory_mib_total": 2048.0,
+          "client_requested_cpu_mcores_total": 100.0,
+          "client_requested_memory_mib_total": 1024.0,
+          "benchmark_requested_cpu_mcores_total": 2000.0,
+          "benchmark_requested_memory_mib_total": 2048.0,
+          "node_request_headroom_cpu_mcores": null,
+          "node_request_headroom_memory_mib": null,
+          "mesh_control_plane_shares_benchmark_node": false,
+          "mesh_control_plane_shared_node_names": [],
+          "mesh_control_plane_shared_pod_names": []
+        },
+        "deployment_complexity": {
+          "aks_enablement_step_count": 0,
+          "kubernetes_object_count": 8,
+          "kubernetes_object_counts_by_kind": {
+            "Deployment": 2,
+            "Namespace": 2,
+            "Pod": 2,
+            "Service": 2
+          },
+          "always_on_control_plane_pod_count": 0,
+          "per_workload_injected_container_count": 0.0,
+          "total_injected_container_count": 0
+        },
+        "operational_complexity": {
+          "mesh_revision": null,
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": [],
+          "control_plane_pods_on_shared_nodes": [],
+          "avoidable_istio_control_plane_pods_on_shared_nodes": []
+        }
+      },
+      "cpu_counter_metrics": {
+        "captured_at": "2026-05-16T18:14:13.538905+00:00",
+        "condition": "chain_2svc_plain_multinode",
+        "condition_key": "plain",
+        "started_at": "2026-05-16T18:13:43.988194+00:00",
+        "ended_at": "2026-05-16T18:14:12.105618+00:00",
+        "duration_seconds": 28.117410948994802,
+        "available": true,
+        "summary": {
+          "service_app_cpu_mcores": 505.369325283059,
+          "sidecar_cpu_mcores": 0.0,
+          "client_cpu_mcores": 158.86640516450865,
+          "total_pod_cpu_mcores": 505.369325283059
+        },
+        "measurements": [
+          {
+            "namespace": "rq21b-chain2-plain",
+            "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-sh944",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2603387000,
+            "end_usage_core_nanoseconds": 9952973000,
+            "delta_core_nanoseconds": 7349586000,
+            "cpu_mcores": 261.38914473072236
+          },
+          {
+            "namespace": "rq21b-client-plain",
+            "pod_name": "benchmark-client",
+            "container_name": "client",
+            "role": "client",
+            "start_usage_core_nanoseconds": 85605000,
+            "end_usage_core_nanoseconds": 4552517000,
+            "delta_core_nanoseconds": 4466912000,
+            "cpu_mcores": 158.86640516450865
+          },
+          {
+            "namespace": "rq21b-chain2-plain",
+            "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-p9rg5",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2593922000,
+            "end_usage_core_nanoseconds": 9454013000,
+            "delta_core_nanoseconds": 6860091000,
+            "cpu_mcores": 243.98018055233666
+          }
+        ],
+        "start_snapshot": {
+          "captured_at": "2026-05-16T18:13:43.091366+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-sh944",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2603387000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-plain",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 85605000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-p9rg5",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2593922000
+            }
+          ],
+          "errors": []
+        },
+        "end_snapshot": {
+          "captured_at": "2026-05-16T18:14:12.664990+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-sh944",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 9952973000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-plain",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 4552517000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-p9rg5",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 9454013000
+            }
+          ],
+          "errors": []
+        },
+        "errors": []
+      },
+      "security_preflight_artifact": null,
+      "security_validation": null,
+      "security_validation_passed": null,
+      "service_namespace": "rq21b-chain2-plain",
+      "client_namespace": "rq21b-client-plain",
+      "resource_cpu_measurement": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_06_chain_2svc_plain_multinode/resource_cpu_measurement.json",
+      "resource_metric_prime": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass03_06_chain_2svc_plain_multinode/resource_metric_prime_status.json"
+    },
+    {
+      "pass": 4,
+      "execution_index": 7,
+      "condition_key": "plain",
+      "condition": "chain_2svc_plain_multinode",
+      "condition_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_07_chain_2svc_plain_multinode",
+      "benchmark_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_07_chain_2svc_plain_multinode/benchmark",
+      "resource_samples": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_07_chain_2svc_plain_multinode/resource_samples.csv",
+      "static_manifest_validation": {
+        "condition": "chain_2svc_plain_multinode",
+        "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_07_chain_2svc_plain_multinode/manifests",
+        "kinds": [
+          "Namespace",
+          "Namespace",
+          "Pod",
+          "Pod",
+          "Service",
+          "Deployment",
+          "Service",
+          "Deployment"
+        ],
+        "passed": true,
+        "errors": []
+      },
+      "runtime_validation": {
+        "condition": "chain_2svc_plain_multinode",
+        "passed": true,
+        "errors": [],
+        "service_pod_nodes": [
+          "aks-rq21bpool-33797924-vmss000001",
+          "aks-rq21bpool-33797924-vmss000002"
+        ],
+        "client_node": "aks-rq21bpool-33797924-vmss000000",
+        "placement_validation": {
+          "strategy": "multi_node_anti_affinity",
+          "service_pod_node_placement": {
+            "chain-2svc-plain-multinode-svc-1-859d5ff55f-tlc6v": "aks-rq21bpool-33797924-vmss000002",
+            "chain-2svc-plain-multinode-svc-2-755db8fc77-4w5h5": "aks-rq21bpool-33797924-vmss000001"
+          },
+          "service_pod_nodes": [
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "client_node": "aks-rq21bpool-33797924-vmss000000",
+          "service_nodes_distinct": true,
+          "dedicated_client_node": true,
+          "min_nodes": 3
+        }
+      },
+      "operational_overhead": {
+        "captured_at": "2026-05-16T18:15:17.196697+00:00",
+        "condition": "chain_2svc_plain_multinode",
+        "condition_key": "plain",
+        "service_pods": [
+          {
+            "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-tlc6v",
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "creation_timestamp": "2026-05-16T18:15:05Z",
+            "scheduled_timestamp": "2026-05-16T18:15:05+00:00",
+            "ready_timestamp": "2026-05-16T18:15:12+00:00",
+            "app_started_timestamp": "2026-05-16T18:15:06+00:00",
+            "sidecar_started_timestamp": null,
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 7.0,
+            "app_started_delay_seconds": 1.0,
+            "sidecar_started_delay_seconds": null,
+            "sidecar_present": false,
+            "sidecar_container_type": null,
+            "sidecar_native_init": false,
+            "sidecar_ready": false,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 0.0,
+            "sidecar_memory_mib_total": 0.0,
+            "pod_cpu_mcores_total": 1000.0,
+            "pod_memory_mib_total": 1024.0
+          },
+          {
+            "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-4w5h5",
+            "node_name": "aks-rq21bpool-33797924-vmss000001",
+            "creation_timestamp": "2026-05-16T18:15:05Z",
+            "scheduled_timestamp": "2026-05-16T18:15:05+00:00",
+            "ready_timestamp": "2026-05-16T18:15:13+00:00",
+            "app_started_timestamp": "2026-05-16T18:15:06+00:00",
+            "sidecar_started_timestamp": null,
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 8.0,
+            "app_started_delay_seconds": 1.0,
+            "sidecar_started_delay_seconds": null,
+            "sidecar_present": false,
+            "sidecar_container_type": null,
+            "sidecar_native_init": false,
+            "sidecar_ready": false,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 0.0,
+            "sidecar_memory_mib_total": 0.0,
+            "pod_cpu_mcores_total": 1000.0,
+            "pod_memory_mib_total": 1024.0
+          }
+        ],
+        "client": {
+          "pod_name": "benchmark-client",
+          "node_name": "aks-rq21bpool-33797924-vmss000000",
+          "app_cpu_mcores_total": 100.0,
+          "app_memory_mib_total": 1024.0,
+          "sidecar_cpu_mcores_total": 0.0,
+          "sidecar_memory_mib_total": 0.0,
+          "pod_cpu_mcores_total": 100.0,
+          "pod_memory_mib_total": 1024.0
+        },
+        "node_allocatable": {
+          "aks-rq21bpool-33797924-vmss000001": {
+            "node_name": "aks-rq21bpool-33797924-vmss000001",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.890625
+          },
+          "aks-rq21bpool-33797924-vmss000002": {
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          }
+        },
+        "summary": {
+          "service_pod_count": 2,
+          "service_nodes": [
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "service_scheduling_delay_seconds_mean": 0.0,
+          "service_schedule_to_ready_seconds_mean": 7.5,
+          "service_app_started_delay_seconds_mean": 1.0,
+          "service_sidecar_started_delay_seconds_mean": null,
+          "service_failed_scheduling_event_count": 0,
+          "service_app_requested_cpu_mcores_total": 2000.0,
+          "service_sidecar_requested_cpu_mcores_total": 0.0,
+          "service_total_requested_cpu_mcores_total": 2000.0,
+          "service_app_requested_memory_mib_total": 2048.0,
+          "service_sidecar_requested_memory_mib_total": 0.0,
+          "service_total_requested_memory_mib_total": 2048.0,
+          "client_requested_cpu_mcores_total": 100.0,
+          "client_requested_memory_mib_total": 1024.0,
+          "benchmark_requested_cpu_mcores_total": 2000.0,
+          "benchmark_requested_memory_mib_total": 2048.0,
+          "node_request_headroom_cpu_mcores": null,
+          "node_request_headroom_memory_mib": null,
+          "mesh_control_plane_shares_benchmark_node": false,
+          "mesh_control_plane_shared_node_names": [],
+          "mesh_control_plane_shared_pod_names": []
+        },
+        "deployment_complexity": {
+          "aks_enablement_step_count": 0,
+          "kubernetes_object_count": 8,
+          "kubernetes_object_counts_by_kind": {
+            "Deployment": 2,
+            "Namespace": 2,
+            "Pod": 2,
+            "Service": 2
+          },
+          "always_on_control_plane_pod_count": 0,
+          "per_workload_injected_container_count": 0.0,
+          "total_injected_container_count": 0
+        },
+        "operational_complexity": {
+          "mesh_revision": null,
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": [],
+          "control_plane_pods_on_shared_nodes": [],
+          "avoidable_istio_control_plane_pods_on_shared_nodes": []
+        }
+      },
+      "cpu_counter_metrics": {
+        "captured_at": "2026-05-16T18:16:18.074780+00:00",
+        "condition": "chain_2svc_plain_multinode",
+        "condition_key": "plain",
+        "started_at": "2026-05-16T18:15:48.298442+00:00",
+        "ended_at": "2026-05-16T18:16:16.628808+00:00",
+        "duration_seconds": 28.33035303899669,
+        "available": true,
+        "summary": {
+          "service_app_cpu_mcores": 539.2555108286444,
+          "sidecar_cpu_mcores": 0.0,
+          "client_cpu_mcores": 154.68720047250068,
+          "total_pod_cpu_mcores": 539.2555108286444
+        },
+        "measurements": [
+          {
+            "namespace": "rq21b-client-plain",
+            "pod_name": "benchmark-client",
+            "container_name": "client",
+            "role": "client",
+            "start_usage_core_nanoseconds": 84799000,
+            "end_usage_core_nanoseconds": 4467142000,
+            "delta_core_nanoseconds": 4382343000,
+            "cpu_mcores": 154.68720047250068
+          },
+          {
+            "namespace": "rq21b-chain2-plain",
+            "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-4w5h5",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2626951000,
+            "end_usage_core_nanoseconds": 9224242000,
+            "delta_core_nanoseconds": 6597291000,
+            "cpu_mcores": 232.8700595759904
+          },
+          {
+            "namespace": "rq21b-chain2-plain",
+            "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-tlc6v",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2586398000,
+            "end_usage_core_nanoseconds": 11266406000,
+            "delta_core_nanoseconds": 8680008000,
+            "cpu_mcores": 306.38545125265404
+          }
+        ],
+        "start_snapshot": {
+          "captured_at": "2026-05-16T18:15:47.413147+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-client-plain",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 84799000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-4w5h5",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2626951000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-tlc6v",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2586398000
+            }
+          ],
+          "errors": []
+        },
+        "end_snapshot": {
+          "captured_at": "2026-05-16T18:16:17.184458+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-client-plain",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 4467142000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-4w5h5",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 9224242000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-tlc6v",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 11266406000
+            }
+          ],
+          "errors": []
+        },
+        "errors": []
+      },
+      "security_preflight_artifact": null,
+      "security_validation": null,
+      "security_validation_passed": null,
+      "service_namespace": "rq21b-chain2-plain",
+      "client_namespace": "rq21b-client-plain",
+      "resource_cpu_measurement": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_07_chain_2svc_plain_multinode/resource_cpu_measurement.json",
+      "resource_metric_prime": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_07_chain_2svc_plain_multinode/resource_metric_prime_status.json"
+    },
+    {
+      "pass": 4,
+      "execution_index": 8,
+      "condition_key": "mtls",
+      "condition": "chain_2svc_mtls_multinode",
+      "condition_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode",
+      "benchmark_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode/benchmark",
+      "resource_samples": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode/resource_samples.csv",
+      "static_manifest_validation": {
+        "condition": "chain_2svc_mtls_multinode",
+        "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode/manifests",
+        "kinds": [
+          "Namespace",
+          "Namespace",
+          "ServiceAccount",
+          "ServiceAccount",
+          "Pod",
+          "Pod",
+          "Service",
+          "Deployment",
+          "Service",
+          "Deployment",
+          "PeerAuthentication",
+          "PeerAuthentication",
+          "AuthorizationPolicy"
+        ],
+        "passed": true,
+        "errors": [],
+        "peer_authentication_validation": {
+          "namespace_default_permissive": true,
+          "expected_peer_authentication_count": 2,
+          "observed_peer_authentication_count": 2,
+          "expected_strict_segments": [
+            "2"
+          ],
+          "observed_strict_segments": [
+            "2"
+          ],
+          "strict_peer_count_by_segment": {
+            "2": 1
+          }
+        },
+        "authorization_policy_validation": {
+          "expected_policy_count": 1,
+          "expected_policy_names": [
+            "downstream-service1-only"
+          ],
+          "observed_policy_names": [
+            "downstream-service1-only"
+          ],
+          "policies": [
+            {
+              "expected_policy_name": "downstream-service1-only",
+              "expected_source_segment_index": "1",
+              "expected_downstream_segment_index": "2",
+              "expected_allowed_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+              "present": true,
+              "selects_downstream_service": true,
+              "allows_only_expected_principal": true,
+              "observed_selector": {
+                "condition": "chain_2svc_mtls_multinode",
+                "segment-index": "2",
+                "workload-role": "service"
+              },
+              "observed_action": "ALLOW",
+              "observed_allowed_principals": [
+                "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+              ],
+              "unrestricted_source_rule": false,
+              "unexpected_source_constraints": []
+            }
+          ],
+          "selects_downstream_service2": true,
+          "allows_only_service1_principal": true,
+          "all_policies_valid": true
+        }
+      },
+      "runtime_validation": {
+        "condition": "chain_2svc_mtls_multinode",
+        "passed": true,
+        "errors": [],
+        "service_pod_nodes": [
+          "aks-rq21bpool-33797924-vmss000000",
+          "aks-rq21bpool-33797924-vmss000002"
+        ],
+        "client_node": "aks-rq21bpool-33797924-vmss000001",
+        "placement_validation": {
+          "strategy": "multi_node_anti_affinity",
+          "service_pod_node_placement": {
+            "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-cjz4m": "aks-rq21bpool-33797924-vmss000000",
+            "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-nkh6m": "aks-rq21bpool-33797924-vmss000002"
+          },
+          "service_pod_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "client_node": "aks-rq21bpool-33797924-vmss000001",
+          "service_nodes_distinct": true,
+          "dedicated_client_node": true,
+          "min_nodes": 3
+        },
+        "peer_authentication_count": 2,
+        "authorization_policy_count": 1,
+        "peer_authentication_validation": {
+          "namespace_default_permissive": true,
+          "expected_peer_authentication_count": 2,
+          "observed_peer_authentication_count": 2,
+          "expected_strict_segments": [
+            "2"
+          ],
+          "observed_strict_segments": [
+            "2"
+          ],
+          "strict_peer_count_by_segment": {
+            "2": 1
+          }
+        },
+        "authorization_policy_validation": {
+          "expected_policy_count": 1,
+          "expected_policy_names": [
+            "downstream-service1-only"
+          ],
+          "observed_policy_names": [
+            "downstream-service1-only"
+          ],
+          "policies": [
+            {
+              "expected_policy_name": "downstream-service1-only",
+              "expected_source_segment_index": "1",
+              "expected_downstream_segment_index": "2",
+              "expected_allowed_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+              "present": true,
+              "selects_downstream_service": true,
+              "allows_only_expected_principal": true,
+              "observed_selector": {
+                "condition": "chain_2svc_mtls_multinode",
+                "segment-index": "2",
+                "workload-role": "service"
+              },
+              "observed_action": "ALLOW",
+              "observed_allowed_principals": [
+                "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+              ],
+              "unrestricted_source_rule": false,
+              "unexpected_source_constraints": []
+            }
+          ],
+          "selects_downstream_service2": true,
+          "allows_only_service1_principal": true,
+          "all_policies_valid": true
+        }
+      },
+      "operational_overhead": {
+        "captured_at": "2026-05-16T18:17:51.940065+00:00",
+        "condition": "chain_2svc_mtls_multinode",
+        "condition_key": "mtls",
+        "service_pods": [
+          {
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-cjz4m",
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "creation_timestamp": "2026-05-16T18:17:10Z",
+            "scheduled_timestamp": "2026-05-16T18:17:10+00:00",
+            "ready_timestamp": "2026-05-16T18:17:20+00:00",
+            "app_started_timestamp": "2026-05-16T18:17:13+00:00",
+            "sidecar_started_timestamp": "2026-05-16T18:17:11+00:00",
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 10.0,
+            "app_started_delay_seconds": 3.0,
+            "sidecar_started_delay_seconds": 1.0,
+            "sidecar_present": true,
+            "sidecar_container_type": "init",
+            "sidecar_native_init": true,
+            "sidecar_ready": true,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 100.0,
+            "sidecar_memory_mib_total": 128.0,
+            "pod_cpu_mcores_total": 1100.0,
+            "pod_memory_mib_total": 1152.0
+          },
+          {
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-nkh6m",
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "creation_timestamp": "2026-05-16T18:17:10Z",
+            "scheduled_timestamp": "2026-05-16T18:17:10+00:00",
+            "ready_timestamp": "2026-05-16T18:17:21+00:00",
+            "app_started_timestamp": "2026-05-16T18:17:14+00:00",
+            "sidecar_started_timestamp": "2026-05-16T18:17:12+00:00",
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 11.0,
+            "app_started_delay_seconds": 4.0,
+            "sidecar_started_delay_seconds": 2.0,
+            "sidecar_present": true,
+            "sidecar_container_type": "init",
+            "sidecar_native_init": true,
+            "sidecar_ready": true,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 100.0,
+            "sidecar_memory_mib_total": 128.0,
+            "pod_cpu_mcores_total": 1100.0,
+            "pod_memory_mib_total": 1152.0
+          }
+        ],
+        "client": {
+          "pod_name": "benchmark-client",
+          "node_name": "aks-rq21bpool-33797924-vmss000001",
+          "app_cpu_mcores_total": 100.0,
+          "app_memory_mib_total": 1024.0,
+          "sidecar_cpu_mcores_total": 0.0,
+          "sidecar_memory_mib_total": 0.0,
+          "pod_cpu_mcores_total": 100.0,
+          "pod_memory_mib_total": 1024.0
+        },
+        "node_allocatable": {
+          "aks-rq21bpool-33797924-vmss000000": {
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          },
+          "aks-rq21bpool-33797924-vmss000002": {
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          }
+        },
+        "summary": {
+          "service_pod_count": 2,
+          "service_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "service_scheduling_delay_seconds_mean": 0.0,
+          "service_schedule_to_ready_seconds_mean": 10.5,
+          "service_app_started_delay_seconds_mean": 3.5,
+          "service_sidecar_started_delay_seconds_mean": 1.5,
+          "service_failed_scheduling_event_count": 0,
+          "service_app_requested_cpu_mcores_total": 2000.0,
+          "service_sidecar_requested_cpu_mcores_total": 200.0,
+          "service_total_requested_cpu_mcores_total": 2200.0,
+          "service_app_requested_memory_mib_total": 2048.0,
+          "service_sidecar_requested_memory_mib_total": 256.0,
+          "service_total_requested_memory_mib_total": 2304.0,
+          "client_requested_cpu_mcores_total": 100.0,
+          "client_requested_memory_mib_total": 1024.0,
+          "benchmark_requested_cpu_mcores_total": 2200.0,
+          "benchmark_requested_memory_mib_total": 2304.0,
+          "node_request_headroom_cpu_mcores": null,
+          "node_request_headroom_memory_mib": null,
+          "mesh_control_plane_shares_benchmark_node": false,
+          "mesh_control_plane_shared_node_names": [],
+          "mesh_control_plane_shared_pod_names": []
+        },
+        "deployment_complexity": {
+          "aks_enablement_step_count": 1,
+          "kubernetes_object_count": 13,
+          "kubernetes_object_counts_by_kind": {
+            "AuthorizationPolicy": 1,
+            "Deployment": 2,
+            "Namespace": 2,
+            "PeerAuthentication": 2,
+            "Pod": 2,
+            "Service": 2,
+            "ServiceAccount": 2
+          },
+          "always_on_control_plane_pod_count": 2,
+          "per_workload_injected_container_count": 1.0,
+          "total_injected_container_count": 2
+        },
+        "operational_complexity": {
+          "mesh_revision": "asm-1-29",
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": [],
+          "control_plane_pods_on_shared_nodes": [],
+          "avoidable_istio_control_plane_pods_on_shared_nodes": []
+        }
+      },
+      "cpu_counter_metrics": {
+        "captured_at": "2026-05-16T18:18:31.379911+00:00",
+        "condition": "chain_2svc_mtls_multinode",
+        "condition_key": "mtls",
+        "started_at": "2026-05-16T18:18:00.887245+00:00",
+        "ended_at": "2026-05-16T18:18:29.854161+00:00",
+        "duration_seconds": 28.966901861000224,
+        "available": true,
+        "summary": {
+          "service_app_cpu_mcores": 417.71729880063157,
+          "sidecar_cpu_mcores": 37.62162778848072,
+          "client_cpu_mcores": 147.9858295018914,
+          "total_pod_cpu_mcores": 455.3389265891123
+        },
+        "measurements": [
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-cjz4m",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2634690000,
+            "end_usage_core_nanoseconds": 9271301000,
+            "delta_core_nanoseconds": 6636611000,
+            "cpu_mcores": 229.11014204578242
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-cjz4m",
+            "container_name": "istio-proxy",
+            "role": "sidecar",
+            "start_usage_core_nanoseconds": 387535000,
+            "end_usage_core_nanoseconds": 1075471000,
+            "delta_core_nanoseconds": 687936000,
+            "cpu_mcores": 23.749036168973497
+          },
+          {
+            "namespace": "rq21b-client-mtls",
+            "pod_name": "benchmark-client",
+            "container_name": "client",
+            "role": "client",
+            "start_usage_core_nanoseconds": 1662536000,
+            "end_usage_core_nanoseconds": 5949227000,
+            "delta_core_nanoseconds": 4286691000,
+            "cpu_mcores": 147.9858295018914
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-nkh6m",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2630465000,
+            "end_usage_core_nanoseconds": 8093830000,
+            "delta_core_nanoseconds": 5463365000,
+            "cpu_mcores": 188.60715675484914
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-nkh6m",
+            "container_name": "istio-proxy",
+            "role": "sidecar",
+            "start_usage_core_nanoseconds": 407467000,
+            "end_usage_core_nanoseconds": 809313000,
+            "delta_core_nanoseconds": 401846000,
+            "cpu_mcores": 13.872591619507228
+          }
+        ],
+        "start_snapshot": {
+          "captured_at": "2026-05-16T18:17:59.972369+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-cjz4m",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2634690000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-cjz4m",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 387535000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-mtls",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 1662536000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-nkh6m",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2630465000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-nkh6m",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 407467000
+            }
+          ],
+          "errors": []
+        },
+        "end_snapshot": {
+          "captured_at": "2026-05-16T18:18:30.456545+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-cjz4m",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 9271301000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-cjz4m",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 1075471000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-mtls",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 5949227000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-nkh6m",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 8093830000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-nkh6m",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 809313000
+            }
+          ],
+          "errors": []
+        },
+        "errors": []
+      },
+      "security_preflight_artifact": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181724",
+      "security_validation": {
+        "passed": true,
+        "artifact_path": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181724",
+        "metadata_path": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181724/rq21_preflight_metadata.json",
+        "preflight_passed": true,
+        "enforcement_validation_passed": true,
+        "full_chain_positive_probe_passed": true,
+        "full_chain_hop_count": 2,
+        "full_chain_hop_indexes": [
+          1,
+          2
+        ],
+        "non_mesh_direct_denial_probe_passed": true,
+        "non_mesh_direct_denial_blocked_segments": [
+          2
+        ],
+        "non_mesh_direct_denial_target_results": [
+          {
+            "segment_index": 2,
+            "target": "chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051",
+            "returncode": 42,
+            "blocked_as_expected": true,
+            "succeeded_unexpectedly": false
+          }
+        ],
+        "authorization_policy_expected_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+        "authorization_policy_expected_principals": [
+          "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+        ],
+        "control_plane_isolation": {
+          "required": true,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "avoidable_istio_control_plane_pods_on_benchmark_node": [],
+          "violates_isolated_pool_contract": false
+        },
+        "errors": [],
+        "limitations": []
+      },
+      "security_validation_passed": true,
+      "service_namespace": "rq21b-chain2-mtls",
+      "client_namespace": "rq21b-client-mtls",
+      "resource_cpu_measurement": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode/resource_cpu_measurement.json",
+      "resource_metric_prime": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode/resource_metric_prime_status.json"
+    },
+    {
+      "pass": 5,
+      "execution_index": 9,
+      "condition_key": "mtls",
+      "condition": "chain_2svc_mtls_multinode",
+      "condition_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_09_chain_2svc_mtls_multinode",
+      "benchmark_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_09_chain_2svc_mtls_multinode/benchmark",
+      "resource_samples": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_09_chain_2svc_mtls_multinode/resource_samples.csv",
+      "static_manifest_validation": {
+        "condition": "chain_2svc_mtls_multinode",
+        "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_09_chain_2svc_mtls_multinode/manifests",
+        "kinds": [
+          "Namespace",
+          "Namespace",
+          "ServiceAccount",
+          "ServiceAccount",
+          "Pod",
+          "Pod",
+          "Service",
+          "Deployment",
+          "Service",
+          "Deployment",
+          "PeerAuthentication",
+          "PeerAuthentication",
+          "AuthorizationPolicy"
+        ],
+        "passed": true,
+        "errors": [],
+        "peer_authentication_validation": {
+          "namespace_default_permissive": true,
+          "expected_peer_authentication_count": 2,
+          "observed_peer_authentication_count": 2,
+          "expected_strict_segments": [
+            "2"
+          ],
+          "observed_strict_segments": [
+            "2"
+          ],
+          "strict_peer_count_by_segment": {
+            "2": 1
+          }
+        },
+        "authorization_policy_validation": {
+          "expected_policy_count": 1,
+          "expected_policy_names": [
+            "downstream-service1-only"
+          ],
+          "observed_policy_names": [
+            "downstream-service1-only"
+          ],
+          "policies": [
+            {
+              "expected_policy_name": "downstream-service1-only",
+              "expected_source_segment_index": "1",
+              "expected_downstream_segment_index": "2",
+              "expected_allowed_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+              "present": true,
+              "selects_downstream_service": true,
+              "allows_only_expected_principal": true,
+              "observed_selector": {
+                "condition": "chain_2svc_mtls_multinode",
+                "segment-index": "2",
+                "workload-role": "service"
+              },
+              "observed_action": "ALLOW",
+              "observed_allowed_principals": [
+                "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+              ],
+              "unrestricted_source_rule": false,
+              "unexpected_source_constraints": []
+            }
+          ],
+          "selects_downstream_service2": true,
+          "allows_only_service1_principal": true,
+          "all_policies_valid": true
+        }
+      },
+      "runtime_validation": {
+        "condition": "chain_2svc_mtls_multinode",
+        "passed": true,
+        "errors": [],
+        "service_pod_nodes": [
+          "aks-rq21bpool-33797924-vmss000000",
+          "aks-rq21bpool-33797924-vmss000002"
+        ],
+        "client_node": "aks-rq21bpool-33797924-vmss000001",
+        "placement_validation": {
+          "strategy": "multi_node_anti_affinity",
+          "service_pod_node_placement": {
+            "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft": "aks-rq21bpool-33797924-vmss000000",
+            "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd": "aks-rq21bpool-33797924-vmss000002"
+          },
+          "service_pod_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "client_node": "aks-rq21bpool-33797924-vmss000001",
+          "service_nodes_distinct": true,
+          "dedicated_client_node": true,
+          "min_nodes": 3
+        },
+        "peer_authentication_count": 2,
+        "authorization_policy_count": 1,
+        "peer_authentication_validation": {
+          "namespace_default_permissive": true,
+          "expected_peer_authentication_count": 2,
+          "observed_peer_authentication_count": 2,
+          "expected_strict_segments": [
+            "2"
+          ],
+          "observed_strict_segments": [
+            "2"
+          ],
+          "strict_peer_count_by_segment": {
+            "2": 1
+          }
+        },
+        "authorization_policy_validation": {
+          "expected_policy_count": 1,
+          "expected_policy_names": [
+            "downstream-service1-only"
+          ],
+          "observed_policy_names": [
+            "downstream-service1-only"
+          ],
+          "policies": [
+            {
+              "expected_policy_name": "downstream-service1-only",
+              "expected_source_segment_index": "1",
+              "expected_downstream_segment_index": "2",
+              "expected_allowed_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+              "present": true,
+              "selects_downstream_service": true,
+              "allows_only_expected_principal": true,
+              "observed_selector": {
+                "condition": "chain_2svc_mtls_multinode",
+                "segment-index": "2",
+                "workload-role": "service"
+              },
+              "observed_action": "ALLOW",
+              "observed_allowed_principals": [
+                "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+              ],
+              "unrestricted_source_rule": false,
+              "unexpected_source_constraints": []
+            }
+          ],
+          "selects_downstream_service2": true,
+          "allows_only_service1_principal": true,
+          "all_policies_valid": true
+        }
+      },
+      "operational_overhead": {
+        "captured_at": "2026-05-16T18:19:34.279884+00:00",
+        "condition": "chain_2svc_mtls_multinode",
+        "condition_key": "mtls",
+        "service_pods": [
+          {
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "creation_timestamp": "2026-05-16T18:18:52Z",
+            "scheduled_timestamp": "2026-05-16T18:18:52+00:00",
+            "ready_timestamp": "2026-05-16T18:19:03+00:00",
+            "app_started_timestamp": "2026-05-16T18:18:56+00:00",
+            "sidecar_started_timestamp": "2026-05-16T18:18:54+00:00",
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 11.0,
+            "app_started_delay_seconds": 4.0,
+            "sidecar_started_delay_seconds": 2.0,
+            "sidecar_present": true,
+            "sidecar_container_type": "init",
+            "sidecar_native_init": true,
+            "sidecar_ready": true,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 100.0,
+            "sidecar_memory_mib_total": 128.0,
+            "pod_cpu_mcores_total": 1100.0,
+            "pod_memory_mib_total": 1152.0
+          },
+          {
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "creation_timestamp": "2026-05-16T18:18:53Z",
+            "scheduled_timestamp": "2026-05-16T18:18:53+00:00",
+            "ready_timestamp": "2026-05-16T18:19:03+00:00",
+            "app_started_timestamp": "2026-05-16T18:18:56+00:00",
+            "sidecar_started_timestamp": "2026-05-16T18:18:54+00:00",
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 10.0,
+            "app_started_delay_seconds": 3.0,
+            "sidecar_started_delay_seconds": 1.0,
+            "sidecar_present": true,
+            "sidecar_container_type": "init",
+            "sidecar_native_init": true,
+            "sidecar_ready": true,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 100.0,
+            "sidecar_memory_mib_total": 128.0,
+            "pod_cpu_mcores_total": 1100.0,
+            "pod_memory_mib_total": 1152.0
+          }
+        ],
+        "client": {
+          "pod_name": "benchmark-client",
+          "node_name": "aks-rq21bpool-33797924-vmss000001",
+          "app_cpu_mcores_total": 100.0,
+          "app_memory_mib_total": 1024.0,
+          "sidecar_cpu_mcores_total": 0.0,
+          "sidecar_memory_mib_total": 0.0,
+          "pod_cpu_mcores_total": 100.0,
+          "pod_memory_mib_total": 1024.0
+        },
+        "node_allocatable": {
+          "aks-rq21bpool-33797924-vmss000000": {
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          },
+          "aks-rq21bpool-33797924-vmss000002": {
+            "node_name": "aks-rq21bpool-33797924-vmss000002",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          }
+        },
+        "summary": {
+          "service_pod_count": 2,
+          "service_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "service_scheduling_delay_seconds_mean": 0.0,
+          "service_schedule_to_ready_seconds_mean": 10.5,
+          "service_app_started_delay_seconds_mean": 3.5,
+          "service_sidecar_started_delay_seconds_mean": 1.5,
+          "service_failed_scheduling_event_count": 0,
+          "service_app_requested_cpu_mcores_total": 2000.0,
+          "service_sidecar_requested_cpu_mcores_total": 200.0,
+          "service_total_requested_cpu_mcores_total": 2200.0,
+          "service_app_requested_memory_mib_total": 2048.0,
+          "service_sidecar_requested_memory_mib_total": 256.0,
+          "service_total_requested_memory_mib_total": 2304.0,
+          "client_requested_cpu_mcores_total": 100.0,
+          "client_requested_memory_mib_total": 1024.0,
+          "benchmark_requested_cpu_mcores_total": 2200.0,
+          "benchmark_requested_memory_mib_total": 2304.0,
+          "node_request_headroom_cpu_mcores": null,
+          "node_request_headroom_memory_mib": null,
+          "mesh_control_plane_shares_benchmark_node": false,
+          "mesh_control_plane_shared_node_names": [],
+          "mesh_control_plane_shared_pod_names": []
+        },
+        "deployment_complexity": {
+          "aks_enablement_step_count": 1,
+          "kubernetes_object_count": 13,
+          "kubernetes_object_counts_by_kind": {
+            "AuthorizationPolicy": 1,
+            "Deployment": 2,
+            "Namespace": 2,
+            "PeerAuthentication": 2,
+            "Pod": 2,
+            "Service": 2,
+            "ServiceAccount": 2
+          },
+          "always_on_control_plane_pod_count": 2,
+          "per_workload_injected_container_count": 1.0,
+          "total_injected_container_count": 2
+        },
+        "operational_complexity": {
+          "mesh_revision": "asm-1-29",
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": [],
+          "control_plane_pods_on_shared_nodes": [],
+          "avoidable_istio_control_plane_pods_on_shared_nodes": []
+        }
+      },
+      "cpu_counter_metrics": {
+        "captured_at": "2026-05-16T18:20:19.277029+00:00",
+        "condition": "chain_2svc_mtls_multinode",
+        "condition_key": "mtls",
+        "started_at": "2026-05-16T18:19:49.033770+00:00",
+        "ended_at": "2026-05-16T18:20:17.786040+00:00",
+        "duration_seconds": 28.75225524399866,
+        "available": true,
+        "summary": {
+          "service_app_cpu_mcores": 508.8332680635089,
+          "sidecar_cpu_mcores": 38.28558805764514,
+          "client_cpu_mcores": 155.4098265363955,
+          "total_pod_cpu_mcores": 547.1188561211541
+        },
+        "measurements": [
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2677488000,
+            "end_usage_core_nanoseconds": 12735732000,
+            "delta_core_nanoseconds": 10058244000,
+            "cpu_mcores": 349.8245238379837
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+            "container_name": "istio-proxy",
+            "role": "sidecar",
+            "start_usage_core_nanoseconds": 399847000,
+            "end_usage_core_nanoseconds": 1112325000,
+            "delta_core_nanoseconds": 712478000,
+            "cpu_mcores": 24.779899661913046
+          },
+          {
+            "namespace": "rq21b-client-mtls",
+            "pod_name": "benchmark-client",
+            "container_name": "client",
+            "role": "client",
+            "start_usage_core_nanoseconds": 1668753000,
+            "end_usage_core_nanoseconds": 6137136000,
+            "delta_core_nanoseconds": 4468383000,
+            "cpu_mcores": 155.4098265363955
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2656533000,
+            "end_usage_core_nanoseconds": 7228393000,
+            "delta_core_nanoseconds": 4571860000,
+            "cpu_mcores": 159.00874422552522
+          },
+          {
+            "namespace": "rq21b-chain2-mtls",
+            "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+            "container_name": "istio-proxy",
+            "role": "sidecar",
+            "start_usage_core_nanoseconds": 424605000,
+            "end_usage_core_nanoseconds": 812924000,
+            "delta_core_nanoseconds": 388319000,
+            "cpu_mcores": 13.505688395732095
+          }
+        ],
+        "start_snapshot": {
+          "captured_at": "2026-05-16T18:19:48.106611+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2677488000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 399847000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-mtls",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 1668753000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2656533000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 424605000
+            }
+          ],
+          "errors": []
+        },
+        "end_snapshot": {
+          "captured_at": "2026-05-16T18:20:18.293997+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 12735732000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 1112325000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-client-mtls",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 6137136000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 7228393000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-chain2-mtls",
+              "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+              "container_name": "istio-proxy",
+              "role": "sidecar",
+              "usage_core_nanoseconds": 812924000
+            }
+          ],
+          "errors": []
+        },
+        "errors": []
+      },
+      "security_preflight_artifact": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_09_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181906",
+      "security_validation": {
+        "passed": true,
+        "artifact_path": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_09_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181906",
+        "metadata_path": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_09_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181906/rq21_preflight_metadata.json",
+        "preflight_passed": true,
+        "enforcement_validation_passed": true,
+        "full_chain_positive_probe_passed": true,
+        "full_chain_hop_count": 2,
+        "full_chain_hop_indexes": [
+          1,
+          2
+        ],
+        "non_mesh_direct_denial_probe_passed": true,
+        "non_mesh_direct_denial_blocked_segments": [
+          2
+        ],
+        "non_mesh_direct_denial_target_results": [
+          {
+            "segment_index": 2,
+            "target": "chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051",
+            "returncode": 42,
+            "blocked_as_expected": true,
+            "succeeded_unexpectedly": false
+          }
+        ],
+        "authorization_policy_expected_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+        "authorization_policy_expected_principals": [
+          "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+        ],
+        "control_plane_isolation": {
+          "required": true,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "avoidable_istio_control_plane_pods_on_benchmark_node": [],
+          "violates_isolated_pool_contract": false
+        },
+        "errors": [],
+        "limitations": []
+      },
+      "security_validation_passed": true,
+      "service_namespace": "rq21b-chain2-mtls",
+      "client_namespace": "rq21b-client-mtls",
+      "resource_cpu_measurement": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_09_chain_2svc_mtls_multinode/resource_cpu_measurement.json",
+      "resource_metric_prime": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_09_chain_2svc_mtls_multinode/resource_metric_prime_status.json"
+    },
+    {
+      "pass": 5,
+      "execution_index": 10,
+      "condition_key": "plain",
+      "condition": "chain_2svc_plain_multinode",
+      "condition_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_10_chain_2svc_plain_multinode",
+      "benchmark_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_10_chain_2svc_plain_multinode/benchmark",
+      "resource_samples": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_10_chain_2svc_plain_multinode/resource_samples.csv",
+      "static_manifest_validation": {
+        "condition": "chain_2svc_plain_multinode",
+        "manifest_dir": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_10_chain_2svc_plain_multinode/manifests",
+        "kinds": [
+          "Namespace",
+          "Namespace",
+          "Pod",
+          "Pod",
+          "Service",
+          "Deployment",
+          "Service",
+          "Deployment"
+        ],
+        "passed": true,
+        "errors": []
+      },
+      "runtime_validation": {
+        "condition": "chain_2svc_plain_multinode",
+        "passed": true,
+        "errors": [],
+        "service_pod_nodes": [
+          "aks-rq21bpool-33797924-vmss000000",
+          "aks-rq21bpool-33797924-vmss000001"
+        ],
+        "client_node": "aks-rq21bpool-33797924-vmss000002",
+        "placement_validation": {
+          "strategy": "multi_node_anti_affinity",
+          "service_pod_node_placement": {
+            "chain-2svc-plain-multinode-svc-1-859d5ff55f-5zswx": "aks-rq21bpool-33797924-vmss000001",
+            "chain-2svc-plain-multinode-svc-2-755db8fc77-ccqhf": "aks-rq21bpool-33797924-vmss000000"
+          },
+          "service_pod_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001"
+          ],
+          "client_node": "aks-rq21bpool-33797924-vmss000002",
+          "service_nodes_distinct": true,
+          "dedicated_client_node": true,
+          "min_nodes": 3
+        }
+      },
+      "operational_overhead": {
+        "captured_at": "2026-05-16T18:20:51.641355+00:00",
+        "condition": "chain_2svc_plain_multinode",
+        "condition_key": "plain",
+        "service_pods": [
+          {
+            "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-5zswx",
+            "node_name": "aks-rq21bpool-33797924-vmss000001",
+            "creation_timestamp": "2026-05-16T18:20:39Z",
+            "scheduled_timestamp": "2026-05-16T18:20:39+00:00",
+            "ready_timestamp": "2026-05-16T18:20:46+00:00",
+            "app_started_timestamp": "2026-05-16T18:20:40+00:00",
+            "sidecar_started_timestamp": null,
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 7.0,
+            "app_started_delay_seconds": 1.0,
+            "sidecar_started_delay_seconds": null,
+            "sidecar_present": false,
+            "sidecar_container_type": null,
+            "sidecar_native_init": false,
+            "sidecar_ready": false,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 0.0,
+            "sidecar_memory_mib_total": 0.0,
+            "pod_cpu_mcores_total": 1000.0,
+            "pod_memory_mib_total": 1024.0
+          },
+          {
+            "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-ccqhf",
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "creation_timestamp": "2026-05-16T18:20:40Z",
+            "scheduled_timestamp": "2026-05-16T18:20:40+00:00",
+            "ready_timestamp": "2026-05-16T18:20:47+00:00",
+            "app_started_timestamp": "2026-05-16T18:20:40+00:00",
+            "sidecar_started_timestamp": null,
+            "scheduling_delay_seconds": 0.0,
+            "schedule_to_ready_seconds": 7.0,
+            "app_started_delay_seconds": 0.0,
+            "sidecar_started_delay_seconds": null,
+            "sidecar_present": false,
+            "sidecar_container_type": null,
+            "sidecar_native_init": false,
+            "sidecar_ready": false,
+            "sidecar_restart_count": 0,
+            "failed_scheduling_events": [],
+            "app_cpu_mcores_total": 1000.0,
+            "app_memory_mib_total": 1024.0,
+            "sidecar_cpu_mcores_total": 0.0,
+            "sidecar_memory_mib_total": 0.0,
+            "pod_cpu_mcores_total": 1000.0,
+            "pod_memory_mib_total": 1024.0
+          }
+        ],
+        "client": {
+          "pod_name": "benchmark-client",
+          "node_name": "aks-rq21bpool-33797924-vmss000002",
+          "app_cpu_mcores_total": 100.0,
+          "app_memory_mib_total": 1024.0,
+          "sidecar_cpu_mcores_total": 0.0,
+          "sidecar_memory_mib_total": 0.0,
+          "pod_cpu_mcores_total": 100.0,
+          "pod_memory_mib_total": 1024.0
+        },
+        "node_allocatable": {
+          "aks-rq21bpool-33797924-vmss000000": {
+            "node_name": "aks-rq21bpool-33797924-vmss000000",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.89453125
+          },
+          "aks-rq21bpool-33797924-vmss000001": {
+            "node_name": "aks-rq21bpool-33797924-vmss000001",
+            "cpu_mcores": 7820.0,
+            "memory_mib": 29743.890625
+          }
+        },
+        "summary": {
+          "service_pod_count": 2,
+          "service_nodes": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001"
+          ],
+          "service_scheduling_delay_seconds_mean": 0.0,
+          "service_schedule_to_ready_seconds_mean": 7.0,
+          "service_app_started_delay_seconds_mean": 0.5,
+          "service_sidecar_started_delay_seconds_mean": null,
+          "service_failed_scheduling_event_count": 0,
+          "service_app_requested_cpu_mcores_total": 2000.0,
+          "service_sidecar_requested_cpu_mcores_total": 0.0,
+          "service_total_requested_cpu_mcores_total": 2000.0,
+          "service_app_requested_memory_mib_total": 2048.0,
+          "service_sidecar_requested_memory_mib_total": 0.0,
+          "service_total_requested_memory_mib_total": 2048.0,
+          "client_requested_cpu_mcores_total": 100.0,
+          "client_requested_memory_mib_total": 1024.0,
+          "benchmark_requested_cpu_mcores_total": 2000.0,
+          "benchmark_requested_memory_mib_total": 2048.0,
+          "node_request_headroom_cpu_mcores": null,
+          "node_request_headroom_memory_mib": null,
+          "mesh_control_plane_shares_benchmark_node": false,
+          "mesh_control_plane_shared_node_names": [],
+          "mesh_control_plane_shared_pod_names": []
+        },
+        "deployment_complexity": {
+          "aks_enablement_step_count": 0,
+          "kubernetes_object_count": 8,
+          "kubernetes_object_counts_by_kind": {
+            "Deployment": 2,
+            "Namespace": 2,
+            "Pod": 2,
+            "Service": 2
+          },
+          "always_on_control_plane_pod_count": 0,
+          "per_workload_injected_container_count": 0.0,
+          "total_injected_container_count": 0
+        },
+        "operational_complexity": {
+          "mesh_revision": null,
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "benchmark_node_names": [
+            "aks-rq21bpool-33797924-vmss000000",
+            "aks-rq21bpool-33797924-vmss000001",
+            "aks-rq21bpool-33797924-vmss000002"
+          ],
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": [],
+          "control_plane_pods_on_shared_nodes": [],
+          "avoidable_istio_control_plane_pods_on_shared_nodes": []
+        }
+      },
+      "cpu_counter_metrics": {
+        "captured_at": "2026-05-16T18:22:15.770286+00:00",
+        "condition": "chain_2svc_plain_multinode",
+        "condition_key": "plain",
+        "started_at": "2026-05-16T18:21:46.042434+00:00",
+        "ended_at": "2026-05-16T18:22:14.317592+00:00",
+        "duration_seconds": 28.275146432999463,
+        "available": true,
+        "summary": {
+          "service_app_cpu_mcores": 365.8648426282474,
+          "sidecar_cpu_mcores": 0.0,
+          "client_cpu_mcores": 147.93766001926474,
+          "total_pod_cpu_mcores": 365.8648426282474
+        },
+        "measurements": [
+          {
+            "namespace": "rq21b-chain2-plain",
+            "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-ccqhf",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2644564000,
+            "end_usage_core_nanoseconds": 8203125000,
+            "delta_core_nanoseconds": 5558561000,
+            "cpu_mcores": 196.58823034467804
+          },
+          {
+            "namespace": "rq21b-chain2-plain",
+            "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-5zswx",
+            "container_name": "inference",
+            "role": "service_app",
+            "start_usage_core_nanoseconds": 2675213000,
+            "end_usage_core_nanoseconds": 7461534000,
+            "delta_core_nanoseconds": 4786321000,
+            "cpu_mcores": 169.2766122835694
+          },
+          {
+            "namespace": "rq21b-client-plain",
+            "pod_name": "benchmark-client",
+            "container_name": "client",
+            "role": "client",
+            "start_usage_core_nanoseconds": 83717000,
+            "end_usage_core_nanoseconds": 4266676000,
+            "delta_core_nanoseconds": 4182959000,
+            "cpu_mcores": 147.93766001926474
+          }
+        ],
+        "start_snapshot": {
+          "captured_at": "2026-05-16T18:21:45.173401+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-ccqhf",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2644564000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-5zswx",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 2675213000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-client-plain",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 83717000
+            }
+          ],
+          "errors": []
+        },
+        "end_snapshot": {
+          "captured_at": "2026-05-16T18:22:14.857355+00:00",
+          "containers": [
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000000",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-ccqhf",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 8203125000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000001",
+              "namespace": "rq21b-chain2-plain",
+              "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-5zswx",
+              "container_name": "inference",
+              "role": "service_app",
+              "usage_core_nanoseconds": 7461534000
+            },
+            {
+              "node_name": "aks-rq21bpool-33797924-vmss000002",
+              "namespace": "rq21b-client-plain",
+              "pod_name": "benchmark-client",
+              "container_name": "client",
+              "role": "client",
+              "usage_core_nanoseconds": 4266676000
+            }
+          ],
+          "errors": []
+        },
+        "errors": []
+      },
+      "security_preflight_artifact": null,
+      "security_validation": null,
+      "security_validation_passed": null,
+      "service_namespace": "rq21b-chain2-plain",
+      "client_namespace": "rq21b-client-plain",
+      "resource_cpu_measurement": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_10_chain_2svc_plain_multinode/resource_cpu_measurement.json",
+      "resource_metric_prime": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass05_10_chain_2svc_plain_multinode/resource_metric_prime_status.json"
+    }
+  ],
+  "terraform_infra_dir": "/home/nick/Desktop/thesis_final/infra"
+}

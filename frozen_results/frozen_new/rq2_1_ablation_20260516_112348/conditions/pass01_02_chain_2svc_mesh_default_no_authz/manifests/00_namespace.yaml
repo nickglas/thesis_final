@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rq21-ab-c1-mesh-default
+  labels:
+    experiment: rq21-ab-c1-mesh-default
+    workload-role: inference
+    security-condition: mesh_default_no_authz
+    mesh-enabled: 'true'
+    istio.io/rev: asm-1-29
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rq21-ab-c1-client
+  labels:
+    experiment: rq21-ab-c1-mesh-default
+    workload-role: benchmark-client
+    security-condition: mesh_default_no_authz
+    mesh-enabled: 'false'

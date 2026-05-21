@@ -1,0 +1,42 @@
+{
+  "paired_passes": 5,
+  "order": "standard-first",
+  "order_seed": 42,
+  "passes": [
+    {
+      "pass": 1,
+      "order": [
+        "standard",
+        "confidential"
+      ]
+    },
+    {
+      "pass": 2,
+      "order": [
+        "confidential",
+        "standard"
+      ]
+    },
+    {
+      "pass": 3,
+      "order": [
+        "standard",
+        "confidential"
+      ]
+    },
+    {
+      "pass": 4,
+      "order": [
+        "confidential",
+        "standard"
+      ]
+    },
+    {
+      "pass": 5,
+      "order": [
+        "standard",
+        "confidential"
+      ]
+    }
+  ]
+}

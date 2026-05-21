@@ -1,0 +1,1 @@
+error: container istio-proxy is not valid for pod chain-2svc-split-l3-plain-svc-1-5cc88c8f4c-ms6xr out of: inference

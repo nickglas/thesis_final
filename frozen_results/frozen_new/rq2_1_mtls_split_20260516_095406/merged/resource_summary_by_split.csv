@@ -1,0 +1,5 @@
+split_key,split_label,expected_protected_activation_bytes,sidecar_cpu_mcores_mean_delta,total_pod_cpu_mcores_mean_delta,sidecar_memory_mib_mean_delta,total_pod_memory_mib_mean_delta,service_schedule_to_ready_seconds_mean_delta,service_sidecar_started_delay_seconds_mean_mtls,additional_kubernetes_object_count,additional_service_account_count,additional_peer_authentication_count,additional_authorization_policy_count,additional_injected_container_count
+l1,split_after_layer1,802816,54.099793385805796,97.62710139624795,85.2,86.0,3.1999999999999993,1.7,5,2,2,1,2
+l2,split_after_layer2,401408,44.92095660452149,93.2231146188206,83.8,79.80000000000007,3.3,1.4,5,2,2,1,2
+l3,split_after_layer3,200704,29.680499366472,-10.376794155533162,82.0,82.46153846153845,0.20000000000000107,2.3,5,2,2,1,2
+l4,split_after_layer4,100352,27.667104711911566,45.04613746773663,82.65517241379311,82.63729246487867,3.4000000000000004,1.2,5,2,2,1,2

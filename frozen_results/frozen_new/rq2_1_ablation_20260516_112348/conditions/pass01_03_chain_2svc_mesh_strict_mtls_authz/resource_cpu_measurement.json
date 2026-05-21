@@ -1,0 +1,160 @@
+{
+  "captured_at": "2026-05-16T11:54:58.386172+00:00",
+  "condition": "chain_2svc_mesh_strict_mtls_authz",
+  "condition_key": "c3",
+  "started_at": "2026-05-16T11:54:28.638127+00:00",
+  "ended_at": "2026-05-16T11:54:57.390990+00:00",
+  "duration_seconds": 28.75284467700112,
+  "available": true,
+  "summary": {
+    "service_app_cpu_mcores": 620.1870180262061,
+    "sidecar_cpu_mcores": 32.74528174783015,
+    "client_cpu_mcores": 153.4678759465351,
+    "total_pod_cpu_mcores": 652.9322997740363
+  },
+  "measurements": [
+    {
+      "namespace": "rq21-ab-c3-authz",
+      "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 2682314000,
+      "end_usage_core_nanoseconds": 12740172000,
+      "delta_core_nanoseconds": 10057858000,
+      "cpu_mcores": 349.80392768041827
+    },
+    {
+      "namespace": "rq21-ab-c3-authz",
+      "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz",
+      "container_name": "istio-proxy",
+      "role": "sidecar",
+      "start_usage_core_nanoseconds": 411562000,
+      "end_usage_core_nanoseconds": 950846000,
+      "delta_core_nanoseconds": 539284000,
+      "cpu_mcores": 18.75584854500896
+    },
+    {
+      "namespace": "rq21-ab-c3-authz",
+      "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 2676691000,
+      "end_usage_core_nanoseconds": 10450974000,
+      "delta_core_nanoseconds": 7774283000,
+      "cpu_mcores": 270.3830903457879
+    },
+    {
+      "namespace": "rq21-ab-c3-authz",
+      "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7",
+      "container_name": "istio-proxy",
+      "role": "sidecar",
+      "start_usage_core_nanoseconds": 376288000,
+      "end_usage_core_nanoseconds": 778524000,
+      "delta_core_nanoseconds": 402236000,
+      "cpu_mcores": 13.98943320282119
+    },
+    {
+      "namespace": "rq21-ab-c3-client",
+      "pod_name": "benchmark-client",
+      "container_name": "client",
+      "role": "client",
+      "start_usage_core_nanoseconds": 1572810000,
+      "end_usage_core_nanoseconds": 5985448000,
+      "delta_core_nanoseconds": 4412638000,
+      "cpu_mcores": 153.4678759465351
+    }
+  ],
+  "start_snapshot": {
+    "captured_at": "2026-05-16T11:54:28.279055+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c3-authz",
+        "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 2682314000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c3-authz",
+        "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 411562000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c3-authz",
+        "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 2676691000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c3-authz",
+        "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 376288000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c3-client",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 1572810000
+      }
+    ],
+    "errors": []
+  },
+  "end_snapshot": {
+    "captured_at": "2026-05-16T11:54:57.998070+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c3-authz",
+        "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 12740172000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c3-authz",
+        "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 950846000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c3-authz",
+        "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 10450974000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c3-authz",
+        "pod_name": "chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 778524000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c3-client",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 5985448000
+      }
+    ],
+    "errors": []
+  },
+  "errors": []
+}

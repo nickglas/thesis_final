@@ -1,0 +1,2 @@
+[pod/chain-2svc-split-l1-plain-svc-1-5756569497-ngpsp/inference] READY
+[pod/chain-2svc-split-l1-plain-svc-2-7fdc64bb45-b66j5/inference] READY

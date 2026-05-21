@@ -1,0 +1,49 @@
+{
+  "condition": "chain_2svc_split_l3_mtls",
+  "started_at": "2026-05-16T10:26:19.400090+00:00",
+  "updated_at": "2026-05-16T10:26:25.942645+00:00",
+  "ready": true,
+  "attempts": 2,
+  "elapsed_seconds": 6.543,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21-ms-l3-mtls": {
+      "chain-2svc-split-l3-mtls-svc-1-7f7d66755b-85smq": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-2svc-split-l3-mtls-svc-2-584cccd56d-z6knf": [
+        "inference",
+        "istio-proxy"
+      ]
+    },
+    "rq21-ms-l3-mtls-client": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21-ms-l3-mtls": {
+      "chain-2svc-split-l3-mtls-svc-1-7f7d66755b-85smq": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-2svc-split-l3-mtls-svc-2-584cccd56d-z6knf": [
+        "inference",
+        "istio-proxy"
+      ]
+    },
+    "rq21-ms-l3-mtls-client": {
+      "benchmark-client": [
+        "client"
+      ],
+      "rq21-ms-direct-20260516102600": [
+        "debug"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

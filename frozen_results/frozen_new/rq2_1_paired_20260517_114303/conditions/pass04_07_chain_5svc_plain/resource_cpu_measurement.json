@@ -1,0 +1,186 @@
+{
+  "captured_at": "2026-05-17T12:13:00.697995+00:00",
+  "condition": "chain_5svc_plain",
+  "condition_key": "plain",
+  "started_at": "2026-05-17T12:12:26.640387+00:00",
+  "ended_at": "2026-05-17T12:12:59.579338+00:00",
+  "duration_seconds": 32.94012726100004,
+  "available": true,
+  "summary": {
+    "service_app_cpu_mcores": 638.4104661580338,
+    "sidecar_cpu_mcores": 0.0,
+    "client_cpu_mcores": 137.643791235989,
+    "total_pod_cpu_mcores": 638.4104661580338
+  },
+  "measurements": [
+    {
+      "namespace": "rq21-chain5-plain",
+      "pod_name": "chain-5svc-plain-svc-1-cd99c9549-wst7q",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 3695562000,
+      "end_usage_core_nanoseconds": 11562941000,
+      "delta_core_nanoseconds": 7867379000,
+      "cpu_mcores": 238.83875546876533
+    },
+    {
+      "namespace": "rq21-chain5-plain",
+      "pod_name": "chain-5svc-plain-svc-2-d6767685b-79zhv",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 2988091000,
+      "end_usage_core_nanoseconds": 6123765000,
+      "delta_core_nanoseconds": 3135674000,
+      "cpu_mcores": 95.1931355684994
+    },
+    {
+      "namespace": "rq21-chain5-plain",
+      "pod_name": "chain-5svc-plain-svc-3-5b9b5844dc-wmsm2",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 3589298000,
+      "end_usage_core_nanoseconds": 7904456000,
+      "delta_core_nanoseconds": 4315158000,
+      "cpu_mcores": 131.00004034012935
+    },
+    {
+      "namespace": "rq21-chain5-plain",
+      "pod_name": "chain-5svc-plain-svc-4-d4bff7c86-j2hnd",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 2921496000,
+      "end_usage_core_nanoseconds": 8340410000,
+      "delta_core_nanoseconds": 5418914000,
+      "cpu_mcores": 164.50798617332012
+    },
+    {
+      "namespace": "rq21-chain5-plain",
+      "pod_name": "chain-5svc-plain-svc-5-8596f68c49-zkwg8",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 2888101000,
+      "end_usage_core_nanoseconds": 3180298000,
+      "delta_core_nanoseconds": 292197000,
+      "cpu_mcores": 8.870548607319773
+    },
+    {
+      "namespace": "rq21-client-chain5-plain",
+      "pod_name": "benchmark-client",
+      "container_name": "client",
+      "role": "client",
+      "start_usage_core_nanoseconds": 96822000,
+      "end_usage_core_nanoseconds": 4630826000,
+      "delta_core_nanoseconds": 4534004000,
+      "cpu_mcores": 137.643791235989
+    }
+  ],
+  "start_snapshot": {
+    "captured_at": "2026-05-17T12:12:26.238202+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-1-cd99c9549-wst7q",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 3695562000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-2-d6767685b-79zhv",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 2988091000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-3-5b9b5844dc-wmsm2",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 3589298000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-4-d4bff7c86-j2hnd",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 2921496000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-5-8596f68c49-zkwg8",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 2888101000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-client-chain5-plain",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 96822000
+      }
+    ],
+    "errors": []
+  },
+  "end_snapshot": {
+    "captured_at": "2026-05-17T12:13:00.268150+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-1-cd99c9549-wst7q",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 11562941000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-2-d6767685b-79zhv",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 6123765000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-3-5b9b5844dc-wmsm2",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 7904456000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-4-d4bff7c86-j2hnd",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 8340410000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-5-8596f68c49-zkwg8",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 3180298000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-client-chain5-plain",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 4630826000
+      }
+    ],
+    "errors": []
+  },
+  "errors": []
+}

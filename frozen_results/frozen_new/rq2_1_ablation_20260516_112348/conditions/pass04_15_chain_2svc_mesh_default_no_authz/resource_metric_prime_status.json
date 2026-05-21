@@ -1,0 +1,49 @@
+{
+  "condition": "chain_2svc_mesh_default_no_authz",
+  "started_at": "2026-05-16T12:18:21.807477+00:00",
+  "updated_at": "2026-05-16T12:18:28.573807+00:00",
+  "ready": true,
+  "attempts": 2,
+  "elapsed_seconds": 6.766,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21-ab-c1-mesh-default": {
+      "chain-2svc-mesh-default-no-authz-svc-1-5ccb7b6687-7gmf7": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-2svc-mesh-default-no-authz-svc-2-9bc95bc85-kg7jb": [
+        "inference",
+        "istio-proxy"
+      ]
+    },
+    "rq21-ab-c1-client": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21-ab-c1-client": {
+      "benchmark-client": [
+        "client"
+      ],
+      "rq21-ab-direct-20260516121808": [
+        "debug"
+      ]
+    },
+    "rq21-ab-c1-mesh-default": {
+      "chain-2svc-mesh-default-no-authz-svc-1-5ccb7b6687-7gmf7": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-2svc-mesh-default-no-authz-svc-2-9bc95bc85-kg7jb": [
+        "inference",
+        "istio-proxy"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

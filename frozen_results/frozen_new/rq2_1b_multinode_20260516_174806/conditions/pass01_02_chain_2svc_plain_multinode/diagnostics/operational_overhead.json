@@ -1,0 +1,140 @@
+{
+  "captured_at": "2026-05-16T18:05:13.926777+00:00",
+  "condition": "chain_2svc_plain_multinode",
+  "condition_key": "plain",
+  "service_pods": [
+    {
+      "pod_name": "chain-2svc-plain-multinode-svc-1-859d5ff55f-qsn9r",
+      "node_name": "aks-rq21bpool-33797924-vmss000000",
+      "creation_timestamp": "2026-05-16T18:05:02Z",
+      "scheduled_timestamp": "2026-05-16T18:05:02+00:00",
+      "ready_timestamp": "2026-05-16T18:05:09+00:00",
+      "app_started_timestamp": "2026-05-16T18:05:03+00:00",
+      "sidecar_started_timestamp": null,
+      "scheduling_delay_seconds": 0.0,
+      "schedule_to_ready_seconds": 7.0,
+      "app_started_delay_seconds": 1.0,
+      "sidecar_started_delay_seconds": null,
+      "sidecar_present": false,
+      "sidecar_container_type": null,
+      "sidecar_native_init": false,
+      "sidecar_ready": false,
+      "sidecar_restart_count": 0,
+      "failed_scheduling_events": [],
+      "app_cpu_mcores_total": 1000.0,
+      "app_memory_mib_total": 1024.0,
+      "sidecar_cpu_mcores_total": 0.0,
+      "sidecar_memory_mib_total": 0.0,
+      "pod_cpu_mcores_total": 1000.0,
+      "pod_memory_mib_total": 1024.0
+    },
+    {
+      "pod_name": "chain-2svc-plain-multinode-svc-2-755db8fc77-nmz2g",
+      "node_name": "aks-rq21bpool-33797924-vmss000002",
+      "creation_timestamp": "2026-05-16T18:05:02Z",
+      "scheduled_timestamp": "2026-05-16T18:05:02+00:00",
+      "ready_timestamp": "2026-05-16T18:05:09+00:00",
+      "app_started_timestamp": "2026-05-16T18:05:03+00:00",
+      "sidecar_started_timestamp": null,
+      "scheduling_delay_seconds": 0.0,
+      "schedule_to_ready_seconds": 7.0,
+      "app_started_delay_seconds": 1.0,
+      "sidecar_started_delay_seconds": null,
+      "sidecar_present": false,
+      "sidecar_container_type": null,
+      "sidecar_native_init": false,
+      "sidecar_ready": false,
+      "sidecar_restart_count": 0,
+      "failed_scheduling_events": [],
+      "app_cpu_mcores_total": 1000.0,
+      "app_memory_mib_total": 1024.0,
+      "sidecar_cpu_mcores_total": 0.0,
+      "sidecar_memory_mib_total": 0.0,
+      "pod_cpu_mcores_total": 1000.0,
+      "pod_memory_mib_total": 1024.0
+    }
+  ],
+  "client": {
+    "pod_name": "benchmark-client",
+    "node_name": "aks-rq21bpool-33797924-vmss000001",
+    "app_cpu_mcores_total": 100.0,
+    "app_memory_mib_total": 1024.0,
+    "sidecar_cpu_mcores_total": 0.0,
+    "sidecar_memory_mib_total": 0.0,
+    "pod_cpu_mcores_total": 100.0,
+    "pod_memory_mib_total": 1024.0
+  },
+  "node_allocatable": {
+    "aks-rq21bpool-33797924-vmss000000": {
+      "node_name": "aks-rq21bpool-33797924-vmss000000",
+      "cpu_mcores": 7820.0,
+      "memory_mib": 29743.89453125
+    },
+    "aks-rq21bpool-33797924-vmss000002": {
+      "node_name": "aks-rq21bpool-33797924-vmss000002",
+      "cpu_mcores": 7820.0,
+      "memory_mib": 29743.89453125
+    }
+  },
+  "summary": {
+    "service_pod_count": 2,
+    "service_nodes": [
+      "aks-rq21bpool-33797924-vmss000000",
+      "aks-rq21bpool-33797924-vmss000002"
+    ],
+    "service_scheduling_delay_seconds_mean": 0.0,
+    "service_schedule_to_ready_seconds_mean": 7.0,
+    "service_app_started_delay_seconds_mean": 1.0,
+    "service_sidecar_started_delay_seconds_mean": null,
+    "service_failed_scheduling_event_count": 0,
+    "service_app_requested_cpu_mcores_total": 2000.0,
+    "service_sidecar_requested_cpu_mcores_total": 0.0,
+    "service_total_requested_cpu_mcores_total": 2000.0,
+    "service_app_requested_memory_mib_total": 2048.0,
+    "service_sidecar_requested_memory_mib_total": 0.0,
+    "service_total_requested_memory_mib_total": 2048.0,
+    "client_requested_cpu_mcores_total": 100.0,
+    "client_requested_memory_mib_total": 1024.0,
+    "benchmark_requested_cpu_mcores_total": 2000.0,
+    "benchmark_requested_memory_mib_total": 2048.0,
+    "node_request_headroom_cpu_mcores": null,
+    "node_request_headroom_memory_mib": null,
+    "mesh_control_plane_shares_benchmark_node": false,
+    "mesh_control_plane_shared_node_names": [],
+    "mesh_control_plane_shared_pod_names": []
+  },
+  "deployment_complexity": {
+    "aks_enablement_step_count": 0,
+    "kubernetes_object_count": 8,
+    "kubernetes_object_counts_by_kind": {
+      "Deployment": 2,
+      "Namespace": 2,
+      "Pod": 2,
+      "Service": 2
+    },
+    "always_on_control_plane_pod_count": 0,
+    "per_workload_injected_container_count": 0.0,
+    "total_injected_container_count": 0
+  },
+  "operational_complexity": {
+    "mesh_revision": null,
+    "sidecar_readiness_failure_count": 0,
+    "sidecar_restart_total": 0
+  },
+  "control_plane_colocation": {
+    "shares_benchmark_node": false,
+    "shares_avoidable_istio_control_plane": false,
+    "isolated_pool_contract_required": true,
+    "violates_isolated_pool_contract": false,
+    "benchmark_node_names": [
+      "aks-rq21bpool-33797924-vmss000000",
+      "aks-rq21bpool-33797924-vmss000001",
+      "aks-rq21bpool-33797924-vmss000002"
+    ],
+    "shared_node_names": [],
+    "control_plane_pod_names": [],
+    "avoidable_istio_control_plane_pod_names": [],
+    "control_plane_pods_on_shared_nodes": [],
+    "avoidable_istio_control_plane_pods_on_shared_nodes": []
+  }
+}

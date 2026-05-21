@@ -1,0 +1,2199 @@
+{
+  "generated_at": "2026-05-15T16:36:27.821317+00:00",
+  "source_artifacts": {
+    "paired_summary_json": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/merged/paired_summary.json",
+    "raw_iterations_csv": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/merged/raw_iterations.csv"
+  },
+  "run": {
+    "smoke": false,
+    "topology": "chain2",
+    "image_ref": "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b",
+    "mesh_revision": "asm-1-29",
+    "execution_plan": {
+      "order_mode": "seeded",
+      "order_seed": 42,
+      "paired_passes": 5,
+      "passes": [
+        {
+          "pass": 1,
+          "order": [
+            "mtls",
+            "plain"
+          ]
+        },
+        {
+          "pass": 2,
+          "order": [
+            "plain",
+            "mtls"
+          ]
+        },
+        {
+          "pass": 3,
+          "order": [
+            "mtls",
+            "plain"
+          ]
+        },
+        {
+          "pass": 4,
+          "order": [
+            "plain",
+            "mtls"
+          ]
+        },
+        {
+          "pass": 5,
+          "order": [
+            "mtls",
+            "plain"
+          ]
+        }
+      ]
+    },
+    "requirements": {
+      "resource_metrics_complete": true,
+      "security_validation_complete": true,
+      "blocking_issues": []
+    },
+    "security_validation_passed": true,
+    "security_validation": {
+      "passed": true,
+      "mtls_condition_count": 5,
+      "artifacts": [
+        {
+          "pass": 1,
+          "execution_index": 1,
+          "artifact_path": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/conditions/pass01_01_chain_2svc_mtls/security_preflight/rq2_1_preflight_20260515_161448",
+          "metadata_path": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/conditions/pass01_01_chain_2svc_mtls/security_preflight/rq2_1_preflight_20260515_161448/rq21_preflight_metadata.json",
+          "passed": true,
+          "full_chain_positive_probe_passed": true,
+          "full_chain_hop_count": 2,
+          "full_chain_hop_indexes": [
+            1,
+            2
+          ],
+          "non_mesh_direct_denial_probe_passed": true,
+          "non_mesh_direct_denial_blocked_segments": [
+            2
+          ]
+        },
+        {
+          "pass": 2,
+          "execution_index": 4,
+          "artifact_path": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/conditions/pass02_04_chain_2svc_mtls/security_preflight/rq2_1_preflight_20260515_162150",
+          "metadata_path": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/conditions/pass02_04_chain_2svc_mtls/security_preflight/rq2_1_preflight_20260515_162150/rq21_preflight_metadata.json",
+          "passed": true,
+          "full_chain_positive_probe_passed": true,
+          "full_chain_hop_count": 2,
+          "full_chain_hop_indexes": [
+            1,
+            2
+          ],
+          "non_mesh_direct_denial_probe_passed": true,
+          "non_mesh_direct_denial_blocked_segments": [
+            2
+          ]
+        },
+        {
+          "pass": 3,
+          "execution_index": 5,
+          "artifact_path": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/conditions/pass03_05_chain_2svc_mtls/security_preflight/rq2_1_preflight_20260515_162405",
+          "metadata_path": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/conditions/pass03_05_chain_2svc_mtls/security_preflight/rq2_1_preflight_20260515_162405/rq21_preflight_metadata.json",
+          "passed": true,
+          "full_chain_positive_probe_passed": true,
+          "full_chain_hop_count": 2,
+          "full_chain_hop_indexes": [
+            1,
+            2
+          ],
+          "non_mesh_direct_denial_probe_passed": true,
+          "non_mesh_direct_denial_blocked_segments": [
+            2
+          ]
+        },
+        {
+          "pass": 4,
+          "execution_index": 8,
+          "artifact_path": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/conditions/pass04_08_chain_2svc_mtls/security_preflight/rq2_1_preflight_20260515_163041",
+          "metadata_path": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/conditions/pass04_08_chain_2svc_mtls/security_preflight/rq2_1_preflight_20260515_163041/rq21_preflight_metadata.json",
+          "passed": true,
+          "full_chain_positive_probe_passed": true,
+          "full_chain_hop_count": 2,
+          "full_chain_hop_indexes": [
+            1,
+            2
+          ],
+          "non_mesh_direct_denial_probe_passed": true,
+          "non_mesh_direct_denial_blocked_segments": [
+            2
+          ]
+        },
+        {
+          "pass": 5,
+          "execution_index": 9,
+          "artifact_path": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/conditions/pass05_09_chain_2svc_mtls/security_preflight/rq2_1_preflight_20260515_163239",
+          "metadata_path": "/home/nick/Desktop/thesis_final/results/rq2_1_paired_20260515_160012/conditions/pass05_09_chain_2svc_mtls/security_preflight/rq2_1_preflight_20260515_163239/rq21_preflight_metadata.json",
+          "passed": true,
+          "full_chain_positive_probe_passed": true,
+          "full_chain_hop_count": 2,
+          "full_chain_hop_indexes": [
+            1,
+            2
+          ],
+          "non_mesh_direct_denial_probe_passed": true,
+          "non_mesh_direct_denial_blocked_segments": [
+            2
+          ]
+        }
+      ],
+      "failures": []
+    },
+    "completed_condition_executions": 10,
+    "total_iteration_rows": 2000
+  },
+  "overall_by_condition": {
+    "plain": {
+      "condition": "chain_2svc_plain",
+      "latency": {
+        "end_to_end_ms": {
+          "n": 1000,
+          "mean": 75.55723812699989,
+          "median": 75.26246199995512,
+          "p95": 80.04655040002149,
+          "p99": 83.34716431994025,
+          "stdev": 2.4233069006694348,
+          "min": 70.65137500012497,
+          "max": 91.93234400004258
+        },
+        "total_compute_ms": {
+          "n": 1000,
+          "mean": 70.99810120899997,
+          "median": 70.7028690000584,
+          "p95": 75.26866969995467,
+          "p99": 78.36063598007968,
+          "stdev": 2.347421673081388,
+          "min": 66.34218899989719,
+          "max": 86.31038400017133
+        },
+        "non_compute_overhead_ms": {
+          "n": 1000,
+          "mean": 4.559136917999922,
+          "median": 4.488736500036339,
+          "p95": 5.191139150082336,
+          "p99": 5.919110979992865,
+          "stdev": 0.3324102443436151,
+          "min": 4.016677999857166,
+          "max": 8.087442000032752
+        },
+        "total_activation_bytes": {
+          "n": 1000,
+          "mean": 1003520.0,
+          "median": 1003520.0,
+          "p95": 1003520.0,
+          "p99": 1003520.0,
+          "stdev": 0.0,
+          "min": 1003520.0,
+          "max": 1003520.0
+        },
+        "hop_1_forward_ms": {
+          "n": 1000,
+          "mean": 34.134550986998875,
+          "median": 33.90835200002584,
+          "p95": 36.878966949944925,
+          "p99": 39.27658602018255,
+          "stdev": 1.521363738594058,
+          "min": 31.288238000115598,
+          "max": 45.61966400001438
+        },
+        "hop_2_forward_ms": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_3_forward_ms": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_4_forward_ms": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_5_forward_ms": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_1_activation_bytes": {
+          "n": 1000,
+          "mean": 602112.0,
+          "median": 602112.0,
+          "p95": 602112.0,
+          "p99": 602112.0,
+          "stdev": 0.0,
+          "min": 602112.0,
+          "max": 602112.0
+        },
+        "hop_2_activation_bytes": {
+          "n": 1000,
+          "mean": 401408.0,
+          "median": 401408.0,
+          "p95": 401408.0,
+          "p99": 401408.0,
+          "stdev": 0.0,
+          "min": 401408.0,
+          "max": 401408.0
+        },
+        "hop_3_activation_bytes": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_4_activation_bytes": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_5_activation_bytes": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      },
+      "resources": {
+        "available": true,
+        "sample_count": 36,
+        "cpu_measurement_count": 5,
+        "passes_covered": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "service_app_sample_row_count": 72,
+        "sidecar_sample_row_count": 0,
+        "client_sample_row_count": 36,
+        "sidecar_metrics_available": false,
+        "service_app_cpu_mcores_mean": 590.7499245714753,
+        "sidecar_cpu_mcores_mean": 0.0,
+        "total_pod_cpu_mcores_mean": 590.7499245714753,
+        "client_cpu_mcores_mean": 143.9177688615217,
+        "service_app_memory_mib_mean": 503.55555555555554,
+        "sidecar_memory_mib_mean": 0.0,
+        "total_pod_memory_mib_mean": 503.55555555555554,
+        "client_memory_mib_mean": 0.0
+      },
+      "operational": {
+        "available": true,
+        "passes_covered": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "service_pod_count_total": 10,
+        "service_scheduling_delay_seconds_mean": 0.0,
+        "service_schedule_to_ready_seconds_mean": 7.6,
+        "service_app_started_delay_seconds_mean": 0.9,
+        "service_sidecar_started_delay_seconds_mean": null,
+        "service_failed_scheduling_event_count": 0,
+        "service_app_requested_cpu_mcores_total": 2000.0,
+        "service_sidecar_requested_cpu_mcores_total": 0.0,
+        "service_total_requested_cpu_mcores_total": 2000.0,
+        "service_app_requested_memory_mib_total": 2048.0,
+        "service_sidecar_requested_memory_mib_total": 0.0,
+        "service_total_requested_memory_mib_total": 2048.0,
+        "client_requested_cpu_mcores_total": 100.0,
+        "client_requested_memory_mib_total": 1024.0,
+        "benchmark_requested_cpu_mcores_total": 2100.0,
+        "benchmark_requested_memory_mib_total": 3072.0,
+        "node_request_headroom_cpu_mcores": 5720.0,
+        "node_request_headroom_memory_mib": 26671.89453125,
+        "deployment_complexity": {
+          "aks_enablement_step_count": 0,
+          "kubernetes_object_count": 8,
+          "kubernetes_object_counts_by_kind": {
+            "Deployment": 2,
+            "Namespace": 2,
+            "Pod": 2,
+            "Service": 2
+          },
+          "always_on_control_plane_pod_count": 0,
+          "per_workload_injected_container_count": 0.0,
+          "total_injected_container_count": 0
+        },
+        "operational_complexity": {
+          "mesh_revision": null,
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": []
+        }
+      }
+    },
+    "mtls": {
+      "condition": "chain_2svc_mtls",
+      "latency": {
+        "end_to_end_ms": {
+          "n": 1000,
+          "mean": 79.044981771001,
+          "median": 78.58992650005803,
+          "p95": 83.67000365003037,
+          "p99": 87.88505896011428,
+          "stdev": 2.722365175153838,
+          "min": 73.65065600004073,
+          "max": 93.28667399995538
+        },
+        "total_compute_ms": {
+          "n": 1000,
+          "mean": 71.15442005399922,
+          "median": 70.7753130000981,
+          "p95": 75.60596330008025,
+          "p99": 79.90041013989183,
+          "stdev": 2.563975906045544,
+          "min": 66.14076800008206,
+          "max": 85.30459399980828
+        },
+        "non_compute_overhead_ms": {
+          "n": 1000,
+          "mean": 7.890561717001788,
+          "median": 7.723591000029728,
+          "p95": 9.026283999995144,
+          "p99": 10.655329990081553,
+          "stdev": 0.6530021502442964,
+          "min": 7.001156000114861,
+          "max": 13.35071399989829
+        },
+        "total_activation_bytes": {
+          "n": 1000,
+          "mean": 1003520.0,
+          "median": 1003520.0,
+          "p95": 1003520.0,
+          "p99": 1003520.0,
+          "stdev": 0.0,
+          "min": 1003520.0,
+          "max": 1003520.0
+        },
+        "hop_1_forward_ms": {
+          "n": 1000,
+          "mean": 36.597946226004126,
+          "median": 36.34211649998065,
+          "p95": 39.8169497500362,
+          "p99": 41.8885796299827,
+          "stdev": 1.6336044300800308,
+          "min": 33.047433999968234,
+          "max": 47.39864300017871
+        },
+        "hop_2_forward_ms": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_3_forward_ms": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_4_forward_ms": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_5_forward_ms": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_1_activation_bytes": {
+          "n": 1000,
+          "mean": 602112.0,
+          "median": 602112.0,
+          "p95": 602112.0,
+          "p99": 602112.0,
+          "stdev": 0.0,
+          "min": 602112.0,
+          "max": 602112.0
+        },
+        "hop_2_activation_bytes": {
+          "n": 1000,
+          "mean": 401408.0,
+          "median": 401408.0,
+          "p95": 401408.0,
+          "p99": 401408.0,
+          "stdev": 0.0,
+          "min": 401408.0,
+          "max": 401408.0
+        },
+        "hop_3_activation_bytes": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_4_activation_bytes": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "hop_5_activation_bytes": {
+          "n": 1000,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      },
+      "resources": {
+        "available": true,
+        "sample_count": 32,
+        "cpu_measurement_count": 5,
+        "passes_covered": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "service_app_sample_row_count": 64,
+        "sidecar_sample_row_count": 64,
+        "client_sample_row_count": 34,
+        "sidecar_metrics_available": true,
+        "service_app_cpu_mcores_mean": 499.25250170621547,
+        "sidecar_cpu_mcores_mean": 34.684449272126855,
+        "total_pod_cpu_mcores_mean": 533.9369509783422,
+        "client_cpu_mcores_mean": 161.54981812670536,
+        "service_app_memory_mib_mean": 515.25,
+        "sidecar_memory_mib_mean": 82.125,
+        "total_pod_memory_mib_mean": 597.375,
+        "client_memory_mib_mean": 36.125
+      },
+      "operational": {
+        "available": true,
+        "passes_covered": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "service_pod_count_total": 10,
+        "service_scheduling_delay_seconds_mean": 0.0,
+        "service_schedule_to_ready_seconds_mean": 13.9,
+        "service_app_started_delay_seconds_mean": 7.4,
+        "service_sidecar_started_delay_seconds_mean": 3.1,
+        "service_failed_scheduling_event_count": 0,
+        "service_app_requested_cpu_mcores_total": 2000.0,
+        "service_sidecar_requested_cpu_mcores_total": 200.0,
+        "service_total_requested_cpu_mcores_total": 2200.0,
+        "service_app_requested_memory_mib_total": 2048.0,
+        "service_sidecar_requested_memory_mib_total": 256.0,
+        "service_total_requested_memory_mib_total": 2304.0,
+        "client_requested_cpu_mcores_total": 100.0,
+        "client_requested_memory_mib_total": 1024.0,
+        "benchmark_requested_cpu_mcores_total": 2300.0,
+        "benchmark_requested_memory_mib_total": 3328.0,
+        "node_request_headroom_cpu_mcores": 5520.0,
+        "node_request_headroom_memory_mib": 26415.89453125,
+        "deployment_complexity": {
+          "aks_enablement_step_count": 1,
+          "kubernetes_object_count": 13,
+          "kubernetes_object_counts_by_kind": {
+            "AuthorizationPolicy": 1,
+            "Deployment": 2,
+            "Namespace": 2,
+            "PeerAuthentication": 2,
+            "Pod": 2,
+            "Service": 2,
+            "ServiceAccount": 2
+          },
+          "always_on_control_plane_pod_count": 2,
+          "per_workload_injected_container_count": 1.0,
+          "total_injected_container_count": 2
+        },
+        "operational_complexity": {
+          "mesh_revision": "asm-1-29",
+          "sidecar_readiness_failure_count": 0,
+          "sidecar_restart_total": 0
+        },
+        "control_plane_colocation": {
+          "shares_benchmark_node": false,
+          "shares_avoidable_istio_control_plane": false,
+          "isolated_pool_contract_required": true,
+          "violates_isolated_pool_contract": false,
+          "shared_node_names": [],
+          "control_plane_pod_names": [],
+          "avoidable_istio_control_plane_pod_names": []
+        }
+      }
+    }
+  },
+  "per_pass_by_condition": {
+    "1": {
+      "plain": {
+        "condition": "chain_2svc_plain",
+        "latency": {
+          "end_to_end_ms": {
+            "n": 200,
+            "mean": 75.99548541500042,
+            "median": 75.7067124999935,
+            "p95": 79.76828480002496,
+            "p99": 84.1926349700077,
+            "stdev": 2.1861334996507944,
+            "min": 72.28726000005281,
+            "max": 85.19352899998012
+          },
+          "total_compute_ms": {
+            "n": 200,
+            "mean": 71.4273221150006,
+            "median": 71.07867700005954,
+            "p95": 75.0913520000779,
+            "p99": 79.81450000002155,
+            "stdev": 2.13346135933479,
+            "min": 67.94438700001137,
+            "max": 80.59844299998531
+          },
+          "non_compute_overhead_ms": {
+            "n": 200,
+            "mean": 4.56816329999981,
+            "median": 4.517735999968409,
+            "p95": 5.0467131000687,
+            "p99": 5.520708000065042,
+            "stdev": 0.2487844262384613,
+            "min": 4.162985999982993,
+            "max": 6.0754810000389625
+          },
+          "total_activation_bytes": {
+            "n": 200,
+            "mean": 1003520.0,
+            "median": 1003520.0,
+            "p95": 1003520.0,
+            "p99": 1003520.0,
+            "stdev": 0.0,
+            "min": 1003520.0,
+            "max": 1003520.0
+          },
+          "hop_1_forward_ms": {
+            "n": 200,
+            "mean": 34.402008645004116,
+            "median": 34.19854200001282,
+            "p95": 36.64505804997589,
+            "p99": 38.550366979995935,
+            "stdev": 1.4216106151490322,
+            "min": 32.081999999945765,
+            "max": 43.02176500004862
+          },
+          "hop_2_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_3_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_1_activation_bytes": {
+            "n": 200,
+            "mean": 602112.0,
+            "median": 602112.0,
+            "p95": 602112.0,
+            "p99": 602112.0,
+            "stdev": 0.0,
+            "min": 602112.0,
+            "max": 602112.0
+          },
+          "hop_2_activation_bytes": {
+            "n": 200,
+            "mean": 401408.0,
+            "median": 401408.0,
+            "p95": 401408.0,
+            "p99": 401408.0,
+            "stdev": 0.0,
+            "min": 401408.0,
+            "max": 401408.0
+          },
+          "hop_3_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "mtls": {
+        "condition": "chain_2svc_mtls",
+        "latency": {
+          "end_to_end_ms": {
+            "n": 200,
+            "mean": 78.21844874999812,
+            "median": 77.71071199999824,
+            "p95": 83.51375099999245,
+            "p99": 85.60040054995055,
+            "stdev": 2.771095561236494,
+            "min": 73.65065600004073,
+            "max": 90.89874399995779
+          },
+          "total_compute_ms": {
+            "n": 200,
+            "mean": 70.4480052500034,
+            "median": 69.82143299998711,
+            "p95": 75.40296389997536,
+            "p99": 78.13047643003755,
+            "stdev": 2.6443097392732464,
+            "min": 66.14076800008206,
+            "max": 82.35928700003114
+          },
+          "non_compute_overhead_ms": {
+            "n": 200,
+            "mean": 7.7704434999947125,
+            "median": 7.648406499981775,
+            "p95": 8.798814849956214,
+            "p99": 9.541141060016113,
+            "stdev": 0.5149005725440172,
+            "min": 7.013361000076657,
+            "max": 10.338928999999553
+          },
+          "total_activation_bytes": {
+            "n": 200,
+            "mean": 1003520.0,
+            "median": 1003520.0,
+            "p95": 1003520.0,
+            "p99": 1003520.0,
+            "stdev": 0.0,
+            "min": 1003520.0,
+            "max": 1003520.0
+          },
+          "hop_1_forward_ms": {
+            "n": 200,
+            "mean": 35.97618300500102,
+            "median": 35.66823750000481,
+            "p95": 39.44107664999592,
+            "p99": 40.662532939992374,
+            "stdev": 1.6551043897734223,
+            "min": 33.047433999968234,
+            "max": 42.31088699998509
+          },
+          "hop_2_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_3_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_1_activation_bytes": {
+            "n": 200,
+            "mean": 602112.0,
+            "median": 602112.0,
+            "p95": 602112.0,
+            "p99": 602112.0,
+            "stdev": 0.0,
+            "min": 602112.0,
+            "max": 602112.0
+          },
+          "hop_2_activation_bytes": {
+            "n": 200,
+            "mean": 401408.0,
+            "median": 401408.0,
+            "p95": 401408.0,
+            "p99": 401408.0,
+            "stdev": 0.0,
+            "min": 401408.0,
+            "max": 401408.0
+          },
+          "hop_3_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    "2": {
+      "plain": {
+        "condition": "chain_2svc_plain",
+        "latency": {
+          "end_to_end_ms": {
+            "n": 200,
+            "mean": 76.19311193499982,
+            "median": 75.81794399999353,
+            "p95": 81.77060100001654,
+            "p99": 83.54379595003364,
+            "stdev": 2.6965227450173397,
+            "min": 71.18013299998438,
+            "max": 87.44324899998901
+          },
+          "total_compute_ms": {
+            "n": 200,
+            "mean": 71.57027618499569,
+            "median": 71.32890399992675,
+            "p95": 76.87768390000542,
+            "p99": 78.95173998000814,
+            "stdev": 2.6385604491931725,
+            "min": 66.85125399985736,
+            "max": 83.1164709999257
+          },
+          "non_compute_overhead_ms": {
+            "n": 200,
+            "mean": 4.622835750004128,
+            "median": 4.521575999945071,
+            "p95": 5.508156850044087,
+            "p99": 6.0830159999636635,
+            "stdev": 0.41923249572748095,
+            "min": 4.016677999857166,
+            "max": 6.599365000056423
+          },
+          "total_activation_bytes": {
+            "n": 200,
+            "mean": 1003520.0,
+            "median": 1003520.0,
+            "p95": 1003520.0,
+            "p99": 1003520.0,
+            "stdev": 0.0,
+            "min": 1003520.0,
+            "max": 1003520.0
+          },
+          "hop_1_forward_ms": {
+            "n": 200,
+            "mean": 34.37691666999967,
+            "median": 33.9732680000111,
+            "p95": 37.92363829999772,
+            "p99": 39.8226619400259,
+            "stdev": 1.736594150325417,
+            "min": 31.67713600009847,
+            "max": 45.61966400001438
+          },
+          "hop_2_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_3_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_1_activation_bytes": {
+            "n": 200,
+            "mean": 602112.0,
+            "median": 602112.0,
+            "p95": 602112.0,
+            "p99": 602112.0,
+            "stdev": 0.0,
+            "min": 602112.0,
+            "max": 602112.0
+          },
+          "hop_2_activation_bytes": {
+            "n": 200,
+            "mean": 401408.0,
+            "median": 401408.0,
+            "p95": 401408.0,
+            "p99": 401408.0,
+            "stdev": 0.0,
+            "min": 401408.0,
+            "max": 401408.0
+          },
+          "hop_3_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "mtls": {
+        "condition": "chain_2svc_mtls",
+        "latency": {
+          "end_to_end_ms": {
+            "n": 200,
+            "mean": 79.34840943499921,
+            "median": 78.76063399999111,
+            "p95": 84.49932645001468,
+            "p99": 87.86355947002559,
+            "stdev": 2.7167686663119115,
+            "min": 75.38770799999384,
+            "max": 91.81807899994965
+          },
+          "total_compute_ms": {
+            "n": 200,
+            "mean": 71.42465409999204,
+            "median": 70.89109499992219,
+            "p95": 75.75795289986331,
+            "p99": 79.905095899893,
+            "stdev": 2.432161642815303,
+            "min": 67.7688670000407,
+            "max": 81.45673000001352
+          },
+          "non_compute_overhead_ms": {
+            "n": 200,
+            "mean": 7.923755335007172,
+            "median": 7.714339500012102,
+            "p95": 9.055945900178129,
+            "p99": 11.803445869898034,
+            "stdev": 0.8102941542098892,
+            "min": 7.126943000002939,
+            "max": 12.657495000098606
+          },
+          "total_activation_bytes": {
+            "n": 200,
+            "mean": 1003520.0,
+            "median": 1003520.0,
+            "p95": 1003520.0,
+            "p99": 1003520.0,
+            "stdev": 0.0,
+            "min": 1003520.0,
+            "max": 1003520.0
+          },
+          "hop_1_forward_ms": {
+            "n": 200,
+            "mean": 36.792070214996215,
+            "median": 36.557213000037336,
+            "p95": 39.335380999938245,
+            "p99": 40.409923979989344,
+            "stdev": 1.3491973445644847,
+            "min": 34.412230000043564,
+            "max": 41.08546199995544
+          },
+          "hop_2_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_3_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_1_activation_bytes": {
+            "n": 200,
+            "mean": 602112.0,
+            "median": 602112.0,
+            "p95": 602112.0,
+            "p99": 602112.0,
+            "stdev": 0.0,
+            "min": 602112.0,
+            "max": 602112.0
+          },
+          "hop_2_activation_bytes": {
+            "n": 200,
+            "mean": 401408.0,
+            "median": 401408.0,
+            "p95": 401408.0,
+            "p99": 401408.0,
+            "stdev": 0.0,
+            "min": 401408.0,
+            "max": 401408.0
+          },
+          "hop_3_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    "3": {
+      "plain": {
+        "condition": "chain_2svc_plain",
+        "latency": {
+          "end_to_end_ms": {
+            "n": 200,
+            "mean": 75.56478707500901,
+            "median": 75.3233130000126,
+            "p95": 78.87429815002633,
+            "p99": 81.68672367987483,
+            "stdev": 1.8775635123148895,
+            "min": 72.28300099995977,
+            "max": 82.05580600019857
+          },
+          "total_compute_ms": {
+            "n": 200,
+            "mean": 71.04945351500419,
+            "median": 70.86147300003631,
+            "p95": 74.33894624996356,
+            "p99": 77.03911617997846,
+            "stdev": 1.828417486449915,
+            "min": 67.80654399995001,
+            "max": 77.53774999991947
+          },
+          "non_compute_overhead_ms": {
+            "n": 200,
+            "mean": 4.5153335600048194,
+            "median": 4.47605700026088,
+            "p95": 4.886914849976165,
+            "p99": 5.249454610018345,
+            "stdev": 0.23139010364876716,
+            "min": 4.075107000062417,
+            "max": 6.06114099991828
+          },
+          "total_activation_bytes": {
+            "n": 200,
+            "mean": 1003520.0,
+            "median": 1003520.0,
+            "p95": 1003520.0,
+            "p99": 1003520.0,
+            "stdev": 0.0,
+            "min": 1003520.0,
+            "max": 1003520.0
+          },
+          "hop_1_forward_ms": {
+            "n": 200,
+            "mean": 34.18853730000137,
+            "median": 34.08221950007828,
+            "p95": 36.238734750008916,
+            "p99": 38.04031194991467,
+            "stdev": 1.1708851901111164,
+            "min": 31.932400999949095,
+            "max": 39.734215999942535
+          },
+          "hop_2_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_3_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_1_activation_bytes": {
+            "n": 200,
+            "mean": 602112.0,
+            "median": 602112.0,
+            "p95": 602112.0,
+            "p99": 602112.0,
+            "stdev": 0.0,
+            "min": 602112.0,
+            "max": 602112.0
+          },
+          "hop_2_activation_bytes": {
+            "n": 200,
+            "mean": 401408.0,
+            "median": 401408.0,
+            "p95": 401408.0,
+            "p99": 401408.0,
+            "stdev": 0.0,
+            "min": 401408.0,
+            "max": 401408.0
+          },
+          "hop_3_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "mtls": {
+        "condition": "chain_2svc_mtls",
+        "latency": {
+          "end_to_end_ms": {
+            "n": 200,
+            "mean": 78.91823360000444,
+            "median": 78.63421100000778,
+            "p95": 82.89160819994095,
+            "p99": 84.99435146017048,
+            "stdev": 2.318790315291378,
+            "min": 74.21417000000474,
+            "max": 90.53204399992865
+          },
+          "total_compute_ms": {
+            "n": 200,
+            "mean": 70.93440980500759,
+            "median": 70.84790049998446,
+            "p95": 74.20531785015783,
+            "p99": 76.37612881983385,
+            "stdev": 2.1331302093128914,
+            "min": 66.56247600017196,
+            "max": 82.10196100003486
+          },
+          "non_compute_overhead_ms": {
+            "n": 200,
+            "mean": 7.983823794996852,
+            "median": 7.832302000224445,
+            "p95": 9.052499799986434,
+            "p99": 11.155348710110502,
+            "stdev": 0.6499432628715305,
+            "min": 7.118858000012551,
+            "max": 12.095132000013109
+          },
+          "total_activation_bytes": {
+            "n": 200,
+            "mean": 1003520.0,
+            "median": 1003520.0,
+            "p95": 1003520.0,
+            "p99": 1003520.0,
+            "stdev": 0.0,
+            "min": 1003520.0,
+            "max": 1003520.0
+          },
+          "hop_1_forward_ms": {
+            "n": 200,
+            "mean": 36.508006830001705,
+            "median": 36.18479450005907,
+            "p95": 39.179082849943825,
+            "p99": 43.28148296991685,
+            "stdev": 1.7330517154823963,
+            "min": 33.74663199997485,
+            "max": 47.39864300017871
+          },
+          "hop_2_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_3_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_1_activation_bytes": {
+            "n": 200,
+            "mean": 602112.0,
+            "median": 602112.0,
+            "p95": 602112.0,
+            "p99": 602112.0,
+            "stdev": 0.0,
+            "min": 602112.0,
+            "max": 602112.0
+          },
+          "hop_2_activation_bytes": {
+            "n": 200,
+            "mean": 401408.0,
+            "median": 401408.0,
+            "p95": 401408.0,
+            "p99": 401408.0,
+            "stdev": 0.0,
+            "min": 401408.0,
+            "max": 401408.0
+          },
+          "hop_3_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    "4": {
+      "plain": {
+        "condition": "chain_2svc_plain",
+        "latency": {
+          "end_to_end_ms": {
+            "n": 200,
+            "mean": 75.79647195998746,
+            "median": 75.33106300002146,
+            "p95": 80.24657889980062,
+            "p99": 83.34749530994031,
+            "stdev": 2.5981838001857165,
+            "min": 71.58170200000313,
+            "max": 91.93234400004258
+          },
+          "total_compute_ms": {
+            "n": 200,
+            "mean": 71.17267988500544,
+            "median": 70.69474549996357,
+            "p95": 75.38945285010641,
+            "p99": 78.36220772007891,
+            "stdev": 2.5118267038472135,
+            "min": 67.03572799983704,
+            "max": 86.31038400017133
+          },
+          "non_compute_overhead_ms": {
+            "n": 200,
+            "mean": 4.6237920749820205,
+            "median": 4.513759500014203,
+            "p95": 5.354121950176705,
+            "p99": 6.126334960201799,
+            "stdev": 0.4141188450897596,
+            "min": 4.020871999955489,
+            "max": 8.087442000032752
+          },
+          "total_activation_bytes": {
+            "n": 200,
+            "mean": 1003520.0,
+            "median": 1003520.0,
+            "p95": 1003520.0,
+            "p99": 1003520.0,
+            "stdev": 0.0,
+            "min": 1003520.0,
+            "max": 1003520.0
+          },
+          "hop_1_forward_ms": {
+            "n": 200,
+            "mean": 34.181249239986755,
+            "median": 33.93934350003747,
+            "p95": 37.52180709999493,
+            "p99": 38.88530286998047,
+            "stdev": 1.534233980937586,
+            "min": 31.474725000180115,
+            "max": 40.25547700007337
+          },
+          "hop_2_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_3_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_1_activation_bytes": {
+            "n": 200,
+            "mean": 602112.0,
+            "median": 602112.0,
+            "p95": 602112.0,
+            "p99": 602112.0,
+            "stdev": 0.0,
+            "min": 602112.0,
+            "max": 602112.0
+          },
+          "hop_2_activation_bytes": {
+            "n": 200,
+            "mean": 401408.0,
+            "median": 401408.0,
+            "p95": 401408.0,
+            "p99": 401408.0,
+            "stdev": 0.0,
+            "min": 401408.0,
+            "max": 401408.0
+          },
+          "hop_3_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "mtls": {
+        "condition": "chain_2svc_mtls",
+        "latency": {
+          "end_to_end_ms": {
+            "n": 200,
+            "mean": 79.27307916500808,
+            "median": 78.76969949995782,
+            "p95": 83.80325254986474,
+            "p99": 88.80199197008322,
+            "stdev": 2.804914984667308,
+            "min": 74.41486199991232,
+            "max": 92.80622599999333
+          },
+          "total_compute_ms": {
+            "n": 200,
+            "mean": 71.38044162498545,
+            "median": 70.96862800005965,
+            "p95": 76.09782100004168,
+            "p99": 80.71649195975168,
+            "stdev": 2.69370108637001,
+            "min": 67.1702950000963,
+            "max": 85.21496499997738
+          },
+          "non_compute_overhead_ms": {
+            "n": 200,
+            "mean": 7.892637540022633,
+            "median": 7.744162499875529,
+            "p95": 9.007378749981854,
+            "p99": 9.580466960212556,
+            "stdev": 0.5788072428561506,
+            "min": 7.182066000041232,
+            "max": 12.450143000251046
+          },
+          "total_activation_bytes": {
+            "n": 200,
+            "mean": 1003520.0,
+            "median": 1003520.0,
+            "p95": 1003520.0,
+            "p99": 1003520.0,
+            "stdev": 0.0,
+            "min": 1003520.0,
+            "max": 1003520.0
+          },
+          "hop_1_forward_ms": {
+            "n": 200,
+            "mean": 36.774142670006995,
+            "median": 36.57547499994962,
+            "p95": 40.02699175002817,
+            "p99": 42.989772990076744,
+            "stdev": 1.7169939623449815,
+            "min": 34.16104500001893,
+            "max": 44.530171999895174
+          },
+          "hop_2_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_3_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_1_activation_bytes": {
+            "n": 200,
+            "mean": 602112.0,
+            "median": 602112.0,
+            "p95": 602112.0,
+            "p99": 602112.0,
+            "stdev": 0.0,
+            "min": 602112.0,
+            "max": 602112.0
+          },
+          "hop_2_activation_bytes": {
+            "n": 200,
+            "mean": 401408.0,
+            "median": 401408.0,
+            "p95": 401408.0,
+            "p99": 401408.0,
+            "stdev": 0.0,
+            "min": 401408.0,
+            "max": 401408.0
+          },
+          "hop_3_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    "5": {
+      "plain": {
+        "condition": "chain_2svc_plain",
+        "latency": {
+          "end_to_end_ms": {
+            "n": 200,
+            "mean": 74.23633425000276,
+            "median": 73.6855594999497,
+            "p95": 78.4531668999307,
+            "p99": 81.43514699005664,
+            "stdev": 2.1779293191410325,
+            "min": 70.65137500012497,
+            "max": 82.5804370001606
+          },
+          "total_compute_ms": {
+            "n": 200,
+            "mean": 69.77077434499392,
+            "median": 69.26677100011602,
+            "p95": 73.64047824976296,
+            "p99": 76.93105900006458,
+            "stdev": 2.1060137681452398,
+            "min": 66.34218899989719,
+            "max": 77.88624700015134
+          },
+          "non_compute_overhead_ms": {
+            "n": 200,
+            "mean": 4.465559905008831,
+            "median": 4.393838499936464,
+            "p95": 5.030664999924284,
+            "p99": 5.41059899001766,
+            "stdev": 0.27005252602058727,
+            "min": 4.08048700001018,
+            "max": 5.575690000114264
+          },
+          "total_activation_bytes": {
+            "n": 200,
+            "mean": 1003520.0,
+            "median": 1003520.0,
+            "p95": 1003520.0,
+            "p99": 1003520.0,
+            "stdev": 0.0,
+            "min": 1003520.0,
+            "max": 1003520.0
+          },
+          "hop_1_forward_ms": {
+            "n": 200,
+            "mean": 33.52404308000246,
+            "median": 33.19281450001199,
+            "p95": 36.34845125006905,
+            "p99": 39.613542480062726,
+            "stdev": 1.532004106800589,
+            "min": 31.288238000115598,
+            "max": 40.762819000065065
+          },
+          "hop_2_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_3_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_1_activation_bytes": {
+            "n": 200,
+            "mean": 602112.0,
+            "median": 602112.0,
+            "p95": 602112.0,
+            "p99": 602112.0,
+            "stdev": 0.0,
+            "min": 602112.0,
+            "max": 602112.0
+          },
+          "hop_2_activation_bytes": {
+            "n": 200,
+            "mean": 401408.0,
+            "median": 401408.0,
+            "p95": 401408.0,
+            "p99": 401408.0,
+            "stdev": 0.0,
+            "min": 401408.0,
+            "max": 401408.0
+          },
+          "hop_3_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "mtls": {
+        "condition": "chain_2svc_mtls",
+        "latency": {
+          "end_to_end_ms": {
+            "n": 200,
+            "mean": 79.46673790499517,
+            "median": 78.89300449994607,
+            "p95": 84.11562454990643,
+            "p99": 90.07867046004775,
+            "stdev": 2.80621867537828,
+            "min": 75.06512400004794,
+            "max": 93.28667399995538
+          },
+          "total_compute_ms": {
+            "n": 200,
+            "mean": 71.5845894900076,
+            "median": 71.01440900021316,
+            "p95": 76.47359779983843,
+            "p99": 82.17563644006759,
+            "stdev": 2.7252631679130337,
+            "min": 67.33713800008445,
+            "max": 85.30459399980828
+          },
+          "non_compute_overhead_ms": {
+            "n": 200,
+            "mean": 7.882148414987569,
+            "median": 7.719831499798602,
+            "p95": 8.954242999811866,
+            "p99": 10.040337999835172,
+            "stdev": 0.6611063538146167,
+            "min": 7.001156000114861,
+            "max": 13.35071399989829
+          },
+          "total_activation_bytes": {
+            "n": 200,
+            "mean": 1003520.0,
+            "median": 1003520.0,
+            "p95": 1003520.0,
+            "p99": 1003520.0,
+            "stdev": 0.0,
+            "min": 1003520.0,
+            "max": 1003520.0
+          },
+          "hop_1_forward_ms": {
+            "n": 200,
+            "mean": 36.939328410014696,
+            "median": 36.62748949989236,
+            "p95": 40.104002849943754,
+            "p99": 41.31534799996871,
+            "stdev": 1.5175157631629057,
+            "min": 34.338798000135284,
+            "max": 43.11027200014905
+          },
+          "hop_2_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_3_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_forward_ms": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_1_activation_bytes": {
+            "n": 200,
+            "mean": 602112.0,
+            "median": 602112.0,
+            "p95": 602112.0,
+            "p99": 602112.0,
+            "stdev": 0.0,
+            "min": 602112.0,
+            "max": 602112.0
+          },
+          "hop_2_activation_bytes": {
+            "n": 200,
+            "mean": 401408.0,
+            "median": 401408.0,
+            "p95": 401408.0,
+            "p99": 401408.0,
+            "stdev": 0.0,
+            "min": 401408.0,
+            "max": 401408.0
+          },
+          "hop_3_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_4_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "hop_5_activation_bytes": {
+            "n": 200,
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "stdev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    }
+  },
+  "paired_pass_deltas": [
+    {
+      "pass": 1,
+      "plain_mean_ms": 75.99548541500042,
+      "mtls_mean_ms": 78.21844874999812,
+      "mean_latency_overhead_ms": 2.2229633349977007,
+      "mean_latency_overhead_pct": 2.9251255161519367,
+      "p95_latency_overhead_ms": 3.7454661999674954,
+      "non_compute_overhead_delta_ms": 3.2022801999949024,
+      "total_compute_delta_ms": -0.9793168649972017
+    },
+    {
+      "pass": 2,
+      "plain_mean_ms": 76.19311193499982,
+      "mtls_mean_ms": 79.34840943499921,
+      "mean_latency_overhead_ms": 3.155297499999392,
+      "mean_latency_overhead_pct": 4.141184707997187,
+      "p95_latency_overhead_ms": 2.7287254499981373,
+      "non_compute_overhead_delta_ms": 3.3009195850030437,
+      "total_compute_delta_ms": -0.1456220850036516
+    },
+    {
+      "pass": 3,
+      "plain_mean_ms": 75.56478707500901,
+      "mtls_mean_ms": 78.91823360000444,
+      "mean_latency_overhead_ms": 3.3534465249954337,
+      "mean_latency_overhead_pct": 4.437842882646717,
+      "p95_latency_overhead_ms": 4.017310049914613,
+      "non_compute_overhead_delta_ms": 3.468490234992032,
+      "total_compute_delta_ms": -0.11504370999659841
+    },
+    {
+      "pass": 4,
+      "plain_mean_ms": 75.79647195998746,
+      "mtls_mean_ms": 79.27307916500808,
+      "mean_latency_overhead_ms": 3.4766072050206276,
+      "mean_latency_overhead_pct": 4.586766527676788,
+      "p95_latency_overhead_ms": 3.5566736500641127,
+      "non_compute_overhead_delta_ms": 3.268845465040613,
+      "total_compute_delta_ms": 0.20776173998001468
+    },
+    {
+      "pass": 5,
+      "plain_mean_ms": 74.23633425000276,
+      "mtls_mean_ms": 79.46673790499517,
+      "mean_latency_overhead_ms": 5.230403654992415,
+      "mean_latency_overhead_pct": 7.0456114352012476,
+      "p95_latency_overhead_ms": 5.662457649975735,
+      "non_compute_overhead_delta_ms": 3.4165885099787374,
+      "total_compute_delta_ms": 1.8138151450136775
+    }
+  ],
+  "comparison": {
+    "latency": {
+      "mean_latency_overhead_ms": 3.487743644001114,
+      "mean_latency_overhead_pct": 4.616028497678492,
+      "p95_latency_overhead_ms": 3.623453250008879,
+      "total_activation_bytes_mean_delta": 0.0,
+      "hop_1_activation_bytes_mean_delta": 0.0,
+      "hop_2_activation_bytes_mean_delta": 0.0,
+      "hop_1_forward_ms_mean_delta": 2.4633952390052514,
+      "hop_2_forward_ms_mean_delta": 0.0
+    },
+    "resources": {
+      "service_app_cpu_mcores_mean_overhead": -91.49742286525981,
+      "service_app_memory_mib_mean_overhead": 11.694444444444457,
+      "sidecar_cpu_mcores_mean_overhead": 34.684449272126855,
+      "sidecar_memory_mib_mean_overhead": 82.125,
+      "total_pod_cpu_mcores_mean_overhead": -56.81297359313305,
+      "total_pod_memory_mib_mean_overhead": 93.81944444444446,
+      "client_cpu_mcores_mean_overhead": 17.632049265183667,
+      "client_memory_mib_mean_overhead": 36.125
+    },
+    "operational": {
+      "service_scheduling_delay_seconds_overhead": 0.0,
+      "service_schedule_to_ready_seconds_overhead": 6.300000000000001,
+      "service_app_started_delay_seconds_overhead": 6.5,
+      "service_sidecar_started_delay_seconds_mean": 3.1,
+      "failed_scheduling_event_count_overhead": 0.0,
+      "service_app_requested_cpu_mcores_overhead": 0.0,
+      "service_sidecar_requested_cpu_mcores_overhead": 200.0,
+      "service_total_requested_cpu_mcores_overhead": 200.0,
+      "service_app_requested_memory_mib_overhead": 0.0,
+      "service_sidecar_requested_memory_mib_overhead": 256.0,
+      "service_total_requested_memory_mib_overhead": 256.0,
+      "benchmark_requested_cpu_mcores_overhead": 200.0,
+      "benchmark_requested_memory_mib_overhead": 256.0,
+      "node_request_headroom_cpu_mcores_delta": -200.0,
+      "node_request_headroom_memory_mib_delta": -256.0,
+      "mtls_control_plane_colocation": {
+        "shares_benchmark_node": false,
+        "shares_avoidable_istio_control_plane": false,
+        "isolated_pool_contract_required": true,
+        "violates_isolated_pool_contract": false,
+        "shared_node_names": [],
+        "control_plane_pod_names": [],
+        "avoidable_istio_control_plane_pod_names": []
+      },
+      "deployment_complexity_delta": {
+        "additional_aks_enablement_step_count": 1,
+        "additional_kubernetes_object_count": 5,
+        "additional_service_account_count": 2,
+        "additional_peer_authentication_count": 2,
+        "additional_authorization_policy_count": 1,
+        "additional_always_on_control_plane_pod_count": 2,
+        "additional_injected_container_count": 2
+      }
+    },
+    "paired_pass_delta_ms": {
+      "n": 5,
+      "mean": 3.487743644001114,
+      "median": 3.3534465249954337,
+      "p95": 4.879644364998057,
+      "p99": 5.160251796993544,
+      "stdev": 1.091468428203374,
+      "min": 2.2229633349977007,
+      "max": 5.230403654992415
+    },
+    "paired_pass_delta_pct": {
+      "n": 5,
+      "mean": 4.627306213934776,
+      "median": 4.437842882646717,
+      "p95": 6.5538424536963555,
+      "p99": 6.947257638900269,
+      "stdev": 1.5016218906326624,
+      "min": 2.9251255161519367,
+      "max": 7.0456114352012476
+    }
+  }
+}

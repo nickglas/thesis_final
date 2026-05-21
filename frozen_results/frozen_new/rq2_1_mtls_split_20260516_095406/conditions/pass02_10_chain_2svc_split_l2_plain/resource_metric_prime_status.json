@@ -1,0 +1,45 @@
+{
+  "condition": "chain_2svc_split_l2_plain",
+  "started_at": "2026-05-16T10:16:09.408940+00:00",
+  "updated_at": "2026-05-16T10:16:21.919018+00:00",
+  "ready": true,
+  "attempts": 3,
+  "elapsed_seconds": 12.51,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21-ms-l2-plain": {
+      "chain-2svc-split-l2-plain-svc-1-648545cdf8-xb5r6": [
+        "inference"
+      ],
+      "chain-2svc-split-l2-plain-svc-2-b89ff8b4d-tgwmm": [
+        "inference"
+      ]
+    },
+    "rq21-ms-l2-plain-client": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21-ms-l2-plain": {
+      "chain-2svc-split-l2-plain-svc-1-648545cdf8-xb5r6": [
+        "inference"
+      ],
+      "chain-2svc-split-l2-plain-svc-2-b89ff8b4d-tgwmm": [
+        "inference"
+      ]
+    },
+    "rq21-ms-l2-plain-client": {
+      "benchmark-client": [
+        "client"
+      ],
+      "rq21-ms-direct-20260516101559": [
+        "debug"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

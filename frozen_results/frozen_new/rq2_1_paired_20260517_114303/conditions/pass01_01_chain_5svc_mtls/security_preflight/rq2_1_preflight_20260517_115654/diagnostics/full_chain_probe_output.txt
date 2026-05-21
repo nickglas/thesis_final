@@ -1,0 +1,57 @@
+{
+  "target": "chain-5svc-mtls-svc-1.rq21-chain5-mtls.svc.cluster.local:50051",
+  "response_shape": [
+    1,
+    1000
+  ],
+  "hop_count": 5,
+  "hop_indexes": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "hop_timings": [
+    {
+      "hop_index": 1,
+      "deserialize_ms": 0.789794000013444,
+      "compute_ms": 27.177681000011944,
+      "serialize_ms": 0.11449900000570779,
+      "forward_ms": 222.96780300001728,
+      "activation_bytes": 602112
+    },
+    {
+      "hop_index": 2,
+      "deserialize_ms": 1.0692920000110462,
+      "compute_ms": 17.690556999980345,
+      "serialize_ms": 0.08270000000720756,
+      "forward_ms": 159.6822129999964,
+      "activation_bytes": 802816
+    },
+    {
+      "hop_index": 3,
+      "deserialize_ms": 0.6163950000086516,
+      "compute_ms": 17.67635800001699,
+      "serialize_ms": 0.06329899997581379,
+      "forward_ms": 103.50596600000017,
+      "activation_bytes": 401408
+    },
+    {
+      "hop_index": 4,
+      "deserialize_ms": 0.3336980000199219,
+      "compute_ms": 23.802407999994557,
+      "serialize_ms": 0.06359899998642504,
+      "forward_ms": 32.28183999999601,
+      "activation_bytes": 200704
+    },
+    {
+      "hop_index": 5,
+      "deserialize_ms": 0.21449799999118113,
+      "compute_ms": 0.8540939999761576,
+      "serialize_ms": 0.053199000035419886,
+      "forward_ms": 0.0,
+      "activation_bytes": 100352
+    }
+  ]
+}

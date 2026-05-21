@@ -1,0 +1,212 @@
+{
+  "chain_5svc": {
+    "namespace": "rq14",
+    "condition": "chain_5svc",
+    "num_services": 5,
+    "split_points": [
+      "layer1",
+      "layer2",
+      "layer3",
+      "layer4"
+    ],
+    "services": [
+      {
+        "service_name": "chain-5svc-svc-1",
+        "address": "chain-5svc-svc-1.rq14.svc.cluster.local:50051",
+        "segment_index": "1",
+        "pod_name": "chain-5svc-svc-1-659d5b5b-wb7p8",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.16",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-5svc-svc-2",
+        "address": "chain-5svc-svc-2.rq14.svc.cluster.local:50051",
+        "segment_index": "2",
+        "pod_name": "chain-5svc-svc-2-77cf56f575-zdt9w",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.17",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-5svc-svc-3",
+        "address": "chain-5svc-svc-3.rq14.svc.cluster.local:50051",
+        "segment_index": "3",
+        "pod_name": "chain-5svc-svc-3-5964454786-7667d",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.18",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-5svc-svc-4",
+        "address": "chain-5svc-svc-4.rq14.svc.cluster.local:50051",
+        "segment_index": "4",
+        "pod_name": "chain-5svc-svc-4-65c8c95db9-27c26",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.19",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      },
+      {
+        "service_name": "chain-5svc-svc-5",
+        "address": "chain-5svc-svc-5.rq14.svc.cluster.local:50051",
+        "segment_index": "5",
+        "pod_name": "chain-5svc-svc-5-769d487f57-xkhfx",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.20",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        }
+      }
+    ],
+    "declared_kubernetes_config": {
+      "image": "thesis-inference:latest",
+      "image_pull_policy": "IfNotPresent",
+      "service_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client_resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "cluster_context": "kind-thesis-rq14",
+    "cluster_info": "Kubernetes control plane is running at https://127.0.0.1:45363",
+    "cluster_deployment": {},
+    "namespaces": {},
+    "mesh": {},
+    "client": {
+      "pod_name": "benchmark-client",
+      "node_name": "thesis-rq14-control-plane",
+      "pod_ip": "10.244.0.5",
+      "image": "thesis-inference:latest",
+      "image_id": "unknown",
+      "image_pull_policy": "IfNotPresent",
+      "qos_class": "unknown",
+      "resources": {
+        "requests": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        }
+      }
+    },
+    "observed_deployment_profile": {
+      "service_images": [
+        "thesis-inference:latest"
+      ],
+      "service_image_pull_policies": [
+        "IfNotPresent"
+      ],
+      "service_resources_uniform": true,
+      "service_resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "requests": {
+          "cpu": "1",
+          "memory": "512Mi"
+        }
+      },
+      "client": {
+        "pod_name": "benchmark-client",
+        "node_name": "thesis-rq14-control-plane",
+        "pod_ip": "10.244.0.5",
+        "image": "thesis-inference:latest",
+        "image_id": "unknown",
+        "image_pull_policy": "IfNotPresent",
+        "qos_class": "unknown",
+        "resources": {
+          "requests": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          }
+        }
+      }
+    },
+    "collected_at": "2026-05-15T14:24:08.958596"
+  }
+}

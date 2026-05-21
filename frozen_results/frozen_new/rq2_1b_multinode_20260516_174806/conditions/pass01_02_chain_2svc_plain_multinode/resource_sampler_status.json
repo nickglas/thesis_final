@@ -1,0 +1,18 @@
+{
+  "started_at": "2026-05-16T18:05:49.288962+00:00",
+  "command": [
+    "/home/nick/Desktop/thesis_final/.venv/bin/python",
+    "/home/nick/Desktop/thesis_final/scripts/sample_k8s_resources.py",
+    "--all-namespaces",
+    "--interval-seconds",
+    "5.0",
+    "--samples",
+    "100000",
+    "--output",
+    "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_02_chain_2svc_plain_multinode/resource_samples.csv"
+  ],
+  "output_csv": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass01_02_chain_2svc_plain_multinode/resource_samples.csv",
+  "stopped_at": "2026-05-16T18:06:20.204835+00:00",
+  "returncode": 1,
+  "samples_file_exists": true
+}

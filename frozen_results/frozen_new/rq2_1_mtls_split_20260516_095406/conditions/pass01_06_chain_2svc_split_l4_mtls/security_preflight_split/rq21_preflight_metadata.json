@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-05-16T10:08:07.653837+00:00",
+  "preflight_passed": true,
+  "split_aware_preflight": true,
+  "condition": "chain_2svc_split_l4_mtls",
+  "condition_key": "l4_mtls",
+  "split_key": "l4",
+  "service_namespace": "rq21-ms-l4-mtls",
+  "client_namespace": "rq21-ms-l4-mtls-client",
+  "enforcement_validation": {
+    "passed": true,
+    "full_chain_probe": {
+      "target": "chain-2svc-split-l4-mtls-svc-1.rq21-ms-l4-mtls.svc.cluster.local:50051",
+      "expected_hop_count": 2,
+      "expected_hop_indexes": [
+        1,
+        2
+      ],
+      "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1_mtls_split_20260516_095406/conditions/pass01_06_chain_2svc_split_l4_mtls/diagnostics/full_chain_probe_output.txt",
+      "returncode": 0,
+      "succeeded": true,
+      "response_shape": [
+        1,
+        1000
+      ],
+      "hop_count": 2,
+      "hop_indexes": [
+        1,
+        2
+      ],
+      "hop_timings": [
+        {
+          "hop_index": 1,
+          "activation_bytes": 602112
+        },
+        {
+          "hop_index": 2,
+          "activation_bytes": 100352
+        }
+      ]
+    },
+    "non_mesh_direct_denial_probe": {
+      "blocked_as_expected": true,
+      "blocked_segments": [
+        "2"
+      ],
+      "target_results": [
+        {
+          "segment_index": "2",
+          "target": "chain-2svc-split-l4-mtls-svc-2.rq21-ms-l4-mtls.svc.cluster.local:50051",
+          "blocked": true,
+          "ready": false,
+          "passed": true,
+          "returncode": 42
+        }
+      ],
+      "raw_probe": {
+        "target": "chain-2svc-split-l4-mtls-svc-2.rq21-ms-l4-mtls.svc.cluster.local:50051",
+        "expected_blocked": true,
+        "manifest_file": "/home/nick/Desktop/thesis_final/results/rq2_1_mtls_split_20260516_095406/conditions/pass01_06_chain_2svc_split_l4_mtls/diagnostics/direct_probe_l4_mtls_pod.yaml",
+        "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1_mtls_split_20260516_095406/conditions/pass01_06_chain_2svc_split_l4_mtls/diagnostics/direct_probe_l4_mtls_output.txt",
+        "pod_name": "rq21-ms-direct-20260516100756",
+        "namespace": "rq21-ms-l4-mtls-client",
+        "pod_preserved": false,
+        "returncode": 42,
+        "blocked": true,
+        "ready": false,
+        "passed": true
+      }
+    },
+    "authorization_policy_expected_principal": "cluster.local/ns/rq21-ms-l4-mtls/sa/rq21-ms-l4-svc1",
+    "authorization_policy_expected_principals": [
+      "cluster.local/ns/rq21-ms-l4-mtls/sa/rq21-ms-l4-svc1"
+    ],
+    "errors": []
+  },
+  "control_plane_isolation": {},
+  "errors": [],
+  "limitations": [
+    "Split sensitivity uses the same mTLS/AuthZ enforcement probes as RQ2.1, but accepts arbitrary two-service split points."
+  ]
+}

@@ -1,0 +1,160 @@
+{
+  "captured_at": "2026-05-16T12:05:04.571491+00:00",
+  "condition": "chain_2svc_mesh_strict_mtls_no_authz",
+  "condition_key": "c2",
+  "started_at": "2026-05-16T12:04:34.517067+00:00",
+  "ended_at": "2026-05-16T12:05:03.569698+00:00",
+  "duration_seconds": 29.052613433999795,
+  "available": true,
+  "summary": {
+    "service_app_cpu_mcores": 619.698466745521,
+    "sidecar_cpu_mcores": 27.132154626664747,
+    "client_cpu_mcores": 151.66126138736794,
+    "total_pod_cpu_mcores": 646.8306213721858
+  },
+  "measurements": [
+    {
+      "namespace": "rq21-ab-c2-strict",
+      "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-1-75998f866d-9bzcc",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 2739150000,
+      "end_usage_core_nanoseconds": 12908436000,
+      "delta_core_nanoseconds": 10169286000,
+      "cpu_mcores": 350.02999035188526
+    },
+    {
+      "namespace": "rq21-ab-c2-strict",
+      "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-1-75998f866d-9bzcc",
+      "container_name": "istio-proxy",
+      "role": "sidecar",
+      "start_usage_core_nanoseconds": 408983000,
+      "end_usage_core_nanoseconds": 1067521000,
+      "delta_core_nanoseconds": 658538000,
+      "cpu_mcores": 22.667082997405107
+    },
+    {
+      "namespace": "rq21-ab-c2-strict",
+      "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-2-5d44997c7d-5jkqh",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 2697097000,
+      "end_usage_core_nanoseconds": 10531671000,
+      "delta_core_nanoseconds": 7834574000,
+      "cpu_mcores": 269.6684763936358
+    },
+    {
+      "namespace": "rq21-ab-c2-strict",
+      "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-2-5d44997c7d-5jkqh",
+      "container_name": "istio-proxy",
+      "role": "sidecar",
+      "start_usage_core_nanoseconds": 332848000,
+      "end_usage_core_nanoseconds": 462570000,
+      "delta_core_nanoseconds": 129722000,
+      "cpu_mcores": 4.465071629259641
+    },
+    {
+      "namespace": "rq21-ab-c2-client",
+      "pod_name": "benchmark-client",
+      "container_name": "client",
+      "role": "client",
+      "start_usage_core_nanoseconds": 1595633000,
+      "end_usage_core_nanoseconds": 6001789000,
+      "delta_core_nanoseconds": 4406156000,
+      "cpu_mcores": 151.66126138736794
+    }
+  ],
+  "start_snapshot": {
+    "captured_at": "2026-05-16T12:04:34.126088+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c2-strict",
+        "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-1-75998f866d-9bzcc",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 2739150000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c2-strict",
+        "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-1-75998f866d-9bzcc",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 408983000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c2-strict",
+        "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-2-5d44997c7d-5jkqh",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 2697097000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c2-strict",
+        "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-2-5d44997c7d-5jkqh",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 332848000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c2-client",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 1595633000
+      }
+    ],
+    "errors": []
+  },
+  "end_snapshot": {
+    "captured_at": "2026-05-16T12:05:04.192102+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c2-strict",
+        "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-1-75998f866d-9bzcc",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 12908436000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c2-strict",
+        "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-1-75998f866d-9bzcc",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 1067521000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c2-strict",
+        "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-2-5d44997c7d-5jkqh",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 10531671000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c2-strict",
+        "pod_name": "chain-2svc-mesh-strict-mtls-no-authz-svc-2-5d44997c7d-5jkqh",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 462570000
+      },
+      {
+        "node_name": "aks-rq15pool-31581052-vmss000000",
+        "namespace": "rq21-ab-c2-client",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 6001789000
+      }
+    ],
+    "errors": []
+  },
+  "errors": []
+}

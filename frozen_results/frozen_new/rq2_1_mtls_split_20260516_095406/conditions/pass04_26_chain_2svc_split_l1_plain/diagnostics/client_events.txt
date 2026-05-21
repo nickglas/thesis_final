@@ -1,0 +1,12 @@
+LAST SEEN   TYPE     REASON      OBJECT                              MESSAGE
+95s         Normal   Scheduled   pod/benchmark-client                Successfully assigned rq21-ms-l1-plain-client/benchmark-client to aks-rq15pool-53575030-vmss000000
+83s         Normal   Scheduled   pod/rq21-ms-direct-20260516104727   Successfully assigned rq21-ms-l1-plain-client/rq21-ms-direct-20260516104727 to aks-rq15pool-53575030-vmss000000
+96s         Normal   Pulling     pod/benchmark-client                Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+95s         Normal   Pulled      pod/benchmark-client                Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 143ms (143ms including waiting). Image size: 413013146 bytes.
+95s         Normal   Created     pod/benchmark-client                Created container: client
+95s         Normal   Started     pod/benchmark-client                Started container client
+83s         Normal   Pulling     pod/rq21-ms-direct-20260516104727   Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+83s         Normal   Pulled      pod/rq21-ms-direct-20260516104727   Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 152ms (152ms including waiting). Image size: 413013146 bytes.
+83s         Normal   Created     pod/rq21-ms-direct-20260516104727   Created container: debug
+83s         Normal   Started     pod/rq21-ms-direct-20260516104727   Started container debug
+80s         Normal   Killing     pod/rq21-ms-direct-20260516104727   Stopping container debug

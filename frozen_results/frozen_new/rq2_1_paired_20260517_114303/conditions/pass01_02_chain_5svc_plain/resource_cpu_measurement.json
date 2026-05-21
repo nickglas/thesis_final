@@ -1,0 +1,186 @@
+{
+  "captured_at": "2026-05-17T12:01:02.567301+00:00",
+  "condition": "chain_5svc_plain",
+  "condition_key": "plain",
+  "started_at": "2026-05-17T12:00:27.981420+00:00",
+  "ended_at": "2026-05-17T12:01:01.366910+00:00",
+  "duration_seconds": 33.38672371200005,
+  "available": true,
+  "summary": {
+    "service_app_cpu_mcores": 625.2323582291839,
+    "sidecar_cpu_mcores": 0.0,
+    "client_cpu_mcores": 133.8706678305648,
+    "total_pod_cpu_mcores": 625.2323582291839
+  },
+  "measurements": [
+    {
+      "namespace": "rq21-chain5-plain",
+      "pod_name": "chain-5svc-plain-svc-1-cd99c9549-qb5ll",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 3670929000,
+      "end_usage_core_nanoseconds": 11919931000,
+      "delta_core_nanoseconds": 8249002000,
+      "cpu_mcores": 247.07431825768205
+    },
+    {
+      "namespace": "rq21-chain5-plain",
+      "pod_name": "chain-5svc-plain-svc-2-d6767685b-r7qxr",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 3018519000,
+      "end_usage_core_nanoseconds": 7105920000,
+      "delta_core_nanoseconds": 4087401000,
+      "cpu_mcores": 122.42593898277245
+    },
+    {
+      "namespace": "rq21-chain5-plain",
+      "pod_name": "chain-5svc-plain-svc-3-5b9b5844dc-wxx5w",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 3688079000,
+      "end_usage_core_nanoseconds": 6132747000,
+      "delta_core_nanoseconds": 2444668000,
+      "cpu_mcores": 73.22275827625828
+    },
+    {
+      "namespace": "rq21-chain5-plain",
+      "pod_name": "chain-5svc-plain-svc-4-d4bff7c86-zmx4g",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 2943656000,
+      "end_usage_core_nanoseconds": 8567540000,
+      "delta_core_nanoseconds": 5623884000,
+      "cpu_mcores": 168.4467169798584
+    },
+    {
+      "namespace": "rq21-chain5-plain",
+      "pod_name": "chain-5svc-plain-svc-5-8596f68c49-7pfbp",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 2863930000,
+      "end_usage_core_nanoseconds": 3333435000,
+      "delta_core_nanoseconds": 469505000,
+      "cpu_mcores": 14.062625732612627
+    },
+    {
+      "namespace": "rq21-client-chain5-plain",
+      "pod_name": "benchmark-client",
+      "container_name": "client",
+      "role": "client",
+      "start_usage_core_nanoseconds": 100848000,
+      "end_usage_core_nanoseconds": 4570351000,
+      "delta_core_nanoseconds": 4469503000,
+      "cpu_mcores": 133.8706678305648
+    }
+  ],
+  "start_snapshot": {
+    "captured_at": "2026-05-17T12:00:27.522633+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-1-cd99c9549-qb5ll",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 3670929000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-2-d6767685b-r7qxr",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 3018519000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-3-5b9b5844dc-wxx5w",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 3688079000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-4-d4bff7c86-zmx4g",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 2943656000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-5-8596f68c49-7pfbp",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 2863930000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-client-chain5-plain",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 100848000
+      }
+    ],
+    "errors": []
+  },
+  "end_snapshot": {
+    "captured_at": "2026-05-17T12:01:02.132058+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-1-cd99c9549-qb5ll",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 11919931000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-2-d6767685b-r7qxr",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 7105920000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-3-5b9b5844dc-wxx5w",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 6132747000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-4-d4bff7c86-zmx4g",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 8567540000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-chain5-plain",
+        "pod_name": "chain-5svc-plain-svc-5-8596f68c49-7pfbp",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 3333435000
+      },
+      {
+        "node_name": "aks-rq15pool-34343338-vmss000000",
+        "namespace": "rq21-client-chain5-plain",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 4570351000
+      }
+    ],
+    "errors": []
+  },
+  "errors": []
+}

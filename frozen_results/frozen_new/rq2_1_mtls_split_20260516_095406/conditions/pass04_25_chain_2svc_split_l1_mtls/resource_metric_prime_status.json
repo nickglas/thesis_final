@@ -1,0 +1,46 @@
+{
+  "condition": "chain_2svc_split_l1_mtls",
+  "started_at": "2026-05-16T10:45:50.941915+00:00",
+  "updated_at": "2026-05-16T10:46:20.981301+00:00",
+  "ready": true,
+  "attempts": 6,
+  "elapsed_seconds": 30.039,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21-ms-l1-mtls": {
+      "chain-2svc-split-l1-mtls-svc-1-84fbdcc666-5kjnl": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-kwljb": [
+        "inference",
+        "istio-proxy"
+      ]
+    },
+    "rq21-ms-l1-mtls-client": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21-ms-l1-mtls": {
+      "chain-2svc-split-l1-mtls-svc-1-84fbdcc666-5kjnl": [
+        "inference",
+        "istio-proxy"
+      ],
+      "chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-kwljb": [
+        "inference",
+        "istio-proxy"
+      ]
+    },
+    "rq21-ms-l1-mtls-client": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

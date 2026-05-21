@@ -1,0 +1,80 @@
+{
+  "ran": true,
+  "expected_non_mesh_direct_failure": true,
+  "authorization_policy_expected_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+  "authorization_policy_expected_principals": [
+    "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+  ],
+  "full_chain_probe": {
+    "description": "Positive chain probe: non-meshed benchmark client calls service1 only; the mesh-protected chain must return 2 hop timings.",
+    "target": "chain-2svc-mtls-multinode-svc-1.rq21b-chain2-mtls.svc.cluster.local:50051",
+    "expected_hop_count": 2,
+    "expected_hop_indexes": [
+      1,
+      2
+    ],
+    "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181724/diagnostics/full_chain_probe_output.txt",
+    "returncode": 0,
+    "succeeded": true,
+    "hop_count": 2,
+    "hop_indexes": [
+      1,
+      2
+    ],
+    "hop_timings": [
+      {
+        "hop_index": 1,
+        "deserialize_ms": 0.7632950000697747,
+        "compute_ms": 38.975384999957896,
+        "serialize_ms": 0.07379899989246042,
+        "forward_ms": 66.13723500004198,
+        "activation_bytes": 602112
+      },
+      {
+        "hop_index": 2,
+        "deserialize_ms": 0.5476960000123654,
+        "compute_ms": 37.81623899976694,
+        "serialize_ms": 0.04170000011072261,
+        "forward_ms": 0.0,
+        "activation_bytes": 401408
+      }
+    ],
+    "response_shape": [
+      1,
+      1000
+    ]
+  },
+  "non_mesh_direct_denial_probe": {
+    "description": "Non-meshed debug pod direct gRPC readiness probes to downstream services.",
+    "pod_name": "rq21-direct-deny-20260516181738",
+    "namespace": "rq21b-client-mtls",
+    "target": "chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051",
+    "targets": [
+      {
+        "segment_index": 2,
+        "target": "chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051"
+      }
+    ],
+    "expected_failure": true,
+    "manifest_file": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181724/diagnostics/negative_direct_probe_pod.yaml",
+    "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass04_08_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_181724/diagnostics/negative_direct_probe_output.txt",
+    "pod_preserved": false,
+    "returncode": 42,
+    "blocked_as_expected": true,
+    "succeeded_unexpectedly": false,
+    "target_results": [
+      {
+        "segment_index": 2,
+        "target": "chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051",
+        "returncode": 42,
+        "blocked_as_expected": true,
+        "succeeded_unexpectedly": false
+      }
+    ],
+    "blocked_segments": [
+      2
+    ]
+  },
+  "passed": true,
+  "errors": []
+}

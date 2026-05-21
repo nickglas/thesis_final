@@ -1,0 +1,45 @@
+{
+  "condition": "chain_2svc_plain_nonmesh",
+  "started_at": "2026-05-16T11:56:16.714636+00:00",
+  "updated_at": "2026-05-16T11:56:29.443252+00:00",
+  "ready": true,
+  "attempts": 3,
+  "elapsed_seconds": 12.729,
+  "timeout_seconds": 180.0,
+  "interval_seconds": 5.0,
+  "expected": {
+    "rq21-ab-c0-plain": {
+      "chain-2svc-plain-nonmesh-svc-1-65db99bffc-28zg9": [
+        "inference"
+      ],
+      "chain-2svc-plain-nonmesh-svc-2-7f8894d69b-d9wpv": [
+        "inference"
+      ]
+    },
+    "rq21-ab-c0-client": {
+      "benchmark-client": [
+        "client"
+      ]
+    }
+  },
+  "observed": {
+    "rq21-ab-c0-client": {
+      "benchmark-client": [
+        "client"
+      ],
+      "rq21-ab-direct-20260516115606": [
+        "debug"
+      ]
+    },
+    "rq21-ab-c0-plain": {
+      "chain-2svc-plain-nonmesh-svc-1-65db99bffc-28zg9": [
+        "inference"
+      ],
+      "chain-2svc-plain-nonmesh-svc-2-7f8894d69b-d9wpv": [
+        "inference"
+      ]
+    }
+  },
+  "missing": {},
+  "errors": {}
+}

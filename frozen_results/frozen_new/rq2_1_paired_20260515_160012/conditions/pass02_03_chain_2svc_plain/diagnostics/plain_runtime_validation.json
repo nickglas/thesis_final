@@ -1,0 +1,23 @@
+{
+  "condition": "chain_2svc_plain",
+  "passed": true,
+  "errors": [],
+  "service_pod_nodes": [
+    "aks-rq15pool-95166063-vmss000000"
+  ],
+  "client_node": "aks-rq15pool-95166063-vmss000000",
+  "placement_validation": {
+    "strategy": "strict_same_node",
+    "service_pod_node_placement": {
+      "chain-2svc-plain-svc-1-5855ff49d8-7drjk": "aks-rq15pool-95166063-vmss000000",
+      "chain-2svc-plain-svc-2-556ccf947b-dw9sr": "aks-rq15pool-95166063-vmss000000"
+    },
+    "service_pod_nodes": [
+      "aks-rq15pool-95166063-vmss000000"
+    ],
+    "client_node": "aks-rq15pool-95166063-vmss000000",
+    "service_nodes_distinct": false,
+    "dedicated_client_node": false,
+    "min_nodes": null
+  }
+}
