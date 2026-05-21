@@ -372,15 +372,15 @@ artefact of single-node colocation.
 
 \paragraph{Finding 2: The inter-node penalty is positive and bounded.}
 \Cref{tab:rq15b_delta} compares the multi-node run condition-by-condition with
-the frozen single-node RQ1.5 baseline. The monolithic condition gains 2.306~ms
-of latency relative to the single-node monolithic, because the client now
-ships a 600~KiB input tensor across the Azure VNet rather than across a
+the frozen single-node RQ1.5 baseline. The monolithic condition gains 2.305~ms
+of latency relative to the single-node monolithic. This is compatible with
+moving the 588~KiB input tensor across the Azure VNet rather than across a
 loopback socket. The chained conditions add per-condition deltas between
 2.131~ms (\texttt{chain\_3svc}) and 4.086~ms (\texttt{chain\_5svc}). The
 multi-node penalty is therefore a measured bound rather than an open
 acknowledgement: the worst-case single-node-to-multi-node delta on the
 evaluated chain family is 4.086~ms (\texttt{chain\_5svc}), and the monolithic
-baseline alone gains 2.306~ms.
+baseline alone gains 2.305~ms.
 
 \paragraph{Finding 3: Round-to-round consistency remains low.}
 Round CVs for the chained conditions in RQ1.5b are 0.0036--0.0127, comparable
@@ -397,7 +397,7 @@ per-condition mean latency increases from 73.108~ms (monolithic) to 84.605~ms
 \texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} step is +2.502~ms.
 The per-condition multi-node penalty relative to the single-node RQ1.5
 baseline ranges from +2.131~ms to +4.086~ms across the chained conditions and
-+2.306~ms for the monolithic baseline. The single-node RQ1.4 / RQ1.5 design
++2.305~ms for the monolithic baseline. The single-node RQ1.4 / RQ1.5 design
 therefore underestimates true production latency by a bounded margin that is
 now quantified per condition rather than acknowledged abstractly.
 
@@ -670,9 +670,10 @@ achieve round CVs in the range 0.001--0.015. The local Kubernetes stage
 single-node stage (RQ1.5) sees round CVs of 0.0075--0.0225 across the chained
 conditions and the monolithic baseline (\cref{tab:rq15_rounds}); the AKS
 multi-node sensitivity stage (RQ1.5b) tightens these to 0.0020--0.0099
-(\cref{tab:rq15b_rounds}) because each pod has its own dedicated VM and
-therefore no neighbour contention. These low CVs support treating the reported
-condition means as representative of each environment rather than as
+(\cref{tab:rq15b_rounds}). The placement metadata confirms distinct AKS nodes
+for the service pods, but the run does not isolate a single causal source for
+the low cross-round drift. These low CVs support treating the reported
+condition means as representative of this measured environment rather than as
 artefacts of a single favourable or unfavourable run.
 
 \paragraph{Paired execution and transfer validation.}
@@ -763,7 +764,7 @@ production cluster. RQ1.5b
 multi-node AKS sensitivity stage that forces every chain hop across a node
 boundary; the measured per-condition multi-node penalty is bounded between
 +2.131~ms (\texttt{chain\_3svc}) and +4.086~ms (\texttt{chain\_5svc}), with
-the monolithic baseline gaining +2.306~ms (\cref{tab:rq15b_delta}). The
+the monolithic baseline gaining +2.305~ms (\cref{tab:rq15b_delta}). The
 single-node primary numbers should therefore be interpreted as a clean
 architectural-overhead measurement that excludes the inter-node network
 path; the multi-node sensitivity in \cref{sec:rq15b} provides a quantitative

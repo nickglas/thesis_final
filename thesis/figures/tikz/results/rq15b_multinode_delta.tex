@@ -2,13 +2,17 @@
 % Same SKU (Standard_D8s_v3), same region (swedencentral); the only
 % intentional difference is single-node colocation vs multi_node_anti_affinity.
 %
+% Provenance: this static TikZ figure is manually rendered from the frozen
+% condition_summaries.csv artefacts cited in the section; it is not a live
+% regenerated plot.
+%
 % Data is taken from the frozen artefacts cited in the section:
 %   single-node (frozen RQ1.5,  rq1_5_fully_controlled_20260515_145954):
 %       70.802 / 73.437 / 75.410 / 78.294 / 80.519 ms
 %   multi-node  (frozen RQ1.5b, rq1_5b_multinode_20260515_152628):
 %       73.108 / 76.470 / 77.541 / 82.103 / 84.605 ms
-%   delta (ms):
-%        2.306 /  3.033 /  2.131 /  3.809 /  4.086
+%   exact delta (ms), rounded to three decimals in the thesis table:
+%        2.305 /  3.033 /  2.131 /  3.808 /  4.086
 \begin{tikzpicture}[
     font=\small,
     axis/.style={thick, draw=black!70, -{Latex[length=2mm]}},

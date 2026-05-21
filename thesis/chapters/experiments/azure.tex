@@ -341,10 +341,10 @@ direct comparison shown in \cref{tab:rq15b_delta}.
 \toprule
 \textbf{Condition} & \textbf{Single-node mean (ms)} & \textbf{Multi-node mean (ms)} & \textbf{$\Delta$ (ms)} & \textbf{$\Delta$ overhead (pp)} \\
 \midrule
-\texttt{monolithic\_k8s\_1svc} & 70.802 & 73.108 & +2.306 & --- \\
+\texttt{monolithic\_k8s\_1svc} & 70.802 & 73.108 & +2.305 & --- \\
 \texttt{chain\_2svc}           & 73.437 & 76.470 & +3.033 & +0.9 \\
 \texttt{chain\_3svc}           & 75.410 & 77.541 & +2.131 & $-$0.4 \\
-\texttt{chain\_4svc}           & 78.294 & 82.103 & +3.809 & +1.7 \\
+\texttt{chain\_4svc}           & 78.294 & 82.103 & +3.808 & +1.7 \\
 \texttt{chain\_5svc}           & 80.519 & 84.605 & +4.086 & +2.0 \\
 \bottomrule
 \end{tabular}
@@ -376,8 +376,10 @@ and the per-hop addition does not keep growing: the
 \texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 2.502~ms,
 smaller than the preceding 4.562~ms step, mirroring the saturating per-hop
 behaviour observed in RQ1.4 (\cref{tab:rq14_results}). Cross-round CVs are
-0.0036--0.0127 across all chained conditions, consistent with placing each pod on
-its own dedicated VM rather than sharing a single host.
+0.0036--0.0127 across all chained conditions. Because the placement metadata
+confirms distinct AKS nodes for the service pods, these CVs show that the
+distributed placement did not introduce large round-to-round drift in this
+frozen run; they do not isolate a single causal source of stability.
 
 \paragraph{Effect-size note.} Per-iteration Cohen's $d$ and Mann--Whitney
 statistics are emitted alongside the frozen artefact in
@@ -395,23 +397,28 @@ omitted to avoid implying that RQ1.5b is a second primary result.
 }
 \caption{RQ1.5b multi-node penalty per condition. Same SKU
 (\texttt{Standard\_D8s\_v3}), same region (\texttt{swedencentral}); the
-only difference is single-node colocation versus
-\texttt{multi\_node\_anti\_affinity} placement. Per-condition deltas range
+intentional experimental contrast is single-node colocation versus
+\texttt{multi\_node\_anti\_affinity} placement. The figure is manually
+rendered from the same frozen summary artefacts as \cref{tab:rq15b_delta}.
+Per-condition deltas range
 from 2.131~ms (\texttt{chain\_3svc}) to 4.086~ms (\texttt{chain\_5svc}), and
-the monolithic-baseline penalty is 2.306~ms.}
+the monolithic-baseline penalty is 2.305~ms.}
 \label{fig:rq15b_multinode_delta}
 \end{figure}
 
 \Cref{tab:rq15b_delta} and \cref{fig:rq15b_multinode_delta} summarise the
 per-condition multi-node penalty. The penalty is positive across all
-conditions and grows with chain depth. The \texttt{monolithic\_k8s\_1svc}
-baseline is 2.306~ms slower in the multi-node placement than in the
-single-node RQ1.5 baseline, consistent with the client now shipping a
-588~KiB input tensor across the Azure VNet rather than over loopback,
-since gRPC-over-network introduces non-trivial transport and parsing cost
-on top of the payload bytes themselves~\cite{rpc_overhead_hotos25,notnets_apsys24}.
-Adding chain hops with smaller intermediate activations
-(784, 392, 196, 98~KiB) yields per-condition deltas between 2.131~ms and
+conditions but is not monotonic with chain depth: the
+\texttt{chain\_3svc} delta is smaller than the \texttt{chain\_2svc} delta,
+while the largest absolute penalty appears at \texttt{chain\_5svc}. The
+\texttt{monolithic\_k8s\_1svc} baseline is 2.305~ms slower in the multi-node
+placement than in the single-node RQ1.5 baseline. This is compatible with
+the client now shipping a 588~KiB input tensor across the Azure VNet rather
+than over loopback; the cited RPC studies support the general mechanism that
+layered RPC stacks can add transport, parsing, copying, and serialisation
+work on top of the payload bytes themselves~\cite{rpc_overhead_hotos25,notnets_apsys24}.
+The chained conditions, with smaller intermediate activations
+(784, 392, 196, 98~KiB), yield per-condition deltas between 2.131~ms and
 4.086~ms, with the deepest \texttt{chain\_5svc} configuration carrying the
 largest absolute penalty. The within-environment monotonic ordering is
 preserved.
