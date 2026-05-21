@@ -11,10 +11,10 @@
 ]
 
 % y scale: y = overhead milliseconds * 0.55
-% chain_2svc mean delta: 3.122 ms -> 1.717
-% chain_2svc p95 delta:  3.531 ms -> 1.942
-% chain_5svc mean delta: 9.008 ms -> 4.954
-% chain_5svc p95 delta:  10.028 ms -> 5.515
+% chain_2svc mean delta: 3.488 ms -> 1.918
+% chain_2svc p95 delta:  3.623 ms -> 1.993
+% chain_5svc mean delta: 8.837 ms -> 4.860
+% chain_5svc p95 delta:  8.983 ms -> 4.941
 
 \foreach \ms/\y in {0/0,2/1.1,4/2.2,6/3.3,8/4.4,10/5.5} {
     \draw[grid] (0,\y) -- (8.8,\y);
@@ -27,18 +27,18 @@
 \node[rotate=90, font=\small, text=black!75] at (-0.95,2.95) {mTLS/AuthZ latency delta (ms)};
 \node[font=\small, text=black!75] at (4.4,-1.45) {Topology and protected inter-service boundaries};
 
-\draw[meanbar] (1.15,0) rectangle (1.95,1.717);
-\draw[tailbar] (2.10,0) rectangle (2.90,1.942);
-\draw[meanbar] (5.55,0) rectangle (6.35,4.954);
-\draw[tailbar] (6.50,0) rectangle (7.30,5.515);
+\draw[meanbar] (1.15,0) rectangle (1.95,1.918);
+\draw[tailbar] (2.10,0) rectangle (2.90,1.993);
+\draw[meanbar] (5.55,0) rectangle (6.35,4.860);
+\draw[tailbar] (6.50,0) rectangle (7.30,4.941);
 
-\node[vallabel, text=blue!65!black, above] at (1.55,1.717) {3.122};
-\node[vallabel, text=green!45!black, above] at (2.50,1.942) {3.531};
-\node[vallabel, text=blue!65!black, above] at (5.95,4.954) {9.008};
-\node[vallabel, text=green!45!black, above] at (6.90,5.515) {10.028};
+\node[vallabel, text=blue!65!black, above] at (1.55,1.918) {3.488};
+\node[vallabel, text=green!45!black, above] at (2.50,1.993) {3.623};
+\node[vallabel, text=blue!65!black, above] at (5.95,4.860) {8.837};
+\node[vallabel, text=green!45!black, above] at (6.90,4.941) {8.983};
 
-\node[label] at (2.025,-0.45) {\texttt{chain\_2svc}\\1 protected boundary\\+4.5\% mean};
-\node[label] at (6.425,-0.45) {\texttt{chain\_5svc}\\4 protected boundaries\\+11.7\% mean};
+\node[label] at (2.025,-0.45) {\texttt{chain\_2svc}\\1 protected boundary\\+4.62\% mean};
+\node[label] at (6.425,-0.45) {\texttt{chain\_5svc}\\4 protected boundaries\\+10.74\% mean};
 
 \draw[meanbar] (0.65,5.18) rectangle (1.05,5.43);
 \node[legendlabel, anchor=west] at (1.18,5.305) {Mean delta};

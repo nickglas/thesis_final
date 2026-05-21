@@ -9,9 +9,11 @@ AKS microservice inference path is hardened with service identity, mutual TLS, a
 inter-service authorization policy?}
 \end{quote}
 
-RQ2.1 adds the first security-hardening layer to the Azure deployment path selected
-from RQ1. The primary thesis-facing topology is \texttt{chain\_2svc}, because it was
-the lowest-overhead non-monolithic chain in the preceding Kubernetes and AKS stages.
+RQ2.1 adds the first security-hardening layer to the Azure chain-family deployment
+carried forward from RQ1.4 and RQ1.5, rather than reopening the local split-selection
+result from RQ1.1--RQ1.2. The primary thesis-facing topology is
+\texttt{chain\_2svc}, because it was the lowest-overhead non-monolithic chain in the
+preceding Kubernetes and AKS chain-count stages.
 The additional \texttt{chain\_5svc} run is used as a stress case to examine whether
 the same security mechanism becomes more costly when the number of protected service
 boundaries increases. The goal is not to evaluate trusted execution environments in
@@ -123,9 +125,11 @@ For the additional \texttt{chain\_5svc} stress topology, the same hardening
 bundle increased mean latency from 82.302~ms to 91.139~ms. The mean overhead
 was 8.837~ms, or 10.74\%, and p95 latency increased by 8.983~ms. The inferred
 non-compute/platform component increased from 10.801~ms to 19.949~ms. The
-stress run therefore shows that the communication-hardening cost grows when
-the number of protected service boundaries grows, even though the main RQ2.1
-answer remains anchored in \texttt{chain\_2svc}.
+stress run therefore shows that the measured communication-hardening cost is
+larger in the four-boundary stress case than in the selected two-service chain,
+even though the main RQ2.1 answer remains anchored in \texttt{chain\_2svc}. This
+two-point comparison should be read as depth sensitivity, not as a calibrated
+scaling law.
 
 \begin{table}[ht]
 \centering
@@ -136,8 +140,8 @@ answer remains anchored in \texttt{chain\_2svc}.
 \toprule
 \textbf{Topology} & \textbf{Mean delta (ms)} & \textbf{Mean delta (\%)} & \textbf{Min--max pass delta (ms)} & \textbf{Pass-delta std (ms)} & \textbf{p95 delta (ms)} \\
 \midrule
-\texttt{chain\_2svc} & 3.488 & 4.62  & 2.223--5.230 & 1.064 & 3.623 \\
-\texttt{chain\_5svc} & 8.837 & 10.74 & 7.623--9.985 & 0.847 & 8.983 \\
+\texttt{chain\_2svc} & 3.488 & 4.62  & 2.223--5.230 & 1.091 & 3.623 \\
+\texttt{chain\_5svc} & 8.837 & 10.74 & 7.623--9.985 & 0.881 & 8.983 \\
 \bottomrule
 \end{tabular}
 }
@@ -155,7 +159,7 @@ the risk that the result is explained only by slow drift during the run.
 \resizebox{0.92\textwidth}{!}{%
 \input{figures/tikz/results/rq21_mtls_latency_overhead}
 }
-\caption{RQ2.1 mTLS/AuthZ latency overhead for the primary and stress AKS chains. Mean and p95 deltas are computed within the paired plain/mTLS design. The stress topology contains four protected inter-service boundaries, so the larger overhead visualises the depth sensitivity of sidecar-mediated communication hardening.}
+\caption{RQ2.1 mTLS/AuthZ latency overhead for the primary and stress AKS chains. Mean and p95 deltas are computed within the paired plain/mTLS design. The stress topology contains four protected inter-service boundaries, so the larger overhead visualises the observed stress-case sensitivity of sidecar-mediated communication hardening.}
 \label{fig:rq21_mtls_latency_overhead}
 \end{figure}
 
@@ -438,9 +442,9 @@ requirement is to protect communication between inference services, the
 mTLS/AuthZ configuration provides the most appropriate default balance. It
 adds a mean latency overhead of 3.488~ms, or 4.62\%, for the selected
 \texttt{chain\_2svc} topology, while enforcing the intended
-service-account-based policy. The \texttt{chain\_5svc} stress case shows that
-this cost grows with the number of protected boundaries, reaching 8.837~ms, or
-10.74\%, when the full five-service chain is protected.
+service-account-based policy. The \texttt{chain\_5svc} stress case shows a larger
+cost when four inter-service boundaries are protected, reaching 8.837~ms, or
+10.74\%, for the full five-service chain.
 
 If the threat model includes host-level exposure of the downstream inference
 component, mTLS alone is not sufficient because it protects the communication
