@@ -9,8 +9,9 @@ cost when ResNet-18 is decomposed into synchronously chained coarse architectura
 under in-cluster Kubernetes execution?}
 \end{quote}
 
-RQ1.4 moves from the local split-selection stages of RQ1.1--RQ1.3 to the final
-thesis-facing local Kubernetes benchmark for the coarse-stage ResNet-18 chain family.
+RQ1.4 moves from the local split-selection and explanatory stages of
+RQ1.1--RQ1.3 to the final thesis-facing local Kubernetes benchmark for the
+coarse-stage ResNet-18 chain family.
 Rather than selecting a boundary through carry-forward, this stage benchmarks a
 predefined set of five in-cluster conditions from \texttt{monolithic\_k8s\_1svc} to
 \texttt{chain\_5svc} to measure how end-to-end latency changes as synchronous service
@@ -60,7 +61,7 @@ Cooldown between conditions & 5 seconds \\
 Random seed & 42 \\
 Communication & gRPC (in-cluster Kubernetes) \\
 gRPC port & 50051 \\
-Maximum message size & 16~MB \\
+Maximum message size & 16~MiB ($16{,}777{,}216$ bytes) \\
 Service pod CPU request / limit & 1 core / 1 core \\
 Service pod memory request / limit & 512~MiB / 512~MiB \\
 Client CPU request / limit & 1 core / 1 core \\
@@ -92,12 +93,19 @@ the deployed services both passed with \texttt{max\_abs\_diff} $= 0.0$,
 
 Five conditions were evaluated in a rolling orchestration sweep:
 
+The byte totals reported below are the frozen runner's
+\texttt{total\_activation\_bytes\_mean} values converted with
+1024~bytes/KiB. This runner metric sums the input tensor and the tensors
+recorded across the service calls, so it is a per-request recorded tensor-byte
+total rather than the boundary-only activation-transfer size used in the local
+split-selection sections.
+
 \begin{itemize}
     \item \textbf{\texttt{monolithic\_k8s\_1svc}}: Full ResNet-18 inference in a single Kubernetes service. This is the Kubernetes-native monolithic baseline.
-    \item \textbf{\texttt{chain\_2svc}}: Two services with a split after \texttt{layer2}. Cumulative transferred activation per request: 980~KB.
-    \item \textbf{\texttt{chain\_3svc}}: Three services with splits after \texttt{layer1} and \texttt{layer3}. Cumulative transferred activation per request: 1568~KB.
-    \item \textbf{\texttt{chain\_4svc}}: Four services with splits after \texttt{layer1}, \texttt{layer2}, and \texttt{layer3}. Cumulative transferred activation per request: 1960~KB.
-    \item \textbf{\texttt{chain\_5svc}}: Five services with splits after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. Cumulative transferred activation per request: 2058~KB.
+    \item \textbf{\texttt{chain\_2svc}}: Two services with a split after \texttt{layer2}. Recorded tensor bytes per request: 980~KiB.
+    \item \textbf{\texttt{chain\_3svc}}: Three services with splits after \texttt{layer1} and \texttt{layer3}. Recorded tensor bytes per request: 1568~KiB.
+    \item \textbf{\texttt{chain\_4svc}}: Four services with splits after \texttt{layer1}, \texttt{layer2}, and \texttt{layer3}. Recorded tensor bytes per request: 1960~KiB.
+    \item \textbf{\texttt{chain\_5svc}}: Five services with splits after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. Recorded tensor bytes per request: 2058~KiB.
 \end{itemize}
 
 Carry-forward is not applicable in RQ1.4. The frozen \texttt{carry\_forward.json}
@@ -110,6 +118,7 @@ states that carry-forward is defined only for the two-service split-selection ex
 \centering
 \caption{RQ1.4 summary of mean latency and overhead vs.\ Kubernetes monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
 \label{tab:rq14_results}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{lccccc}
 \toprule
 \textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
@@ -121,6 +130,7 @@ states that carry-forward is defined only for the two-service split-selection ex
 \texttt{chain\_5svc}           & 92.535 & 90.456 & 3.965 & 99.491 & +11.469 / +14.1\% \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \begin{figure}[htbp]
@@ -130,24 +140,26 @@ states that carry-forward is defined only for the two-service split-selection ex
 }
 \caption{Mean end-to-end latency for the RQ1.4 local Kubernetes chain family
 (\texttt{rq1\_4\_fully\_controlled\_20260515\_141036}). Latency increases as
-additional synchronous service boundaries are introduced, but the increase is
-not strictly linear. The marginal increases shrink as the chain grows because
-the additional late-stage boundaries transfer progressively smaller
-activations.}
+the predefined service-chain configurations move from one to five services, but
+the adjacent differences are descriptive comparisons across this predefined
+family rather than isolated causal estimates for a single added boundary.}
 \label{fig:rq14_kubernetes_chain_latency}
 \end{figure}
 
 \Cref{fig:rq14_kubernetes_chain_latency} visualises the same latency trend reported in
-\cref{tab:rq14_results}, showing that most of the increase occurs before the
-five-service configuration.
+\cref{tab:rq14_results}. By \texttt{chain\_4svc}, the mean-latency overhead is
+9.506~ms out of the final \texttt{chain\_5svc} overhead of 11.469~ms, so most
+of the measured increase has already occurred before the five-service
+configuration.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4 overhead and inferred non-compute/platform cost breakdown. Activation totals are taken from \texttt{total\_activation\_bytes\_mean} in \texttt{merged\_results/condition\_summaries.csv} and converted to KB (1024 bytes/KB).}
+\caption{RQ1.4 overhead and non-compute/platform cost breakdown. Recorded tensor-byte totals are taken from \texttt{total\_activation\_bytes\_mean} in \texttt{merged\_results/condition\_summaries.csv} and converted to KiB (1024 bytes/KiB); the metric includes the input tensor. The platform column is \texttt{non\_compute\_overhead\_ms\_mean}.}
 \label{tab:rq14_overhead}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Condition} & \textbf{Overhead (ms)} & \textbf{Overhead (\%)} & \textbf{Cumul.\ Activation (KB)} & \textbf{Inferred Non-Compute / Platform (ms)} \\
+\textbf{Condition} & \textbf{Overhead (ms)} & \textbf{Overhead (\%)} & \textbf{Tensor Bytes (KiB)} & \textbf{Non-Compute / Platform (ms)} \\
 \midrule
 \texttt{chain\_2svc} & 2.321  & 2.9  & 980  & 6.215 \\
 \texttt{chain\_3svc} & 6.662  & 8.2  & 1568 & 9.435 \\
@@ -155,6 +167,7 @@ five-service configuration.
 \texttt{chain\_5svc} & 11.469 & 14.1 & 2058 & 13.633 \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \begin{table}[ht]

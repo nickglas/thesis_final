@@ -253,12 +253,14 @@ are added.
 The step from \texttt{chain\_4svc} to \texttt{chain\_5svc} increases mean
 latency by approximately 1.96~ms, smaller than the preceding 2.84~ms step
 from \texttt{chain\_3svc} to \texttt{chain\_4svc}. This is consistent with the
-activation profile of the evaluated chain family: cumulative transferred
-activation rises from 1960~KB to 2058~KB, so the added late-stage boundary
-contributes only 98~KB. In this setup, later boundaries can therefore add less
-overhead when the additional transferred activation is small. This should be
-read as a property of the evaluated coarse-stage ResNet-18 chain family under
-this local benchmark, not as a universal law about microservice depth.
+recorded tensor-byte profile of the evaluated chain family: the frozen
+\texttt{total\_activation\_bytes\_mean} metric rises from 1960~KiB to
+2058~KiB, so the final condition adds the 98~KiB \texttt{layer4} output to the
+recorded per-request tensor total. In this setup, later boundaries can
+therefore add less overhead when the additional recorded tensor payload is
+small. This should be read as a property of the evaluated coarse-stage
+ResNet-18 chain family under this local benchmark, not as a universal law about
+microservice depth.
 
 \paragraph{Finding 3: \texttt{chain\_2svc} is the lowest-overhead non-monolithic condition.}
 Among the chained deployments, \texttt{chain\_2svc} remains the smallest
@@ -285,7 +287,7 @@ increment from \texttt{chain\_4svc} to \texttt{chain\_5svc} is approximately
 1.96~ms, smaller than the preceding 2.84~ms step. In this single-node local
 \texttt{kind} cluster, added boundaries therefore impose measurable but
 bounded overhead, and later boundaries can contribute less when the additional
-transferred activation is small. Carry-forward is not applicable in this stage
+recorded tensor payload is small. Carry-forward is not applicable in this stage
 because the Kubernetes condition set was predefined rather than selected.
 
 \subsection{RQ1.5: AKS Transfer Validation}
@@ -664,7 +666,7 @@ Each benchmark stage reports per-condition round CVs computed as the standard
 deviation of per-round condition means divided by the grand mean
 (\cref{sec:methods-statistics}). The local screening stages (RQ1.1, RQ1.2)
 achieve round CVs in the range 0.001--0.015. The local Kubernetes stage
-(RQ1.4) sees round CVs of 0.0075--0.0174 (\cref{tab:rq14_rounds}). The AKS
+(RQ1.4) sees round CVs of 0.0074--0.0161 (\cref{tab:rq14_rounds}). The AKS
 single-node stage (RQ1.5) sees round CVs of 0.0075--0.0225 across the chained
 conditions and the monolithic baseline (\cref{tab:rq15_rounds}); the AKS
 multi-node sensitivity stage (RQ1.5b) tightens these to 0.0020--0.0099
