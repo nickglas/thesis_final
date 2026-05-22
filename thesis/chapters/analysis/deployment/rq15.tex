@@ -1,62 +1,180 @@
 \subsection{RQ1.5: AKS Transfer Validation}
 \label{sec:analysis-rq15}
 
-The results in \cref{sec:rq15} reveal four bounded findings for the AKS
-transfer-validation stage.
+RQ1.5 asks whether the local Kubernetes latency pattern observed for the
+coarse-stage ResNet-18 microservice chain family transfers to Azure
+Kubernetes Service (AKS), and how absolute and relative costs change
+under managed cloud execution. The analytical contribution is not to add
+a measurement on top of \cref{sec:analysis-rq14}, and not to re-select a
+split point, but to test whether the RQ1.4 architectural ordering
+survives a substrate change from a local single-node \texttt{kind}
+cluster to a managed AKS single-node cluster, and to scope precisely
+what that test does and does not establish. The natural reporting
+discipline for this kind of cross-substrate transfer is ranking +
+relative-overhead trend rather than millisecond
+equivalence~\cite{benchmarking_sc15}.
 
-\paragraph{Finding 1: AKS preserves the local Kubernetes condition ordering.}
-The complete RQ1.4 ordering is preserved in AKS: the monolithic Kubernetes
-service is fastest, followed by \texttt{chain\_2svc}, \texttt{chain\_3svc},
-\texttt{chain\_4svc}, and \texttt{chain\_5svc}. This provides directional
-transfer evidence. The same service-count trend that increased latency in
-local Kubernetes remains visible under managed cloud execution, even though
-the absolute millisecond values differ between environments.
+\paragraph{The RQ1.4 ordering transfers directionally to AKS.}
+The complete RQ1.4 condition ordering is preserved in the frozen AKS
+benchmark: \texttt{monolithic\_k8s\_1svc} at 70.802~ms is the fastest,
+followed by \texttt{chain\_2svc} at 73.437~ms, \texttt{chain\_3svc} at
+75.410~ms, \texttt{chain\_4svc} at 78.294~ms, and \texttt{chain\_5svc}
+at 80.519~ms (\cref{tab:rq15_results}). Together with the kind multi-
+worker probe in \cref{sec:analysis-rq14b} (which preserves the ordering
+under same-host CNI-bridge routing) and the AKS multi-node sensitivity
+in \cref{sec:analysis-rq15b} (which preserves it under enforced inter-
+node placement), the RQ1.4 ordering now survives three orthogonal
+stresses: managed-cloud substrate (RQ1.5), CNI-bridge routing on the
+local host (RQ1.4b), and genuine cross-host placement (RQ1.5b). Read
+across the deployment strand, this is a triple-coverage transfer of the
+same architectural ordering established on \texttt{127.0.0.1} in
+RQ1.1: from a single-host loopback gRPC chain (RQ1.1), to a single-
+node local \texttt{kind} cluster (RQ1.4), to managed AKS (RQ1.5). The
+ordering claim of the deployment strand is therefore not specific to
+the single-node \texttt{kind} substrate on which RQ1.4 was measured.
 
-\paragraph{Finding 2: AKS overhead is monotonic with service count.}
-Relative to the AKS monolithic baseline, mean latency rises from 70.802~ms to
-73.437~ms, 75.410~ms, 78.294~ms, and 80.519~ms as the chain grows from one to
-five services. The corresponding overheads are +2.635~ms (3.7\%), +4.608~ms
-(6.5\%), +7.492~ms (10.6\%), and +9.717~ms (13.7\%). Within this AKS
-deployment, adding synchronous service boundaries is therefore associated with
-measurable end-to-end cost.
+\paragraph{The relative-overhead trend transfers within a small pp band.}
+Relative to each environment's own monolithic baseline, the AKS overhead
+profile across \texttt{chain\_2svc}--\texttt{chain\_5svc} is
+$\{3.7\%,\ 6.5\%,\ 10.6\%,\ 13.7\%\}$, against the RQ1.4 local
+Kubernetes profile of $\{2.9\%,\ 8.2\%,\ 11.7\%,\ 14.1\%\}$
+(\cref{tab:rq15_transfer}). Both curves are monotonic and track each
+other to within $1.7$~pp at any condition (the maximum gap is at
+\texttt{chain\_3svc}: 8.2\% local vs 6.5\% AKS; the other three
+conditions agree within $0.8$~pp). The transfer claim is therefore
+stronger than rank preservation alone: the shape of the overhead curve
+--- not just the ordering of conditions --- carries over from local
+Kubernetes to AKS. This shape correspondence at the relative-overhead
+level is what supports treating the chain-cost gradient as
+architectural rather than as a \texttt{kind}-specific artefact, while
+the small pp differences are compatible with the expected effect of
+managed-Kubernetes provider defaults on absolute
+performance~\cite{managed_k8s_perf}.
 
-\paragraph{Finding 3: Marginal overhead is bounded by the activation profile.}
-The AKS marginal increments are +2.635~ms from the monolithic baseline to
-\texttt{chain\_2svc}, +1.973~ms from \texttt{chain\_2svc} to
-\texttt{chain\_3svc}, +2.884~ms from \texttt{chain\_3svc} to
-\texttt{chain\_4svc}, and +2.225~ms from \texttt{chain\_4svc} to
-\texttt{chain\_5svc}. The first three steps reflect the cost of adding
-synchronous boundaries that move 392--784~KiB activations, while the final
-step is smaller than the preceding one because the layer-4 boundary moves
-only 98~KiB. This is consistent with the bounded non-linearity expected from
-the activation profile of the chain family: an additional service boundary
-does not imply a constant per-boundary penalty.
+\paragraph{The bounded-non-linearity at the last hop reappears with the same activation-transfer signature.}
+The AKS marginal increments are
+$+2.635$~ms (\texttt{mono}~$\rightarrow$~\texttt{chain\_2svc}),
+$+1.973$~ms (\texttt{chain\_2svc}~$\rightarrow$~\texttt{chain\_3svc}),
+$+2.884$~ms (\texttt{chain\_3svc}~$\rightarrow$~\texttt{chain\_4svc}),
+and $+2.225$~ms (\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc})
+(\cref{tab:rq15_results}). The final increment is smaller than the
+preceding one because the layer-4 boundary that distinguishes
+\texttt{chain\_5svc} from \texttt{chain\_4svc} transfers only the
+98~KiB \texttt{layer4} output, against the 196--784~KiB tensors moved
+at the earlier \texttt{layer1}, \texttt{layer2}, and \texttt{layer3}
+boundaries (boundary-only activation sizes, consistent with the RQ1.1
+metric and distinct from the runner's input-inclusive
+\texttt{total\_activation\_bytes\_mean}). This is the activation-
+transfer dimension of the RQ1.3 two-dimensional
+account~\cite{deeperthings} reappearing in a third substrate, after
+\texttt{127.0.0.1} in RQ1.1 and single-node \texttt{kind} in RQ1.4.
+The triple coverage strengthens the architectural reading of the
+bounded non-linearity but does not extend it beyond the evaluated
+coarse-stage ResNet-18 chain family --- the caveat already attached to
+the RQ1.4 reading carries over to RQ1.5 unchanged.
 
-\paragraph{Finding 4: Absolute latency is environment-specific.}
-All AKS means are lower than their local Kubernetes counterparts, including
-the monolithic baseline. The lower AKS absolute latencies should not be
-interpreted as evidence that AKS is generally faster than local Kubernetes.
-The local and AKS runs differ in host CPU, kernel, virtualisation layer,
-Kubernetes implementation, container runtime context, CPU scheduling context,
-and networking path. RQ1.5 therefore uses within-environment ordering and
-normalised overhead as the primary comparison, not direct absolute latency. On
-that basis, AKS provides directional transfer evidence for the RQ1.4 ordering
-while preserving the claim scope: absolute latency is deployment-specific, and
-the AKS run should not be interpreted as a numerical replication of the local
-Kubernetes measurements.
+\paragraph{Absolute latency is environment-specific and is not the comparison RQ1.5 makes.}
+Every AKS condition mean is lower than its local Kubernetes counterpart,
+including the monolithic baseline (70.802~ms vs 81.066~ms). The two
+runs differ in host CPU, kernel, virtualisation layer, Kubernetes
+implementation (\texttt{kind}/containerd vs managed AKS control plane),
+container runtime context, CPU scheduling, networking path, and applied
+host controls: the local stage applied \texttt{performance} governor,
+disabled turbo, and \texttt{nice~-5}, whereas AKS does not expose those
+controls (\cref{sec:rq15}). The lower AKS absolute number is therefore
+confounded with hardware and host-control differences rather than
+isolated to a substrate property of AKS, and the absolute delta should
+not be read as evidence that AKS is generally faster than local
+Kubernetes for this workload. Independent of this thesis, container,
+VM, CNI, and managed-cluster differences are known to shift absolute
+timings across substrates~\cite{virtualization_costs,cni_k8s_ic2e21,
+noise_in_clouds,managed_k8s_perf}, which is why RQ1.5 uses within-
+environment ordering and relative-overhead transfer as the primary
+comparison and treats absolute latency as deployment-specific.
+
+\paragraph{Validation.}
+Three pieces of evidence support treating the within-run AKS ordering
+and the relative-overhead trend transfer as credible. First, functional
+parity holds: both local segment-chain validation and live in-cluster
+gRPC validation report \texttt{max\_abs\_diff}~$=0.0$ at the predeclared
+tolerance of $1.0\times10^{-5}$ for all five conditions
+(consolidated in \cref{sec:analysis-validation}), so the AKS condition
+means are not confounded with numerical drift across the partitioned
+graph. Second, cross-round stability is tight on the chained conditions:
+round CVs are 0.0019--0.0061 for
+\texttt{chain\_2svc}--\texttt{chain\_5svc} and 0.0117 for the monolithic
+baseline (\cref{tab:rq15_rounds}); these are in the same range as RQ1.4
+(\cref{tab:rq14_rounds}) and meet the SC'15 reporting standard of
+treating cross-round consistency as the primary indicator of result
+stability~\cite{benchmarking_sc15}. The slightly higher monolithic round
+CV in AKS is compatible with managed-cloud variability landing on the
+single longer-running pod path rather than on the chained gRPC path,
+but the run does not isolate a single cause. Third, the AKS leg removes
+one reproducibility caveat that bounded RQ1.4: every RQ1.5 condition
+ran with the pinned ACR image digest
+\texttt{sha256:d292aef407ee8a15da2b}\allowbreak\texttt{daa680de1cc24b0975e7de81d27e1fc3}\allowbreak\texttt{a7d128b8736b}
+under image pull policy \texttt{Always}, so the application code is
+byte-exact at this digest, in contrast to the mutable local
+\texttt{thesis-inference:latest} tag used in RQ1.4
+(\cref{sec:methods-artifacts}). Three limits must be stated explicitly.
+(i) RQ1.5 is one AKS cluster, one node SKU (\texttt{Standard\_D8s\_v3}),
+one region (\texttt{swedencentral}), one fixed seed; replication across
+SKU, region, or vendor is not in scope. (ii) The local and AKS legs
+differ on host hardware and on whether the \texttt{performance}
+governor, turbo, and \texttt{nice~-5} could be applied, so the
+local-to-AKS absolute delta is confounded with host control state in
+addition to substrate. (iii) Inter-node placement is excluded by
+construction in RQ1.5 (single-node AKS); the corresponding bound is
+quantified in \cref{sec:analysis-rq15b}.
+
+\paragraph{Evaluation.}
+The evaluative reading of RQ1.5 has three facets. First, against the
+within-environment AKS monolithic baseline, every chained condition is
+measurably slower with overhead growing monotonically from
+$+2.635$~ms (3.7\%, \texttt{chain\_2svc}) to $+9.717$~ms (13.7\%,
+\texttt{chain\_5svc}) (\cref{tab:rq15_results}). The smallest non-
+monolithic overhead is again \texttt{chain\_2svc}, in agreement with the
+RQ1.4 reading that within the predefined family this is the
+least-expensive way to move from a single Kubernetes service to a
+chained AKS deployment while preserving exact functional parity. Second,
+against the RQ1.4 local Kubernetes baseline, the relative-overhead curve
+transfers within a small pp band ($\leq 1.7$~pp at any condition,
+\cref{tab:rq15_transfer}); the overhead trend therefore carries over to
+managed AKS even though the absolute milliseconds do not. Third,
+against the boundaries of what RQ1.5 can claim, the result supports a
+directional-transfer claim under managed-cloud execution --- the chain
+family runs end-to-end on AKS, the RQ1.4 ordering is preserved, and the
+relative-overhead trend tracks the local profile --- but it is not
+sufficient to support production-readiness, scalability, multi-tenant
+robustness, or millisecond-portability claims. Inter-node placement,
+autoscaling, concurrent clients, alternate SKUs and regions, and
+service-mesh hardening are all out of scope for RQ1.5; the inter-node
+bound is quantified in \cref{sec:analysis-rq15b}, and the hardening cost
+is addressed in the RQ2 strand. The contribution of RQ1.5 stops at the
+substrate-transfer boundary.
 
 \paragraph{Answer to RQ1.5.}
 Under the controlled AKS transfer-validation setup, the local Kubernetes
-service-count pattern transfers directionally to managed cloud execution. The
-AKS run preserves the complete RQ1.4 ordering: \texttt{monolithic\_k8s\_1svc}
-remains fastest at 70.802~ms, followed by \texttt{chain\_2svc} at 73.437~ms,
-\texttt{chain\_3svc} at 75.410~ms, \texttt{chain\_4svc} at 78.294~ms, and
-\texttt{chain\_5svc} at 80.519~ms. Relative overhead grows monotonically from
-3.7\% for \texttt{chain\_2svc} to 13.7\% for \texttt{chain\_5svc}, with the
-final marginal increment from \texttt{chain\_4svc} to \texttt{chain\_5svc}
-(+2.225~ms) smaller than the preceding step (+2.884~ms), consistent with the
-activation-transfer-size explanation from RQ1.3. RQ1.5 therefore supports a
-directional transfer claim: the same architectural chain ordering remains
-visible in AKS, although absolute latency values are environment-specific and
-should not be interpreted as a direct replication of the local Kubernetes
-measurements.
+service-count pattern transfers directionally to managed cloud
+execution. The complete RQ1.4 ordering is preserved
+(\texttt{monolithic\_k8s\_1svc} 70.802~ms $<$ \texttt{chain\_2svc}
+73.437~ms $<$ \texttt{chain\_3svc} 75.410~ms $<$ \texttt{chain\_4svc}
+78.294~ms $<$ \texttt{chain\_5svc} 80.519~ms,
+\cref{tab:rq15_results}), and the relative-overhead profile against
+each environment's own monolithic baseline tracks the RQ1.4 profile
+within $1.7$~pp at any condition (\cref{tab:rq15_transfer}). The
+bounded non-linearity at the final boundary reappears with the same
+activation-transfer signature ($+2.225$~ms last step against a 98~KiB
+\texttt{layer4} transfer), so the RQ1.3 activation-driven mechanism
+holds in a third substrate~\cite{deeperthings}. Absolute latency is
+lower in AKS for every condition but is confounded with hardware and
+host-control differences and is therefore not the comparison RQ1.5
+makes; substrate-dependent absolute shifts across container, VM, CNI,
+and managed-cluster implementations are independently
+documented~\cite{managed_k8s_perf,virtualization_costs,cni_k8s_ic2e21,
+noise_in_clouds}. RQ1.5 therefore supports a bounded directional
+transfer claim under single-node managed-cloud execution; it does not
+support production-readiness, scalability, or millisecond-portability
+claims, and the inter-node and security-hardening dimensions are
+addressed in \cref{sec:analysis-rq15b} and in the RQ2 analysis
+subsections respectively.
