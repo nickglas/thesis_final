@@ -1,0 +1,47 @@
+\subsection{RQ1.5b: AKS Multi-Node Sensitivity}
+\label{sec:analysis-rq15b}
+
+The results in \cref{sec:rq15b} support three bounded findings for the AKS
+multi-node sensitivity stage.
+
+\paragraph{Finding 1: Multi-node placement preserves the AKS condition ordering.}
+With every chain segment forced onto a distinct node and the benchmark client
+on a dedicated node, the complete RQ1.5 ordering is preserved
+(\texttt{monolithic\_k8s\_1svc}~$<$~\texttt{chain\_2svc}~$<$~\texttt{chain\_3svc}~$<$~\texttt{chain\_4svc}~$<$~\texttt{chain\_5svc}).
+The bounded-non-linearity pattern from RQ1.4 and RQ1.5 also reproduces under
+multi-node execution: the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 2.502~ms,
+broadly comparable to the preceding 4.562~ms step
+(\cref{tab:rq15b_results}). The architectural ordering is therefore not an
+artefact of single-node colocation.
+
+\paragraph{Finding 2: The inter-node penalty is positive and bounded.}
+\Cref{tab:rq15b_delta} compares the multi-node run condition-by-condition with
+the frozen single-node RQ1.5 baseline. The monolithic condition gains 2.305~ms
+of latency relative to the single-node monolithic. This is compatible with
+moving the 588~KiB input tensor across the Azure VNet rather than across a
+loopback socket. The chained conditions add per-condition deltas between
+2.131~ms (\texttt{chain\_3svc}) and 4.086~ms (\texttt{chain\_5svc}). The
+multi-node penalty is therefore a measured bound rather than an open
+acknowledgement: the worst-case single-node-to-multi-node delta on the
+evaluated chain family is 4.086~ms (\texttt{chain\_5svc}), and the monolithic
+baseline alone gains 2.305~ms.
+
+\paragraph{Finding 3: Round-to-round consistency remains low.}
+Round CVs for the chained conditions in RQ1.5b are 0.0036--0.0127, comparable
+to and in some cases tighter than the single-node RQ1.5 chained CVs of
+0.0019--0.0061 (\cref{tab:rq15b_rounds,tab:rq15_rounds}). The monolithic
+condition shows a similar profile (0.0084 vs 0.0117). Cross-round stability is
+therefore preserved when the topology is distributed across nodes.
+
+\paragraph{Answer to RQ1.5b.}
+Under enforced multi-node placement, the same five-condition chain family
+preserves the monotonic overhead progression seen in RQ1.4 and RQ1.5:
+per-condition mean latency increases from 73.108~ms (monolithic) to 84.605~ms
+(\texttt{chain\_5svc}), and the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} step is +2.502~ms.
+The per-condition multi-node penalty relative to the single-node RQ1.5
+baseline ranges from +2.131~ms to +4.086~ms across the chained conditions and
++2.305~ms for the monolithic baseline. The single-node RQ1.4 / RQ1.5 design
+therefore underestimates true production latency by a bounded margin that is
+now quantified per condition rather than acknowledged abstractly.

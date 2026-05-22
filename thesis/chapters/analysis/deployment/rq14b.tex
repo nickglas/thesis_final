@@ -1,0 +1,190 @@
+\subsection{RQ1.4b: kind Multi-Worker CNI Sensitivity}
+\label{sec:analysis-rq14b}
+
+RQ1.4b is an explicitly supporting sensitivity stage rather than a
+primary thesis-facing measurement: it re-runs the RQ1.4 chain family
+on a six-worker \texttt{kind} cluster with pod anti-affinity forcing
+every chain segment onto a distinct kind worker container and the
+benchmark client onto a sixth dedicated worker
+(\cref{sec:methods-rq14b}). The analytical contribution is bounded
+by a methodological reading carried over from
+\cref{sec:methods-rq14b}: kind's worker ``nodes'' are Docker
+containers that share one host kernel and communicate over kind's
+CNI bridge; they are not separate physical or virtual hosts. RQ1.4b
+therefore measures the cost of routing inter-service gRPC through
+the kind CNI bridge under anti-affinity, not the cost of real
+cross-host networking. The genuine multi-host inter-node penalty for
+the same chain family is measured in
+\cref{sec:analysis-rq15b}; the role of RQ1.4b is to bound how much
+the single-node placement of RQ1.4 hides on the \emph{same physical
+host}, and to test whether the RQ1.4 architectural ordering survives
+when the chain traffic is forced through the kind CNI bridge.
+
+\paragraph{The architectural ordering and the bounded-non-linearity pattern survive the kind-CNI probe.}
+Under the kind multi-worker condition, mean end-to-end latency
+increases monotonically from 67.491~ms for
+\texttt{monolithic\_k8s\_1svc} to 87.378~ms, 120.465~ms, 135.639~ms,
+and 141.169~ms for \texttt{chain\_2svc} through \texttt{chain\_5svc}
+(\cref{tab:rq14b_results}). The same monotonic ordering established
+in RQ1.4 is therefore preserved when each chain hop is forced across
+a kind CNI-bridge boundary on the same host. The
+bounded-non-linearity reading of RQ1.4 is also preserved: the final
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} step adds
+approximately 5.530~ms, smaller than the preceding +15.174~ms
+\texttt{chain\_3svc}~$\rightarrow$~\texttt{chain\_4svc} step, in line
+with the smaller 98~KiB \texttt{layer4} activation added at the final
+boundary (the runner's \texttt{total\_activation\_bytes\_mean} rises
+from 1960~KiB to 2058~KiB across these two conditions, matching the
+RQ1.4 profile). The reading is therefore narrow but useful: the
+RQ1.4 chain-cost gradient and the activation-driven shape of the
+marginal cost are not specific to single-node pod colocation; they
+persist once chain traffic is routed through kind's CNI bridge.
+
+\paragraph{The kind multi-worker per-condition penalty is an order of magnitude larger than the AKS multi-node penalty, confirming that kind multi-node is not a substitute for cross-host networking.}
+Computed condition-by-condition against the frozen RQ1.4 single-node
+baseline, the per-condition penalty
+$\Delta_c = \mathrm{mean}_c^{\mathrm{kind\text{-}cni}} - \mathrm{mean}_c^{\mathrm{single}}$
+is +3.991~ms for \texttt{chain\_2svc}, +32.737~ms for
+\texttt{chain\_3svc}, +45.067~ms for \texttt{chain\_4svc}, and
++48.634~ms for \texttt{chain\_5svc} (\cref{tab:rq14b_delta}). The
+monolithic condition is faster on average in RQ1.4b ($-13.575$~ms)
+but its per-iteration standard deviation rises from 4.017~ms (RQ1.4)
+to 10.999~ms (\cref{tab:rq14b_results}), its median (61.917~ms) is
+well below its mean (67.491~ms), and its per-round means are
+$\{62.000, 68.553, 68.677, 69.107, 69.119\}$~ms (\cref{tab:rq14b_rounds},
+the first round is markedly faster than rounds 2--5). This
+monolithic shift is therefore consistent with a one-off cluster-start
+artefact and host co-tenancy variability, and should not be read as
+evidence that kind multi-worker placement is faster than single-node
+placement. For the chained conditions, the kind-CNI per-condition
+deltas are roughly an order of magnitude larger than the
+corresponding multi-node AKS deltas reported in
+\cref{sec:analysis-rq15b} (+2.131~ms to +4.086~ms across the chained
+conditions on AKS, \cref{tab:rq15b_delta}). This separation is the
+key analytical contribution of RQ1.4b: kind's ``multi-node''
+topology is not a substitute for genuine cross-host networking. CNI
+plugin choice and the container-network path are an independent
+source of measured-latency variance in Kubernetes
+clusters~\cite{cni_k8s_ic2e21}, and absolute timings are known not
+to transfer cleanly across container, VM, and bare-metal execution
+substrates~\cite{virtualization_costs}; treating the kind-multi
+result as a cross-host estimate would inflate the inferred
+inter-node cost relative to what \cref{sec:analysis-rq15b} actually
+measures on AKS.
+
+\paragraph{Round-level dispersion inflates relative to RQ1.4 and is not chain-explained.}
+Per-condition round CVs in RQ1.4b (\cref{tab:rq14b_rounds}) are
+0.0290 (\texttt{chain\_2svc}), 0.0551 (\texttt{chain\_3svc}), 0.0187
+(\texttt{chain\_4svc}), 0.0247 (\texttt{chain\_5svc}), and 0.0456
+(\texttt{monolithic\_k8s\_1svc}), compared with the much tighter
+0.0074--0.0161 range observed in single-node RQ1.4
+(\cref{tab:rq14_rounds}). Two features matter for interpretation.
+First, the highest CVs do not track chain depth: monolithic (no
+inter-pod traffic) and \texttt{chain\_3svc} (three services) are
+noisier than \texttt{chain\_5svc} (five services), so the inflated
+CV is not a property of having more chain hops. Second, the
+monolithic round-mean trajectory above is consistent with a
+first-round warm-up shift, not with a steady-state difference. Both
+observations point to kind-CNI variability and shared-host effects
+on a single physical machine that hosts all six kind worker
+containers, rather than a chain-specific noise mechanism; this
+reading is consistent with the broader observation that orchestrator-
+and host-level contention can dominate measured deltas on shared
+infrastructure~\cite{noisy_neighbor_k8s}. By the SC'15 reporting
+standard, round-level consistency is the primary indicator of result
+stability, and the round CVs above are too high to read RQ1.4b as a
+primary number~\cite{benchmarking_sc15}: the within-RQ ordering and
+the qualitative bounded-non-linearity claim remain interpretable,
+but the absolute millisecond magnitudes should be quoted only as
+upper sensitivity bounds, not as deployment-grade values.
+
+\paragraph{Validation.}
+Three pieces of evidence support a within-run reading of RQ1.4b.
+First, functional parity holds: both the local segment-chain check
+and the live in-cluster gRPC check report
+\texttt{max\_abs\_diff}~$=0.0$ at the predeclared tolerance of
+$1.0\times10^{-5}$ across all five conditions
+(\texttt{merged\_results/parity\_validation.json}, summarised
+alongside \cref{tab:rq14b_results}), so the within-RQ1.4b ordering
+is not confounded by numerical drift across the partitioned graph.
+Second, infrastructure controls are applied symmetrically across
+conditions: image (\texttt{thesis-inference:latest}, pull policy
+\texttt{IfNotPresent}), namespace (\texttt{rq14b}), resource
+requests and limits (1~CPU, 512~MiB per service pod; 1~CPU, 1~GiB
+client), threading (one thread per pool), and CPU affinity to
+core~0 are uniform across the five conditions
+(\texttt{merged\_results/deployment\_metadata.json},
+\texttt{merged\_results/environment.json}). Third, multi-node
+placement was enforced by the same anti-affinity rule used in
+RQ1.5b, with six distinct worker containers and a dedicated client
+worker. Four limits must be stated explicitly. (i) The image tag
+\texttt{thesis-inference:latest} is a mutable Docker tag, so
+byte-exact reproduction is bounded by whatever image was loaded
+into the kind cluster at run time, the same caveat that applies to
+RQ1.4 (\cref{sec:methods-artifacts}). (ii) Host CPU controls were
+weaker than in RQ1.4: governor and turbo writes to \texttt{/sys}
+failed because those paths were read-only in the containerised
+environment, and the detected governor was \texttt{schedutil} with
+turbo enabled (rather than the \texttt{performance} governor and
+disabled turbo observed for RQ1.4). The \texttt{nice~-5} request
+also failed for permission reasons. RQ1.4b is therefore not a clean
+replication of RQ1.4 with only a topology change; reduced host
+control is one plausible co-contributor to the higher round CVs.
+(iii) Comparisons against RQ1.4 are interpreted at the
+\emph{per-condition} delta level (\cref{tab:rq14b_delta}), not as a
+cross-stage means comparison, because the two stages differ in host
+control state in addition to placement. (iv) RQ1.4b is one host,
+one kind cluster, one fixed seed; the kind worker containers share
+a kernel and the same physical hardware, so cross-host replication
+is, by construction, out of scope and is addressed only by RQ1.5b
+on AKS.
+
+\paragraph{Evaluation.}
+The evaluative reading of RQ1.4b has three facets. First, the
+result is sufficient to support a qualitative claim: the RQ1.4
+chain-cost ordering and the activation-driven bounded-non-linearity
+pattern are not specific to single-node pod colocation; they
+survive once every chain hop is forced through the kind CNI bridge.
+Second, the result is sufficient to bound the additional cost a
+switch to a kind multi-worker topology would add to the single-node
+RQ1.4 measurement on this host: between +3.991~ms
+(\texttt{chain\_2svc}) and +48.634~ms (\texttt{chain\_5svc}) per
+chained condition (\cref{tab:rq14b_delta}), with the worst case at
+the deepest chain.
+Third, the result is not sufficient to support a deployment-grade
+multi-host claim, a production-readiness claim, or a scalability
+claim: the per-condition deltas are an order of magnitude larger
+than the AKS-measured multi-node deltas of
+\cref{sec:analysis-rq15b}, the host-control state was degraded
+relative to RQ1.4, and the round CVs are correspondingly inflated.
+The headline RQ1.4 evaluative conclusion is unchanged; RQ1.4b adds
+a bounded sensitivity caveat, not an independent deployment claim,
+and motivates RQ1.5b as the appropriate evidence path for genuine
+inter-node cost.
+
+\paragraph{Answer to RQ1.4b.}
+Under the kind multi-worker CNI-bridge probe, the RQ1.4
+architectural ordering is preserved: mean end-to-end latency
+increases monotonically from 67.491~ms for
+\texttt{monolithic\_k8s\_1svc} through 87.378~ms, 120.465~ms,
+135.639~ms, and 141.169~ms for \texttt{chain\_2svc} through
+\texttt{chain\_5svc} (\cref{tab:rq14b_results}), and the
+bounded-non-linearity pattern survives (the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment of
++5.530~ms is smaller than the preceding +15.174~ms
+\texttt{chain\_3svc}~$\rightarrow$~\texttt{chain\_4svc} step,
+matching the small 98~KiB \texttt{layer4} activation moved at the
+added boundary). The per-condition kind-CNI penalty relative to the
+single-node RQ1.4 baseline ranges from +3.991~ms to +48.634~ms
+across the chained conditions (\cref{tab:rq14b_delta}), an order of
+magnitude larger than the AKS-measured multi-node penalty reported
+in \cref{sec:analysis-rq15b}, and round-level CVs (up to 0.0551 for
+\texttt{chain\_3svc} and 0.0456 for the monolithic baseline,
+\cref{tab:rq14b_rounds}) are materially inflated relative to RQ1.4.
+The contribution of RQ1.4b to the deployment analysis is therefore
+two-fold and bounded: (i) it shows that the RQ1.4 ordering and the
+activation-driven bounded-non-linearity are not artefacts of
+single-node colocation on the same host, and (ii) it shows that
+kind multi-node deltas are not a substitute for a managed-cloud
+cross-host measurement and should be read as a kind-CNI sensitivity
+envelope rather than as a deployment-grade multi-node result.
