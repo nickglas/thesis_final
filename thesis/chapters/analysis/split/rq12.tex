@@ -1,0 +1,153 @@
+\subsection{RQ1.2: Fine-Grained Refinement}
+\label{sec:analysis-rq12}
+
+RQ1.2 asks whether refining the carried-forward late-stage region from RQ1.1
+with a block-level boundary changes the picture of which split is most
+suitable under controlled local execution. The analytical contribution of
+this section is not to repeat the per-condition latencies tabulated in
+\cref{tab:rq12-results}, but to extract the one inference that RQ1.1 could
+not make: at constant activation transfer, compute placement around the
+boundary is an independently observable cost dimension. The RQ1.2 result is
+therefore a controlled refinement of RQ1.1's joint reading rather than a
+replacement of it; it confirms the carried-forward region as a flat-bottomed
+valley and provides the controlled-contrast leg of the two-dimensional
+explanation that \cref{sec:analysis-rq13} then synthesises. The design
+itself --- staged refinement inside a carried-forward region rather than a
+fresh global search --- follows the partitioning-literature practice of
+treating split-point selection as a hierarchical procedure over a small set
+of architecturally meaningful boundaries~\cite{dnnsplit,%
+fine_grained_partitioning,hierarchical_partitioning}.
+
+\paragraph{The refined region is a band, not a peak.}
+The three refined split conditions fall in a 0.235~ms window
+(\(80.157\)~ms, \(80.348\)~ms, \(80.392\)~ms in \cref{tab:rq12-results}),
+all between \(+3.34\%\) and \(+3.64\%\) over the monolithic baseline. The
+within-run per-iteration \(95\%\) confidence intervals on the mean are
+\([79.998,\ 80.316]\) for \texttt{split\_after\_layer3\_block0},
+\([80.192,\ 80.504]\) for \texttt{split\_after\_layer2}, and
+\([80.238,\ 80.545]\) for \texttt{split\_after\_layer3}
+(\texttt{condition\_summaries.csv}). All three are disjoint from the
+monolithic CI of \([77.338,\ 77.792]\), so the split-versus-monolithic
+overhead is robust within-run; the pairwise CIs \emph{among} the three
+splits overlap, so the ordering between them is not separated at this
+measurement resolution. The carry-forward rule in
+\cref{sec:methods-carryforward} nevertheless fires deterministically: the
+near-best \(5\%\) window admits all three splits as eligible (threshold
+\(84.16\)~ms in \texttt{carry\_forward.json}) and the rule promotes the
+raw-fastest mean to main and the next-lowest to reference. The defensible
+reading is therefore that RQ1.2 confirms the carried-forward region as a
+genuinely flat band rather than that it discovered a meaningfully better
+split inside that band.
+
+\paragraph{Equal activation size with unequal cost isolates compute placement.}
+The instructive comparison is
+\texttt{split\_after\_layer3\_block0} against \texttt{split\_after\_layer3}.
+Both transfer exactly \(200{,}704\)~B (\(196\)~KiB) of activation in FP32,
+yet their boundary-crossing intervals differ by \(7.81\)~ms
+(\(33.97\)~ms versus \(26.16\)~ms in \texttt{cross\_condition.csv}). The
+predeclared boundary-crossing definition in \cref{sec:methods-contract} is
+a composite that bundles remote service-B compute with serialisation,
+gRPC transport, and deserialisation. The per-segment compute decomposition
+in \texttt{cross\_condition.csv} shows service-B mean compute of
+\(31.87\)~ms for \texttt{split\_after\_layer3\_block0} versus
+\(24.06\)~ms for \texttt{split\_after\_layer3} --- a \(7.81\)~ms gap --- and a
+non-compute residual of approximately \(2.1\)~ms for both. The
+boundary-crossing difference is therefore the service-B compute difference
+on the wire-cost-equal pair, not a transport or serialisation
+difference. Because activation transfer is held constant by construction,
+the proximate explanatory factor must be the per-block compute distribution
+around the cut. This is the cleanest within-run evidence the thesis offers
+for treating compute placement as an independent dimension alongside
+activation-transfer size, and it is consistent with the prior observation
+that block-level execution time can vary across candidate boundaries even
+when their activation footprints are similar~\cite{pareto_split}. The
+composite-measurement framing also matches the per-layer profiling logic on
+which Neurosurgeon's original split-point cost
+model rests~\cite{neurosurgeon}.
+
+\paragraph{The refinement does not reshuffle the carry-forward recommendation in any practically meaningful sense.}
+The RQ1.2 carry-forward rule promotes
+\texttt{split\_after\_layer3\_block0} to main and demotes
+\texttt{split\_after\_layer3} from RQ1.1's main to RQ1.2's rejected
+position (\texttt{carry\_forward.json}). At first glance this is a change of
+recommendation; closer inspection shows it is a tie-break inside an
+operationally indistinguishable set. The mean separation between the
+promoted and demoted conditions is \(0.235\)~ms (\(0.29\%\)), smaller than
+the per-condition round range of \texttt{split\_after\_layer3\_block0}
+itself (\(1.46\)~ms across the five measured rounds in
+\texttt{round\_consistency.json}). The block-level winner is also the
+noisiest of the three splits round-to-round (round CV \(0.0070\), against
+\(0.0046\) and \(0.0033\) for the two coarse anchors). The
+thesis-facing reading is therefore not that RQ1.2 supersedes RQ1.1's split
+choice. It is that the late-stage carried-forward region is an operationally
+flat band of practically equivalent boundaries, that the carry-forward rule
+selects deterministically within that band, and that any of the three
+eligible splits is a defensible carry-forward candidate at this measurement
+resolution.
+
+\paragraph{Validation.}
+Three pieces of evidence support treating the RQ1.2 within-run findings as
+credible for the measured environment. First, functional parity is intact:
+both local and gRPC parity checks report
+\texttt{max\_abs\_diff} \(=0.0\) at the predeclared tolerance of
+\(1.0\times10^{-5}\) for \texttt{layer2}, \texttt{layer3.0}, and
+\texttt{layer3} (\texttt{parity\_validation.json}), so the \(7.81\)~ms
+boundary-crossing gap between the two \(196\)~KiB conditions is not
+confounded with numerical drift across the partition. Second, round-level
+consistency is in line with RQ1.1: per-condition round CVs lie between
+\(0.0017\) (monolithic) and \(0.0070\)
+(\texttt{split\_after\_layer3\_block0}) in
+\texttt{round\_consistency.json}, supporting the reporting practice of
+combining per-iteration and round-level statistics rather than mean
+alone~\cite{benchmarking_sc15}. Third, host controls and the measurement
+contract are identical to RQ1.1 (\cref{tab:rq12-config}), so the comparison
+with RQ1.1 is internally fair on infrastructure. Two boundaries to this
+validation must be stated explicitly. The 0.235~ms span between the three
+split means is narrower than the largest per-condition round range
+(\(1.46\)~ms for the selected main), so the ordering among the three splits
+is not robust round-to-round; only the split-versus-monolithic separation
+is. And, as in RQ1.1, the run is single-host, single-build, fixed-seed,
+CPU-only batch-one localhost gRPC, so cross-host or cross-seed replication
+is not in scope.
+
+\paragraph{Evaluation.}
+The evaluative reading of RQ1.2 has two facets. Against the monolithic
+baseline, refinement does not change the qualitative finding of RQ1.1:
+every refined split is measurably slower (between \(+2.59\)~ms and
+\(+2.83\)~ms; \(+3.34\%\) to \(+3.64\%\)), with the three split CIs
+disjoint from the monolithic CI. Within the refined set, the evaluative
+question is not which split is fastest --- the three are not separated at
+the within-run per-iteration CI level --- but what the contrast reveals.
+The controlled equal-activation pair attributes a \(7.81\)~ms
+boundary-crossing difference essentially in full to per-block compute
+distribution, which is the single piece of evidence the staged design was
+constructed to produce. This is a methodological gain for RQ1.3 even
+though it is not a latency gain for any deployment, and it justifies
+carrying both \texttt{split\_after\_layer3\_block0} (the rule-selected
+main) and \texttt{split\_after\_layer2} (the reference) into the
+subsequent Kubernetes and Azure stages rather than committing to a single
+boundary at this resolution.
+
+\paragraph{Answer to RQ1.2.}
+RQ1.2 provides direct but scoped evidence that block-level refinement
+inside the carried-forward late-stage region from RQ1.1 does not overturn
+the coarse-level recommendation in any practically meaningful sense, and
+that the most useful refined finding is structural rather than rank-order.
+The three refined splits cluster in a \(0.235\)~ms band whose internal
+ordering is not separated at the per-iteration \(95\%\) CI level and is
+narrower than the round-to-round range of the rule-selected main, so the
+carry-forward outcome --- \texttt{split\_after\_layer3\_block0} as main and
+\texttt{split\_after\_layer2} as reference, with \texttt{split\_after\_layer3}
+rejected --- should be read as a deterministic rule output over
+operationally equivalent options rather than as a separation. The
+analytically load-bearing finding is the controlled
+\texttt{split\_after\_layer3\_block0}~vs.~\texttt{split\_after\_layer3}
+contrast at constant \(196\)~KiB activation: holding transfer constant by
+construction, the \(7.81\)~ms boundary-crossing gap is essentially the
+service-B compute gap, with a non-compute residual that is the same for
+both conditions. Under RQ1.2's conditions, compute placement is therefore
+an independently observable cost dimension at the boundary, consistent with
+prior partitioning evidence that block-level execution time can vary at
+equal activation size~\cite{pareto_split}. This is the controlled inference
+that RQ1.1 could not make on a joint reading and is the empirical basis on
+which \cref{sec:analysis-rq13} builds its two-dimensional explanation.
