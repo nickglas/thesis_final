@@ -1,0 +1,85 @@
+\section{Threats to Validity}
+\label{sec:analysis-threats}
+
+The strongest validity support is internal consistency. The experiments use
+fixed model weights, fixed input shape, functional parity validation,
+repeated rounds, and a shared benchmark contract. The local and Kubernetes
+stages also use CPU-affinity and single-threading controls where the runtime
+permits. These choices follow systems benchmarking guidance that stresses
+controlled comparisons, explicit measurement context, and caution when
+interpreting performance numbers~\cite{benchmarking_sc15}.
+
+The main limitation is external validity. The remaining threats below are
+consolidated from the methodological scoping in \cref{ch:methods} and apply
+to all stages of the staged pipeline.
+
+\paragraph{Single-node clusters.}
+The thesis-facing RQ1.4 \texttt{kind} and RQ1.5 AKS primary runs are both
+single-node. Single-node deployments eliminate inter-node network hops and do
+not capture the scheduling and networking variability of a multi-node
+production cluster. RQ1.5b
+(\cref{sec:rq15b}, \cref{sec:analysis-rq15b}) addresses this directly with a
+multi-node AKS sensitivity stage that forces every chain hop across a node
+boundary; the measured per-condition multi-node penalty is bounded between
++2.131~ms (\texttt{chain\_3svc}) and +4.086~ms (\texttt{chain\_5svc}), with
+the monolithic baseline gaining +2.305~ms (\cref{tab:rq15b_delta}). The
+single-node primary numbers should therefore be interpreted as a clean
+architectural-overhead measurement that excludes the inter-node network
+path; the multi-node sensitivity in \cref{sec:rq15b} provides a quantitative
+bound on what production multi-node deployments add on top.
+
+\paragraph{CPU-only inference.}
+All stages use CPU inference with a single thread. GPU-accelerated inference
+would substantially shift the compute distribution, reduce per-inference
+time, and change the relative weight of the gRPC boundary cost. The results
+are not directly generalisable to GPU-hosted microservice deployments.
+
+\paragraph{Single model and workload.}
+The thesis evaluates one model (ResNet-18) at batch size one with one input
+shape. Different architectures, larger activation maps, or higher-batch
+workloads may produce different cost curves and different optimal split
+regions.
+
+\paragraph{Controlled conditions versus production variability.}
+The local stages apply strict CPU stabilisation and achieve low cross-round
+variance. The Kubernetes and AKS stages are less controllable and exhibit
+higher variability. Neither environment captures the full noise of a shared
+multi-tenant cloud cluster, where CPU steal, network congestion, and noisy
+neighbours can substantially affect tail latency.
+
+\paragraph{Activation-protection motivation.}
+He~et~al.\ \cite{he2021_attacking_collaborative} demonstrate that an untrusted
+remote service holding only intermediate feature maps can reconstruct the
+client's input, so in-transit encryption alone does not protect activations
+at rest on the downstream segment. This motivates evaluating the
+infrastructure-level protection of the downstream service (RQ2.2) in
+addition to communication-level hardening (RQ2.1). The two layers address
+different threat models: SEV-SNP defends against the cloud host, not against
+an actively malicious application running inside the protected VM, so it is
+not a direct solution to the malicious remote-service model in
+He~et~al.
+
+\paragraph{mTLS threat-model scope.}
+Sidecar-based mTLS protects the inter-proxy communication path but does not
+prevent plaintext from existing inside the endpoint after TLS termination.
+The security claims for RQ2.1 are explicitly scoped to communication-level
+hardening.
+
+\paragraph{SEV-SNP threat-model scope.}
+AMD SEV-SNP protects the VM boundary against the host platform but not
+against a compromised guest OS or application process, and several
+side-channel and availability threats fall outside its core guarantee. In
+particular, recent work shows that confidential VMs remain vulnerable to
+malicious-interrupt injection from the untrusted
+hypervisor~\cite{schluter2024_heckler}; this thesis does not experimentally
+evaluate such attacks. RQ2.2 therefore claims VM-level confidential
+execution for the downstream segment (\texttt{service2\_only}), not
+complete application-level isolation. Extending the confidential boundary
+to both services in the chain is treated as future work.
+
+\paragraph{Generalisation of the cited literature.}
+Multi-node clusters, concurrent clients, GPUs, larger models, feature
+compression, autoscaling, and different service-mesh configurations could
+change the absolute overheads and possibly the preferred topology. The
+thesis therefore supports bounded claims about the evaluated system rather
+than a universal rule for all microservice inference deployments.

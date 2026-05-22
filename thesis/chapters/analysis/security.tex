@@ -1,0 +1,215 @@
+\section{Security Hardening}
+\label{sec:analysis-security}
+
+\subsection{RQ2.1: Service Identity and Mutual TLS}
+\label{sec:analysis-rq21}
+
+The results in \cref{sec:rq21} support four bounded findings.
+
+\paragraph{Finding 1: the mTLS/AuthZ hardening bundle adds measurable but bounded overhead to the selected chain.}
+For the primary \texttt{chain\_2svc} topology, the service-mesh hardening
+layer adds 3.488~ms, or 4.62\%, to mean end-to-end latency
+(\cref{tab:rq21_latency}). This is a measurable cost, but it is bounded
+relative to the approximately 75.6~ms plain AKS-with-mesh-tainted baseline. The result is consistent with service-mesh literature: sidecars
+add critical-path work, but the visible percentage overhead depends on the
+workload and on how much application compute the proxy cost is amortised
+over~\cite{meshinsight_socc23}.
+
+\paragraph{Finding 2: security overhead grows with protected chain depth.}
+The \texttt{chain\_5svc} stress run increases the mean hardening overhead to
+8.837~ms (10.74\%). This is approximately two and a half times the absolute
+\texttt{chain\_2svc} overhead. The larger cost is expected: the stress
+topology contains more injected proxies, more authorization policies, and
+more protected inter-service boundaries. This finding reinforces the RQ1
+result that service-count decisions and security decisions cannot be
+separated. A chain that is tolerable without communication hardening may
+become less attractive once every boundary also carries identity, encryption,
+proxying, and policy-enforcement cost.
+
+\paragraph{Finding 3: the result is lower than some published Istio overheads, but not in conflict with them.}
+The observed 4.62\% primary overhead is much smaller than the high-load Istio
+penalties reported in broader service-mesh
+benchmarks~\cite{bremlerbarr2025mtls}. This does not contradict that
+literature. Those studies use different services, protocols, load levels,
+tail-latency metrics, mesh configurations, and deployment environments. RQ2.1
+uses a CPU-bound ResNet-18 inference chain with substantial per-request model
+computation, same-node placement, and a specific managed-Istio AKS
+configuration. The correct comparison is therefore qualitative: both this
+thesis and the literature show that sidecar-mediated mTLS has non-zero latency
+and resource cost, while the absolute magnitude is workload-specific.
+
+\paragraph{Finding 4: RQ2.1 hardens inter-service communication, not the entire trust model.}
+The security validation shows that the intended service-account-based
+communication policy was enforced for the protected downstream segments:
+valid full-chain requests succeeded, while direct non-mesh probes to protected
+downstream services were blocked. This is meaningful communication-level
+hardening. However, it does not remove trust in the service-mesh control
+plane, does not protect against all Kubernetes administrator threats, and
+does not provide confidential execution for model code or activations. Those
+limits matter because prior work identifies the mesh control plane and local
+CA as security-critical trust points~\cite{poudel2025mazu}. RQ2.1 should
+therefore be claimed as a measured first hardening layer, not as a complete
+security solution.
+
+\paragraph{Answer to RQ2.1.}
+Under the paired AKS RQ2.1 benchmark, adding service identity, managed-Istio
+mTLS, and inter-service authorization policy introduces measurable but
+bounded overhead for the selected \texttt{chain\_2svc} deployment. Mean
+latency increases from 75.557~ms in the plain condition to 79.045~ms with
+the mTLS/AuthZ hardening bundle, an overhead of 3.488~ms or 4.62\%; p95
+latency increases by 3.623~ms. Security validation passed in every mTLS
+pass, including full-chain positive probes and direct-denial probes against
+protected downstream segments. The additional \texttt{chain\_5svc} stress run
+shows that the same hardening approach becomes more expensive as service
+depth increases: mean overhead rises to 8.837~ms or 10.74\%. RQ2.1 therefore
+supports a cautious conclusion: service identity and managed-Istio mTLS/AuthZ
+are feasible for the selected Azure chain at a modest latency cost, but the
+cost is not negligible, grows with the number of protected service
+boundaries, and comes with operational complexity from sidecars, policies,
+resource requests, and readiness delay. The follow-up ablation indicates that
+this cost is dominated by entering the managed-Istio sidecar data path rather
+than by strict mTLS enforcement or AuthorizationPolicy evaluation alone.
+
+\subsection{RQ2.2: Confidential VM Execution}
+\label{sec:analysis-rq22}
+
+The results in \cref{sec:rq22} support three bounded findings.
+
+\paragraph{Finding 1: VM-level confidential execution adds measurable overhead on top of mTLS.}
+The RQ2.2 paired run shows positive confidential-execution overhead relative
+to a newly collected standard baseline. This matters because the baseline
+already includes the RQ2.1 mTLS/AuthZ hardening. The measured delta therefore
+represents the additional cost of placing the downstream service on
+confidential VM infrastructure, not the cost of introducing service-mesh
+communication security.
+
+\paragraph{Finding 2: selective TEE has a modest measured cost on the protected segment.}
+Placing only \texttt{service2} on \texttt{Standard\_DC8as\_v5} (AMD SEV-SNP)
+increases mean latency by 1.854~ms (+3.17\%), median latency by 1.467~ms
+(+2.52\%), and p95 latency by 3.601~ms (+5.98\%) relative to the matched
+standard-node baseline (\cref{tab:rq22_service2_results}). This is the most
+direct implementation of the original RQ2.2 design: \texttt{service2} is the
+downstream protected component, receives intermediate activations from
+\texttt{service1}, and is the service guarded by the strict mTLS and
+authorisation policy in the RQ2.1 contract. He~et~al.\
+\cite{he2021_attacking_collaborative} motivate protecting that intermediate
+activation beyond the in-transit mTLS layer, although they target a
+malicious-remote-service threat model that differs from the
+infrastructure-level adversary SEV-SNP defends against; selectively placing
+\texttt{service2} on confidential infrastructure therefore gives the thesis a
+narrow, defensible hardening point with a modest measured cost.
+
+\paragraph{Finding 3: the security claim is stronger than RQ2.1 but still bounded.}
+RQ2.1 protected the service-to-service communication path. RQ2.2 adds a
+VM-level runtime protection boundary against host-level access for the
+confidentially placed service. This is a stronger security posture, but it is
+not complete application-level isolation. The guest OS, application process,
+model runtime, and local sidecar remain trusted parts of the confidential VM
+environment, and plaintext exists inside the endpoint boundary after mTLS
+termination. Recent work additionally shows that confidential VMs retain
+residual attack surfaces beyond memory encryption, including malicious
+interrupt injection from the untrusted
+hypervisor~\cite{schluter2024_heckler}; this thesis does not experimentally
+evaluate such attacks. The correct claim is therefore that RQ2.2 adds
+VM-level confidential execution to the already communication-secured Azure
+inference chain, not that it removes every trusted component or eliminates
+all possible data exposure.
+
+\paragraph{Answer to RQ2.2.}
+RQ2.2 shows that AMD SEV-SNP VM-level confidential execution is feasible for
+the communication-secured AKS inference chain and introduces a measurable but
+bounded additional overhead. With only the protected downstream service moved
+to a confidential node (\texttt{service2\_only} scope), mean latency
+increases by 1.854~ms, or 3.17\%, and p95 latency increases by 3.601~ms,
+relative to a newly paired standard-node mTLS baseline. Extending the
+confidential-execution boundary to both services in the chain (full
+two-service TEE) is out of the thesis-facing scope of RQ2.2 per the evidence
+manifest and is treated as future work. The interpretation remains bounded by
+the SEV-SNP threat model and by the sidecar-based service-mesh architecture:
+RQ2.2 evaluates VM-level confidential execution on Azure for the downstream
+segment, not application-level enclave isolation or complete end-to-end
+secrecy.
+
+\subsection{RQ2.3: Trade-off Synthesis}
+\label{sec:analysis-rq23}
+
+\Cref{sec:rq23} shows that the evaluated security mechanisms form a
+cumulative hardening gradient rather than a single binary secure/insecure
+choice. The RQ1.5 plain AKS deployment establishes the performance baseline.
+RQ2.1 adds communication-level security through mTLS, service identity, and
+authorization policy. RQ2.2 then adds VM-level confidential execution for the
+downstream protected service (\texttt{service2\_only}). Each step increases
+the protection scope, but each step also introduces additional latency,
+resource, or operational cost. Extending the confidential-execution boundary
+to both services (full two-service TEE) is treated as future work and is not
+evaluated as a measured trade-off point in this thesis.
+
+The main engineering implication is that security hardening should be scoped
+to the threat model. Applying every available mechanism everywhere is not
+always the best default. In the evaluated deployment, mTLS/AuthZ is the most
+suitable general-purpose security baseline because it protects the
+inter-service path at a modest cost for \texttt{chain\_2svc}. Selective TEE
+on the downstream service is the next available hardening step when that
+segment is the primary sensitivity
+boundary~\cite{he2021_attacking_collaborative}, while its security claim
+remains bounded by the SEV-SNP threat
+model~\cite{schluter2024_heckler}.
+
+The results also show that performance and security cannot be evaluated
+independently. RQ1 established that service boundaries add measurable
+overhead and that this overhead depends on boundary placement and service
+count. RQ2 shows that security mechanisms compound this cost. The mTLS/AuthZ
+hardening overhead grows when more service boundaries are protected, and
+selective confidential execution adds further overhead on top. The final
+deployment decision therefore depends on three linked factors: the chosen
+model partition, the number of service boundaries, and the required
+protection scope.
+
+\paragraph{Answer to RQ2.3.}
+RQ2.3 shows that the best hardening level depends on the assumed threat
+model and the acceptable performance cost. Plain AKS is the fastest
+evaluated configuration, but it provides the weakest protection in the
+security comparison. mTLS with service identity and authorization policy is
+the best general-purpose balance when the main goal is authenticated and
+encrypted service-to-service communication; in the selected
+\texttt{chain\_2svc} deployment it adds 3.488~ms, or 4.62\%, mean latency
+overhead. Selective TEE on \texttt{service2\_only} is the preferred option
+evaluated in this thesis when the downstream inference segment is the main
+infrastructure-level sensitivity boundary, adding 1.854~ms, or 3.17\%, over
+its paired standard-node mTLS baseline. Extending the confidential-execution
+boundary to both services (full two-service TEE) is treated as future work
+and is not evaluated here as a measured trade-off point.
+
+Overall, the evaluated configurations support a cumulative
+security-performance trade-off: stronger protection is feasible for the
+selected AKS inference chain, but each additional protection layer adds
+measurable cost. The most defensible default is mTLS/AuthZ for
+communication-level protection, with selective confidential execution on the
+downstream service added only when the threat model requires runtime
+protection against host-level exposure, and bounded by the SEV-SNP
+attack-surface limitations discussed
+above~\cite{schluter2024_heckler}.
+
+\subsection{Synthesis: Security Hardening}
+\label{sec:analysis-security-synthesis}
+
+The security stages show that hardening is feasible for the selected AKS
+deployment, but it is not free. RQ2.1 adds managed-Istio mTLS, service
+identity, and authorization policy. For the selected \texttt{chain\_2svc}
+topology, the measured mean overhead is 3.488~ms, or 4.62\%; for the
+\texttt{chain\_5svc} stress topology, the overhead grows to 8.837~ms, or
+10.74\% (\cref{tab:rq21_latency,tab:rq21_paired_deltas}). This is consistent
+with service-mesh studies showing that sidecar-based mTLS adds latency and
+resource cost through additional critical-path
+processing~\cite{meshinsight_socc23,bremlerbarr2025mtls}.
+
+RQ2.2 adds VM-level confidential execution on an AMD SEV-SNP node for the
+downstream protected service while keeping the mTLS contract fixed.
+Selective confidential execution for \texttt{service2\_only} adds 1.854~ms,
+or 3.17\%, over its paired standard-node mTLS baseline. The result is
+consistent with the confidential-computing literature's expectation that
+CVM overhead is workload- and
+scope-dependent~\cite{yan2023_cvm_overheads,misono2024_cvm_explained,
+mo2024_ml_confidential_computing}, and the security claim is bounded by
+SEV-SNP's residual attack
+surfaces~\cite{schluter2024_heckler}.

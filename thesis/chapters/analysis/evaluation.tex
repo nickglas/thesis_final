@@ -1,0 +1,27 @@
+\section{Evaluation}
+\label{sec:analysis-evaluation}
+
+The main engineering lesson is that partitioning, deployment, and hardening
+cannot be optimised independently. The split point determines
+activation-transfer size and compute placement. Kubernetes and AKS add
+platform-specific communication and scheduling effects. Security hardening
+then compounds the cost of the selected service topology. This means that a
+decomposition that is acceptable without mTLS or confidential execution may
+become less attractive once every service boundary is protected.
+
+For the evaluated workload, \texttt{chain\_2svc} is the most defensible
+non-monolithic deployment point. It avoids the excessive boundary count of
+deeper chains, preserves a meaningful architectural split, and remains the
+lowest-overhead chained condition in both local Kubernetes and AKS. It also
+provides the practical base for RQ2: the mTLS/AuthZ hardening bundle is
+measurable but bounded on this topology, and selective TEE can protect the
+downstream service at a lower cost than full-chain confidential execution.
+
+Across the evaluated stack, the monolithic Kubernetes baseline remains the
+fastest path; chained deployments pay an overhead that is monotonic with
+service count but bounded and non-linear; the local-to-AKS transfer is
+directional rather than numerical; mTLS adds a workload-amortised but
+measurable cost that grows with protected chain depth; and selective
+confidential-VM execution on the downstream service adds a further bounded
+cost on top of the communication-secured chain. Extending the
+confidential-execution boundary to both services is treated as future work.

@@ -1,0 +1,66 @@
+\section{Validation}
+\label{sec:analysis-validation}
+
+This section consolidates the evidence that supports treating the thesis
+conclusions as credible. The validation discipline follows the shared
+benchmark contract defined in \cref{sec:methods-contract,sec:methods-cpu,sec:methods-statistics}.
+
+\paragraph{Functional parity.}
+Every thesis-facing frozen run achieves
+\texttt{max\_abs\_diff}~$=0.0$ against the monolithic reference under absolute
+tolerance $1.0 \times 10^{-5}$ and five validation inputs. This applies to all
+five RQ1.1 conditions (\cref{sec:rq11}), all four RQ1.2 conditions
+(\cref{sec:rq12}), all five RQ1.4 conditions (\cref{sec:rq14}), all five
+RQ1.5 conditions (\cref{sec:rq15}), all five RQ1.5b multi-node conditions
+(\cref{sec:rq15b}), and all paired RQ2.1 and RQ2.2 runs
+(\cref{sec:rq21,sec:rq22}). No numerical drift is introduced by the partition
+or transport layer at any stage.
+
+\paragraph{Cross-round consistency.}
+Each benchmark stage reports per-condition round CVs computed as the standard
+deviation of per-round condition means divided by the grand mean
+(\cref{sec:methods-statistics}). The local screening stages (RQ1.1, RQ1.2)
+achieve round CVs in the range 0.001--0.015. The local Kubernetes stage
+(RQ1.4) sees round CVs of 0.0074--0.0161 (\cref{tab:rq14_rounds}). The AKS
+single-node stage (RQ1.5) sees round CVs of 0.0075--0.0225 across the chained
+conditions and the monolithic baseline (\cref{tab:rq15_rounds}); the AKS
+multi-node sensitivity stage (RQ1.5b) tightens these to 0.0020--0.0099
+(\cref{tab:rq15b_rounds}). The placement metadata confirms distinct AKS nodes
+for the service pods, but the run does not isolate a single causal source for
+the low cross-round drift. These low CVs support treating the reported
+condition means as representative of this measured environment rather than as
+artefacts of a single favourable or unfavourable run.
+
+\paragraph{Paired execution and transfer validation.}
+RQ2.1 uses a paired alternated design (three mTLS-first passes, two
+plain-first passes) to defend against slow performance drift over the course
+of the benchmark. Pass-level mTLS deltas remain positive in every pass:
+2.693--3.318~ms for \texttt{chain\_2svc} and 8.203--9.968~ms for
+\texttt{chain\_5svc} (\cref{tab:rq21_paired_deltas}). RQ1.5 preserves the
+complete RQ1.4 condition ordering (\texttt{monolithic\_k8s\_1svc}~$<$
+\texttt{chain\_2svc}~$<$ \texttt{chain\_3svc}~$<$ \texttt{chain\_4svc}~$<$
+\texttt{chain\_5svc}) under managed-AKS execution
+(\cref{tab:rq15_transfer}). This directional transfer supports treating the
+chain-cost trend as architectural rather than as an environment-specific
+artefact, in line with systems-benchmarking
+guidance~\cite{benchmarking_sc15}.
+
+\paragraph{Security validation.}
+The RQ2.1 mTLS configuration was validated through static manifest checks of
+peer-authentication and authorisation-policy objects, runtime validation of
+policy object counts, full-chain positive probes confirming that valid
+upstream-to-downstream requests succeeded, and direct non-mesh denial probes
+confirming that unauthenticated access to protected downstream services was
+blocked (\cref{sec:rq21}). All four checks passed in every paired mTLS
+pass. RQ2.2 collected fresh paired standard baselines for each
+confidential-node artifact rather than reusing older RQ2.1 data
+(\cref{sec:rq22}); incremental overhead can therefore be attributed to the
+confidential-node placement rather than to session-level drift.
+
+\paragraph{Effect-size discipline.}
+Effect sizes are computed from pooled per-iteration data
+($N = 1{,}000$ per condition). At this $N$, Mann--Whitney $p$-values are
+near-zero for any non-trivial difference and are reported only as
+supplementary evidence. Cohen's~$d$ and cross-round stability are treated as
+the more informative measures of effect magnitude
+(\cref{sec:methods-statistics,tab:rq14_effects}).

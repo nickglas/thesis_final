@@ -1,0 +1,245 @@
+\section{Architectural Split Choice}
+\label{sec:analysis-split}
+
+\subsection{RQ1.1: Coarse Boundary Selection}
+\label{sec:analysis-rq11}
+
+RQ1.1 asks which coarse ResNet-18 stage boundaries provide suitable
+two-part microservice decompositions under controlled local execution. The
+main analytical result is that coarse boundaries are not interchangeable:
+the measured cost of introducing one service boundary depends on both the
+activation transferred at the boundary and the amount of computation left
+on each side of the split. This is consistent with prior split-inference
+work, which treats partition placement as a computation--communication
+trade-off rather than a depth-only decision~\cite{neurosurgeon,dnnsplit}.
+The stage-level structure of ResNet-18 provides meaningful candidate
+boundaries for this first screening step~\cite{resnet}, but the RQ1.1
+results show that architectural meaningfulness alone is not enough to make
+a boundary suitable.
+
+All four split configurations were slower than monolithic execution in the
+frozen RQ1.1 run, so the result does not support a claim that local
+two-service decomposition improves raw latency. Its value is instead
+diagnostic. The earliest split, after \texttt{layer1}, transferred the
+largest activation tensor (784~KiB) and had the largest boundary-crossing
+interval, 53.81~ms. This explains why it produced the highest overhead
+relative to monolithic inference in \cref{tab:rq11-results}. The result is
+in line with prior observations that early CNN feature maps can impose
+large communication costs because they remain spatially large
+\cite{deeperthings,neurosurgeon}. In this thesis, however, the
+boundary-crossing interval is a composite measurement that also includes
+remote service-B compute and serialisation/deserialisation, so it should
+not be interpreted as a pure network-transfer cost.
+
+The latest split, after \texttt{layer4}, shows the opposite failure mode.
+It transferred the smallest activation tensor (98~KiB) and had the lowest
+boundary-crossing interval, but it left only 0.486~ms of mean compute on
+the downstream service. This corresponds to approximately 0.62\% of total
+split compute, far below the predeclared 10\% compute-degeneracy
+threshold in \cref{sec:methods-carryforward}. The implication is important:
+minimising activation size alone can produce a structurally weak
+microservice decomposition. Such a split reduces transfer burden, but it
+does so by collapsing the second service into little more than the
+classification head. It is therefore useful as evidence for the transfer
+trend, but not as a credible main carry-forward candidate.
+
+The strongest RQ1.1 candidates are consequently the mid-to-late coarse
+boundaries. \texttt{split\_after\_layer3} was the raw-fastest
+non-degenerate split at 79.08~ms and was selected as the main
+carry-forward candidate by the frozen \texttt{carry\_forward.json}.
+\texttt{split\_after\_layer2} was retained as the reference candidate at
+80.12~ms. The difference between these two candidates is modest, so it
+should not be read as a general ranking of \texttt{layer3} over
+\texttt{layer2} for all systems. Rather, it supports a narrower conclusion:
+under the controlled local RQ1.1 conditions, the credible carry-forward
+region lies around \texttt{layer2}--\texttt{layer3}, where activation
+transfer has already fallen substantially but the downstream service still
+performs meaningful computation.
+
+The validation evidence is adequate for this local screening purpose but
+bounded. The run is frozen as \texttt{rq1\_1\_20260515\_111428}; all local
+and gRPC parity checks match the monolithic reference with
+\texttt{max\_abs\_diff} equal to 0.0 at tolerance $1.0\times10^{-5}$; and
+the five-round condition means are stable, with round CVs between 0.002
+and 0.011. These checks support treating the within-run ordering and
+carry-forward decision as credible for the measured environment. They do
+not establish host-independent generality, because RQ1.1 uses one host,
+one build, one fixed input seed, CPU-only batch-one inference, and
+localhost gRPC.
+
+\paragraph{Answer to RQ1.1.}
+RQ1.1 provides direct but scoped evidence that the most suitable coarse
+two-part ResNet-18 microservice decompositions are not the earliest or
+latest stage boundaries. The earliest boundary is penalised by the largest
+activation-transfer burden, while the latest boundary becomes
+compute-degenerate despite its small activation. The best supported
+carry-forward choice from this frozen run is therefore
+\texttt{split\_after\_layer3}, with \texttt{split\_after\_layer2} retained
+as the reference candidate. This answers RQ1.1 for the controlled local
+setting: suitability is determined by the joint balance of latency,
+boundary-crossing cost, activation size, and compute distribution, not by
+raw latency or activation size alone.
+
+\subsection{RQ1.2: Fine-Grained Refinement}
+\label{sec:analysis-rq12}
+
+The results in \cref{sec:rq12} support three observations.
+
+\paragraph{The refined region remains tightly clustered.}
+All three refined split conditions fall within a very narrow latency band,
+from 80.16~ms to 80.39~ms (\cref{tab:rq12-results}). This indicates that the
+block-level refinement does not reveal a dramatically superior new split.
+Instead, it confirms that the carried-forward \texttt{layer2}--\texttt{layer3}
+region identified in RQ1.1 already captures the main structure of the
+latency--communication trade-off in this late-stage part of the network.
+
+\paragraph{Equal activation size does not guarantee equal performance.}
+The most instructive comparison in this refinement stage is between
+\texttt{split\_after\_layer3\_block0} and \texttt{split\_after\_layer3}. Both
+conditions transfer an intermediate tensor of approximately 196~KB, yet they
+differ in boundary-crossing interval by approximately 7.8~ms and in mean
+end-to-end latency by a smaller but still measurable amount. This demonstrates
+that activation-transfer size is not the sole determinant of boundary cost. The
+distribution of computation on either side of the boundary also matters:
+shifting the split from the end of \texttt{layer3} to the internal boundary
+after \texttt{layer3.0} changes the compute placement and therefore changes
+boundary-crossing behavior even when the serialized tensor is the same size.
+This finding is consistent with the broader partitioning literature, which
+treats compute distribution as a first-class consideration alongside
+communication cost~\cite{dnnsplit, deeperthings, survey_partitioning,
+fine_grained_partitioning, hierarchical_partitioning}.
+
+\paragraph{This run does not overturn the coarse screening.}
+Under the current refined benchmark outcome, \texttt{split\_after\_layer3\_block0}
+is the raw-fastest split and is selected as the main candidate by the
+implemented carry-forward rule in
+\texttt{rq1\_2\_20260515\_112636/carry\_forward.json}, with
+\texttt{split\_after\_layer2} retained as the reference candidate. However,
+the three refined conditions remain so close that the central thesis-facing
+conclusion is not that RQ1.2 discovered a dramatically better split than
+RQ1.1. Rather, the refinement confirms that the late carried-forward region
+remains the correct focus, while revealing that small block-level shifts can
+still change behavior measurably even when activation-transfer size is held
+constant.
+
+\paragraph{Answer to RQ1.2.}
+RQ1.2 shows that finer-grained refinement within the carried-forward coarse
+region from RQ1.1 does not overturn the coarse-level findings, but it does
+reveal a meaningful secondary insight. In the refined comparison,
+\texttt{split\_after\_layer3\_block0} is the raw-fastest split and is selected
+as the main candidate under the implemented selection rule, while
+\texttt{split\_after\_layer2} is retained as the reference candidate. The
+refined split \texttt{split\_after\_layer3} is slightly slower in this run.
+At the same time, the comparison between \texttt{split\_after\_layer3\_block0}
+and \texttt{split\_after\_layer3} --- which share the same activation-transfer
+size of approximately 196~KB yet differ in boundary-crossing interval by
+approximately 7.8~ms --- demonstrates that equal activation-transfer size does
+not guarantee equal performance. Compute placement within the refined region
+still matters, even when the serialized tensor is held constant. The coarse RQ1.1
+screening had already identified the correct late-stage comparison space; the
+block-level refinement confirms that structure and adds the observation that
+per-block compute distribution is a secondary but observable factor in
+boundary-crossing cost~\cite{dnnsplit, deeperthings, survey_partitioning,
+fine_grained_partitioning, hierarchical_partitioning, neurosurgeon, bottlefit}.
+
+\subsection{RQ1.3: Explanatory Synthesis}
+\label{sec:analysis-rq13}
+
+The explanatory analysis in \cref{sec:rq13} supports a coherent two-dimensional
+account of the local findings from RQ1.1 and RQ1.2.
+
+At the coarse level (RQ1.1), activation-transfer size is the dominant factor
+explaining the gradient of boundary-crossing costs from early to late splits
+(53.81~ms, 40.85~ms, 26.06~ms, and 2.22~ms after \texttt{layer1} through
+\texttt{layer4} respectively, per
+\texttt{rq1\_1\_20260515\_111428/condition\_summaries.csv}). The monotonic
+relationship between activation size and boundary-crossing interval is strong
+and consistent. However, this single dimension is insufficient: the
+compute-degenerate \texttt{split\_after\_layer4} minimises transfer burden but
+fails as a meaningful decomposition because it collapses one side of the
+partition into a near-empty service.
+
+At the refined level (RQ1.2), compute distribution emerges as an independent
+explanatory dimension. The controlled comparison between two conditions with
+identical activation size but different boundary-crossing intervals shows that
+the placement of computation around the boundary affects cost even when
+communication burden is held constant. The internal timing experiment supports
+this observation by confirming that per-stage and per-block compute within
+ResNet-18 is structurally uneven, with \texttt{layer4} accounting for nearly a
+third of total forward-pass time and individual blocks within \texttt{layer3}
+contributing unequally. The operation-level support data strengthens this
+explanation further by showing that the heaviest internal units are
+overwhelmingly convolutional and concentrated in the later part of the network.
+
+Neither dimension alone is sufficient. Activation-transfer size explains the
+broad coarse pattern but not the refined within-region differences. Compute
+distribution explains the refined differences but does not account for the
+large boundary-crossing cost gradient between early and late coarse splits.
+Together, they provide a more complete explanation: suitable partition
+boundaries arise from a trade-off between activation-transfer burden,
+boundary-crossing cost, and compute distribution, not from the minimisation of
+any single metric.
+
+\paragraph{Answer to RQ1.3.}
+RQ1.3 shows that the latency and boundary-crossing behavior observed in RQ1.1
+and RQ1.2 can be explained by two complementary structural properties of the
+partition: activation-transfer size and compute distribution.
+
+Activation-transfer size is the dominant factor at the coarse level. The
+monotonic decrease in boundary-crossing interval from early to late splits in
+RQ1.1 closely tracks the reduction in intermediate tensor size as the boundary
+moves deeper into the network. This explains why early splits are costly and
+why later splits generally incur lower communication overhead.
+
+Compute distribution is an independent and observable factor at the refined
+level. The RQ1.2 comparison between \texttt{split\_after\_layer3\_block0} and
+\texttt{split\_after\_layer3} --- which share the same activation size of
+approximately 196~KB yet differ in boundary-crossing interval by
+approximately 7.8~ms --- demonstrates that equal transfer burden does not
+guarantee equal performance. The placement of computation around the boundary matters
+independently of the size of the transferred tensor.
+
+The internal timing experiment supports the compute-distribution explanation
+by confirming that execution cost within ResNet-18 is structurally uneven:
+convolution operations account for approximately 82\% of total compute,
+\texttt{layer4} alone accounts for 31.28\%, and the heaviest internal units
+are concentrated in convolution-heavy late-stage regions
+(\cref{tab:rq13-internal-summary,tab:rq13-topops}). These structural
+properties explain both the compute degeneracy of the \texttt{layer4} split
+observed in RQ1.1 and the boundary-crossing asymmetry between the two 196~KB
+conditions observed in RQ1.2.
+
+Taken together, under these controlled local conditions, suitable microservice
+boundaries for ResNet-18 arise from a joint trade-off among activation-transfer
+burden, boundary-crossing cost, and compute distribution across
+services~\cite{neurosurgeon, dnnsplit, jointdnn, deeperthings}. No single
+metric is sufficient. The mid-to-late coarse region around \texttt{layer2} and
+\texttt{layer3} remains the strongest carry-forward zone because it avoids
+both the large activation costs of early boundaries and the poor compute
+balance of overly late boundaries. These local explanatory findings provide
+the interpretive basis against which the later Kubernetes and Azure stages can
+evaluate whether infrastructure context changes the relative importance of
+these two dimensions.
+
+\subsection{Synthesis: Architectural Split Choice}
+\label{sec:analysis-split-synthesis}
+
+The local split-selection stages show that the position of the model boundary
+matters before Kubernetes or cloud effects are introduced. RQ1.1 found that
+coarse residual-stage boundaries are not interchangeable: early boundaries
+carry high activation-transfer cost, while the very late \texttt{layer4}
+boundary becomes compute-degenerate. The strongest carry-forward region is
+therefore the mid-to-late part of the network around \texttt{layer2} and
+\texttt{layer3}, as shown in \cref{tab:rq11-results}. This matches the broader
+split-computing literature, which treats partitioning as a trade-off among
+activation size, compute allocation, and deployment
+conditions~\cite{neurosurgeon,dnnsplit,deeperthings,survey_partitioning}.
+
+RQ1.2 refined this region and showed that a finer boundary can change behavior
+even when activation size is held constant. The comparison between
+\texttt{split\_after\_layer3\_block0} and \texttt{split\_after\_layer3} is the
+important case: both transfer the same approximate activation size, but their
+boundary-crossing intervals differ. This supports the RQ1.3 interpretation
+that activation-transfer burden and compute placement are complementary
+explanations rather than competing ones~\cite{fine_grained_partitioning,
+hierarchical_partitioning,pareto_split}.
