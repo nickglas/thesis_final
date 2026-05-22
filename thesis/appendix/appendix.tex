@@ -15,3 +15,124 @@ argument: extended sensitivity data, additional ablation breakdowns, and any
 figures or tables that are too large for the experiment chapters. The
 thesis-facing primary results remain those reported in
 \cref{ch:experiments,ch:analysis}.
+
+\section{RQ1.4b: kind Multi-Worker CNI Sensitivity Data}
+\label{sec:appendix-rq14b}
+
+This section holds the appendix-only data tables for the RQ1.4b kind
+multi-worker CNI sensitivity stage. The methodological framing of this
+stage is given in \cref{sec:methods-rq14b}; the analytical reading and
+its scope-bounding role in the deployment narrative are in
+\cref{sec:analysis-rq14b}. As established in \cref{sec:methods-rq14b},
+RQ1.4b is reported as supporting sensitivity evidence only, not as a
+primary thesis-facing number: kind's worker ``nodes'' are Docker
+containers sharing one host kernel and communicating over kind's CNI
+bridge, so RQ1.4b measures CNI-bridge cost on a single physical host
+rather than real cross-host networking. The genuine multi-host
+inter-node penalty is measured separately in \cref{sec:rq15b} on AKS.
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.4b condition summary on the six-worker kind cluster with
+\texttt{multi\_node\_anti\_affinity} placement. Source:
+\texttt{merged\_results/condition\_summaries.csv} in
+\texttt{rq1\_4b\_20260515\_163322}. Overheads are computed against the
+RQ1.4b monolithic baseline.}
+\label{tab:rq14b_results}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 67.491  & 61.917  & 10.999 & 89.446  & --- \\
+\texttt{chain\_2svc}           & 87.378  & 86.931  & 17.909 & 109.529 & +19.887 / +29.5\% \\
+\texttt{chain\_3svc}           & 120.465 & 121.270 & 20.490 & 142.410 & +52.974 / +78.5\% \\
+\texttt{chain\_4svc}           & 135.639 & 138.964 & 15.942 & 152.193 & +68.148 / +101.0\% \\
+\texttt{chain\_5svc}           & 141.169 & 144.692 & 13.893 & 156.041 & +73.677 / +109.2\% \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.4b cross-round consistency. Source:
+\texttt{merged\_results/round\_consistency.json} in
+\texttt{rq1\_4b\_20260515\_163322}. Round CVs are materially inflated
+relative to the single-node RQ1.4 baseline (\cref{tab:rq14_rounds}); the
+highest CVs do not track chain depth, consistent with kind-CNI
+variability and shared-host effects on the single physical machine that
+hosts all six kind worker containers rather than with a chain-specific
+noise mechanism.}
+\label{tab:rq14b_rounds}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 67.491  & 3.0801 & 7.1194  & 0.0456 \\
+\texttt{chain\_2svc}           & 87.378  & 2.5362 & 5.8718  & 0.0290 \\
+\texttt{chain\_3svc}           & 120.465 & 6.6392 & 17.9867 & 0.0551 \\
+\texttt{chain\_4svc}           & 135.639 & 2.5381 & 6.8988  & 0.0187 \\
+\texttt{chain\_5svc}           & 141.169 & 3.4935 & 8.7029  & 0.0247 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{RQ1.4b kind-CNI per-condition penalty, condition-by-condition
+vs.\ the frozen single-node RQ1.4 baseline. Source:
+\texttt{merged\_results/condition\_summaries.csv} in
+\texttt{rq1\_4\_fully\_controlled\_20260515\_141036} and
+\texttt{rq1\_4b\_20260515\_163322}. The per-condition delta is computed
+as $\Delta_c = \mathrm{mean}_c^{\mathrm{kind\text{-}cni}} -
+\mathrm{mean}_c^{\mathrm{single}}$, as declared in
+\cref{sec:methods-rq14b}. Following the cross-stage host-control caveat
+in \cref{sec:methods-rq14b}, the comparison is interpreted at the
+per-condition delta level only: RQ1.4b differs from RQ1.4 in host
+control state (governor / turbo / nice) as well as in topology. The
+monolithic delta is negative on average but is dominated by a
+first-round shift in RQ1.4b
+(round means $\{62.000, 68.553, 68.677, 69.107, 69.119\}$~ms;
+\cref{tab:rq14b_rounds}) and a heavily skewed per-iteration
+distribution (mean 67.491~ms vs.\ median 61.917~ms;
+\cref{tab:rq14b_results}), and should not be read as evidence that the
+kind multi-worker topology is faster than single-node placement.}
+\label{tab:rq14b_delta}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccc}
+\toprule
+\textbf{Condition} & \textbf{RQ1.4 single-node mean (ms)} & \textbf{RQ1.4b kind multi-worker mean (ms)} & \textbf{$\Delta_c$ (ms)} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 81.066 & 67.491  & $-13.575$ \\
+\texttt{chain\_2svc}           & 83.387 & 87.378  & $+3.991$ \\
+\texttt{chain\_3svc}           & 87.728 & 120.465 & $+32.737$ \\
+\texttt{chain\_4svc}           & 90.572 & 135.639 & $+45.067$ \\
+\texttt{chain\_5svc}           & 92.535 & 141.169 & $+48.634$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+Functional parity was verified independently of timing:
+\texttt{max\_abs\_diff}~$=0.0$ at \texttt{atol}~$=1\times10^{-5}$ for
+all five conditions in both the local segment validation and the live
+gRPC chain validation (\texttt{num\_inputs}~$=5$), recorded in
+\texttt{merged\_results/parity\_validation.json}. Infrastructure
+controls (image
+\texttt{thesis-inference:latest} with pull policy
+\texttt{IfNotPresent}, namespace \texttt{rq14b}, per-pod 1~CPU /
+512~MiB Guaranteed-QoS service profile, per-pod 1~CPU / 1~GiB client
+profile, one thread per pool, CPU affinity to core~0) were applied
+uniformly across the five conditions, as preserved in
+\texttt{merged\_results/deployment\_metadata.json} and
+\texttt{merged\_results/environment.json}. Host-level controls were
+weaker than in RQ1.4: writes to \texttt{/sys} failed because those
+paths were read-only in the containerised environment, the detected
+governor was \texttt{schedutil} (rather than \texttt{performance}),
+turbo was enabled, and the \texttt{nice~-5} request failed for
+permission reasons (\texttt{environment.json}). This degraded
+host-control state is one reason \cref{sec:analysis-rq14b} interprets
+the comparison against RQ1.4 at the per-condition delta level only and
+treats RQ1.4b as a kind-CNI sensitivity envelope rather than a clean
+topology-only swap from RQ1.4.

@@ -461,6 +461,19 @@ $\Delta_c = \mathrm{mean}_c^{\mathrm{kind\text{-}cni}} - \mathrm{mean}_c^{\mathr
 which is read as a kind-CNI sensitivity bound rather than as a deployment-grade multi-node
 result.
 
+A further cross-stage caveat must be made explicit before the per-condition delta
+$\Delta_c$ is interpreted. RQ1.4b is not a clean topology-only swap from RQ1.4: it also
+runs with a weaker host-control state. Writes to \texttt{/sys} fail in the containerised
+environment, so the CPU governor is observed at \texttt{schedutil} (rather than
+\texttt{performance}) and turbo is observed as enabled (rather than disabled); the
+\texttt{nice~-5} request also fails for permission reasons. This is recorded in the frozen
+\texttt{merged\_results/environment.json} for the RQ1.4b run and is one plausible
+co-contributor to the inflated RQ1.4b round CVs. For this reason, comparisons against RQ1.4
+are interpreted at the \emph{per-condition} $\Delta_c$ level only and are not lifted to a
+cross-stage means comparison; the two stages differ in host-control state in addition to
+placement, and $\Delta_c$ should be read as an upper sensitivity bound that combines the
+kind-CNI-bridge cost with this degraded host-control state on the same host.
+
 \subsection{RQ1.5 -- AKS Transfer Validation}
 \label{sec:methods-rq15}
 
