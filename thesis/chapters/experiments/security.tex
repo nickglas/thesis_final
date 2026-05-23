@@ -409,26 +409,29 @@ evaluate such attacks.
 
 \begin{table}[t]
 \centering
-\caption{RQ2.3 synthesis of evaluated security-hardening levels. mTLS overheads are taken from \cref{tab:rq21_latency}; the selective TEE overhead is taken from \cref{tab:rq22_service2_results} relative to its own paired standard-node mTLS baseline.}
+\caption{RQ2.3 synthesis of evaluated security-hardening levels. mTLS overheads are taken from \cref{tab:rq21_latency}; the selective TEE overhead is taken from \cref{tab:rq22_service2_results} relative to its own paired standard-node mTLS baseline. Each cost is reported as both the mean delta and the p95 delta, because the two security mechanisms differ in how the latency cost is distributed between the centre and the tail of the distribution.}
 \label{tab:rq23_security_tradeoff}
-\begin{tabular}{p{2.8cm}p{3.5cm}p{3.2cm}p{4.3cm}}
+\begin{tabular}{p{2.6cm}p{3.3cm}p{2.6cm}p{2.6cm}p{2.6cm}}
 \toprule
-Configuration & Protection scope & Measured cost & Thesis interpretation \\
+Configuration & Protection scope & Mean cost & p95 cost & Thesis interpretation \\
 \midrule
 Plain AKS
 & Baseline AKS deployment without mesh mTLS/AuthZ or confidential-node placement.
-& Fastest evaluated Azure deployment path.
-& Best latency baseline, but weakest protection in the evaluated security set. Suitable only when additional communication and runtime hardening are not required. \\
+& Baseline (reference).
+& Baseline (reference).
+& Fastest evaluated Azure deployment path and the reference against which mTLS and TEE deltas are computed, but the weakest protection in the evaluated security set. Suitable only when additional communication and runtime hardening are not required. \\
 
 mTLS/AuthZ
 & Service identity, encrypted service-to-service communication, and authorization policy for the selected inference path.
-& chain\_2svc: +3.488 ms / +4.62\%; chain\_5svc stress case: +8.837 ms / +10.74\%.
-& Best general-purpose hardening layer when the main requirement is authenticated and encrypted inter-service communication. Cost is measurable but bounded for the selected chain, and grows with protected chain depth. \\
+& chain\_2svc: +3.488 ms / +4.62\%; chain\_5svc: +8.837 ms / +10.74\%.
+& chain\_2svc: +3.623 ms / +4.53\%; chain\_5svc: +8.983 ms / +10.27\%.
+& Best general-purpose hardening layer when the main requirement is authenticated and encrypted inter-service communication. Mean and p95 deltas are in the same range, so the cost is centred rather than tail-concentrated. Cost grows with protected chain depth. \\
 
 mTLS/AuthZ + selective TEE
 & Communication hardening plus AMD SEV-SNP VM-level confidential execution for the downstream protected service (\texttt{service2\_only}).
 & +1.854 ms / +3.17\% over the newly paired standard-node mTLS baseline.
-& Adds runtime protection for the downstream segment that receives intermediate activations~\cite{he2021_attacking_collaborative}, bounded by the SEV-SNP threat model~\cite{schluter2024_heckler}. Full two-service TEE is treated as future work. \\
+& +3.601 ms / +5.98\% over the same baseline.
+& Adds runtime protection for the downstream segment that receives intermediate activations~\cite{he2021_attacking_collaborative}, bounded by the SEV-SNP threat model~\cite{schluter2024_heckler}. The tail (p95) delta is roughly 1.9$\times$ the mean delta in percent terms, so tail-sensitive SLOs should plan against the p95 number. Full two-service TEE is treated as future work. \\
 \bottomrule
 \end{tabular}
 \end{table}

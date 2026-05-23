@@ -1,85 +1,182 @@
 \section{Threats to Validity}
 \label{sec:analysis-threats}
 
-The strongest validity support is internal consistency. The experiments use
-fixed model weights, fixed input shape, functional parity validation,
-repeated rounds, and a shared benchmark contract. The local and Kubernetes
-stages also use CPU-affinity and single-threading controls where the runtime
-permits. These choices follow systems benchmarking guidance that stresses
-controlled comparisons, explicit measurement context, and caution when
-interpreting performance numbers~\cite{benchmarking_sc15}.
+This section consolidates the limitations that bound the interpretation
+of the frozen evidence presented in \cref{ch:experiments} and analysed
+in \cref{sec:analysis-split,sec:analysis-deployment,%
+sec:analysis-security}. The credibility evidence and the evaluative
+boundary statements have already been developed in
+\cref{sec:analysis-validation,sec:analysis-evaluation}; the purpose
+here is to make the residual threats explicit under the conventional
+validity categories, group them where they overlap, and identify which
+of them are mitigated, partially mitigated, or open. No new results
+are introduced and per-RQ trust-model bounds already settled in
+\cref{sec:analysis-rq21,sec:analysis-rq22,sec:analysis-rq23} are
+cross-referenced rather than re-argued.
 
-The main limitation is external validity. The remaining threats below are
-consolidated from the methodological scoping in \cref{ch:methods} and apply
-to all stages of the staged pipeline.
+\paragraph{Internal validity.}
+The frozen-evidence design controls the application-code dimension of
+internal validity by pinning every AKS leg (RQ1.5, RQ1.5b, RQ2.1,
+RQ2.1b, RQ2.2) to the same ACR image digest, so the
+single-node-to-multi-node, plain-to-mTLS, and standard-to-confidential
+deltas are not contaminated by application drift. Functional parity
+holds at \texttt{max\_abs\_diff}~$=0.0$ in every thesis-facing run
+(\cref{sec:analysis-validation}), and the paired alternating designs
+of RQ2.1, RQ2.1b, and RQ2.2 are seeded and order-randomised so that
+slow drift over a single benchmark window does not enter the deltas in
+one direction. Two residual threats remain. First, the local
+\texttt{kind} stages (RQ1.4, RQ1.4b) use the mutable Docker tag
+\texttt{thesis-inference:latest}; byte-exact re-execution of those
+stages depends on whichever image was loaded into the cluster at run
+time, so the kind absolute milliseconds are reproducible only at the
+substrate level and the AKS legs are the byte-exact backstop for the
+chain family (\cref{sec:methods-artifacts}). Second, CPU governor,
+turbo, and \texttt{nice} controls are node-level on Linux and are not
+exposed to pods, so RQ1.5 / RQ1.5b explicitly disable those requests
+and RQ1.4b records failed governor/turbo writes inside its
+containerised environment (\cref{sec:analysis-rq14b}); thread pinning,
+OMP/MKL/OpenBLAS thread counts, and CPU affinity remain applied
+symmetrically across conditions, and cross-round CVs stay below
+$0.023$ for all AKS stages (\cref{sec:analysis-validation}), but
+host-level scheduler and frequency noise are not eliminated. Reading
+discipline for absolute milliseconds therefore follows established
+benchmarking practice and treats within-environment overhead as the
+load-bearing internal-validity signal rather than absolute timing
+across substrates~\cite{benchmarking_sc15}.
 
-\paragraph{Single-node clusters.}
-The thesis-facing RQ1.4 \texttt{kind} and RQ1.5 AKS primary runs are both
-single-node. Single-node deployments eliminate inter-node network hops and do
-not capture the scheduling and networking variability of a multi-node
-production cluster. RQ1.5b
-(\cref{sec:rq15b}, \cref{sec:analysis-rq15b}) addresses this directly with a
-multi-node AKS sensitivity stage that forces every chain hop across a node
-boundary; the measured per-condition multi-node penalty is bounded between
-+2.131~ms (\texttt{chain\_3svc}) and +4.086~ms (\texttt{chain\_5svc}), with
-the monolithic baseline gaining +2.305~ms (\cref{tab:rq15b_delta}). The
-single-node primary numbers should therefore be interpreted as a clean
-architectural-overhead measurement that excludes the inter-node network
-path; the multi-node sensitivity in \cref{sec:rq15b} provides a quantitative
-bound on what production multi-node deployments add on top.
+\paragraph{Construct validity.}
+The thesis operationalises ``microservice DNN inference'' as ResNet-18
+in FP32 at batch size one on CPU, the chain family
+\texttt{monolithic\_k8s\_1svc}..\texttt{chain\_5svc}, and a single
+classifier output; this is a narrow but explicit construct, and the
+joint suitability criterion of \cref{sec:analysis-rq13} is a property
+of this construct rather than a universal split rule. The construct
+boundary on the security strand is stronger and is paid for in
+\cref{sec:analysis-rq21,sec:analysis-rq22,sec:analysis-rq23}:
+``security works'' is operationalised as static manifest validation,
+runtime policy validation, full-chain positive probes, and direct
+non-mesh denial probes, which is communication-level hardening under
+policy validation rather than evidence of robustness under attack. The
+sidecar-to-application loopback that exists inside each pod after TLS
+termination is an architectural property of sidecar-based
+mTLS~\cite{meshinsight_socc23} and is therefore not removed by RQ2.1;
+the managed-mesh control plane and the local certificate authority
+remain trust-critical even when strict PeerAuthentication and
+AuthorizationPolicy are enforced~\cite{poudel2025mazu}; the SEV-SNP
+layer on \texttt{service2\_only} protects the host-platform interface
+of one segment at VM granularity but does not protect the guest OS,
+the application process, the model runtime, or the sidecar inside the
+protected pod~\cite{amd_sevsnp_whitepaper}; and the
+activation-privacy motivation of
+He~et~al.~\cite{he2021_attacking_collaborative} is cited as
+motivation, not as a measured defended adversary, because their
+adversary is a malicious remote service while SEV-SNP defends against
+the cloud host. These boundaries are not weaknesses of the measurement
+design --- they are scope statements --- but they bound what the
+security findings construct can support, and adversarial testing is
+explicitly out of scope.
 
-\paragraph{CPU-only inference.}
-All stages use CPU inference with a single thread. GPU-accelerated inference
-would substantially shift the compute distribution, reduce per-inference
-time, and change the relative weight of the gRPC boundary cost. The results
-are not directly generalisable to GPU-hosted microservice deployments.
+\paragraph{External validity.}
+Generalisation beyond the evaluated configuration is the dominant
+threat category for this thesis. The primary chain-family
+measurements run on one AKS cluster, one region
+(\texttt{swedencentral} for RQ1.5 / RQ1.5b / RQ2.1 / RQ2.1b and
+\texttt{westeurope} for RQ2.2), one benchmark node SKU
+(\texttt{Standard\_D8s\_v3}; \texttt{Standard\_D8as\_v5} for the
+RQ2.2 standard pair), one CNI (\texttt{kubenet}), one managed mesh
+revision (\texttt{asm-1-29}), and one CVM substrate (AMD SEV-SNP via
+\texttt{Standard\_DC8as\_v5}). Managed-cloud absolute performance is
+known to shift independently along each of these axes: provider /
+node-image defaults, virtualization layer, CNI plugin choice, and
+public-cloud network variability are all independently documented
+sources of absolute
+drift~\cite{managed_k8s_perf,virtualization_costs,cni_k8s_ic2e21,%
+noise_in_clouds}, and confidential-VM platforms differ from one
+another in attacker model, attestation flow, and residual side
+channels, so the SEV-SNP-specific finding does not transfer cleanly
+to alternative CVM
+substrates~\cite{guanciale2022_confidential_quartet}. The single-node
+placement of the RQ1.4 / RQ1.5 / RQ2.1 / RQ2.2 primary runs is bounded
+by the multi-node sensitivity stages
+(\cref{sec:analysis-rq14b,sec:analysis-rq15b}), which establish that
+the chain-cost ordering and the activation-driven bounded-non-linearity
+pattern survive both the kind CNI-bridge probe and a genuine AKS
+cross-host topology, and which quantify the inter-node penalty for
+the AKS chain family. Concurrent clients, autoscaling, sustained
+open-loop load, GPU inference, larger models, larger batch sizes,
+alternate chain topologies (fan-out, star, ensemble),
+\texttt{chain\_5svc} with TEE, alternate node SKUs, alternate regions,
+alternate CNIs, and alternate CVM platforms are not evaluated;
+chain-cost claims are bounded to the predefined five-condition family,
+and the irreducible component of inter-service latency in collocated
+RPC-mediated microservice deployments is itself a known floor that
+the chain-microservice design cannot eliminate without changing the
+transport model~\cite{rpc_overhead_hotos25,notnets_apsys24}.
 
-\paragraph{Single model and workload.}
-The thesis evaluates one model (ResNet-18) at batch size one with one input
-shape. Different architectures, larger activation maps, or higher-batch
-workloads may produce different cost curves and different optimal split
-regions.
+\paragraph{Reliability and reproducibility.}
+The AKS legs are reproducible at the application-code level by ACR
+digest pin (\cref{sec:methods-artifacts}), per-pass effective configs
+are preserved under \texttt{effective\_configs/} for every paired AKS
+run, frozen \texttt{condition\_summaries.csv},
+\texttt{round\_consistency.json}, \texttt{paired\_summary.*}, and
+\texttt{rq22\_rolling\_summary.json} files are versioned alongside the
+analysis, and functional parity is recorded in every
+\texttt{parity\_validation.json} included with the artefact set. The
+local \texttt{kind} stages are reproducible only up to the mutable
+\texttt{thesis-inference:latest} tag and the degraded host-control
+state recorded in \cref{sec:analysis-rq14b}; this is a real but
+bounded reproducibility gap because the same chain family is
+re-measured on AKS under the pinned digest. Cluster-level
+re-execution on a fresh AKS region or SKU is not part of the frozen
+artefact set; the within-run round-CV stability evidence is therefore
+a reliability statement about a single execution of each stage on the
+evaluated cluster rather than a cross-cluster replication
+result~\cite{benchmarking_sc15}.
 
-\paragraph{Controlled conditions versus production variability.}
-The local stages apply strict CPU stabilisation and achieve low cross-round
-variance. The Kubernetes and AKS stages are less controllable and exhibit
-higher variability. Neither environment captures the full noise of a shared
-multi-tenant cloud cluster, where CPU steal, network congestion, and noisy
-neighbours can substantially affect tail latency.
+\paragraph{Conclusion validity.}
+Three boundaries bound the strength of the conclusions. First, the
+mTLS depth-sensitivity claim rests on two measured chain depths
+(\texttt{chain\_2svc} and \texttt{chain\_5svc}) under the same mesh
+revision; the resulting two-point comparison establishes a direction
+and an order of magnitude but is not a fitted per-hop scaling law, as
+\cref{sec:analysis-rq21} explicitly states. Second, the RQ2.2 finding
+rests on five paired passes per condition on a single confidential
+node pool against a freshly collected within-cluster mTLS standard
+baseline; this design isolates the incremental TEE delta from
+session-level drift but is not powered to decompose the observed
+tail-vs-mean asymmetry into a specific mechanism (per-iteration
+memory-encryption work, scheduler interactions on the confidential
+node, and warm-vs-cold cache behaviour are all consistent), and the
+RQ2.3 synthesis is therefore expressed in delta-space against three
+independently paired baselines rather than as a composed absolute
+trajectory. Third, effect-magnitude reporting follows Cohen's~$d$ and
+cross-round CV rather than a full hypothesis-test stack
+(\cref{sec:analysis-validation}); at pooled $N = 1{,}000$ per
+condition Mann--Whitney $p$-values are uninformative for the
+near-zero range they reach, so the deltas should be read as
+effect-magnitude statements within the tested configuration rather
+than as hypothesis tests against a null. The cumulative effect of
+these three boundaries is that no measured trend should be promoted
+to a causal claim outside the evaluated configuration, and the
+synthesis-level recommendation in \cref{sec:analysis-rq23} is bounded
+to the \texttt{chain\_2svc} topology, the pinned ACR digest, the
+managed-Istio mesh revision evaluated here, and the AMD SEV-SNP CVM
+substrate against the vendor threat model and the residual attack
+surfaces documented but not exercised in this
+thesis~\cite{schluter2024_heckler,he2021_attacking_collaborative}.
 
-\paragraph{Activation-protection motivation.}
-He~et~al.\ \cite{he2021_attacking_collaborative} demonstrate that an untrusted
-remote service holding only intermediate feature maps can reconstruct the
-client's input, so in-transit encryption alone does not protect activations
-at rest on the downstream segment. This motivates evaluating the
-infrastructure-level protection of the downstream service (RQ2.2) in
-addition to communication-level hardening (RQ2.1). The two layers address
-different threat models: SEV-SNP defends against the cloud host, not against
-an actively malicious application running inside the protected VM, so it is
-not a direct solution to the malicious remote-service model in
-He~et~al.
-
-\paragraph{mTLS threat-model scope.}
-Sidecar-based mTLS protects the inter-proxy communication path but does not
-prevent plaintext from existing inside the endpoint after TLS termination.
-The security claims for RQ2.1 are explicitly scoped to communication-level
-hardening.
-
-\paragraph{SEV-SNP threat-model scope.}
-AMD SEV-SNP protects the VM boundary against the host platform but not
-against a compromised guest OS or application process, and several
-side-channel and availability threats fall outside its core guarantee. In
-particular, recent work shows that confidential VMs remain vulnerable to
-malicious-interrupt injection from the untrusted
-hypervisor~\cite{schluter2024_heckler}; this thesis does not experimentally
-evaluate such attacks. RQ2.2 therefore claims VM-level confidential
-execution for the downstream segment (\texttt{service2\_only}), not
-complete application-level isolation. Extending the confidential boundary
-to both services in the chain is treated as future work.
-
-\paragraph{Generalisation of the cited literature.}
-Multi-node clusters, concurrent clients, GPUs, larger models, feature
-compression, autoscaling, and different service-mesh configurations could
-change the absolute overheads and possibly the preferred topology. The
-thesis therefore supports bounded claims about the evaluated system rather
-than a universal rule for all microservice inference deployments.
+\paragraph{Bounding statement.}
+The threats above are best read in conjunction with the validity
+evidence in \cref{sec:analysis-validation} and the evaluative
+boundaries in \cref{sec:analysis-evaluation}. Within the evaluated
+configuration, the joint suitability criterion, the chain-cost
+gradient, the mTLS overhead at \texttt{chain\_2svc}, the
+SEV-SNP-on-service2 incremental overhead, and the resulting
+delta-space trade-off are supported by frozen, parity-validated,
+digest-pinned, paired-alternated AKS evidence; outside that
+configuration the thesis claims direction and order of magnitude
+rather than millisecond identity, communication-level and
+host-platform-level protection under policy validation rather than
+robustness under attack, and a defensible default for the evaluated
+\texttt{chain\_2svc} chain rather than a universal rule for
+microservice DNN inference.

@@ -1,27 +1,179 @@
 \section{Evaluation}
 \label{sec:analysis-evaluation}
 
-The main engineering lesson is that partitioning, deployment, and hardening
-cannot be optimised independently. The split point determines
-activation-transfer size and compute placement. Kubernetes and AKS add
-platform-specific communication and scheduling effects. Security hardening
-then compounds the cost of the selected service topology. This means that a
-decomposition that is acceptable without mTLS or confidential execution may
-become less attractive once every service boundary is protected.
+This section judges how well the partitioned, deployed, and hardened
+inference system performs. Per-RQ performance interpretations are
+already developed in \cref{sec:analysis-split,sec:analysis-deployment,%
+sec:analysis-security}, and the credibility of the underlying
+measurements is consolidated in \cref{sec:analysis-validation}; the
+purpose here is the synthesis-level evaluation that those subsections
+defer. Evaluation is therefore carried out at the level of the whole
+system, against named comparison points, and bounded by what the
+frozen evidence supports.
 
-For the evaluated workload, \texttt{chain\_2svc} is the most defensible
-non-monolithic deployment point. It avoids the excessive boundary count of
-deeper chains, preserves a meaningful architectural split, and remains the
-lowest-overhead chained condition in both local Kubernetes and AKS. It also
-provides the practical base for RQ2: the mTLS/AuthZ hardening bundle is
-measurable but bounded on this topology, and selective TEE can protect the
-downstream service at a lower cost than full-chain confidential execution.
+\paragraph{Basis for evaluation.}
+The thesis does not claim state-of-the-art performance and does not
+operate against a fixed external SLO. ``Good performance'' is therefore
+defined here as the conjunction of four explicit comparison points:
+(i)~within-environment overhead against the monolithic baseline of the
+same stage, (ii)~the strongest single-dimension counterfactual decision
+rule that the staged design allows (activation-only or compute-only at
+the split stages; mTLS-only or TEE-only at the security stage),
+(iii)~the direction and order of magnitude reported by the systems and
+service-mesh literature for analogous mechanisms, and (iv)~the
+deployment-feasibility goals declared in
+\cref{ch:methods} (functional parity, frozen-artefact
+reproducibility, and credible policy-level security validation).
+Following the benchmarking discipline that informs the rest of the
+thesis~\cite{benchmarking_sc15}, absolute milliseconds are not treated
+as portable across substrates; ranking, direction, and bounded
+within-environment overhead are the load-bearing performance signals.
 
-Across the evaluated stack, the monolithic Kubernetes baseline remains the
-fastest path; chained deployments pay an overhead that is monotonic with
-service count but bounded and non-linear; the local-to-AKS transfer is
-directional rather than numerical; mTLS adds a workload-amortised but
-measurable cost that grows with protected chain depth; and selective
-confidential-VM execution on the downstream service adds a further bounded
-cost on top of the communication-secured chain. Extending the
-confidential-execution boundary to both services is treated as future work.
+\paragraph{Against the monolithic baseline.}
+At the system level, the evaluated decomposition does \emph{not}
+beat its own monolithic baseline on raw latency in any frozen stage:
+every split and every chained Kubernetes condition is measurably
+slower than the corresponding monolithic reference, and the
+chain-cost gradient is monotonic with synchronously chained service
+count in every substrate evaluated. The per-stage magnitudes are
+already tabulated in \cref{sec:analysis-rq11,sec:analysis-rq14,%
+sec:analysis-rq15,sec:analysis-rq15b} and are not repeated here. The
+evaluative reading of this pattern is that the contribution of the
+system is not raw-latency optimisation; it is a bounded
+\emph{overhead budget} for the architectural, deployment, and
+security properties the monolithic baseline does not provide. The
+useful question is therefore whether the overhead budget is small
+enough relative to the protection and decomposition benefits it
+purchases, and whether the gradient of that budget is predictable
+across substrates. The thesis answers both directions positively for
+the \texttt{chain\_2svc} topology and increasingly negatively as the
+chain deepens. The chain-cost monotonicity also has an architectural
+floor that the system cannot eliminate: the RPC stack itself carries
+measurable layered cost even between collocated
+microservices~\cite{rpc_overhead_hotos25,notnets_apsys24}, so a
+chained microservice deployment of this family cannot meet the
+monolithic baseline without changing the transport model.
+
+\paragraph{Against single-dimension decision rules.}
+The joint criterion that this thesis uses to evaluate splits ---
+activation-transfer size \emph{and} compute placement read together
+\cref{sec:analysis-rq13} --- evaluates strictly better than either
+single-dimension rule that the staged design exposes. An
+activation-only rule selects the \texttt{layer4} boundary and
+produces a structurally degenerate microservice in which the
+downstream service collapses to roughly the classification head
+(\cref{sec:analysis-rq11}); a compute-only rule has no principled
+mechanism to reject \texttt{layer1}, whose activation expands the
+byte budget that the service interface must carry. The joint rule
+rejects both endpoints and selects the mid-to-late carry-forward
+band that the subsequent Kubernetes and AKS stages do not overturn.
+The evaluative point here is not that the joint rule discovers a
+better number than the single-dimension rules; it is that the joint
+rule survives substrate change in a way that neither single-axis
+rule does, which is what makes it useful as an engineering criterion
+rather than as a stage-specific summary. A symmetric reading applies
+to the security strand: the mTLS layer and the SEV-SNP layer cover
+different threats and have qualitatively different cost shapes
+(centred for mTLS, tail-concentrated for SEV-SNP;
+\cref{sec:analysis-rq23}), so a single-mechanism default cannot
+substitute for a threat-model-aware composition once the threat
+model includes both inter-service and host-platform adversaries.
+
+\paragraph{Against the published literature for analogous mechanisms.}
+The measured RQ2.1 mTLS overhead on the selected
+\texttt{chain\_2svc} topology is in the same direction as, and
+substantially smaller in percent than, the high-load Istio penalties
+reported in MeshInsight and in the cross-mesh comparison of
+Bremler-Barr~et~al.~\cite{meshinsight_socc23,bremlerbarr2025mtls}.
+The right reading is qualitative agreement, not numerical
+disagreement: those studies use open-loop benchmark traffic at
+sustained load with little per-request application compute, so the
+sidecar critical-path cost is amortised over very little useful work,
+while the RQ2.1 path amortises the same proxy cost over the full
+ResNet-18 inference. The evaluative implication is that the system
+sits in the favourable amortisation regime that the service-mesh
+literature predicts for compute-heavy request paths, not that it
+contradicts the published high-load overheads. For the SEV-SNP layer,
+the measured incremental cost is within the workload-dependent range
+that the confidential-VM literature
+documents~\cite{misono2024_cvm_explained,akram2021_hpc_tees}; this is
+again a qualitative agreement, since neither of those studies targets
+sidecar-mediated DNN inference. Comparison is therefore
+direction-and-order-of-magnitude, not millisecond-equivalent, which
+is the comparison the staged design was constructed to make.
+
+\paragraph{Practical usefulness and deployment feasibility.}
+On the deployment-feasibility goals declared in \cref{ch:methods},
+the system performs at the level required for a defensible MSc-scale
+deployment study, but not beyond. Functional parity holds across
+every thesis-facing frozen run
+(\cref{sec:analysis-validation}), so the latency budgets evaluated
+here are paid for an end-to-end-equivalent computation rather than
+for a drifted one. The AKS legs are reproducible at the
+application-code level by ACR digest pin
+(\cref{sec:methods-artifacts}); the local
+\texttt{kind} stages are reproducible only up to the mutable image
+tag and degraded host-control state recorded in
+\cref{sec:analysis-rq14b}, which is a real but bounded reproducibility
+gap rather than an evaluation-breaking one because the AKS legs
+re-measure the same chain family under a pinned digest. Security
+validation passes under policy-level checks (static manifests,
+runtime policy object counts, full-chain positive probes, and direct
+non-mesh denial probes) for every paired mTLS pass; this is the
+operational definition of ``security works'' that the thesis adopted
+in \cref{ch:methods} and is the basis on which the
+hardening latency cost is judged worth paying. The boundary of the
+feasibility claim is also explicit: the evaluation does not
+demonstrate scalability under concurrent load, autoscaling, alternate
+SKUs or regions, GPU inference, or alternate models, and it does not
+adversarially test the security boundary --- so ``feasible at modest
+cost'' is the strongest evaluative statement the evidence supports,
+and ``production-ready'' is not.
+
+\paragraph{Trade-off shape and the most defensible default.}
+The evaluation surface across the three strands is multidimensional
+rather than one-dimensional. The decomposition strand pays a
+non-zero, bounded overhead for the architectural split; the
+deployment strand pays a non-zero, monotone overhead for synchronous
+chaining and a small but measurable inter-node penalty when the
+chain crosses AKS node boundaries; the security strand pays a
+centred mTLS overhead and a tail-concentrated SEV-SNP overhead, and
+the mTLS share grows with the number of protected boundaries. The
+operationally defensible default for the evaluated topology and
+substrate --- one CPU-bound ResNet-18 workload, the
+\texttt{chain\_2svc} chain family, single-region AKS, the pinned
+ACR digest, the managed-Istio mesh revision used here, and the
+AMD SEV-SNP CVM substrate --- is the \texttt{chain\_2svc} chain
+with managed-Istio mTLS/AuthZ, with selective SEV-SNP execution on
+the downstream segment added only when the threat model includes
+the host platform of that segment. This default is recommended at the
+level the evidence supports --- one CPU-bound model, one chain
+family, one node SKU, one region, one mesh revision, one CVM
+substrate, no adversarial security evaluation --- and is consistent
+with the broader framing that ML deployments on confidential
+infrastructure inhabit a three-way trade-off between protection,
+performance, and operational
+complexity~\cite{mo2024_ml_confidential_computing} rather than a
+single dominant axis.
+
+\paragraph{What the evaluation does not establish.}
+Three negatives bound the evaluative reach. First, no configuration
+beats the monolithic baseline; the thesis evaluates the cost of
+decomposition and hardening, not the existence of a faster split.
+Second, ranking-preserving substrate transfer is established for the
+chain family across host loopback, local \texttt{kind}, single-node
+AKS, and multi-node AKS, but absolute portability across regions,
+SKUs, CNIs, or vendors is not, and managed-cloud absolute drift on
+each of these axes is independently
+documented~\cite{managed_k8s_perf,virtualization_costs,cni_k8s_ic2e21,%
+noise_in_clouds}. Third, the security evaluation is policy-level and
+remains bounded by the residual trust set --- mesh control plane and
+local CA~\cite{poudel2025mazu}, sidecar-to-application loopback
+plaintext inside the pod~\cite{meshinsight_socc23}, and CVM
+attack surfaces outside the SEV-SNP memory-encryption
+boundary~\cite{schluter2024_heckler}; the thesis does not perform
+adversarial testing, and the He~et~al.\ activation-privacy threat
+model is acknowledged as motivation rather than as a measured
+defended adversary~\cite{he2021_attacking_collaborative}.
+\Cref{sec:analysis-threats} consolidates the corresponding threats
+to validity.
