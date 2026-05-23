@@ -1,47 +1,213 @@
 \subsection{RQ1.5b: AKS Multi-Node Sensitivity}
 \label{sec:analysis-rq15b}
 
-The results in \cref{sec:rq15b} support three bounded findings for the AKS
-multi-node sensitivity stage.
+RQ1.5b asks how much additional end-to-end latency the inter-node network path
+adds when every chain hop of the predefined ResNet-18 chain family is forced
+across an AKS node boundary, relative to the same-day single-node RQ1.5
+baseline. The analytical contribution is not to introduce a second primary
+deployment number on top of \cref{sec:analysis-rq15}, and not to reselect a
+split point, but to convert the single-node-placement validity threat that
+\cref{sec:analysis-rq15} acknowledges into a measured per-condition bound, and
+to test whether the RQ1.4 / RQ1.5 architectural ordering and the
+activation-driven bounded-non-linearity pattern survive once the chain
+traffic actually crosses the Azure VNet. The natural reporting discipline
+for this kind of sensitivity comparison is ranking + cross-round consistency
+rather than millisecond identity~\cite{benchmarking_sc15}.
 
-\paragraph{Finding 1: Multi-node placement preserves the AKS condition ordering.}
-With every chain segment forced onto a distinct node and the benchmark client
-on a dedicated node, the complete RQ1.5 ordering is preserved
-(\texttt{monolithic\_k8s\_1svc}~$<$~\texttt{chain\_2svc}~$<$~\texttt{chain\_3svc}~$<$~\texttt{chain\_4svc}~$<$~\texttt{chain\_5svc}).
-The bounded-non-linearity pattern from RQ1.4 and RQ1.5 also reproduces under
-multi-node execution: the
-\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 2.502~ms,
-broadly comparable to the preceding 4.562~ms step
-(\cref{tab:rq15b_results}). The architectural ordering is therefore not an
-artefact of single-node colocation.
+\paragraph{Finding 1: Multi-node placement preserves the AKS condition ordering and the bounded-non-linearity pattern.}
+With every chain segment of a condition forced onto a distinct AKS node and
+the benchmark client on a sixth dedicated node, mean end-to-end latency
+increases monotonically from 73.108~ms for
+\texttt{monolithic\_k8s\_1svc} to 76.470~ms, 77.541~ms, 82.103~ms, and
+84.605~ms for \texttt{chain\_2svc} through \texttt{chain\_5svc}
+(\cref{tab:rq15b_results}). The bounded-non-linearity pattern from RQ1.4 and
+RQ1.5 also reproduces under multi-node execution: the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is
++2.502~ms, smaller than the preceding +4.562~ms
+\texttt{chain\_3svc}~$\rightarrow$~\texttt{chain\_4svc} step
+(\cref{tab:rq15b_results}). This is consistent with the smaller 98~KiB
+\texttt{layer4} output transferred at the added boundary --- the
+activation-transfer dimension of the RQ1.3 two-dimensional
+account~\cite{deeperthings} reappearing now in a fourth substrate, after
+\texttt{127.0.0.1} (RQ1.1), local \texttt{kind} (RQ1.4), and single-node AKS
+(RQ1.5). The architectural ordering and its shape are therefore not
+artefacts of single-node colocation on AKS.
 
 \paragraph{Finding 2: The inter-node penalty is positive and bounded.}
-\Cref{tab:rq15b_delta} compares the multi-node run condition-by-condition with
-the frozen single-node RQ1.5 baseline. The monolithic condition gains 2.305~ms
-of latency relative to the single-node monolithic. This is compatible with
-moving the 588~KiB input tensor across the Azure VNet rather than across a
-loopback socket. The chained conditions add per-condition deltas between
-2.131~ms (\texttt{chain\_3svc}) and 4.086~ms (\texttt{chain\_5svc}). The
-multi-node penalty is therefore a measured bound rather than an open
-acknowledgement: the worst-case single-node-to-multi-node delta on the
-evaluated chain family is 4.086~ms (\texttt{chain\_5svc}), and the monolithic
-baseline alone gains 2.305~ms.
+\Cref{tab:rq15b_delta} reports the condition-by-condition multi-node penalty
+$\Delta_c = \mathrm{mean}_c^{\mathrm{multi}} - \mathrm{mean}_c^{\mathrm{single}}$
+against the frozen single-node RQ1.5 baseline. The monolithic condition
+gains +2.305~ms relative to the single-node monolithic. This is compatible
+with the 588~KiB input tensor ($1\times3\times224\times224$ FP32) moving
+across the Azure VNet rather than over a loopback socket once the benchmark
+client is forced onto a dedicated node; layered RPC stacks are known to add
+non-trivial transport, copying, and serialisation work on top of payload
+bytes themselves~\cite{rpc_overhead_hotos25}, although RQ1.5b does not
+decompose the 2.305~ms into stack-layer sub-shares. The chained conditions
+add per-condition deltas of +3.033~ms (\texttt{chain\_2svc}), +2.131~ms
+(\texttt{chain\_3svc}), +3.808~ms (\texttt{chain\_4svc}), and +4.086~ms
+(\texttt{chain\_5svc}). The multi-node penalty is therefore a measured upper
+bound rather than an open acknowledgement: on the evaluated chain family on
+this AKS configuration, the worst-case single-node-to-multi-node delta is
++4.086~ms (\texttt{chain\_5svc}), and the monolithic baseline alone gains
++2.305~ms.
 
-\paragraph{Finding 3: Round-to-round consistency remains low.}
-Round CVs for the chained conditions in RQ1.5b are 0.0036--0.0127, comparable
-to and in some cases tighter than the single-node RQ1.5 chained CVs of
-0.0019--0.0061 (\cref{tab:rq15b_rounds,tab:rq15_rounds}). The monolithic
-condition shows a similar profile (0.0084 vs 0.0117). Cross-round stability is
-therefore preserved when the topology is distributed across nodes.
+\paragraph{Finding 2a: The per-condition penalty is not monotonic in hop count.}
+The chained-condition deltas do not increase smoothly with the number of
+inter-node hops: \texttt{chain\_3svc} (+2.131~ms) carries a smaller penalty
+than \texttt{chain\_2svc} (+3.033~ms), while \texttt{chain\_4svc} (+3.808~ms)
+and \texttt{chain\_5svc} (+4.086~ms) sit above both. Two readings are
+defensible at this evidence level. First, the magnitudes are small relative
+to the within-condition standard deviations in
+\cref{tab:rq15b_results} (e.g. 2.786~ms for \texttt{chain\_3svc} and
+3.435~ms for \texttt{chain\_2svc}), so part of the non-monotonicity is
+compatible with managed-cloud measurement variability rather than a
+systematic per-hop mechanism; public-cloud network variability is known to
+shift absolute latency without changing the underlying application
+behaviour~\cite{noise_in_clouds,noisy_neighbor_k8s}, and the per-condition
+pod-to-node assignments differ across conditions
+(\texttt{merged\_results/deployment\_metadata.json}). Second, the
+qualitative reading from RQ1.4 carries over: the marginal cost of an
+additional inter-node hop is not a constant surcharge, so summarising
+RQ1.5b as a single ``per-hop multi-node cost'' would over-read the run.
+The defensible summary is the \emph{envelope}
++2.131~ms\,..\,+4.086~ms across the chained conditions and the
+\emph{worst case} +4.086~ms at \texttt{chain\_5svc}, not a fitted per-hop
+slope.
+
+\paragraph{Finding 3: Round-to-round consistency is preserved across nodes.}
+Per-condition round CVs in RQ1.5b are 0.0036--0.0127 for the chained
+conditions and 0.0084 for the monolithic baseline
+(\cref{tab:rq15b_rounds}), comparable to and in some cases tighter than the
+single-node RQ1.5 chained CVs of 0.0019--0.0061 and the RQ1.5 monolithic
+CV of 0.0117 (\cref{tab:rq15_rounds}). By the SC'15 reporting
+standard~\cite{benchmarking_sc15}, this places RQ1.5b in the same
+within-run-stability regime as the single-node RQ1.5 primary; the
+distributed placement did not introduce large round-to-round drift in this
+frozen run. The round CV is a within-run stability measure and does not
+bound cross-cluster or cross-run replication; that remains explicitly out
+of scope (\cref{sec:methods-rq15b}).
+
+\paragraph{Finding 4: kind multi-worker is not a substitute for the RQ1.5b measurement.}
+Read together with \cref{sec:analysis-rq14b}, the RQ1.5b per-condition
+deltas (+2.131~ms\,..\,+4.086~ms across the chained conditions,
+\cref{tab:rq15b_delta}) are roughly an order of magnitude smaller than the
+corresponding kind multi-worker deltas of +3.991~ms\,..\,+48.634~ms
+reported in \cref{tab:rq14b_delta}. The two stages also differ in
+host-control state, so the comparison is qualitative rather than a clean
+isolation of CNI cost; CNI plugin choice and the pod-network path are
+nonetheless an independent and well-documented source of measured-latency
+variance in Kubernetes clusters~\cite{cni_k8s_ic2e21}, and absolute timings
+are known not to transfer cleanly across container, VM, and managed-cluster
+substrates~\cite{virtualization_costs,managed_k8s_perf}. The analytical
+consequence for the deployment strand is therefore that RQ1.4b should be
+read as a kind-CNI sensitivity envelope on the single-node RQ1.4 baseline,
+and RQ1.5b should be read as the credible cross-host bound on the
+single-node RQ1.5 baseline; treating the RQ1.4b numbers as a cross-host
+estimate would inflate the inferred inter-node cost by an order of
+magnitude relative to what AKS actually measures here.
+
+\paragraph{Validation.}
+Four pieces of evidence support treating the per-condition multi-node
+penalty as credible within the bounds RQ1.5b sets. First, functional parity
+holds: both the local segment-chain check and the live in-cluster gRPC
+chain check report \texttt{max\_abs\_diff}~$=0.0$ at the predeclared
+tolerance of $1.0\times10^{-5}$ across all five conditions
+(\texttt{merged\_results/parity\_validation.json}), so the per-condition
+means and deltas are not confounded by numerical drift across the
+partitioned graph. Second, multi-node placement was enforced and verified
+post-deployment: per-condition pod placements in
+\texttt{merged\_results/deployment\_metadata.json} are pairwise disjoint
+across nodes and the benchmark client is always on a node distinct from
+every service pod, and the run-level
+\texttt{multi\_node\_validation.passed=True} entry in
+\texttt{merged\_results/environment.json} aggregates that check
+(\cref{sec:methods-rq15b}). Third, the AKS leg is byte-exact reproducible
+at the application-code level: every RQ1.5b condition ran with the same
+pinned ACR image digest used in RQ1.5
+(\texttt{sha256:d292aef407ee8a15da2b}\allowbreak%
+\texttt{daa680de1cc24b0975e7de81d27e1fc3}\allowbreak%
+\texttt{a7d128b8736b}) under image pull policy \texttt{Always}
+(\cref{sec:methods-artifacts}), so the single-node-to-multi-node delta is
+not contaminated by application-code drift between the two stages. Fourth,
+by the SC'15 reporting standard the cross-round CV range 0.0036--0.0127 is
+in the same stability regime as the single-node RQ1.5 frozen
+run~\cite{benchmarking_sc15}. Five limits must be stated explicitly. (i)
+RQ1.5b is one AKS cluster, one node SKU (\texttt{Standard\_D8s\_v3}), one
+region (\texttt{swedencentral}), one node pool (\texttt{rq15bpool}), one
+CNI (\texttt{kubenet}), one fixed seed; cross-SKU, cross-region, cross-CNI,
+or cross-vendor replication is not in scope, and absolute managed-cloud
+performance is known to shift with each of those
+axes~\cite{managed_k8s_perf,virtualization_costs,cni_k8s_ic2e21}. (ii) The
+benchmark client's \texttt{nice~-5} request and CPU-governor / turbo
+controls could not be applied inside the AKS pod environment
+(\texttt{merged\_results/environment.json}: \texttt{priority.applied=false},
+\texttt{governor.detected=unavailable}); host-control state is therefore
+weaker than in RQ1.4 and matches the same caveat declared for RQ1.5. (iii)
+Per-condition pod-to-node assignments differ across conditions, so the
+small non-monotonicity in the per-condition deltas
+(\cref{tab:rq15b_delta}) is compatible with run-internal placement-locality
+variability and is not isolated to chain depth. (iv) The +2.305~ms
+monolithic-baseline gain is interpreted at the mechanism level (VNet vs
+loopback for the 588~KiB input); the run does not decompose this gain into
+transport, copy, serialisation, or kernel-network sub-shares, and
+\cite{rpc_overhead_hotos25} measures the RPC-tax share in different
+workloads, so it supports the qualitative mechanism, not the specific
+2.305~ms magnitude. (v) The run is one execution of the chain family on
+this cluster; round-level stability bounds within-run variability but not
+across-run cluster-level replication.
+
+\paragraph{Evaluation.}
+The evaluative reading of RQ1.5b has three facets. First, against the
+analytical purpose of the stage --- bounding the inter-node cost that the
+single-node RQ1.5 design intentionally hides --- the result is sufficient.
+On this AKS configuration the worst-case multi-node penalty across the
+chained conditions is +4.086~ms (\texttt{chain\_5svc},
+\cref{tab:rq15b_delta}) and the monolithic baseline gains +2.305~ms; the
+single-node RQ1.4 / RQ1.5 design therefore underestimates true
+production-style latency by a bounded margin that is now quantified per
+condition rather than acknowledged abstractly. Second, against the RQ1.5
+ordering and bounded-non-linearity claims, the result is confirmatory:
+\cref{tab:rq15b_results} reproduces the RQ1.5 ordering and the
+activation-driven last-step pattern under enforced cross-host placement,
+which strengthens the RQ1.3 / RQ1.5 architectural reading without
+extending it beyond the evaluated coarse-stage ResNet-18 chain family.
+Third, against the boundaries of what RQ1.5b can claim, the result is not
+sufficient to support production-readiness, scalability, multi-tenant
+robustness, autoscaling, alternate-SKU, alternate-region, alternate-CNI,
+or millisecond-portability claims. Concurrent clients, service-mesh
+hardening, autoscaling, alternate node SKUs and regions, and alternate
+CNI choices are out of scope for RQ1.5b; the service-mesh-hardening cost
+is addressed in the RQ2.1 / RQ2.1b strand, and managed-cloud absolute
+drift across substrates is well-documented
+independently~\cite{managed_k8s_perf,virtualization_costs,cni_k8s_ic2e21,%
+noise_in_clouds}. The contribution of RQ1.5b stops at the inter-node-cost
+boundary it was designed to measure.
 
 \paragraph{Answer to RQ1.5b.}
-Under enforced multi-node placement, the same five-condition chain family
-preserves the monotonic overhead progression seen in RQ1.4 and RQ1.5:
-per-condition mean latency increases from 73.108~ms (monolithic) to 84.605~ms
-(\texttt{chain\_5svc}), and the
-\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} step is +2.502~ms.
-The per-condition multi-node penalty relative to the single-node RQ1.5
-baseline ranges from +2.131~ms to +4.086~ms across the chained conditions and
-+2.305~ms for the monolithic baseline. The single-node RQ1.4 / RQ1.5 design
-therefore underestimates true production latency by a bounded margin that is
-now quantified per condition rather than acknowledged abstractly.
+Under enforced multi-node placement on the same AKS cluster, the same
+five-condition predefined chain family preserves the monotonic overhead
+progression seen in RQ1.4 and RQ1.5: per-condition mean latency increases
+from 73.108~ms (\texttt{monolithic\_k8s\_1svc}) to 84.605~ms
+(\texttt{chain\_5svc}, \cref{tab:rq15b_results}), and the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} step is +2.502~ms
+against a preceding +4.562~ms step, in line with the smaller 98~KiB
+\texttt{layer4} activation transferred at the added boundary. The
+per-condition multi-node penalty relative to the single-node RQ1.5
+baseline ranges from +2.131~ms to +4.086~ms across the chained conditions
+(\cref{tab:rq15b_delta}) and is +2.305~ms for the monolithic baseline; the
+penalty is not monotonic in hop count, with \texttt{chain\_3svc} sitting
+below \texttt{chain\_2svc} at this run's pod placements, and is best
+summarised as an envelope rather than a fitted per-hop slope. Cross-round
+CVs are 0.0036--0.0127 (\cref{tab:rq15b_rounds}), in the same stability
+regime as the single-node RQ1.5 frozen run~\cite{benchmarking_sc15}.
+Read against \cref{sec:analysis-rq14b}, these per-condition deltas are an
+order of magnitude smaller than the kind multi-worker CNI-bridge deltas
+of +3.991~ms\,..\,+48.634~ms (\cref{tab:rq14b_delta}), which confirms
+that kind multi-worker is a CNI sensitivity envelope rather than a
+substitute for the managed-cloud cross-host bound that RQ1.5b actually
+measures~\cite{cni_k8s_ic2e21,virtualization_costs}. The single-node
+RQ1.4 / RQ1.5 design therefore underestimates true production latency by
+a bounded margin that is now quantified per condition on this AKS
+configuration; RQ1.5b does not support production-readiness, scalability,
+or cross-substrate-portability claims.
