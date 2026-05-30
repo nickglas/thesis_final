@@ -220,3 +220,19 @@ representative of the local in-cluster benchmark.
 
 The interpretation of these results and the answer to RQ1.4 are presented in
 \cref{sec:analysis-rq14}.
+
+\section{RQ1.4b kind Multi-Worker CNI Sensitivity (appendix-only)}
+\label{sec:rq14b-stub}
+
+RQ1.4b is the kind multi-worker CNI sensitivity probe declared in
+\cref{sec:methods-rq14b}. As established in the methods, RQ1.4b is reported as
+supporting sensitivity evidence only, not as a primary thesis-facing number:
+kind's worker ``nodes'' are Docker containers sharing one host kernel, so
+RQ1.4b measures CNI-bridge cost on a single physical host rather than real
+cross-host networking, and the genuine multi-host inter-node penalty is
+measured separately in \cref{sec:rq15b} on AKS. The condition summaries,
+cross-round consistency, and per-condition kind-vs.-single-node deltas for
+this stage are therefore reported in \cref{sec:appendix-rq14b} rather than in
+the main results stream. The analytical reading of the same evidence -- its
+scope-bounding role in the deployment narrative -- is in
+\cref{sec:analysis-rq14b}.
