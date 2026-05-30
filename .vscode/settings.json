@@ -23,5 +23,6 @@
       "name": "lualatex -> biber -> lualatex x2",
       "tools": ["lualatex", "biber", "lualatex", "lualatex"]
     }
-  ]
+  ],
+  "claudeCodeChat.permissions.yoloMode": false
 }
