@@ -71,7 +71,14 @@ account~\cite{deeperthings} reappearing in a third substrate, after
 The triple coverage strengthens the architectural reading of the
 bounded non-linearity but does not extend it beyond the evaluated
 coarse-stage ResNet-18 chain family --- the caveat already attached to
-the Stage~K reading carries over to Stage~C unchanged.
+the Stage~K reading carries over to Stage~C unchanged. The AKS curve has
+the same approximately-linear shape established for Stage~K: an
+ordinary-least-squares fit over the five frozen AKS means
+(\cref{tab:rq15_results}) has a slope of approximately $2.4$~ms per added
+service and $R^{2}\approx0.998$, so on managed cloud the service-count cost is
+also bounded and close to linear over the measured range rather than
+super-linear, with the activation-modulated marginal steps as the only
+departure from a constant slope.
 
 \paragraph{Absolute latency is environment-specific and is not the comparison Stage~C makes.}
 Every AKS condition mean is lower than its local Kubernetes counterpart,

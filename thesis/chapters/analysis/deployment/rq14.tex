@@ -56,6 +56,24 @@ stated narrowly: it is a property of the evaluated coarse-stage
 ResNet-18 chain family under this local benchmark, not a universal
 law about microservice depth.
 
+\paragraph{The cost curve is approximately linear in service count.}
+Naming the functional shape rather than only describing the trend, mean
+end-to-end latency is well approximated by a straight line in the number of
+chained services over the measured one-to-five range. An ordinary-least-squares
+fit over the five frozen means (\cref{tab:rq14_results}) has a slope of
+approximately $3.0$~ms per added service and a coefficient of determination of
+$R^{2}\approx0.98$. The growth is therefore \emph{bounded and close to linear}
+rather than super-linear, power-law, or exponential: the curve does not bend
+upward as services are added. The departures from a perfectly constant per-hop
+slope are exactly the activation-transfer effect above --- the smallest increment
+is the final \texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} step, which
+adds only the $98$~KiB \texttt{layer4} boundary --- and this is the precise sense
+in which the per-hop cost is a \emph{bounded non-linearity}: the marginal
+increments vary with the activation size moved by each configuration but do not
+grow without bound, so the aggregate curve stays linear in this regime. The fit
+is a descriptive summary of the evaluated five-point family and is not
+extrapolated beyond five services.
+
 \paragraph{The platform overhead is separable from compute and scales with hop count.}
 \Cref{tab:rq14_overhead} reports the frozen runner's
 \texttt{non\_compute\_overhead\_ms\_mean} alongside the per-condition
