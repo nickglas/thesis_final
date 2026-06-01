@@ -214,6 +214,74 @@ service-to-service path because a downstream service can reject traffic that doe
 come from the expected peer identity, while the traffic between proxies is encrypted and
 mutually authenticated~\cite{ashraf2025policy_workflow,bremlerbarr2025mtls}.
 
+\Cref{fig:rq21_mtls_identity_authz_simple} shows the basic shape of this mechanism
+between two services in the inference chain: each service runs alongside an Istio
+sidecar proxy that terminates TLS, so the inter-pod hop carries mTLS plus
+identity-bound authorization while application-to-sidecar traffic stays plaintext
+inside the pod boundary.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\input{../figures/tikz/background/rq21_mtls_identity_authz_simple.tex}%
+}
+\caption{Communication-level hardening between two inference services. Each pod
+runs an Istio sidecar proxy that terminates TLS at the pod boundary. The
+inter-pod hop carries mTLS plus an identity-bound \texttt{AuthorizationPolicy}
+check between the workload identities \texttt{sa-svc1} and \texttt{sa-svc2}.
+Application-to-sidecar traffic inside each pod remains plaintext.}
+\label{fig:rq21_mtls_identity_authz_simple}
+\end{figure}
+
+\Cref{fig:rq21_mtls_identity_authz} expands this view with the two pieces that
+make the mechanism enforceable in practice. The Istio control plane acts as the
+identity issuer that mints SPIFFE workload identities and certificates for each
+sidecar, which is what allows the receiving sidecar to bind an
+\texttt{AuthorizationPolicy} to a peer service-account identity. A non-mesh
+probe that lacks a SPIFFE identity is denied at the receiving sidecar; this is
+the property that the RQ2.1 direct non-mesh denial probe exercises against
+the protected downstream segments.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{%
+\input{../figures/tikz/background/rq21_mtls_identity_authz.tex}%
+}
+\caption{Service identity, mTLS, and authorization between two inference
+services, with the issuance and denial paths made explicit. The Istio control
+plane mints SPIFFE workload identities and certificates for each sidecar
+(dashed teal arrows). The protected inter-pod hop carries mTLS plus an
+identity-bound \texttt{AuthorizationPolicy} check between the workload
+identities \texttt{sa-svc1} and \texttt{sa-svc2} (purple double arrow). A
+non-mesh probe that lacks a SPIFFE identity is rejected at the receiving
+sidecar by the same authorization policy (red arrow with cross).}
+\label{fig:rq21_mtls_identity_authz}
+\end{figure}
+
+\Cref{fig:rq21_mtls_identity_authz_flow} traces a single request end-to-end
+through the protected two-service chain. The client enters the chain at the
+first service, the activation crosses the mTLS-protected inter-pod hop between
+sidecars, and the response returns along the same sidecar path. The
+application-to-sidecar handoff on either side is plaintext inside the pod; only
+the inter-pod segment is mTLS-protected.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{%
+\input{../figures/tikz/background/rq21_mtls_identity_authz_flow.tex}%
+}
+\caption{End-to-end request flow through the protected two-service chain. A
+client request enters Service~1, is handed off to its sidecar as plaintext
+gRPC, crosses the inter-pod hop as mTLS with an identity-bound
+\texttt{AuthorizationPolicy} check between \texttt{sa-svc1} and
+\texttt{sa-svc2} (dark-red double arrow), and is delivered to Service~2 as a
+plaintext loopback. The response (thin dashed arrow) returns along the same
+sidecar path. The Istio control plane issues the workload identities,
+certificates, and policies that make this enforcement possible (dashed teal
+arrows).}
+\label{fig:rq21_mtls_identity_authz_flow}
+\end{figure}
+
 This protection boundary is still a communication boundary. Once a request has reached
 the downstream endpoint and the activation tensor has been deserialized, the plaintext
 activation exists inside the receiving service's runtime environment. Communication

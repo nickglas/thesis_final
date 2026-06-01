@@ -237,6 +237,56 @@ despite a clearly positive sidecar contribution.
 The interpretation of these results and the answer to RQ2.1 are presented in
 \cref{sec:analysis-rq21}.
 
+\section{RQ2.1 (Split Sensitivity) Single-Hop mTLS vs Activation Size}
+\label{sec:rq21-splitsens}
+
+This stage corresponds to the methodological design declared in
+\cref{sec:methods-rq21-splitsens}: a supporting campaign that varies the
+single protected hop's activation size across \texttt{layer1},
+\texttt{layer2}, \texttt{layer3}, and \texttt{layer4} and pairs each split
+point's plain and mTLS conditions, in order to measure whether the
+single-hop mTLS overhead scales with the activation crossing that hop.
+
+\begin{quote}
+\textbf{TODO (author).} The split-sensitivity campaign results
+(per-split mean and p95 mTLS overheads, per-split operational overhead, and
+per-split resource summary derived from
+\texttt{rq2\_1\_mtls\_split\_20260516\_095406}) are not yet written into this
+chapter. The appendix entry for this campaign is also marked as pending in
+\cref{ch:appendix} (see the planning comment at the top of
+\texttt{appendix/appendix.tex}). Until the per-split numbers are inserted
+here -- or moved into an appendix subsection and forward-referenced from
+this stub -- the split-sensitivity finding declared in
+\cref{sec:methods-rq21-splitsens} has no visible Results entry in this
+chapter and must not be cited as a measured outcome. This stub is
+intentionally a placeholder so that the gap is visible at the
+table-of-contents level and is not silently absorbed into the primary RQ2.1
+result.
+\end{quote}
+
+\section{RQ2.1b Multi-Node Sensitivity of mTLS Overhead}
+\label{sec:rq21b}
+
+This stage corresponds to the methodological design declared in
+\cref{sec:methods-rq21b}: a paired sensitivity stage that forces the two
+\texttt{chain\_2svc} inference services onto distinct AKS nodes and re-pairs
+the plain and mTLS conditions under the same managed-Istio configuration as
+the primary RQ2.1 run. Every paired execution passed the multi-node placement
+contract described in \cref{sec:methods-rq21b}.
+
+Under the multi-node placement, the mean mTLS overhead on \texttt{chain\_2svc}
+is +2.71~ms, or +3.90\%, with every paired execution passing multi-node
+placement validation. This is in the same direction and order of magnitude as
+the +3.488~ms / +4.62\% single-node primary result reported in
+\cref{tab:rq21_latency}, and is slightly smaller in percent terms, consistent
+with a larger plain baseline absorbing more of the proxy cost once inter-node
+transport is added. The result is treated as a sensitivity envelope around the
+primary single-node RQ2.1 result, not as a substitute for it.
+
+The interpretation of this multi-node sensitivity result, and its role in
+bounding the single-node primary number, are developed under
+\cref{sec:analysis-rq21} as Finding~7.
+
 \section{RQ2.2 Confidential VM Execution Hardening}
 \label{sec:rq22}
 
