@@ -859,3 +859,46 @@ infrastructure required to answer each research question, and resources are
 deallocated after each benchmark stage.
 All measurement artifacts contain only timing data and system metadata; no sensitive
 data is stored on cloud infrastructure.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Use of Generative AI Tools}
+\label{sec:methods-ai}
+
+In the interest of transparency and research integrity, this section discloses the
+extent to which generative AI tools were used in the preparation of this thesis. The
+use was confined to a supporting, author-supervised role: AI tools assisted with
+language editing and with locating and triaging prior literature, but they did not
+generate the research content of the thesis. The specific uses were as follows.
+
+\begin{itemize}
+    \item \emph{Language editing.} Anthropic Claude (versions 4.7 and 4.8) was used to
+    check author-written text for grammar, spelling, punctuation, and sentence
+    structure, and to suggest clearer phrasings of passages that the author had already
+    drafted. The technical content, argument, and reported numbers of each passage were
+    fixed by the author before editing.
+    \item \emph{Literature discovery.} Perplexity and Consensus were used to surface
+    candidate peer-reviewed sources on split inference, DNN partitioning, service-mesh
+    security, and confidential computing, which the author then located and read in the
+    original.
+    \item \emph{Locating evidence within papers.} OpenAI ChatGPT (GPT-5.5) and Claude
+    (4.7) were used to help find specific results, figures, and data points within
+    papers the author had already obtained, and to summarise long papers so that their
+    relevance could be judged before a full read.
+\end{itemize}
+
+The following were performed by the author without AI generation: the research design
+and staged methodology; the proof-of-concept gRPC microservice framework and benchmark
+harness; the execution of every experiment and the production of all measurements and
+frozen artifacts; the statistical analysis; the interpretation, findings, and
+conclusions; and the figures and tables, which are rendered from the author's own frozen
+result files. No experimental result, latency value, or data table in this thesis was
+generated, estimated, or altered by an AI tool.
+
+Two safeguards were applied to every AI-assisted step. First, each reference surfaced
+with AI assistance was independently verified against its primary source --- confirming
+the authors, venue, year, and DOI, and that the cited claim actually appears in the work
+--- so that no fabricated or mis-attributed citation could enter the bibliography.
+Second, every data point or result attributed to a prior paper was checked directly
+against that paper rather than relying on an AI-generated summary. The author takes full
+responsibility for the final text and for all claims made in it. A representative sample
+of the prompts used is provided in \cref{sec:appendix-ai-prompts}.

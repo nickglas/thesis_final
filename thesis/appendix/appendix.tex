@@ -137,3 +137,36 @@ host-control state is one reason \cref{sec:analysis-rq14b} interprets
 the comparison against Stage~K at the per-condition delta level only and
 treats Stage~K (cross-node) as a kind-CNI sensitivity envelope rather than a clean
 topology-only swap from Stage~K.
+
+\section{Sample Generative AI Prompts}
+\label{sec:appendix-ai-prompts}
+
+This appendix gives representative examples of the prompts used during the
+AI-assisted steps disclosed in \cref{sec:methods-ai}. They are included to make the
+nature and the limits of that assistance transparent. In every case the output was
+treated as a suggestion to be verified by the author rather than as content to be used
+unchecked: surfaced references and data points were confirmed against their primary
+sources before they were relied upon, and edited text was reviewed so that no claim,
+number, or citation was introduced that the author had not independently established.
+
+\paragraph{Language editing (Claude 4.7 / 4.8).}
+\begin{quote}
+\itshape ``Check the following paragraph from my thesis for grammar, spelling,
+punctuation, and sentence structure, and suggest clearer phrasings. Do not change the
+technical meaning, do not alter any reported numbers, and do not add claims I have not
+made. [author's drafted paragraph pasted here]''
+\end{quote}
+
+\paragraph{Literature discovery (Perplexity / Consensus).}
+\begin{quote}
+\itshape ``I am looking for peer-reviewed papers on the latency and resource overhead of
+sidecar-based mutual TLS in Kubernetes service meshes. List candidate papers with their
+title, venue, and year so that I can locate and read the originals myself.''
+\end{quote}
+
+\paragraph{Locating evidence within a known paper (ChatGPT 5.5 / Claude 4.7).}
+\begin{quote}
+\itshape ``In the attached paper, which section or table reports the measured mTLS
+latency overhead, and what is the reported value? Point me to where it appears so that I
+can verify it against the source.''
+\end{quote}

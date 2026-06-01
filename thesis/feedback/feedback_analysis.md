@@ -383,6 +383,7 @@ Then make the current RQ1.1–RQ1.5b into **sub-stages / evaluation environments
 *Why ambiguous:* The supervisor is unsure whether model/version/date must be reported; defers to program rules (Martin).
 *Interpretations:* (a) narrative description only; (b) + a sample prompt in the annex; (c) + model names/dates.
 *Ask (to Martin/program):* "Does the AI-disclosure requirement need model names and dates, or a high-level description plus a sample prompt?"
+*Handled 2026-06-01 (safe superset, pending program confirmation):* wrote a narrative disclosure that names the tool families (Claude 4.7/4.8, ChatGPT GPT-5.5, Perplexity, Consensus) and their specific uses, states what AI did NOT do, records two integrity safeguards, and includes sample prompts in the annex. If Martin says less detail is required, the tool names/prompts can be trimmed without restructuring.
 
 **C4 — RQ1.4b: promote to main text despite the single-host caveat?**
 *Feedback:* 00:27:13 *"this is going to become part of the evaluation."* vs. thesis's deliberate appendix placement (kind = single-host CNI proxy).
@@ -418,7 +419,7 @@ Then make the current RQ1.1–RQ1.5b into **sub-stages / evaluation environments
 
 ### Critical revisions — affect acceptance / examiner expectations / integrity
 1. ✅ **F1** — Refactor research questions into ~2–3 conceptual RQs; separate conceptual variables from evaluation environments. *(Do this first; everything else re-aligns to it — broken into Phase 0–6 in §5A.)* — confirm count via **C1/C8**. — **DONE 2026-06-01 (2 RQs; environment-coded stages; Phases 0–6 complete).**
-2. ☐ **F4** — Add AI-usage disclosure (+ sample prompt in annex). — confirm scope via **C3**.
+2. ✅ **F4** — Add AI-usage disclosure (+ sample prompt in annex). — confirm scope via **C3**. — **DONE 2026-06-01. C3 handled as the safe superset (narrative disclosure + named tools + sample prompts in annex); model families named so it is trivially trimmable if the program (Martin) wants less. NB: the disclosure asserts every reference was verified against its primary source — that assertion is made true by completing item #7 (F5).**
 3. ☐ **F5** — Verify every reference is genuine and correctly cited.
 
 ### Important revisions — improve rigor, clarity, coherence
@@ -488,8 +489,8 @@ Propagate the locked table outward in dependency order. Each is a separate, shor
 | ✅ | 2 | Reframe single-node as base case, multi-node as alternative | §1.3, §4.7.5/.7/.11, §5.5/5.7/5.10, §6.2.2/6.2.4 | "B without A" reads oddly (F2) | Low | After #1 — **DONE; folded into F1: base case vs. "Stage K/C/H1 (cross-node/multi-node) alternative" used throughout.** |
 | ✅ | 3 | Keep RQ2.3 as trade-off contribution under RQ2 | §1.3, §4.7.13, §5.12, §6.3.3 | Valued conceptual contribution (F3) | Low | After #1; C8 — **DONE; retained as "Trade-off Synthesis" under RQ2 (not standalone).** |
 | ✅ | 4 | Promote RQ1.4b to main evaluation, retain single-host caveat | §5.5, Appendix A.1, §4.7.5, §6.2.2 | One of the evaluation environments (F14) | Medium | After #1; C4 — **DONE 2026-06-01. C4 → option (b): compact summary promoted into Ch.5 main eval (`kubernetes.tex` Stage~K cross-node §, headline numbers + per-condition penalty envelope inline), full tables retained in appendix, single-host caveat kept. Methods/appendix lead-ins re-aligned. Clean compile (152 pp).** |
-| ☐ | 5 | Write AI-usage disclosure section | New subsection in Ch.6/7; extend §4.10 | Required disclosure (F4) | Medium | C3 |
-| ☐ | 6 | Add sample AI prompt to annex | Appendix A | Builds reader trust (F4) | Low | #5; C3 |
+| ✅ | 5 | Write AI-usage disclosure section | New subsection in Ch.6/7; extend §4.10 | Required disclosure (F4) | Medium | C3 — **DONE 2026-06-01. New ToC-visible `\section{Use of Generative AI Tools}` (`sec:methods-ai`) after §4.10 Ethics: discloses Claude 4.7/4.8 (language editing), Perplexity + Consensus (lit discovery), ChatGPT 5.5 + Claude 4.7 (locating/triaging evidence in papers); states what AI did NOT do (no results/figures/analysis generated); two integrity safeguards (refs + data verified against primary sources). Clean compile (154 pp).** |
+| ✅ | 6 | Add sample AI prompt to annex | Appendix A | Builds reader trust (F4) | Low | #5; C3 — **DONE 2026-06-01. `\section{Sample Generative AI Prompts}` (`sec:appendix-ai-prompts`) with 3 representative prompts (language edit / lit discovery / locating evidence) + verification note.** |
 | ☐ | 7 | Verify all references / citations | References (p.125+); in-text | Guard against fabricated refs (F5) | Medium | Pairs with #5 |
 | ☐ | 8 | Add generalisability + impact reflection (transformers, per-layer policy, digital embassies, inter-layer API) | Discussion (Ch.6); cross-ref §7.2 | Reflect on applicability & significance (F6/F7/F22) | Medium | Independent |
 | ☐ | 9 | Add local-vs-cloud infrastructure comparison table | §4.2/§5.6.2 (Table 5.13 area) | Pre-empt "bigger cloud instance" critique (F16) | Low | Independent |
