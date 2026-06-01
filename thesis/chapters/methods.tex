@@ -19,50 +19,53 @@ and benchmark contract, and compares against the nearest relevant baseline.
 \section{Overall Research Design}
 \label{sec:methods-design}
 
-The thesis is organised around two research strands and a staged experimental pipeline.
-The primary benchmark stages are RQ1.1, RQ1.2, RQ1.4, RQ1.4b, RQ1.5, RQ1.5b,
-RQ2.1, and RQ2.2.
-RQ1.3 is an explanatory synthesis supported by a separate monolithic timing
-experiment, and RQ2.3 is the final security trade-off synthesis.
-RQ1 studies how architectural split choice and deployment context affect
-microservice-based neural network inference.
-RQ2 studies the performance and operational cost of communication-level and runtime-level
-security hardening applied to the AKS deployment path selected from RQ1.
+The thesis is organised around two research questions, each answered through a sequence
+of evaluation \emph{stages} rather than through additional research questions. RQ1 studies
+how architectural split choice and deployment context affect microservice-based neural
+network inference; it is evaluated across three environments --- controlled local
+execution (Stages~L1--L3), local Kubernetes (Stage~K), and Azure Kubernetes Service
+(Stage~C). RQ2 studies the performance and operational cost of communication-level and
+runtime-level security hardening applied to the AKS deployment path selected from RQ1;
+it is evaluated as a communication-hardening stage (Stage~H1), a confidential-execution
+stage (Stage~H2), and a concluding trade-off synthesis. Within Stages~K, C, and H1 the
+default same-node/single-node placement is treated as the \emph{base case} and a forced
+cross-node/multi-node placement as the \emph{alternative}.
 
 The stages unfold in the following sequence.
-RQ1.1 evaluates four coarse ResNet-18 stage boundaries under tightly controlled local
-CPU-only execution in order to identify which two-part decompositions are credible
-enough to carry forward before the thesis moves to orchestrated or cloud deployment.
-RQ1.2 tests one block-level split inside the carried-forward late-stage region to
+\emph{Stage~L1} evaluates four coarse ResNet-18 stage boundaries under tightly controlled
+local CPU-only execution in order to identify which two-part decompositions are sufficiently 
+well-supported to carry forward before the thesis moves to orchestrated or cloud deployment.
+\emph{Stage~L2} tests one block-level split inside the carried-forward late-stage region to
 determine whether finer granularity reveals meaningful differences beyond the coarse
 level; it is a targeted refinement, not a new blind search.
-RQ1.3 is a hybrid analytical stage that explains the RQ1.1 and RQ1.2 latency patterns
-using two structural properties of the partition -- activation-transfer size and compute
-distribution -- drawing on the prior benchmark summaries and on a separately collected
-internal timing experiment on the monolithic model, without conducting a new split
-benchmark.
-RQ1.4 moves a predefined family of one-to-five service chains into a local single-node
-\texttt{kind} Kubernetes cluster to measure how end-to-end latency accumulates as
-synchronous service boundaries are added under in-cluster orchestration.
-RQ1.5 re-runs the same predefined chain family on Azure Kubernetes Service (AKS) to
+\emph{Stage~L3} is a hybrid analytical stage that explains the Stage~L1 and Stage~L2 latency
+patterns using two structural properties of the partition -- activation-transfer size and
+compute distribution -- drawing on the prior benchmark summaries and on a separately
+collected internal timing experiment on the monolithic model, without conducting a new
+split benchmark.
+\emph{Stage~K} moves a predefined family of one-to-five service chains into a local
+single-node \texttt{kind} Kubernetes cluster to measure how end-to-end latency accumulates
+as synchronous service boundaries are added under in-cluster orchestration; its
+cross-node alternative adds a \texttt{kind} CNI-bridge sensitivity probe.
+\emph{Stage~C} re-runs the same predefined chain family on Azure Kubernetes Service (AKS) to
 test whether the local Kubernetes ordering and overhead pattern transfer directionally
-to managed cloud execution.
-RQ1.5b is an AKS multi-node sensitivity stage that re-runs the same chain family on a
+to managed cloud execution. Its multi-node alternative re-runs the same chain family on a
 six-node cluster with pod anti-affinity, so every chain hop is forced across a node
-boundary; it quantifies the inter-node penalty that the single-node RQ1.5 design
+boundary; it quantifies the inter-node penalty that the single-node base case
 intentionally hides.
-RQ2.1 adds managed-Istio mTLS, service accounts, and authorisation policy to the
+\emph{Stage~H1} adds managed-Istio mTLS, service accounts, and authorisation policy to the
 selected AKS deployment path, measuring the resulting latency, resource, and operational
-overhead using a paired execution design.
-RQ2.2 adds AMD SEV-SNP VM-level confidential execution to the already
-communication-secured chain from RQ2.1, measuring the incremental cost of selective
+overhead using a paired execution design; supporting ablation and split-sensitivity
+campaigns and a multi-node alternative decompose and stress-test this overhead.
+\emph{Stage~H2} adds AMD SEV-SNP VM-level confidential execution to the already
+communication-secured chain from Stage~H1, measuring the incremental cost of selective
 downstream-service confidential-node placement (\texttt{service2\_only}); extending the
 confidential boundary to both services is out of the thesis-facing scope and is treated
 as future work.
-RQ2.3 synthesises the plain AKS baseline from RQ1.5, the mTLS/AuthZ results from
-RQ2.1, and the selective TEE result from RQ2.2 into a trade-off comparison across
-cost, operational complexity, and protection scope, without collecting any new
-benchmark data.
+The concluding \emph{trade-off synthesis} combines the plain AKS base case from Stage~C, the
+mTLS/AuthZ results from Stage~H1, and the selective TEE result from Stage~H2 into a
+trade-off comparison across cost, operational complexity, and protection scope, without
+collecting any new benchmark data.
 
 The common design principle across all stages is to change one layer of the system at a
 time. This is a local design choice for the staged pipeline, motivated by general
@@ -121,8 +124,8 @@ largest intermediate activation tensor in the study (approximately 784~KiB for a
 after \texttt{layer1} in FP32).
 
 The framework supports variable chain depths: the same code path handles two-service
-chains used in RQ1.1, RQ1.2, and RQ2, and chains of up to five services used in RQ1.4
-and RQ1.5.
+chains used in Stages~L1, L2, and the RQ2 hardening stages, and chains of up to five
+services used in Stages~K and~C.
 The independent variable in each stage is therefore the choice of split point or the
 number of chained services, not the communication mechanism.
 
@@ -163,7 +166,7 @@ unless a stage explicitly records a stricter tolerance.
 A condition is not benchmarked unless both checks pass.
 In practice, all thesis-facing frozen runs achieve a maximum absolute difference of 0.0
 against the monolithic reference, confirming that no numerical drift is introduced by
-the partition or transport layer; the RQ1.3 internal timing run records the same outcome
+the partition or transport layer; the Stage~L3 internal timing run records the same outcome
 under the stricter tolerance $\text{atol}=1\times10^{-6}$.
 
 This shared contract is the invariant across the staged pipeline: what changes between
@@ -191,11 +194,11 @@ that differences in measured latency can be attributed to the independent variab
 rather than to hardware variability.
 
 In containerised and cloud stages, some controls are partially unavailable.
-In the local \texttt{kind} Kubernetes environment (RQ1.4), governor and turbo-disable
+In the local \texttt{kind} Kubernetes environment (Stage~K), governor and turbo-disable
 writes to \texttt{/sys} are blocked by the read-only sysfs exposed inside the container;
 however, the detected governor is already \texttt{performance} and turbo is already
 disabled, so the intended state is achieved through the host configuration.
-In AKS (RQ1.5 and RQ2), the \texttt{nice~-5} request is denied due to insufficient
+In AKS (Stage~C and the RQ2 stages), the \texttt{nice~-5} request is denied due to insufficient
 privileges and the benchmark runs at \texttt{nice~=~0}; governor and turbo controls
 are unavailable through the managed node interface.
 These constraints are documented per stage and treated as realistic limitations of
@@ -222,7 +225,7 @@ characterise tail behaviour under more realistic conditions.
 
 Overhead is reported both in absolute milliseconds and as a percentage of the relevant
 baseline mean latency.
-In stages that compare conditions across environments (RQ1.5), within-environment
+In stages that compare conditions across environments (Stage~C), within-environment
 normalised overhead is the primary comparison metric rather than raw absolute latency,
 because absolute values are environment-specific and do not transfer across different
 host CPUs, kernels, and virtualisation layers.
@@ -258,10 +261,10 @@ cannot be falsified against a directly measured ground truth and should be inter
 as an upper bound on the platform + communication share rather than as a direct
 measurement of it.
 
-In RQ2.1, resource and operational overhead metrics are also reported, including sidecar
+In Stage~H1, resource and operational overhead metrics are also reported, including sidecar
 CPU and memory, total pod resource deltas, schedule-to-ready time, and the count of
 added mesh and security objects.
-In RQ2.2, sequential throughput is derived from mean latency as requests per second to
+In Stage~H2, sequential throughput is derived from mean latency as requests per second to
 express the throughput impact of confidential-node placement; this is an algebraic
 restatement of mean latency at batch size one, not an independent throughput
 measurement under load.
@@ -290,7 +293,7 @@ are used to contextualise the size and consistency of observed differences.
 \label{sec:methods-carryforward}
 
 The staged pipeline uses a carry-forward mechanism for the local split-selection stages
-(RQ1.1 and RQ1.2).
+(Stages~L1 and~L2).
 After each of these stages, one or two candidates are selected to enter the next stage
 according to two predeclared rules.
 
@@ -310,19 +313,19 @@ candidate. Ties on mean latency are broken in favour of the smaller activation-t
 size, so that activation size acts as a structural tie-breaker rather than as a primary
 selection criterion.
 
-Carry-forward is not applicable in RQ1.4 and RQ1.5, which benchmark a predefined chain
+Carry-forward is not applicable in Stages~K and~C, which benchmark a predefined chain
 family rather than selecting among candidates.
-It is also not applicable in the RQ2 stages, which fix the deployment topology
+It is also not applicable in the RQ2 hardening stages, which fix the deployment topology
 established by RQ1 and vary only the security configuration.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Stage-Specific Methods}
 \label{sec:methods-stages}
 
-\subsection{RQ1.1 -- Coarse Architectural Boundary Selection}
+\subsection{Stage~L1 -- Coarse Architectural Boundary Selection (controlled local)}
 \label{sec:methods-rq11}
 
-RQ1.1 screens the four coarse stage boundaries of ResNet-18 against a monolithic
+Stage~L1 screens the four coarse stage boundaries of ResNet-18 against a monolithic
 baseline under the maximally controlled local setup described in
 Sections~\ref{sec:methods-cpu} and~\ref{sec:methods-contract}.
 The four split conditions place the boundary after \texttt{layer1}, \texttt{layer2},
@@ -339,16 +342,16 @@ candidate-boundary granularity~\cite{neurosurgeon,dnnsplit}, while later work mo
 reducing the candidate set when exhaustive layer-wise search becomes
 impractical~\cite{dnnsplit,pareto_split,survey_partitioning}.
 This thesis therefore uses stage boundaries for the first screening pass as a deliberate
-search-space reduction and only refines inside the carried-forward region in RQ1.2.
+search-space reduction and only refines inside the carried-forward region in Stage~L2.
 
 The output of this stage is one main carry-forward candidate and one reference
 candidate, selected using the degeneracy and near-best-window rules defined in
 Section~\ref{sec:methods-carryforward}.
 
-\subsection{RQ1.2 -- Fine-Grained Refinement}
+\subsection{Stage~L2 -- Fine-Grained Refinement (controlled local)}
 \label{sec:methods-rq12}
 
-RQ1.2 takes the carry-forward outcome of RQ1.1 as its starting point and introduces one
+Stage~L2 takes the carry-forward outcome of Stage~L1 as its starting point and introduces one
 block-level split point between the two coarse carry-forward anchors.
 The new condition, \texttt{split\_after\_layer3\_block0}, bisects the \texttt{layer3}
 stage at its internal residual-block boundary.
@@ -363,17 +366,17 @@ This comparison is grounded in the DNN-partitioning literature, which treats com
 distribution as a first-class criterion alongside activation-transfer
 cost~\cite{dnnsplit,fine_grained_partitioning}.
 
-The experimental setup and measurement protocol are identical to RQ1.1, ensuring that
+The experimental setup and measurement protocol are identical to Stage~L1, ensuring that
 the two stages remain directly comparable.
 
-\subsection{RQ1.3 -- Explanatory Synthesis}
+\subsection{Stage~L3 -- Explanatory Synthesis (controlled local)}
 \label{sec:methods-rq13}
 
-RQ1.3 is not a split benchmark.
-It is a hybrid analytical stage that explains the patterns observed in RQ1.1 and RQ1.2
+Stage~L3 is not a split benchmark.
+It is a hybrid analytical stage that explains the patterns observed in Stages~L1 and~L2
 using two structural properties: activation-transfer size and compute distribution.
 The explanatory analysis draws on three evidence sources: the split benchmark summaries
-from RQ1.1, the split benchmark summaries from RQ1.2, and a separately conducted
+from Stage~L1, the split benchmark summaries from Stage~L2, and a separately conducted
 internal timing experiment on the monolithic ResNet-18 model.
 
 The internal timing experiment instruments the monolithic forward pass at the stage,
@@ -392,10 +395,10 @@ Disentangling those components -- particularly distinguishing activation-transfe
 from compute-placement effects -- requires a direct measurement of local per-block
 execution cost that the split benchmark alone cannot provide.
 
-\subsection{RQ1.4 -- Multi-Microservice Kubernetes Chain}
+\subsection{Stage~K -- Multi-Microservice Kubernetes Chain (local Kubernetes)}
 \label{sec:methods-rq14}
 
-RQ1.4 moves from local process-based communication to real Kubernetes in-cluster
+Stage~K moves from local process-based communication to real Kubernetes in-cluster
 services.
 The environment is a single-node \texttt{kind} cluster running on Ubuntu/Linux, with
 all service pods colocated on the same node.
@@ -414,9 +417,9 @@ The split points used are: \texttt{layer2} for chain\_2svc;
 \texttt{layer1}, \texttt{layer3} for chain\_3svc;
 \texttt{layer1}, \texttt{layer2}, \texttt{layer3} for chain\_4svc; and
 \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, \texttt{layer4} for chain\_5svc.
-This family deliberately spans the full range of RQ1.1 activation sizes from 784~KiB
+This family deliberately spans the full range of Stage~L1 activation sizes from 784~KiB
 (\texttt{layer1}) down to 98~KiB (\texttt{layer4}), and consequently re-introduces
-boundaries that RQ1.1 rejected (\texttt{layer1} as too transfer-heavy and
+boundaries that Stage~L1 rejected (\texttt{layer1} as too transfer-heavy and
 \texttt{layer4} as compute-degenerate). The resulting cost curve should therefore be
 read as an \emph{upper-bound envelope} on the cost of adding service boundaries -- a
 purely best-boundary chain at each depth would lie below this envelope -- not as a
@@ -428,19 +431,22 @@ measurement windows.
 The use of a single-node \texttt{kind} cluster is an acknowledged limitation: it
 eliminates inter-node network hops and does not capture the scheduling and networking
 variability of a multi-node or managed cluster.
-This limitation is addressed in three stages: RQ1.4b adds a \texttt{kind} CNI-bridge
-sensitivity probe (still single-host, so it does not measure real inter-node networking),
-RQ1.5 re-runs the same chain family on managed AKS to validate ordering, and RQ1.5b adds
-a genuine multi-node sensitivity stage on a six-VM AKS cluster so the real inter-node
-penalty becomes a measured, bounded quantity.
+This limitation is addressed in three steps: the Stage~K cross-node alternative adds a
+\texttt{kind} CNI-bridge sensitivity probe (still single-host, so it does not measure real
+inter-node networking), Stage~C re-runs the same chain family on managed AKS to validate
+ordering, and the Stage~C multi-node alternative adds a genuine multi-node sensitivity
+stage on a six-VM AKS cluster so the real inter-node penalty becomes a measured, bounded
+quantity.
 
-\subsection{RQ1.4b -- kind CNI Sensitivity (appendix-only)}
+\subsection{Stage~K (Cross-Node Alternative) -- kind CNI Sensitivity}
 \label{sec:methods-rq14b}
 
-RQ1.4b is a supporting sensitivity stage that is reported as appendix-level evidence only,
-not as a headline number.
+The cross-node alternative to Stage~K is a supporting sensitivity stage, reported as
+appendix-level evidence only and not as a headline number. It is the base-case/alternative
+counterpart to the single-node Stage~K design: the default same-node placement is the base
+case, and this forced cross-node placement is the alternative.
 
-The stage re-runs the same five-condition chain family from RQ1.4 on a six-worker
+The stage re-runs the same five-condition chain family from the Stage~K base case on a six-worker
 \texttt{kind} cluster with pod anti-affinity enforced so that every chain segment of a
 given condition lands on a distinct kind worker node and the benchmark client lands on a
 sixth dedicated worker. The shared benchmark contract is otherwise unchanged (same model,
@@ -449,35 +455,36 @@ discipline, same image tag).
 
 A methodological caveat governs how this stage should be interpreted. kind's "nodes" are
 Docker containers that share a kernel on a single host machine and communicate over kind's
-CNI bridge; they are not separate physical or virtual hosts. RQ1.4b therefore measures the
-cost of routing inter-service gRPC through the kind CNI bridge under anti-affinity, rather
-than the cost of real cross-host networking. The genuine multi-host inter-node penalty is
-measured separately in RQ1.5b on a multi-node AKS cluster
+CNI bridge; they are not separate physical or virtual hosts. The cross-node alternative
+therefore measures the cost of routing inter-service gRPC through the kind CNI bridge under
+anti-affinity, rather than the cost of real cross-host networking. The genuine multi-host
+inter-node penalty is measured separately by the Stage~C multi-node alternative on a
+multi-node AKS cluster
 (\cref{sec:methods-rq15b}). Round-level cross-condition consistency (round CV) is also
-materially higher in RQ1.4b than in single-node RQ1.4, reflecting kind-CNI variability
-rather than a property of the chain family. Comparisons against RQ1.4 use the per-condition
-penalty
+materially higher in this cross-node alternative than in the single-node Stage~K base case,
+reflecting kind-CNI variability rather than a property of the chain family. Comparisons
+against the Stage~K base case use the per-condition penalty
 $\Delta_c = \mathrm{mean}_c^{\mathrm{kind\text{-}cni}} - \mathrm{mean}_c^{\mathrm{single}}$,
 which is read as a kind-CNI sensitivity bound rather than as a deployment-grade multi-node
 result.
 
 A further cross-stage caveat must be made explicit before the per-condition delta
-$\Delta_c$ is interpreted. RQ1.4b is not a clean topology-only swap from RQ1.4: it also
-runs with a weaker host-control state. Writes to \texttt{/sys} fail in the containerised
-environment, so the CPU governor is observed at \texttt{schedutil} (rather than
-\texttt{performance}) and turbo is observed as enabled (rather than disabled); the
+$\Delta_c$ is interpreted. This alternative is not a clean topology-only swap from the
+Stage~K base case: it also runs with a weaker host-control state. Writes to \texttt{/sys}
+fail in the containerised environment, so the CPU governor is observed at \texttt{schedutil}
+(rather than \texttt{performance}) and turbo is observed as enabled (rather than disabled); the
 \texttt{nice~-5} request also fails for permission reasons. This is recorded in the frozen
-\texttt{merged\_results/environment.json} for the RQ1.4b run and is one plausible
-co-contributor to the inflated RQ1.4b round CVs. For this reason, comparisons against RQ1.4
-are interpreted at the \emph{per-condition} $\Delta_c$ level only and are not lifted to a
-cross-stage means comparison; the two stages differ in host-control state in addition to
-placement, and $\Delta_c$ should be read as an upper sensitivity bound that combines the
-kind-CNI-bridge cost with this degraded host-control state on the same host.
+\texttt{merged\_results/environment.json} for the cross-node-alternative run and is one
+plausible co-contributor to its inflated round CVs. For this reason, comparisons against the
+Stage~K base case are interpreted at the \emph{per-condition} $\Delta_c$ level only and are
+not lifted to a cross-stage means comparison; the two runs differ in host-control state in
+addition to placement, and $\Delta_c$ should be read as an upper sensitivity bound that
+combines the kind-CNI-bridge cost with this degraded host-control state on the same host.
 
-\subsection{RQ1.5 -- AKS Transfer Validation}
+\subsection{Stage~C -- AKS Transfer Validation (single-node base case)}
 \label{sec:methods-rq15}
 
-RQ1.5 re-runs the same predefined chain family from RQ1.4 on a single-node AKS cluster
+Stage~C re-runs the same predefined chain family from Stage~K on a single-node AKS cluster
 (\texttt{Standard\_D8s\_v3}, region \texttt{swedencentral}, \texttt{kubenet}
 networking).
 The stage does not aim to replicate the local Kubernetes absolute latency values, which
@@ -494,17 +501,17 @@ Within-environment normalised overhead is used as the primary comparison metric 
 this reason.
 
 All service pods and the benchmark client are colocated on the same AKS node and run
-with Guaranteed QoS, applying the same single-node placement discipline as RQ1.4. Pod
-resource requests differ between the two stages: RQ1.4 service pods request 1~CPU and
-512~MiB of memory, whereas RQ1.5 service pods request 1~CPU and 1~GiB, matching the
-larger memory headroom available on \texttt{Standard\_D8s\_v3}. This difference is
-documented per artefact and does not affect placement or QoS class.
+with Guaranteed QoS, applying the same single-node placement discipline as the Stage~K
+base case. Pod resource requests differ between the two stages: Stage~K service pods
+request 1~CPU and 512~MiB of memory, whereas Stage~C service pods request 1~CPU and 1~GiB,
+matching the larger memory headroom available on \texttt{Standard\_D8s\_v3}. This difference
+is documented per artefact and does not affect placement or QoS class.
 
-\subsection{RQ1.5b -- AKS Multi-Node Sensitivity}
+\subsection{Stage~C (Multi-Node Alternative) -- AKS Inter-Node Sensitivity}
 \label{sec:methods-rq15b}
 
-RQ1.5b is a sensitivity stage that quantifies the inter-node network cost the
-single-node RQ1.5 design intentionally hides.
+The multi-node alternative to Stage~C is a sensitivity stage that quantifies the inter-node
+network cost the single-node Stage~C base case intentionally hides.
 The stage re-runs the same predefined chain family on a six-node AKS cluster
 (\texttt{Standard\_D8s\_v3} $\times$ 6, region \texttt{swedencentral}, single node pool,
 single VNet) and enforces \emph{multi-node} placement: each chain segment of a given
@@ -522,18 +529,18 @@ from the Kubernetes API.
 A condition is admitted to the rolling merge only if its service pods are pairwise
 disjoint by node and the client node is distinct from every service node; a single
 collision aborts the run.
-The shared benchmark contract is otherwise unchanged from RQ1.5: same model, same chain
-family, same Guaranteed-QoS pod profile, same five-round / 200-iteration / 50-warmup
-discipline, and the same image used in the same-day RQ1.5 single-node run.
+The shared benchmark contract is otherwise unchanged from the Stage~C base case: same model,
+same chain family, same Guaranteed-QoS pod profile, same five-round / 200-iteration /
+50-warmup discipline, and the same image used in the same-day single-node run.
 The headline sensitivity metric is the per-condition multi-node penalty
 $\Delta_c = \mathrm{mean}_c^{\mathrm{multi}} - \mathrm{mean}_c^{\mathrm{single}}$,
-computed against the same-day frozen RQ1.5 single-node baseline so that the inter-node
+computed against the same-day frozen single-node baseline so that the inter-node
 delta is not contaminated by region-time drift.
 
-\subsection{RQ2.1 -- Service Identity and Mutual TLS Hardening}
+\subsection{Stage~H1 -- Service Identity and Mutual TLS Hardening}
 \label{sec:methods-rq21}
 
-RQ2.1 introduces a paired execution design.
+Stage~H1 introduces a paired execution design.
 Each paired pass executes both the plain AKS condition and the mTLS/AuthZ condition in
 alternating order, with the order determined by a seeded plan in which three passes run
 mTLS first and two passes run plain first.
@@ -564,17 +571,17 @@ downstream requests succeed; and a direct non-mesh denial probe confirming that
 unauthenticated access to protected downstream services is blocked.
 
 The primary topology is \texttt{chain\_2svc} (split after \texttt{layer2}). It is the
-lowest-overhead non-monolithic chain in the preceding RQ1.4 / RQ1.5 stages. The split
-point used is \texttt{layer2}, which corresponds to the RQ1.1 \emph{reference}
+lowest-overhead non-monolithic chain in the preceding Stage~K and Stage~C stages. The split
+point used is \texttt{layer2}, which corresponds to the Stage~L1 \emph{reference}
 carry-forward candidate rather than the main carry-forward (\texttt{layer3}); this is a
-deliberate choice because \texttt{chain\_2svc} in the RQ1.4 / RQ1.5 chain family is built
+deliberate choice because \texttt{chain\_2svc} in the Stage~K / Stage~C chain family is built
 on \texttt{layer2}, so reusing the same boundary preserves continuity with the
 already-frozen chain-cost numbers.
 
 A \texttt{chain\_5svc} stress topology is included to determine how mTLS overhead grows
-when more service boundaries are protected. \texttt{chain\_5svc} reuses the same RQ1.4 /
-RQ1.5 split family (\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, \texttt{layer4}),
-which deliberately includes the RQ1.1-rejected boundaries to span the full activation
+when more service boundaries are protected. \texttt{chain\_5svc} reuses the same Stage~K /
+Stage~C split family (\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, \texttt{layer4}),
+which deliberately includes the Stage~L1-rejected boundaries to span the full activation
 range. The chain\_5svc overhead figure should therefore be read against the same
 upper-bound-envelope caveat introduced in \cref{sec:methods-rq14}.
 
@@ -586,19 +593,19 @@ segments whose latency and resource costs depend on proxy configuration and work
 details~\cite{meshinsight_socc23}.
 A second limitation is that the mesh control plane and certificate authority remain
 trust-critical components even when the data-plane is fully mTLS-protected~\cite{poudel2025mazu}.
-Both limitations are acknowledged explicitly: RQ2.1 is claimed as a communication-level
+Both limitations are acknowledged explicitly: Stage~H1 is claimed as a communication-level
 hardening layer, not as a complete runtime-secrecy mechanism.
 
-\subsection{RQ2.1 (Ablation) -- Decomposition of the Hardening Bundle}
+\subsection{Stage~H1 (Ablation) -- Decomposition of the Hardening Bundle}
 \label{sec:methods-rq21-ablation}
 
-RQ2.1's main paired design treats the mTLS configuration as a single bundle: sidecar
+The main paired design of Stage~H1 treats the mTLS configuration as a single bundle: sidecar
 injection, strict peer-authentication, and authorisation-policy enforcement are all applied
 together. An additional ablation campaign is run on \texttt{chain\_2svc} to decompose this
 bundle into its incremental contributions.
 
 The ablation introduces four conditions on the same AKS cluster, same Istio revision
-(\texttt{asm-1-29}), and same strict same-node placement as the primary RQ2.1 design:
+(\texttt{asm-1-29}), and same strict same-node placement as the primary Stage~H1 design:
 (c0) plain non-mesh; (c1) mesh-default sidecar with automatic mTLS but no AuthorizationPolicy;
 (c2) strict PeerAuthentication mTLS with no AuthorizationPolicy; and (c3) strict mTLS with
 AuthorizationPolicy. The conditions are run as a seeded interleaved campaign with five
@@ -623,39 +630,40 @@ comparable across c0--c3 within the same campaign run, but the absolute numbers 
 spliced into the frozen two-condition paired \texttt{chain\_2svc} and \texttt{chain\_5svc}
 results.
 
-\subsection{RQ2.1 (Split Sensitivity) -- Single-Hop mTLS vs Activation Size}
+\subsection{Stage~H1 (Split Sensitivity) -- Single-Hop mTLS vs Activation Size}
 \label{sec:methods-rq21-splitsens}
 
 A second supporting campaign measures whether the mTLS overhead at a single protected hop
 scales with the size of the activation crossing that hop. The independent variable in this
 campaign is the split point that produces hop 2's activation, varying it across
 \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4} (activation sizes
-802\,816, 401\,408, 200\,704, and 100\,352 bytes respectively, matching the RQ1.1 sizes).
+802\,816, 401\,408, 200\,704, and 100\,352 bytes respectively, matching the Stage~L1 sizes).
 
 For each split point, a plain condition and an mTLS condition are run as a paired pair,
 yielding eight conditions in total. Only the hop between service 1 and service 2 is
 protected by the mTLS configuration; the same strict same-node placement, Istio revision,
-pod profile, and image digest as the primary RQ2.1 design are otherwise preserved. The
+pod profile, and image digest as the primary Stage~H1 design are otherwise preserved. The
 campaign runs five seeded-interleaved passes across the eight conditions for a total of
 8{,}000 measured rows. The per-split deltas (mean and p95 mTLS overhead, per-split operational
 overhead, and per-split resource summary) are the headline outputs.
 
 This campaign is treated as supporting, not headline, for two reasons. First, the
-\texttt{split\_after\_layer4} condition remains compute-degenerate per the RQ1.1
+\texttt{split\_after\_layer4} condition remains compute-degenerate per the Stage~L1
 degeneracy rule and is retained only as a low-payload diagnostic endpoint, not as a
 candidate deployment. Second, the per-split mTLS deltas are campaign-internal: they may not
 be spliced into the frozen \texttt{chain\_2svc} or \texttt{chain\_5svc} paired numbers.
 
-\subsection{RQ2.1b -- Multi-Node Sensitivity of mTLS Overhead}
+\subsection{Stage~H1 (Multi-Node Alternative) -- Inter-Node Sensitivity of mTLS Overhead}
 \label{sec:methods-rq21b}
 
-RQ2.1b is a paired sensitivity stage that quantifies how the chain\_2svc mTLS overhead changes
-when the two inference services are forced onto distinct AKS nodes. It mirrors the RQ1.5b
-design at the security layer: the \texttt{chain\_2svc} plain and mTLS conditions are deployed
-on a dedicated AKS node pool with \texttt{multi\_node\_anti\_affinity} placement and a
-dedicated benchmark-client node. The same paired alternation, five-pass budget
+The multi-node alternative to Stage~H1 is a paired sensitivity stage that quantifies how the
+chain\_2svc mTLS overhead changes when the two inference services are forced onto distinct
+AKS nodes. It mirrors the Stage~C multi-node alternative at the security layer: the
+\texttt{chain\_2svc} plain and mTLS conditions are deployed on a dedicated AKS node pool with
+\texttt{multi\_node\_anti\_affinity} placement and a dedicated benchmark-client node. The same
+paired alternation, five-pass budget
 (5 paired passes $\times$ 2 conditions $\times$ 200 measured iterations $= 2{,}000$ rows),
-seeded order, and security-validation contract as the primary RQ2.1 chain2 run are reused.
+seeded order, and security-validation contract as the primary Stage~H1 chain2 run are reused.
 
 Compliance with the multi-node placement contract is verified after deployment by reading
 observed \texttt{nodeName} values from the Kubernetes API and rejecting any pass where the
@@ -663,21 +671,22 @@ two service pods share a node or where the client node coincides with either ser
 The headline output is the multi-node paired mTLS delta (mean, p95, and per-pass spread)
 together with the placement-validation status of every pass.
 
-\subsection{RQ2.2 -- Confidential VM Execution Hardening}
+\subsection{Stage~H2 -- Confidential VM Execution Hardening}
 \label{sec:methods-rq22}
 
-RQ2.2 keeps the communication-security contract from RQ2.1 fixed and changes the
+Stage~H2 keeps the communication-security contract from Stage~H1 fixed and changes the
 execution environment of the downstream protected service.
 The confidential condition places \texttt{service2} on an AMD SEV-SNP confidential
 node pool (\texttt{Standard\_DC8as\_v5}); the standard condition uses matched
 non-confidential AMD nodes (\texttt{Standard\_D8as\_v5}) in the same AKS cluster.
 
-The RQ2.2 cluster is deployed in Azure region \texttt{westeurope} rather than the
-\texttt{swedencentral} region used by the RQ1.5, RQ1.5b, and RQ2.1 clusters, because at
+The Stage~H2 cluster is deployed in Azure region \texttt{westeurope} rather than the
+\texttt{swedencentral} region used by the Stage~C and Stage~H1 clusters (including their
+multi-node alternatives), because at
 the time of the experiments the AMD SEV-SNP DC-series SKUs (\texttt{Standard\_DC8as\_v5})
 were the constraining resource and were available with the required quota in
 \texttt{westeurope}. This region change is the reason a fresh paired standard baseline is
-collected on the RQ2.2 cluster rather than reusing the RQ1.5 or RQ2.1 mTLS baseline:
+collected on the Stage~H2 cluster rather than reusing the Stage~C or Stage~H1 mTLS baseline:
 absolute latency between the two regions is not directly comparable, so only the
 within-cluster paired delta between the standard and confidential conditions is reported
 as the incremental TEE overhead.
@@ -691,7 +700,7 @@ that receives intermediate activations, motivated by activation-privacy work
 \cite{he2021_attacking_collaborative} showing that those activations are
 recoverable when held by an untrusted remote partition.
 Extending the confidential-execution boundary to both services (full
-two-service TEE) is out of the thesis-facing scope of RQ2.2 per the evidence
+two-service TEE) is out of the thesis-facing scope of Stage~H2 per the evidence
 manifest and is treated as future work rather than measured here.
 
 The protection boundary of AMD SEV-SNP must be stated precisely.
@@ -705,16 +714,16 @@ evaluate such attacks. The motivation for protecting the downstream segment at
 infrastructure level is supplied by activation-privacy work
 \cite{he2021_attacking_collaborative} showing that intermediate feature maps
 can be inverted to recover client inputs, although that threat model differs
-from the host-level adversary SEV-SNP defends against. RQ2.2 therefore uses the
+from the host-level adversary SEV-SNP defends against. Stage~H2 therefore uses the
 term \emph{VM-level confidential execution} throughout rather than claiming
 application-level enclave isolation.
 
-\subsection{RQ2.3 -- Security-Hardening Trade-off Synthesis}
+\subsection{Trade-off Synthesis -- Security-Hardening Recommendation}
 \label{sec:methods-rq23}
 
-RQ2.3 is a synthesis stage: no new benchmark data is collected.
-The stage combines the plain AKS baseline from RQ1.5, the mTLS/AuthZ results from
-RQ2.1, and the selective \texttt{service2\_only} TEE result from RQ2.2 to compare
+The trade-off synthesis is a synthesis stage: no new benchmark data is collected.
+The stage combines the plain AKS baseline from Stage~C, the mTLS/AuthZ results from
+Stage~H1, and the selective \texttt{service2\_only} TEE result from Stage~H2 to compare
 the three thesis-facing hardening configurations across measured cost,
 operational complexity, and protection scope. Full two-service TEE is treated
 as future work rather than as a measured trade-off point.
@@ -724,7 +733,7 @@ configuration is threat-model-dependent rather than universally optimal.
 Applying every available security mechanism to every service boundary is not always the
 best engineering choice, because each additional protection layer adds measurable
 latency, resource, and operational cost.
-RQ2.3 therefore frames its output as a structured trade-off comparison rather than a
+The trade-off synthesis therefore frames its output as a structured trade-off comparison rather than a
 single global ranking, allowing a practitioner to match a security configuration to a
 stated threat model and performance budget.
 
@@ -740,9 +749,10 @@ scripts.
 Each frozen artifact set records the full execution environment: operating system,
 Python and PyTorch version, Kubernetes version and cluster name, node type, namespace,
 container image reference, condition ordering, and parity validation outcomes. For the
-AKS stages (RQ1.5, RQ1.5b, RQ2.1, RQ2.1b, RQ2.2) the image reference is a pinned
+AKS stages (Stage~C and its multi-node alternative, Stage~H1 and its multi-node
+alternative, and Stage~H2) the image reference is a pinned
 \texttt{sha256} digest from the project's Azure Container Registry. For the local
-\texttt{kind} stages (RQ1.4, RQ1.4b) the image reference is a mutable tag
+\texttt{kind} stages (Stage~K and its cross-node alternative) the image reference is a mutable tag
 (\texttt{thesis-inference:latest}) preloaded into the cluster with
 \texttt{IfNotPresent}; reproduction in those stages therefore depends on the locally
 built image alongside the recorded runtime metadata.
@@ -765,11 +775,12 @@ generalisability discussion is in \cref{sec:analysis-threats}. The methodologica
 scope of this study has known limitations covering five themes, each of which
 constrains how the results may be generalised.
 
-\emph{Single-node deployment.} The primary RQ1.4 and RQ1.5 designs colocate all chain
+\emph{Single-node deployment.} The base cases of Stages~K and~C colocate all chain
 services on one node so that the measured cost is attributable to orchestration and gRPC
-rather than to wide-area or inter-node networking. RQ1.4b and RQ1.5b are explicit
-multi-node sensitivity stages that bound the cost the single-node design hides; the
-RQ1.5/RQ2.1 primary numbers should not be read as representative of arbitrary multi-node
+rather than to wide-area or inter-node networking. The cross-node and multi-node
+alternatives of Stages~K and~C are explicit
+sensitivity stages that bound the cost the single-node base case hides; the
+Stage~C / Stage~H1 primary numbers should not be read as representative of arbitrary multi-node
 deployments.
 
 \emph{CPU-only, single-model, single-workload scope.} All experiments use ResNet-18 in
@@ -784,17 +795,17 @@ exposed; \texttt{nice} is denied). The measurement environment is therefore quie
 a typical production AKS workload, and absolute numbers may shift under contended
 noisy-neighbour conditions.
 
-\emph{Bounded RQ2.1 threat model.} RQ2.1 measures communication-level hardening only.
+\emph{Bounded Stage~H1 threat model.} Stage~H1 measures communication-level hardening only.
 The sidecar design protects the proxy-mediated inter-service path, while data handling
 inside each pod and application process remains outside the measured mesh boundary; the
-mesh control plane plus CA also remain trust-critical. RQ2.1 must therefore be
+mesh control plane plus CA also remain trust-critical. Stage~H1 must therefore be
 interpreted as a confidentiality and authenticity boundary on the inter-service path,
 not as a complete runtime-secrecy mechanism.
 
-\emph{Bounded RQ2.2 threat model.} RQ2.2 measures the incremental cost of AMD SEV-SNP at
+\emph{Bounded Stage~H2 threat model.} Stage~H2 measures the incremental cost of AMD SEV-SNP at
 VM granularity. The guest OS, application, runtime, model weights, and sidecar remain
 inside the VM trust boundary, and residual attack surfaces such as malicious-interrupt
-injection from the untrusted hypervisor are out of experimental scope. RQ2.2 is therefore
+injection from the untrusted hypervisor are out of experimental scope. Stage~H2 is therefore
 an infrastructure-level confidentiality control against a host-platform adversary, not an
 application-level enclave guarantee.
 
@@ -812,15 +823,15 @@ end-to-end interval; the headline numbers describe steady-state behaviour only.
 \emph{Cloud-dollar cost.} The thesis reports resource overhead in CPU-time and memory
 units rather than in Azure billing units; converting to dollar-equivalents at the SKU
 prices used (\texttt{Standard\_D8s\_v3}, \texttt{Standard\_D8as\_v5},
-\texttt{Standard\_DC8as\_v5}) is left to the synthesis discussion in RQ2.3.
+\texttt{Standard\_DC8as\_v5}) is left to the trade-off synthesis discussion.
 \emph{Sidecar capacity headroom.} The Istio sidecar limits are taken from the managed-mesh
 defaults; whether the sidecar approaches its CPU limit at the measured load is checked
-via the resource sampling captured in the RQ2.1 artefacts and is reported alongside the
+via the resource sampling captured in the Stage~H1 artefacts and is reported alongside the
 overhead numbers, but no load-stress condition was run to find the sidecar's saturation
 point.
 
 The analysis-level scope and generalisability discussion of these methodological
-risks -- including their implications for the synthesis in RQ2.3 and for
+risks -- including their implications for the trade-off synthesis and for
 external validity -- is in \cref{sec:analysis-threats}; the consolidated
 thesis-wide limitations and threats to validity statement is in
 \cref{sec:conclusion-limitations}.

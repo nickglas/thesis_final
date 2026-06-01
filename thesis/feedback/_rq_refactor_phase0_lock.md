@@ -38,9 +38,11 @@ Do **not** delete any experiment or data — this is relabel + regroup only.
 
 | New stage | Scope | Absorbs (old) |
 |-----------|-------|---------------|
-| **Stage H1** | Communication hardening: service identity + mutual TLS + inter-service authz. **Base case = plain AKS chain.** | RQ2.1 (+ RQ2.1b if present, as an alternative config — verify in Ch.4/5) |
+| **Stage H1** | Communication hardening: service identity + mutual TLS + inter-service authz. **Base case = plain AKS chain.** Sub-campaigns confirmed in §4.7: primary paired (chain_2svc + chain_5svc), **Ablation** (bundle decomposition c0–c3), **Split Sensitivity** (single-hop mTLS vs activation size), and **multi-node alternative** (old RQ2.1b, mirrors Stage C alternative at the security layer). | RQ2.1, RQ2.1 (Ablation), RQ2.1 (Split Sensitivity), RQ2.1b |
 | **Stage H2** | VM-level confidential execution (AMD SEV-SNP) for the downstream protected service | RQ2.2 |
 | **Trade-off / recommendation** | Most defensible hardening configuration across performance, operational complexity, protection scope | RQ2.3 |
+
+**Naming for sub-campaigns in prose/titles:** "Stage H1 (Ablation)", "Stage H1 (Split Sensitivity)", "Stage H1 (Multi-Node Alternative)". **\label keys are kept unchanged in Phases 2–5** (e.g. `sec:methods-rq11`) so existing `\cref`/`\ref` keep resolving; semantic label renames are deferred to the Phase 6 sweep.
 
 ---
 
