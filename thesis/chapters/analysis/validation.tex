@@ -9,6 +9,18 @@ thesis-wide evidence under which the conclusions are treated as credible. The
 validation discipline follows the shared benchmark contract defined in
 \cref{sec:methods-contract,sec:methods-cpu,sec:methods-statistics}.
 
+This consolidated validation is placed \emph{after} the per-RQ analyses by
+design rather than before them. Each per-RQ subsection in
+\cref{sec:analysis-split,sec:analysis-deployment,sec:analysis-security} already
+establishes its own credibility inline through a dedicated \emph{Validation}
+paragraph, and the present section deliberately draws on those per-stage
+observations --- the parity outcomes, round-level CVs, and ordering they report
+--- to make a single cross-RQ credibility statement rather than restating them.
+It therefore necessarily follows the observations it consolidates. The program
+thesis template requires the analysis chapter to establish how the results are
+known to be valid but does not prescribe the order of validation relative to the
+per-RQ observations, so this placement is consistent with the template.
+
 \paragraph{Functional parity.}
 Every thesis-facing frozen run achieves
 \texttt{max\_abs\_diff}~$=0.0$ against the monolithic reference under absolute

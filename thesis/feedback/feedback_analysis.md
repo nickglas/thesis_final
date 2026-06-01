@@ -401,6 +401,7 @@ Then make the current RQ1.1–RQ1.5b into **sub-stages / evaluation environments
 *Why ambiguous:* Raised and softened but never definitively resolved; turns on the template.
 *Interpretations:* (a) reorder so Validation (6.4) precedes per-RQ observations; (b) keep order, add a justifying sentence; (c) order is template-mandated — no change.
 *Ask:* "Does the program template require Validation before the per-RQ observations, or is the current order acceptable since validation draws on those observations?"
+*Resolved 2026-06-01:* the program template (Template.md) requires the Analysis chapter to establish validation and evaluation but does **not** prescribe their order relative to the per-RQ observations. Current order kept (per-RQ analyses → consolidated cross-RQ Validation) with an added justifying paragraph in `analysis/validation.tex`; no reorder needed.
 
 **C6 — Which figures need error bars/variability bands — all or only some?**
 *Feedback:* 00:21:27 / 00:22:03 (general principle, no figure list).
@@ -441,9 +442,9 @@ Then make the current RQ1.1–RQ1.5b into **sub-stages / evaluation environments
 13. ☐ **F15** — Move verbose run-config to appendix; reference key facts in body.
 14. ☐ **F9** — Shrink/rearrange the full-page figure — confirm which via **C2**.
 15. ☐ **F10** — Decide background-material placement.
-16. ☐ **F17** — Resolve Validation-vs-observations ordering — confirm via **C5**.
-17. ☐ **F19** — Highlight RQ↔related-work linkage at chapter end; add missing references.
-18. ☐ **F20** — Optionally retitle Chapter 3 as "Research Gap Analysis and Scope."
+16. ✅ **F17** — Resolve Validation-vs-observations ordering — confirm via **C5**. — **DONE 2026-06-01 (template silent on order; kept current order + justifying paragraph; see §6 #17).**
+17. ◐ **F19** — Highlight RQ↔related-work linkage at chapter end; add missing references. — **PARTIAL 2026-06-01: highlighted RQ↔gap summary added; "missing references" deferred (needs author's list; no fabrication per F5).**
+18. ✅ **F20** — Optionally retitle Chapter 3 as "Research Gap Analysis and Scope." — **DONE 2026-06-01 (§3.5 retitled; chapter title kept per template).**
 19. ☐ **F18** — Continue sourcing tables to frozen artifacts (no change; maintain).
 
 ### Scope decision (separate track)
@@ -505,9 +506,9 @@ Propagate the locked table outward in dependency order. Each is a separate, shor
 | ☐ | 14 | Shrink/rearrange the full-page figure | Likely Fig 2.5 or 2.10–2.13 | Flow (F9) | Low | C2 |
 | ☐ | 15 | Move verbose run-config to appendix; reference in body | Tables 5.1/5.3/5.8/5.13 | Declutter body (F15) | Low | Independent |
 | ☐ | 16 | Decide & apply background-material placement | Ch.2 vs Ch.4–5 | Conceptual vs chapter-specific (F10) | Low | Do during figure pass |
-| ☐ | 17 | Resolve Validation-vs-observations order | §6.4 vs §6.1–6.3 | Possible reorder (F17) | Low | C5 |
-| ☐ | 18 | Highlight RQ↔related-work links; add missing refs | §3.2, §3.5 | Praised; strengthen (F19) | Low | Independent |
-| ☐ | 19 | Optional: retitle Chapter 3 | Ch.3 title / §3.5 | Signals gap analysis (F20) | Low | Independent |
+| ✅ | 17 | Resolve Validation-vs-observations order | §6.4 vs §6.1–6.3 | Possible reorder (F17) | Low | C5 — **DONE 2026-06-01. C5 resolved via the template (Template.md): Ch.6 must cover Validation + Evaluation but does NOT prescribe order vs per-RQ observations. Kept current order (per-RQ analyses → consolidated Validation) and added a justifying paragraph to `analysis/validation.tex` explaining the consolidated section deliberately follows and draws on the per-stage Validation paragraphs, and that the placement is template-compliant. No reorder needed. Clean compile (162 pp).** |
+| ◐ | 18 | Highlight RQ↔related-work links; add missing refs | §3.2, §3.5 | Praised; strengthen (F19) | Low | Independent — **PARTIAL 2026-06-01. Highlighted RQ↔gap summary added at end of Ch.3 (`related_work.tex` §"Research Gap Analysis and Scope"): a `description` list mapping RQ1 (Stages L1–C) and RQ2 (Stages H1/H2+trade-off) to the specific surveyed gaps, with `\cref`s to the thematic sections. Per-stage embedding already present throughout the chapter (kept). REMAINING: "add missing references" — NOT done, deliberately: needs the author's specific list; will not fabricate citations (F5). Clean compile (162 pp).** |
+| ✅ | 19 | Optional: retitle Chapter 3 | Ch.3 title / §3.5 | Signals gap analysis (F20) | Low | Independent — **DONE 2026-06-01. Retitled §3.5 "Positioning of This Thesis" → "Research Gap Analysis and Scope" (supervisor's exact phrase) + added `\label{sec:rw-positioning}`. Kept chapter title "Related Work" (template-faithful); chapter-level rename available if preferred.** |
 | ☐ | 20 | Maintain artifact sourcing in table captions | Ch.5 captions; §4.8 | Praised; keep (F18) | None | — |
 | ☐ | 21 | Decide FABRIC / confidential-VM demo | Ch.5/Ch.6 (if pursued) | Optional, defense-coupled (F21) | High (if yes) | C7 |
 

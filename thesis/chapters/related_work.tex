@@ -127,13 +127,47 @@ measuring VM-level confidential execution on AKS for the downstream service
 only, rather than claiming application-level enclave isolation or evaluating
 those residual attack surfaces.
 
-\section{Positioning of This Thesis}
+\section{Research Gap Analysis and Scope}
+\label{sec:rw-positioning}
 
 The related literature establishes the individual concerns that motivate this thesis:
 split points affect activation-transfer and compute costs, microservice and Kubernetes
 deployment add platform overhead, and security hardening strengthens protection while
-introducing additional cost. The contribution of this thesis is to connect those
-concerns in one staged empirical pipeline. Instead of evaluating partitioning,
-orchestration, and hardening as separate problems, the thesis tracks the same ResNet-18
-microservice inference workload from local split selection through Kubernetes, AKS,
-mTLS/AuthZ, and confidential VM execution.
+introducing additional cost. Each concern, however, is typically studied in isolation.
+Partitioning work optimises split points without carrying the chosen decomposition into
+an orchestrated or hardened deployment, while cloud-native and service-mesh work
+characterises platform and security overhead without tying it to a specific
+model-partitioning decision. The gap this thesis addresses is the absence of a single
+staged evaluation that follows one workload across all of these layers. Instead of
+evaluating partitioning, orchestration, and hardening as separate problems, the thesis
+tracks the same ResNet-18 microservice inference workload from local split selection
+through Kubernetes, AKS, mTLS/AuthZ, and confidential VM execution.
+
+To make the link between the surveyed gaps and the research questions explicit, the
+following summarises which gap each research question --- and its constituent stages ---
+addresses:
+
+\begin{description}
+    \item[\textbf{RQ1} (architectural split \& deployment).] Prior partitioning work
+    selects or optimises split points, frequently for a single execution environment
+    (\cref{sec:rw-split-computing,sec:rw-granularity}), while cloud-native studies
+    characterise deployment overhead independently of any particular partition
+    (\cref{sec:rw-cloud-native}). RQ1 connects these by screening coarse and fine
+    boundaries on a fixed ResNet-18 workload under controlled local execution
+    (Stages~L1--L3) and then carrying the \emph{same} decomposition into local Kubernetes
+    (Stage~K) and managed AKS (Stage~C), testing whether the split behaviour established
+    locally transfers directionally to orchestrated and cloud settings rather than
+    assuming that it does.
+    \item[\textbf{RQ2} (security hardening).] Service-mesh and confidential-computing work
+    shows that mutual TLS and VM-level protection add workload-dependent overhead
+    (\cref{sec:rw-security}), but typically in isolation from a concrete partitioned
+    inference deployment. RQ2 connects these by measuring the incremental performance and
+    operational cost of communication-level hardening (Stage~H1) and selective VM-level
+    confidential execution (Stage~H2) on the \emph{specific} AKS deployment selected under
+    RQ1, and by synthesising the result into a threat-model-aware trade-off recommendation.
+\end{description}
+
+Across both questions, the distinguishing scope of this thesis is therefore not a new
+partitioning algorithm or a new security mechanism, but the end-to-end, single-workload
+staged pipeline that connects split selection, deployment context, and security hardening
+under one reproducible measurement contract.
