@@ -137,16 +137,18 @@
 \draw[black!35, thick] (s4) -- (p4);
 \draw[black!35, thick] (s5) -- (p5);
 
-% Return path (dashed curve below the cluster)
+% Return path (dashed curve below the cluster). Starts from below Service 5
+% (s5.south) so it does not overlap the Service 5 box, and the label sits at the
+% curve midpoint (pos=0.5) so it is horizontally centred under the chain.
 \draw[returnarrow]
-    (p5.south east) .. controls +(0.7,-2.0) and +(0,-2.4) ..
-    node[smalllabel, below, pos=0.85] {final output returned to caller}
+    (s5.south) .. controls +(0,-1.5) and +(0,-1.7) ..
+    node[smalllabel, below, pos=0.5] {final output returned to caller}
     (client.south);
 
 % Inter-node legend below the figure (small, single line)
 \node[
     smalllabel,
-    below=1.2cm of n3.south,
+    below=2.5cm of n3.south,
     text=red!75!black
 ] {%
     \tikz[baseline]{\draw[arrow, very thick] (0,0.3ex) -- (0.6,0.3ex);}~%

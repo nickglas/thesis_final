@@ -335,12 +335,20 @@ methodological validity.
 
 \subsection{Effect Size and Significance Tests}
 
-In stages with 1,000 per-condition measured iterations, Cohen's~$d$ is computed from
-pooled per-iteration data and the Mann-Whitney $U$ test is reported for completeness.
-These statistics are descriptive diagnostics rather than the main decision rule.
-The thesis bases methodological carry-forward decisions on the predeclared eligibility
-and near-best-window rules in \cref{sec:methods-carryforward}; statistical-test outputs
-are used to contextualise the size and consistency of observed differences.
+In stages with 1{,}000 per-condition measured iterations, Cohen's~$d$ and the
+Mann--Whitney~$U$ test are reported for each pairwise comparison as descriptive
+diagnostics, not as the decision rule. Per-iteration latency is right-skewed rather than
+normal, so a non-parametric rank-based test (Mann--Whitney) is used rather than a
+parametric two-sample $t$-test, and the median is reported alongside the mean throughout;
+Cohen's~$d$ is reported as a sample-size-independent measure of effect magnitude.
+
+The $p$-value is down-weighted by design: at $N = 1{,}000$ the test is so highly powered
+that even a practically negligible difference is statistically significant. Methodological
+carry-forward is therefore governed by the predeclared eligibility and near-best-window
+rules of \cref{sec:methods-carryforward}, with Cohen's~$d$ and the cross-round coefficient
+of variation used to judge the size and stability of differences. The mean remains the
+headline value, justified at this sample size by the central-limit theorem, with the
+median reported as a robust cross-check.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Carry-Forward and Selection Logic}
