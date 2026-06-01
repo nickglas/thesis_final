@@ -223,18 +223,47 @@ representative of the local in-cluster benchmark.
 The interpretation of these results and their contribution to RQ1 are presented in
 \cref{sec:analysis-rq14}.
 
-\section{Stage~K (Cross-Node Alternative) -- kind Multi-Worker CNI Sensitivity (appendix-only)}
+\section{Stage~K (Cross-Node Alternative) -- kind Multi-Worker CNI Sensitivity}
 \label{sec:rq14b-stub}
 
-The cross-node alternative to Stage~K is the kind multi-worker CNI sensitivity probe declared in
-\cref{sec:methods-rq14b}. As established in the methods, this alternative is reported as
-supporting sensitivity evidence only, not as a primary thesis-facing number:
-kind's worker ``nodes'' are Docker containers sharing one host kernel, so
-it measures CNI-bridge cost on a single physical host rather than real
-cross-host networking, and the genuine multi-host inter-node penalty is
-measured separately by the Stage~C multi-node alternative in \cref{sec:rq15b} on AKS. The condition summaries,
-cross-round consistency, and per-condition kind-vs.-single-node deltas for
-this stage are therefore reported in \cref{sec:appendix-rq14b} rather than in
-the main results stream. The analytical reading of the same evidence -- its
-scope-bounding role in the deployment narrative -- is in
-\cref{sec:analysis-rq14b}.
+The cross-node alternative to Stage~K forces every chain hop across a kind
+worker-node boundary, bounding the cost that the single-node Stage~K base case
+hides on one host. It is declared in \cref{sec:methods-rq14b} as a
+\emph{supporting sensitivity condition} under RQ1, not a primary thesis-facing
+number: kind's worker ``nodes'' are Docker containers that share one host kernel
+and communicate over kind's CNI bridge, so the stage measures CNI-bridge routing
+cost on a single physical host rather than genuine cross-host networking. The
+real multi-host inter-node penalty is measured separately by the Stage~C
+multi-node alternative on AKS (\cref{sec:rq15b}). To keep the body uncluttered,
+the full per-condition summaries, cross-round consistency, and
+kind-vs.-single-node deltas are retained in
+\cref{sec:appendix-rq14b}
+(\cref{tab:rq14b_results,tab:rq14b_rounds,tab:rq14b_delta}); the salient figures
+are summarised here so that the cross-node condition is visible within the main
+deployment evaluation rather than only in the appendix.
+
+\paragraph{Summary of results.}
+Under the six-worker kind cluster with anti-affinity, mean end-to-end latency
+rises monotonically across the predefined chain family, from 67.491~ms for
+\texttt{monolithic\_k8s\_1svc} to 87.378~ms, 120.465~ms, 135.639~ms, and
+141.169~ms for \texttt{chain\_2svc} through \texttt{chain\_5svc}
+(\cref{tab:rq14b_results}). The Stage~K within-family ordering is preserved, and
+so is the bounded non-linearity at the final boundary: the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment of $+5.530$~ms
+is smaller than the preceding $+15.174$~ms step, matching the small 98~KiB
+\texttt{layer4} activation added at the last hop. Computed
+condition-by-condition against the frozen single-node Stage~K baseline, the
+per-condition penalty ranges from $+3.991$~ms (\texttt{chain\_2svc}) to
+$+48.634$~ms (\texttt{chain\_5svc}) (\cref{tab:rq14b_delta}). This is roughly an
+order of magnitude larger than the genuine cross-host AKS penalty of
+$+2.131$--$+4.086$~ms measured by the Stage~C multi-node alternative
+(\cref{tab:rq15b_delta}), which is the central reason the stage is read as a
+single-host CNI-bridge sensitivity envelope rather than as a deployment-grade
+multi-node result. Round-level CVs are correspondingly inflated, reaching
+$0.0551$ at \texttt{chain\_3svc} (\cref{tab:rq14b_rounds}), consistent with
+kind-CNI and shared-host variability rather than a chain-specific mechanism; the
+comparison is therefore interpreted at the per-condition delta level only, as the
+two runs also differ in host-control state (governor, turbo, and \texttt{nice}).
+
+The interpretation of these results and their contribution to RQ1 are presented
+in \cref{sec:analysis-rq14b}.

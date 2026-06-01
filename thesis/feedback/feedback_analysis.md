@@ -389,6 +389,7 @@ Then make the current RQ1.1–RQ1.5b into **sub-stages / evaluation environments
 *Why ambiguous:* The supervisor may not have registered the methodological reason it was placed in the appendix.
 *Interpretations:* (a) move the full stage into the body, caveat retained; (b) move only a summary into the body, data stays in appendix; (c) keep in appendix but reference more prominently from the body.
 *Ask:* "RQ1.4b is appendix-only because kind workers share one kernel, so it measures CNI-bridge cost rather than true cross-host networking (the real multi-host penalty is RQ1.5b on AKS). Do you still want it in the main evaluation, and at what level of detail given that caveat?"
+*Resolved 2026-06-01 → option (b):* a compact summary of the Stage~K cross-node alternative now appears in the Ch.5 deployment evaluation (`kubernetes.tex`), with the full data tables kept in the appendix and the single-host CNI-bridge caveat retained prominently. Not promoted to a primary number, since that would overclaim against the genuine cross-host AKS measurement (Stage~C multi-node). Flag for supervisor confirmation at next meeting.
 
 **C5 — Validation before observations?**
 *Feedback:* 00:29:56 question raised, then 00:30:26 *"that's fine."*
@@ -421,7 +422,7 @@ Then make the current RQ1.1–RQ1.5b into **sub-stages / evaluation environments
 3. ☐ **F5** — Verify every reference is genuine and correctly cited.
 
 ### Important revisions — improve rigor, clarity, coherence
-4. ☐ **F14** — Promote RQ1.4b into the main evaluation (after F1), keeping its scope caveat — confirm via **C4**.
+4. ✅ **F14** — Promote RQ1.4b into the main evaluation (after F1), keeping its scope caveat — confirm via **C4**. — **DONE 2026-06-01 (C4 resolved as option (b): summary in body, full tables in appendix, caveat retained).**
 5. ✅ **F2** — Frame `b`-variants as base-case vs. alternative. — **DONE (folded into F1).**
 6. ✅ **F3** — Keep RQ2.3 as the trade-off contribution under RQ2 — confirm via **C8**. — **DONE (folded into F1; retained as "Trade-off Synthesis").**
 7. ☐ **F6 + F7 + F22** — Add a Discussion reflection on generalisability (transformers/other NNs) and broader impact (per-layer policy, cross-org "digital embassies", inter-layer API).
@@ -486,7 +487,7 @@ Propagate the locked table outward in dependency order. Each is a separate, shor
 | ✅ | 1 | Restructure RQs into 2–3 conceptual questions; demote environments to sub-stages *(see §5A, Phase 0–6)* | §1.3; propagate to §1.4, §4.7, Ch.5, Ch.6, §7.1, Abstract | Examiner says environments aren't RQs (F1) | **High** | Resolve C1, C8 first — **DONE 2026-06-01 (C1=2 RQs, C8=RQ2.3 under RQ2). Phases 0–6 all complete; 152pp clean compile.** |
 | ✅ | 2 | Reframe single-node as base case, multi-node as alternative | §1.3, §4.7.5/.7/.11, §5.5/5.7/5.10, §6.2.2/6.2.4 | "B without A" reads oddly (F2) | Low | After #1 — **DONE; folded into F1: base case vs. "Stage K/C/H1 (cross-node/multi-node) alternative" used throughout.** |
 | ✅ | 3 | Keep RQ2.3 as trade-off contribution under RQ2 | §1.3, §4.7.13, §5.12, §6.3.3 | Valued conceptual contribution (F3) | Low | After #1; C8 — **DONE; retained as "Trade-off Synthesis" under RQ2 (not standalone).** |
-| ☐ | 4 | Promote RQ1.4b to main evaluation, retain single-host caveat | §5.5, Appendix A.1, §4.7.5, §6.2.2 | One of the evaluation environments (F14) | Medium | After #1; C4 |
+| ✅ | 4 | Promote RQ1.4b to main evaluation, retain single-host caveat | §5.5, Appendix A.1, §4.7.5, §6.2.2 | One of the evaluation environments (F14) | Medium | After #1; C4 — **DONE 2026-06-01. C4 → option (b): compact summary promoted into Ch.5 main eval (`kubernetes.tex` Stage~K cross-node §, headline numbers + per-condition penalty envelope inline), full tables retained in appendix, single-host caveat kept. Methods/appendix lead-ins re-aligned. Clean compile (152 pp).** |
 | ☐ | 5 | Write AI-usage disclosure section | New subsection in Ch.6/7; extend §4.10 | Required disclosure (F4) | Medium | C3 |
 | ☐ | 6 | Add sample AI prompt to annex | Appendix A | Builds reader trust (F4) | Low | #5; C3 |
 | ☐ | 7 | Verify all references / citations | References (p.125+); in-text | Guard against fabricated refs (F5) | Medium | Pairs with #5 |
