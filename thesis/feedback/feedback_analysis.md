@@ -7,6 +7,24 @@ A reading note before the detail: this was a *positive* session. The supervisor'
 
 ---
 
+## Progress Tracker
+
+**Status legend:** ☐ = not started · ◐ = in progress · ✅ = done. Replace the box as you go. In your Git repo the `- [ ]` boxes render as clickable checkboxes.
+
+**Active now — F1 research-question refactor (full plan in §5A):**
+
+- [ ] **Phase 0** — Lock the new RQ structure *(Opus high)*
+- [ ] **Phase 1** — §1.3 + §1.4
+- [ ] **Phase 2** — §4.7
+- [ ] **Phase 3** — Chapter 5
+- [ ] **Phase 4** — Chapter 6
+- [ ] **Phase 5** — §7.1 + Abstract
+- [ ] **Phase 6** — Sweep cross-refs / `\label` / captions
+
+Per-item progress for everything else is tracked in the **Done** column of §6.
+
+---
+
 ## 1. Extracted Feedback (master list)
 
 Each item has an ID used throughout. "Explicit" = stated directly; "Inferred" = implied by the conversation or by a praise/concern that carries an action.
@@ -389,60 +407,94 @@ Then make the current RQ1.1–RQ1.5b into **sub-stages / evaluation environments
 ## 5. Revision Roadmap (prioritised)
 
 ### Critical revisions — affect acceptance / examiner expectations / integrity
-1. **F1** — Refactor research questions into ~2–3 conceptual RQs; separate conceptual variables from evaluation environments. *(Do this first; everything else re-aligns to it.)* — confirm count via **C1/C8**.
-2. **F4** — Add AI-usage disclosure (+ sample prompt in annex). — confirm scope via **C3**.
-3. **F5** — Verify every reference is genuine and correctly cited.
+1. ☐ **F1** — Refactor research questions into ~2–3 conceptual RQs; separate conceptual variables from evaluation environments. *(Do this first; everything else re-aligns to it — broken into Phase 0–6 in §5A.)* — confirm count via **C1/C8**.
+2. ☐ **F4** — Add AI-usage disclosure (+ sample prompt in annex). — confirm scope via **C3**.
+3. ☐ **F5** — Verify every reference is genuine and correctly cited.
 
 ### Important revisions — improve rigor, clarity, coherence
-4. **F14** — Promote RQ1.4b into the main evaluation (after F1), keeping its scope caveat — confirm via **C4**.
-5. **F2** — Frame `b`-variants as base-case vs. alternative.
-6. **F3** — Keep RQ2.3 as the trade-off contribution under RQ2 — confirm via **C8**.
-7. **F6 + F7 + F22** — Add a Discussion reflection on generalisability (transformers/other NNs) and broader impact (per-layer policy, cross-org "digital embassies", inter-layer API).
-8. **F16** — Add local-vs-cloud infrastructure comparison table.
-9. **F11** — Add error bars / variability bands to latency figures — confirm scope via **C6**.
-10. **F12** — Name the latency-vs-service-count functional shape; reconcile "monotonic"/"non-linear" wording.
-11. **F13** — Ensure you can explain (and the text justifies) the statistical tests; prune any unused test.
-12. **F8** — Enlarge in-figure fonts (Background diagrams first).
+4. ☐ **F14** — Promote RQ1.4b into the main evaluation (after F1), keeping its scope caveat — confirm via **C4**.
+5. ☐ **F2** — Frame `b`-variants as base-case vs. alternative.
+6. ☐ **F3** — Keep RQ2.3 as the trade-off contribution under RQ2 — confirm via **C8**.
+7. ☐ **F6 + F7 + F22** — Add a Discussion reflection on generalisability (transformers/other NNs) and broader impact (per-layer policy, cross-org "digital embassies", inter-layer API).
+8. ☐ **F16** — Add local-vs-cloud infrastructure comparison table.
+9. ☐ **F11** — Add error bars / variability bands to latency figures — confirm scope via **C6**.
+10. ☐ **F12** — Name the latency-vs-service-count functional shape; reconcile "monotonic"/"non-linear" wording.
+11. ☐ **F13** — Ensure you can explain (and the text justifies) the statistical tests; prune any unused test.
+12. ☐ **F8** — Enlarge in-figure fonts (Background diagrams first).
 
 ### Minor revisions — editorial / formatting / structure
-13. **F15** — Move verbose run-config to appendix; reference key facts in body.
-14. **F9** — Shrink/rearrange the full-page figure — confirm which via **C2**.
-15. **F10** — Decide background-material placement.
-16. **F17** — Resolve Validation-vs-observations ordering — confirm via **C5**.
-17. **F19** — Highlight RQ↔related-work linkage at chapter end; add missing references.
-18. **F20** — Optionally retitle Chapter 3 as "Research Gap Analysis and Scope."
-19. **F18** — Continue sourcing tables to frozen artifacts (no change; maintain).
+13. ☐ **F15** — Move verbose run-config to appendix; reference key facts in body.
+14. ☐ **F9** — Shrink/rearrange the full-page figure — confirm which via **C2**.
+15. ☐ **F10** — Decide background-material placement.
+16. ☐ **F17** — Resolve Validation-vs-observations ordering — confirm via **C5**.
+17. ☐ **F19** — Highlight RQ↔related-work linkage at chapter end; add missing references.
+18. ☐ **F20** — Optionally retitle Chapter 3 as "Research Gap Analysis and Scope."
+19. ☐ **F18** — Continue sourcing tables to frozen artifacts (no change; maintain).
 
 ### Scope decision (separate track)
-20. **F21** — FABRIC multi-region / confidential-VM demo: go/no-go, coupled to defense date (**C7**). Affects only Results/Discussion; does not gate the defense.
+20. ☐ **F21** — FABRIC multi-region / confidential-VM demo: go/no-go, coupled to defense date (**C7**). Affects only Results/Discussion; does not gate the defense.
+
+---
+
+## 5A. F1 Execution Plan — Research-Question Refactor (step-by-step)
+
+F1 is the keystone item and is large enough to hit model rate limits if done in one pass. The fix is to separate the one-time **decision** (Phase 0, needs Opus high) from the **mechanical relabeling** (Phases 1–6, fine on a lighter model). Lock Phase 0 first; do not touch prose until the mapping table is settled.
+
+### Phase 0 — Lock the structure once  ☐
+The supervisor's framing: separate *conceptual changes* from *evaluation environments*.
+- **Conceptual changes (these become the RQs):** split granularity → security hardening.
+- **Evaluation environments (these become stages, NOT RQs):** controlled local → local Kubernetes → Azure AKS, with single-node as base case and multi-node as the alternative.
+
+| New | Question | Absorbs (old) |
+|-----|----------|---------------|
+| **RQ1** | Which architectural split of ResNet-18 gives a credible two-part decomposition, and how does its latency/overhead behave across the three evaluation environments? | RQ1.1, RQ1.2, RQ1.3 (split selection) + RQ1.4, RQ1.5 (as *environments*); RQ1.4b / RQ1.5b as base-vs-alternative |
+| **RQ2** | What performance and operational overhead does security hardening (identity + mTLS + authz, then selective confidential VM) add to the selected split deployment? | RQ2.1, RQ2.1b, RQ2.2 |
+| **RQ2.3** *(keep under RQ2; promotable to RQ3)* | Which hardening configuration is the most defensible trade-off across performance, operational complexity, and protection scope? | RQ2.3 |
+
+This works whether the supervisor lands on "two" or "three" RQs (**C1**) — RQ2.3 just detaches into RQ3 if needed.
+
+### Phases 1–6 — Apply mechanically (one section per message)
+Propagate the locked table outward in dependency order. Each is a separate, short request; none needs Opus high — they're relabeling, not reasoning.
+
+- [ ] **Phase 1 — §1.3 + §1.4.** Rewrite the RQ list and the Approach paragraph. *(Highest leverage; do first.)*
+- [ ] **Phase 2 — §4.7.** Relabel the stage-specific method subsections to the new scheme.
+- [ ] **Phase 3 — Chapter 5.** Section headers + the one-line intro per stage.
+- [ ] **Phase 4 — Chapter 6.** Section headers + the synthesis cross-references.
+- [ ] **Phase 5 — §7.1 + Abstract.** Update the summary narrative.
+- [ ] **Phase 6 — Sweep.** grep the source for stray `RQ1.4`, `RQ1.5b`, etc.; fix `\label` / `\ref` cross-references and figure captions.
+
+### Rate-limit strategy
+- **Model split:** Opus high for **Phase 0 only**; **Sonnet 4.6** (or Opus without extended thinking) for Phases 1–6 — mechanical edits don't need the reasoning budget and won't drain the Opus limit. Paste only the section being edited, never the whole thesis.
+- **Better: Claude Code on the repo.** The thesis is LaTeX sourced to GitHub; re-pasting `.tex` into chat each turn is what burns tokens. Claude Code edits the source files directly and rebuilds the PDF — hand it the Phase 0 table and say "apply Phase 1 to `introduction.tex`." This is what fixes the "thesis isn't being updated" problem, since it writes to the actual files.
+- **Note:** from the PDF alone the edits can't be applied for you in chat; paste the relevant `.tex` section and a ready-to-paste per-phase edit packet can be produced inline.
 
 ---
 
 ## 6. Implementation Checklist
 
-| # | Task | Thesis section(s) | Reason for change | Effort | Dependencies |
-|---|------|-------------------|-------------------|--------|--------------|
-| 1 | Restructure RQs into 2–3 conceptual questions; demote environments to sub-stages | §1.3; propagate to §1.4, §4.7, Ch.5, Ch.6, §7.1, Abstract | Examiner says environments aren't RQs (F1) | **High** | Resolve C1, C8 first |
-| 2 | Reframe single-node as base case, multi-node as alternative | §1.3, §4.7.5/.7/.11, §5.5/5.7/5.10, §6.2.2/6.2.4 | "B without A" reads oddly (F2) | Low | After #1 |
-| 3 | Keep RQ2.3 as trade-off contribution under RQ2 | §1.3, §4.7.13, §5.12, §6.3.3 | Valued conceptual contribution (F3) | Low | After #1; C8 |
-| 4 | Promote RQ1.4b to main evaluation, retain single-host caveat | §5.5, Appendix A.1, §4.7.5, §6.2.2 | One of the evaluation environments (F14) | Medium | After #1; C4 |
-| 5 | Write AI-usage disclosure section | New subsection in Ch.6/7; extend §4.10 | Required disclosure (F4) | Medium | C3 |
-| 6 | Add sample AI prompt to annex | Appendix A | Builds reader trust (F4) | Low | #5; C3 |
-| 7 | Verify all references / citations | References (p.125+); in-text | Guard against fabricated refs (F5) | Medium | Pairs with #5 |
-| 8 | Add generalisability + impact reflection (transformers, per-layer policy, digital embassies, inter-layer API) | Discussion (Ch.6); cross-ref §7.2 | Reflect on applicability & significance (F6/F7/F22) | Medium | Independent |
-| 9 | Add local-vs-cloud infrastructure comparison table | §4.2/§5.6.2 (Table 5.13 area) | Pre-empt "bigger cloud instance" critique (F16) | Low | Independent |
-| 10 | Add error bars / CI bands to latency figures | Figs 5.1, 5.3, 5.4, 5.6, 5.7 | Show measurement variability (F11) | Medium | C6; data already in CSVs |
-| 11 | Characterise latency curve shape; reconcile wording | Figs 5.3/5.4; §6.2.1, §6.2.5, Abstract | Name the function, not just "non-linear" (F12) | Low–Medium | Pairs with #10 |
-| 12 | Confirm/justify statistical tests; prepare viva explanation; prune unused tests | §4.5.3; §5.4.4, §6.4 notes; appendix | Defense readiness + rigor (F13) | Low–Medium | Independent |
-| 13 | Enlarge in-figure fonts; expand boxes | Figs 2.1–2.13 (then result figs) | Readability (F8) | Medium | Independent |
-| 14 | Shrink/rearrange the full-page figure | Likely Fig 2.5 or 2.10–2.13 | Flow (F9) | Low | C2 |
-| 15 | Move verbose run-config to appendix; reference in body | Tables 5.1/5.3/5.8/5.13 | Declutter body (F15) | Low | Independent |
-| 16 | Decide & apply background-material placement | Ch.2 vs Ch.4–5 | Conceptual vs chapter-specific (F10) | Low | Do during figure pass |
-| 17 | Resolve Validation-vs-observations order | §6.4 vs §6.1–6.3 | Possible reorder (F17) | Low | C5 |
-| 18 | Highlight RQ↔related-work links; add missing refs | §3.2, §3.5 | Praised; strengthen (F19) | Low | Independent |
-| 19 | Optional: retitle Chapter 3 | Ch.3 title / §3.5 | Signals gap analysis (F20) | Low | Independent |
-| 20 | Maintain artifact sourcing in table captions | Ch.5 captions; §4.8 | Praised; keep (F18) | None | — |
-| 21 | Decide FABRIC / confidential-VM demo | Ch.5/Ch.6 (if pursued) | Optional, defense-coupled (F21) | High (if yes) | C7 |
+| Done | # | Task | Thesis section(s) | Reason for change | Effort | Dependencies |
+|:----:|---|------|-------------------|-------------------|--------|--------------|
+| ☐ | 1 | Restructure RQs into 2–3 conceptual questions; demote environments to sub-stages *(see §5A, Phase 0–6)* | §1.3; propagate to §1.4, §4.7, Ch.5, Ch.6, §7.1, Abstract | Examiner says environments aren't RQs (F1) | **High** | Resolve C1, C8 first |
+| ☐ | 2 | Reframe single-node as base case, multi-node as alternative | §1.3, §4.7.5/.7/.11, §5.5/5.7/5.10, §6.2.2/6.2.4 | "B without A" reads oddly (F2) | Low | After #1 |
+| ☐ | 3 | Keep RQ2.3 as trade-off contribution under RQ2 | §1.3, §4.7.13, §5.12, §6.3.3 | Valued conceptual contribution (F3) | Low | After #1; C8 |
+| ☐ | 4 | Promote RQ1.4b to main evaluation, retain single-host caveat | §5.5, Appendix A.1, §4.7.5, §6.2.2 | One of the evaluation environments (F14) | Medium | After #1; C4 |
+| ☐ | 5 | Write AI-usage disclosure section | New subsection in Ch.6/7; extend §4.10 | Required disclosure (F4) | Medium | C3 |
+| ☐ | 6 | Add sample AI prompt to annex | Appendix A | Builds reader trust (F4) | Low | #5; C3 |
+| ☐ | 7 | Verify all references / citations | References (p.125+); in-text | Guard against fabricated refs (F5) | Medium | Pairs with #5 |
+| ☐ | 8 | Add generalisability + impact reflection (transformers, per-layer policy, digital embassies, inter-layer API) | Discussion (Ch.6); cross-ref §7.2 | Reflect on applicability & significance (F6/F7/F22) | Medium | Independent |
+| ☐ | 9 | Add local-vs-cloud infrastructure comparison table | §4.2/§5.6.2 (Table 5.13 area) | Pre-empt "bigger cloud instance" critique (F16) | Low | Independent |
+| ☐ | 10 | Add error bars / CI bands to latency figures | Figs 5.1, 5.3, 5.4, 5.6, 5.7 | Show measurement variability (F11) | Medium | C6; data already in CSVs |
+| ☐ | 11 | Characterise latency curve shape; reconcile wording | Figs 5.3/5.4; §6.2.1, §6.2.5, Abstract | Name the function, not just "non-linear" (F12) | Low–Medium | Pairs with #10 |
+| ☐ | 12 | Confirm/justify statistical tests; prepare viva explanation; prune unused tests | §4.5.3; §5.4.4, §6.4 notes; appendix | Defense readiness + rigor (F13) | Low–Medium | Independent |
+| ☐ | 13 | Enlarge in-figure fonts; expand boxes | Figs 2.1–2.13 (then result figs) | Readability (F8) | Medium | Independent |
+| ☐ | 14 | Shrink/rearrange the full-page figure | Likely Fig 2.5 or 2.10–2.13 | Flow (F9) | Low | C2 |
+| ☐ | 15 | Move verbose run-config to appendix; reference in body | Tables 5.1/5.3/5.8/5.13 | Declutter body (F15) | Low | Independent |
+| ☐ | 16 | Decide & apply background-material placement | Ch.2 vs Ch.4–5 | Conceptual vs chapter-specific (F10) | Low | Do during figure pass |
+| ☐ | 17 | Resolve Validation-vs-observations order | §6.4 vs §6.1–6.3 | Possible reorder (F17) | Low | C5 |
+| ☐ | 18 | Highlight RQ↔related-work links; add missing refs | §3.2, §3.5 | Praised; strengthen (F19) | Low | Independent |
+| ☐ | 19 | Optional: retitle Chapter 3 | Ch.3 title / §3.5 | Signals gap analysis (F20) | Low | Independent |
+| ☐ | 20 | Maintain artifact sourcing in table captions | Ch.5 captions; §4.8 | Praised; keep (F18) | None | — |
+| ☐ | 21 | Decide FABRIC / confidential-VM demo | Ch.5/Ch.6 (if pursued) | Optional, defense-coupled (F21) | High (if yes) | C7 |
 
 **Non-thesis action items from the session (logistics):** email Alexandros Koufakis (CC supervisor) for a June 3 chat on FABRIC; talk to Agalos about FABRIC availability; respond on the defense window (C7); follow up on the hardware-security company / Supercomputing demo.
 
