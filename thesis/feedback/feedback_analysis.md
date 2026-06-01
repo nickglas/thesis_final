@@ -13,8 +13,8 @@ A reading note before the detail: this was a *positive* session. The supervisor'
 
 **Active now — F1 research-question refactor (full plan in §5A):**
 
-- [ ] **Phase 0** — Lock the new RQ structure *(Opus high)*
-- [ ] **Phase 1** — §1.3 + §1.4
+- [x] **Phase 0** — Lock the new RQ structure *(Opus high)* — **DONE 2026-06-01**; 2 RQs, environment-coded stages. See `_rq_refactor_phase0_lock.md`.
+- [x] **Phase 1** — §1.3 + §1.4 — **DONE 2026-06-01**; rewrote RQ list to 2 RQs + stage paragraphs, updated Approach + Outline (`introduction.tex`).
 - [ ] **Phase 2** — §4.7
 - [ ] **Phase 3** — Chapter 5
 - [ ] **Phase 4** — Chapter 6
@@ -440,7 +440,7 @@ Then make the current RQ1.1–RQ1.5b into **sub-stages / evaluation environments
 
 F1 is the keystone item and is large enough to hit model rate limits if done in one pass. The fix is to separate the one-time **decision** (Phase 0, needs Opus high) from the **mechanical relabeling** (Phases 1–6, fine on a lighter model). Lock Phase 0 first; do not touch prose until the mapping table is settled.
 
-### Phase 0 — Lock the structure once  ☐
+### Phase 0 — Lock the structure once  ✅ (2026-06-01 — 2 RQs, environment-coded stages; see `_rq_refactor_phase0_lock.md`)
 The supervisor's framing: separate *conceptual changes* from *evaluation environments*.
 - **Conceptual changes (these become the RQs):** split granularity → security hardening.
 - **Evaluation environments (these become stages, NOT RQs):** controlled local → local Kubernetes → Azure AKS, with single-node as base case and multi-node as the alternative.
@@ -456,7 +456,7 @@ This works whether the supervisor lands on "two" or "three" RQs (**C1**) — RQ2
 ### Phases 1–6 — Apply mechanically (one section per message)
 Propagate the locked table outward in dependency order. Each is a separate, short request; none needs Opus high — they're relabeling, not reasoning.
 
-- [ ] **Phase 1 — §1.3 + §1.4.** Rewrite the RQ list and the Approach paragraph. *(Highest leverage; do first.)*
+- [x] **Phase 1 — §1.3 + §1.4.** Rewrite the RQ list and the Approach paragraph. *(Highest leverage; do first.)* — **DONE 2026-06-01.**
 - [ ] **Phase 2 — §4.7.** Relabel the stage-specific method subsections to the new scheme.
 - [ ] **Phase 3 — Chapter 5.** Section headers + the one-line intro per stage.
 - [ ] **Phase 4 — Chapter 6.** Section headers + the synthesis cross-references.
