@@ -1,5 +1,5 @@
 % timing.tex
-% RQ1.3 stage-level compute distribution figure.
+% Stage L3 stage-level compute distribution figure.
 % Required preamble packages:
 % \usepackage{graphicx}
 % \usepackage{tikz}
@@ -54,7 +54,7 @@
 ]
 
 % ------------------------------------------------------------------
-% Data source: RQ1.3 internal timing report.
+% Data source: Stage L3 internal timing report.
 %
 % Stage-level compute share:
 % layer4       31.28%
@@ -138,6 +138,6 @@
 
 \end{tikzpicture}%
 }
-\caption{Stage-level compute distribution from the RQ1.3 internal timing analysis. The final classification head contributes less than 1\% of total forward-pass compute, while \texttt{layer4} accounts for the largest stage-level share. This explains why \texttt{split\_after\_layer4} is raw-fast but compute-degenerate: almost all meaningful model computation remains before the split.}
+\caption{Stage-level compute distribution from the Stage~L3 internal timing analysis. The final classification head contributes less than 1\% of total forward-pass compute, while \texttt{layer4} accounts for the largest stage-level share. This explains why \texttt{split\_after\_layer4} is raw-fast but compute-degenerate: almost all meaningful model computation remains before the split.}
 \label{fig:rq13_stage_compute_distribution}
 \end{figure}

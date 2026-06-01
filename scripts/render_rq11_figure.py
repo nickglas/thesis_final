@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 from pathlib import Path
 from typing import Dict, List
 
@@ -68,6 +69,7 @@ def load_summaries(run_dir: Path) -> Dict[str, Dict[str, float]]:
         for row in reader:
             out[row["condition"]] = {
                 "mean_ms": float(row["mean_ms"]),
+                "std_ms": float(row["std_ms"]),
             }
     return out
 
@@ -112,14 +114,14 @@ def render_tex(
     summaries: Dict[str, Dict[str, float]], cf: Dict, run_id: str
 ) -> str:
     means = {c: summaries[c]["mean_ms"] for c in BAR_ORDER}
-    lo = min(means.values())
-    hi = max(means.values())
+    stds = {c: summaries[c]["std_ms"] for c in BAR_ORDER}
 
-    # y axis: leave ~1.5 ms padding below the smallest bar and 1.0 ms above
-    # the largest, snap to integers.
-    y_lo = int(lo) - 1
-    y_hi = int(hi) + 2
-    y_scale = 6.0 / (y_hi - y_lo)  # 6 plot-units tall regardless of range
+    # y axis must contain the +/- 1 SD error bars, not just the bar tops.
+    lo = min(means[c] - stds[c] for c in BAR_ORDER)
+    hi = max(means[c] + stds[c] for c in BAR_ORDER)
+    y_lo = int(math.floor(lo))
+    y_hi = int(math.ceil(hi))
+    y_scale = 7.0 / (y_hi - y_lo)  # taller plot keeps small mean gaps legible
 
     def y_of(latency: float) -> float:
         return (latency - y_lo) * y_scale
@@ -179,15 +181,18 @@ def render_tex(
         r"    vallabel/.style={font=\scriptsize\bfseries, text=black!75},"
     )
     out.append(
-        r"    note/.style={font=\scriptsize, text=black!65, align=center}"
+        r"    note/.style={font=\scriptsize, text=black!65, align=center},"
+    )
+    out.append(
+        r"    errbar/.style={draw=black!80, semithick, line cap=round}"
     )
     out.append(r"]")
     out.append("")
 
     # Provenance comment block (visible in the source for reviewers)
-    out.append("% Frozen means (ms) used for this figure:")
+    out.append("% Frozen means +/- 1 SD (ms) used for this figure:")
     for c in BAR_ORDER:
-        out.append(f"%   {c}: {means[c]:.4f}")
+        out.append(f"%   {c}: {means[c]:.4f} +/- {stds[c]:.4f}")
     out.append(f"% Raw fastest split: {cf.get('raw_fastest')}")
     out.append(f"% Selected main: {cf.get('selected_main')}")
     out.append(f"% Selected reference: {cf.get('selected_reference')}")
@@ -223,7 +228,7 @@ def render_tex(
     out.append(
         f"\\node[font=\\small, text=black!75] at"
         f" ({x_axis_label_x:.3f},-1.15)"
-        " {RQ1.1 condition};"
+        " {Stage~L1 condition};"
     )
     out.append("")
 
@@ -239,11 +244,35 @@ def render_tex(
 
     out.append("")
 
-    # Value labels above the bars
+    # Error bars: mean +/- 1 SD of per-iteration latency
+    cap = 0.18  # half-width of the horizontal caps
     for cond, center in zip(BAR_ORDER, bar_centers):
         mean = means[cond]
+        sd = stds[cond]
+        y_top = y_of(mean + sd)
+        y_bot = y_of(mean - sd)
         out.append(
-            f"\\node[vallabel, above] at ({center:.3f},{y_of(mean):.3f})"
+            f"\\draw[errbar] ({center:.3f},{y_bot:.3f}) --"
+            f" ({center:.3f},{y_top:.3f});"
+        )
+        out.append(
+            f"\\draw[errbar] ({center - cap:.3f},{y_top:.3f}) --"
+            f" ({center + cap:.3f},{y_top:.3f});"
+        )
+        out.append(
+            f"\\draw[errbar] ({center - cap:.3f},{y_bot:.3f}) --"
+            f" ({center + cap:.3f},{y_bot:.3f});"
+        )
+
+    out.append("")
+
+    # Value labels above the upper error-bar cap so they do not collide
+    for cond, center in zip(BAR_ORDER, bar_centers):
+        mean = means[cond]
+        sd = stds[cond]
+        out.append(
+            f"\\node[vallabel, above] at"
+            f" ({center:.3f},{y_of(mean + sd):.3f})"
             f" {{{mean:.2f}}};"
         )
 

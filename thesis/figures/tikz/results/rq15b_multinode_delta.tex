@@ -1,4 +1,4 @@
-% RQ1.5b multi-node penalty per condition.
+% Stage C (multi-node alternative) inter-node penalty per condition.
 % Same SKU (Standard_D8s_v3), same region (swedencentral); the only
 % intentional difference is single-node colocation vs multi_node_anti_affinity.
 %
@@ -7,9 +7,9 @@
 % regenerated plot.
 %
 % Data is taken from the frozen artefacts cited in the section:
-%   single-node (frozen RQ1.5,  rq1_5_fully_controlled_20260515_145954):
+%   single-node (frozen Stage C,  rq1_5_fully_controlled_20260515_145954):
 %       70.802 / 73.437 / 75.410 / 78.294 / 80.519 ms
-%   multi-node  (frozen RQ1.5b, rq1_5b_multinode_20260515_152628):
+%   multi-node  (frozen Stage C alt, rq1_5b_multinode_20260515_152628):
 %       73.108 / 76.470 / 77.541 / 82.103 / 84.605 ms
 %   exact delta (ms), rounded to three decimals in the thesis table:
 %        2.305 /  3.033 /  2.131 /  3.808 /  4.086
@@ -128,10 +128,10 @@
 % Legend
 \draw[snseries] (6.20,-0.55) -- (6.85,-0.55);
 \node[snpoint] at (6.525,-0.55) {};
-\node[legendlabel, anchor=west] at (6.95,-0.55) {Single-node AKS (RQ1.5)};
+\node[legendlabel, anchor=west] at (6.95,-0.55) {Single-node AKS (Stage~C)};
 
 \draw[mnseries] (6.20,-0.78) -- (6.85,-0.78);
 \node[mnpoint] at (6.525,-0.78) {};
-\node[legendlabel, anchor=west] at (6.95,-0.78) {Multi-node AKS (RQ1.5b)};
+\node[legendlabel, anchor=west] at (6.95,-0.78) {Multi-node AKS (Stage~C alternative)};
 
 \end{tikzpicture}
