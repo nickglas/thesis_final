@@ -1,7 +1,9 @@
-\section{RQ1.5 Azure Kubernetes Service Transfer Validation}
+\section{Stage~C -- Azure Kubernetes Service Transfer Validation}
 \label{sec:rq15}
 
-\subsection{Research Question}
+\subsection{Stage Objective}
+
+As the Azure cloud environment of RQ1, this stage addresses the following question:
 
 \begin{quote}
 \textit{Does the local Kubernetes latency pattern observed for the coarse-stage
@@ -9,12 +11,12 @@ ResNet-18 microservice chain transfer to Azure Kubernetes Service, and how do th
 absolute and relative costs change under managed cloud execution?}
 \end{quote}
 
-RQ1.5 moves the predefined RQ1.4 chain family from local \texttt{kind} Kubernetes to
+Stage~C moves the predefined Stage~K chain family from local \texttt{kind} Kubernetes to
 Azure Kubernetes Service (AKS). The purpose is not to select a new decomposition, but to
 test whether the architectural ordering observed in local Kubernetes remains credible
 when the same synchronously chained inference workload is executed on managed cloud
 infrastructure. The stage therefore compares absolute latency, relative overhead, and
-condition ordering between the frozen RQ1.4 local Kubernetes run and the frozen RQ1.5
+condition ordering between the frozen Stage~K local Kubernetes run and the frozen Stage~C
 AKS run.
 
 The literature framing for transfer-validation between local Kubernetes and
@@ -28,7 +30,7 @@ stability alongside means~\cite{benchmarking_sc15}.
 
 \subsection{Experimental Setup}
 
-The thesis-facing RQ1.5 benchmark used the frozen controlled AKS
+The thesis-facing Stage~C benchmark used the frozen controlled AKS
 transfer-validation benchmark \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.
 The deployment ran in namespace \texttt{rq15} on a single-node AKS cluster,
 with \texttt{Standard\_D8s\_v3} nodes (per
@@ -44,7 +46,7 @@ pinned container image digest:
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5 AKS benchmark configuration. Source: \texttt{merged\_results/config.yaml} and \texttt{deployment\_metadata.json} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
+\caption{Stage~C AKS benchmark configuration. Source: \texttt{merged\_results/config.yaml} and \texttt{deployment\_metadata.json} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
 \label{tab:rq15_config}
 \begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
 \toprule
@@ -75,20 +77,20 @@ Client CPU request / limit & 1 core / 1 core \\
 Client memory request / limit & 1~GiB / 1~GiB \\
 Pod QoS & \texttt{Guaranteed} for service pods \\
 Image pull policy & \texttt{Always} \\
-Carry-forward & Not applicable; RQ1.5 evaluates a predefined chain family \\
+Carry-forward & Not applicable; Stage~C evaluates a predefined chain family \\
 Parity validation & Local segment validation and live gRPC chain validation; \texttt{num\_inputs} $= 5$, \texttt{atol} $= 1 \times 10^{-5}$ \\
 Warmup calibration & Trailing window $= 10$, CV threshold $= 0.02$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The service-pod memory request and limit were raised from 512~MiB in RQ1.4 to
-1~GiB in RQ1.5. This is a within-experimenter configuration change rather than
+The service-pod memory request and limit were raised from 512~MiB in Stage~K to
+1~GiB in Stage~C. This is a within-experimenter configuration change rather than
 a managed-cloud constraint: it affects pod admission and the cgroup memory
 ceiling but not the single-threaded ResNet-18 CPU inference path itself. The
-client memory profile (1~GiB request / limit) is unchanged from RQ1.4, and the
+client memory profile (1~GiB request / limit) is unchanged from Stage~K, and the
 Guaranteed QoS class, CPU request/limit, image, and pull policy are otherwise
-identical to the RQ1.4 carry-forward setup.
+identical to the Stage~K carry-forward setup.
 
 Threading, affinity, and priority controls followed the same stabilisation intent as
 the preceding stages and were applied where the managed AKS runtime allowed.
@@ -108,7 +110,7 @@ monolithic and chained AKS deployments.
 
 \subsection{Conditions}
 
-RQ1.5 reused the same predefined chain family as RQ1.4:
+Stage~C reused the same predefined chain family as Stage~K:
 
 \begin{itemize}
     \item \textbf{\texttt{monolithic\_k8s\_1svc}}: Full ResNet-18 inference in a single Kubernetes service.
@@ -120,7 +122,7 @@ RQ1.5 reused the same predefined chain family as RQ1.4:
 
 Carry-forward is not applicable in this stage. The experiment evaluates a fixed
 deployment family in AKS rather than choosing a new split point.
-As in RQ1.4, the recorded tensor-byte totals are taken from the runner metadata and
+As in Stage~K, the recorded tensor-byte totals are taken from the runner metadata and
 include the input tensor as well as hop activations; they are therefore used as a
 consistent input-inclusive traffic proxy, not as a boundary-only activation-transfer
 size.
@@ -129,7 +131,7 @@ size.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5 AKS summary of mean latency and overhead vs.\ AKS monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
+\caption{Stage~C AKS summary of mean latency and overhead vs.\ AKS monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
 \label{tab:rq15_results}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lccccc}
@@ -148,7 +150,7 @@ size.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5 AKS overhead and inferred non-compute/platform cost breakdown. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}; the platform column is \texttt{non\_compute\_overhead\_ms\_mean}.}
+\caption{Stage~C AKS overhead and inferred non-compute/platform cost breakdown. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}; the platform column is \texttt{non\_compute\_overhead\_ms\_mean}.}
 \label{tab:rq15_overhead}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -164,13 +166,13 @@ size.
 }
 \end{table}
 
-The transfer comparison was derived directly from the frozen RQ1.4 and RQ1.5 summary
-CSV artifacts, because the generated RQ1.5 report does not itself embed the
+The transfer comparison was derived directly from the frozen Stage~K and Stage~C summary
+CSV artifacts, because the generated Stage~C report does not itself embed the
 cross-stage comparison.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5 transfer comparison between local Kubernetes and AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036} and \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
+\caption{Stage~C transfer comparison between local Kubernetes and AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036} and \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
 \label{tab:rq15_transfer}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -192,7 +194,7 @@ cross-stage comparison.
 \resizebox{0.92\textwidth}{!}{%
 \input{figures/tikz/results/rq15_transfer_overhead}
 }
-\caption{RQ1.5 normalised overhead transfer comparison between local Kubernetes and AKS. Overheads are computed relative to each environment's own monolithic Kubernetes baseline, so the figure visualises directional transfer of the service-count trend rather than raw latency equivalence.}
+\caption{Stage~C normalised overhead transfer comparison between local Kubernetes and AKS. Overheads are computed relative to each environment's own monolithic Kubernetes baseline, so the figure visualises directional transfer of the service-count trend rather than raw latency equivalence.}
 \label{fig:rq15_transfer_overhead}
 \end{figure}
 
@@ -208,7 +210,7 @@ overhead trend are preserved.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5 AKS cross-round consistency. Source: frozen RQ1.5 \texttt{merged\_results/round\_consistency.json}.}
+\caption{Stage~C AKS cross-round consistency. Source: frozen Stage~C \texttt{merged\_results/round\_consistency.json}.}
 \label{tab:rq15_rounds}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -239,24 +241,26 @@ supplementary because $N = 1{,}000$ per condition makes very small differences
 statistically significant. Cross-round stability, parity validation, and preserved
 ordering are the primary evidence for this stage.
 
-The interpretation of these results and the answer to RQ1.5 are presented in
+The interpretation of these results and their contribution to RQ1 are presented in
 \cref{sec:analysis-rq15}.
 
 % ────────────────────────────────────────────────────────────────────────────
-\section{RQ1.5b AKS Multi-Node Sensitivity}
+\section{Stage~C (Multi-Node Alternative) -- AKS Inter-Node Sensitivity}
 \label{sec:rq15b}
 
-\subsection{Research Question}
+\subsection{Stage Objective}
+
+As the cloud-environment alternative to the single-node Stage~C base case, this stage addresses the following question:
 
 \begin{quote}
 \textit{When every chain hop is forced across a node boundary, how much additional
 end-to-end latency does the inter-node network path add, relative to the same-node
-RQ1.5 baseline?}
+Stage~C baseline?}
 \end{quote}
 
-RQ1.5b is a sensitivity stage. It does not replace RQ1.5; the frozen single-node AKS
-results in \cref{sec:rq15} remain the thesis-facing primary numbers. The role of
-RQ1.5b is to quantify, in milliseconds, the inter-node penalty that the single-node
+The Stage~C multi-node alternative is a sensitivity stage. It does not replace the Stage~C base case; the frozen single-node AKS
+results in \cref{sec:rq15} remain the thesis-facing primary numbers. Its role
+is to quantify, in milliseconds, the inter-node penalty that the single-node
 design intentionally hides, so that the single-node deployment threat to validity
 becomes a bounded, measured cost rather than an unspecified one. Public-cloud
 networks exhibit performance variability that can shift absolute latency without
@@ -269,9 +273,9 @@ it.
 \resizebox{\textwidth}{!}{%
 \input{figures/tikz/background/rq14_vs_rq15b_placement_comparison}
 }
-\caption{Same chain, two topologies. (a) RQ1.4 / RQ1.5 single-node placement:
-all six pods on one node, every gRPC hop is loopback. (b) RQ1.4b / RQ1.5b
-multi-node placement: each chain segment lands on a distinct cluster node and
+\caption{Same chain, two topologies. (a) Stage~K / Stage~C single-node (base-case) placement:
+all six pods on one node, every gRPC hop is loopback. (b) Stage~K / Stage~C
+multi-node (alternative) placement: each chain segment lands on a distinct cluster node and
 the client lands on a sixth dedicated node, so every gRPC hop crosses the
 Azure VNet. The chain itself is identical between the two panels; only the
 pod-to-node assignment changes.}
@@ -280,12 +284,12 @@ pod-to-node assignment changes.}
 
 \subsection{Experimental Setup}
 
-The thesis-facing RQ1.5b benchmark used the frozen multi-node sensitivity run
+The thesis-facing Stage~C (multi-node) benchmark used the frozen multi-node sensitivity run
 \texttt{rq1\_5b\_multinode\_20260515\_152628}. The deployment ran in namespace
 \texttt{rq15b} on a multi-node AKS cluster in the \texttt{swedencentral} Azure
 region. All worker nodes were \texttt{Standard\_D8s\_v3} (per
 \texttt{node\_instance\_type} in \texttt{deployment\_metadata.json}) and shared
-one node pool, so the only intentional experimental difference from RQ1.5 is
+one node pool, so the only intentional experimental difference from Stage~C is
 the pod-to-node assignment.
 
 Multi-node placement was enforced by Kubernetes pod anti-affinity. Each service pod
@@ -307,15 +311,15 @@ node was distinct from every service node, as preserved in
 conditions in both the local segment validation and the live gRPC chain validation
 (\texttt{num\_inputs}~$=5$).
 
-The shared benchmark contract is otherwise unchanged from RQ1.5: ResNet-18 with
+The shared benchmark contract is otherwise unchanged from Stage~C: ResNet-18 with
 pretrained weights, CPU FP32 inference, the same five chain conditions, the same
 five-round / 200-iteration / 50-warmup discipline, the same Guaranteed-QoS pod
-profile (1~vCPU + 1~GiB per pod), and the same image used in RQ1.5
+profile (1~vCPU + 1~GiB per pod), and the same image used in Stage~C
 (\texttt{sha256:d292aef407ee8a15da2b}\allowbreak\texttt{daa680de1cc24b0975e7de81d27e1fc3}\allowbreak\texttt{a7d128b8736b}).
 
 \subsection{Conditions}
 
-RQ1.5b reuses the same predefined chain family as RQ1.4 and RQ1.5
+Stage~C (multi-node) reuses the same predefined chain family as Stage~K and Stage~C
 (\texttt{monolithic\_k8s\_1svc}, \texttt{chain\_2svc}, \texttt{chain\_3svc},
 \texttt{chain\_4svc}, \texttt{chain\_5svc}). The full family is included rather than
 a single representative because the per-condition delta is the headline metric: a
@@ -327,7 +331,7 @@ direct comparison shown in \cref{tab:rq15b_delta}.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5b AKS multi-node summary of mean latency and overhead vs.\ AKS multi-node monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
+\caption{Stage~C (multi-node) AKS summary of mean latency and overhead vs.\ the AKS multi-node monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
 \label{tab:rq15b_results}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lccccc}
@@ -346,7 +350,7 @@ direct comparison shown in \cref{tab:rq15b_delta}.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5b multi-node penalty, condition-by-condition vs.\ frozen RQ1.5 single-node AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954} and \texttt{rq1\_5b\_multinode\_20260515\_152628}; overhead points are with respect to each environment's own monolithic baseline (\cref{tab:rq15_results,tab:rq15b_results}).}
+\caption{Stage~C (multi-node) inter-node penalty, condition-by-condition vs.\ frozen Stage~C single-node AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954} and \texttt{rq1\_5b\_multinode\_20260515\_152628}; overhead points are with respect to each environment's own monolithic baseline (\cref{tab:rq15_results,tab:rq15b_results}).}
 \label{tab:rq15b_delta}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -365,7 +369,7 @@ direct comparison shown in \cref{tab:rq15b_delta}.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.5b AKS multi-node cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
+\caption{Stage~C (multi-node) AKS cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
 \label{tab:rq15b_rounds}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -387,11 +391,11 @@ The within-environment ordering is preserved
 and the per-hop addition does not keep growing: the
 \texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 2.502~ms,
 smaller than the preceding 4.562~ms step, mirroring the saturating per-hop
-behaviour observed in RQ1.4 (\cref{tab:rq14_results}). The same pattern is
-visible in the single-node RQ1.5 run, where the
+behaviour observed in Stage~K (\cref{tab:rq14_results}). The same pattern is
+visible in the single-node Stage~C run, where the
 \texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 2.225~ms
 versus a preceding 2.884~ms step (\cref{tab:rq15_results}), so the saturating
-last step is consistent across RQ1.4, RQ1.5, and RQ1.5b. Cross-round CVs are
+last step is consistent across Stage~K, Stage~C, and Stage~C (multi-node). Cross-round CVs are
 0.0036--0.0127 across all chained conditions. Because the placement metadata
 confirms distinct AKS nodes for the service pods, these CVs show that the
 distributed placement did not introduce large round-to-round drift in this
@@ -399,19 +403,19 @@ frozen run; they do not isolate a single causal source of stability.
 
 \paragraph{Effect-size note.} Per-iteration Cohen's $d$ and Mann--Whitney
 statistics are emitted alongside the frozen artefact in
-\texttt{merged\_results/effect\_sizes.csv} for completeness, but RQ1.5b is framed
-as a sensitivity stage on the single-node RQ1.5 primary. The headline numbers in
+\texttt{merged\_results/effect\_sizes.csv} for completeness, but Stage~C (multi-node) is framed
+as a sensitivity stage on the single-node Stage~C primary. The headline numbers in
 this section are therefore the per-condition multi-node penalty
 (\cref{tab:rq15b_delta}) and the cross-round CVs (\cref{tab:rq15b_rounds}); a
 full effect-size table analogous to \cref{tab:rq14_effects} is intentionally
-omitted to avoid implying that RQ1.5b is a second primary result.
+omitted to avoid implying that Stage~C (multi-node) is a second primary result.
 
 \begin{figure}[htbp]
 \centering
 \resizebox{0.92\textwidth}{!}{%
 \input{figures/tikz/results/rq15b_multinode_delta}
 }
-\caption{RQ1.5b multi-node penalty per condition. Same SKU
+\caption{Stage~C (multi-node) inter-node penalty per condition. Same SKU
 (\texttt{Standard\_D8s\_v3}), same region (\texttt{swedencentral}); the
 intentional experimental contrast is single-node colocation versus
 \texttt{multi\_node\_anti\_affinity} placement. The figure is manually
@@ -428,7 +432,7 @@ conditions but is not monotonic with chain depth: the
 \texttt{chain\_3svc} delta is smaller than the \texttt{chain\_2svc} delta,
 while the largest absolute penalty appears at \texttt{chain\_5svc}. The
 \texttt{monolithic\_k8s\_1svc} baseline is 2.305~ms slower in the multi-node
-placement than in the single-node RQ1.5 baseline. This is compatible with
+placement than in the single-node Stage~C baseline. This is compatible with
 the client now shipping a 588~KiB input tensor across the Azure VNet rather
 than over loopback; the cited RPC study supports the general mechanism that
 layered RPC stacks can add transport, parsing, copying, and serialisation
@@ -439,5 +443,5 @@ The chained conditions, with intermediate activations of
 largest absolute penalty. The within-environment monotonic ordering is
 preserved.
 
-The interpretation of these results and the answer to RQ1.5b are presented in
+The interpretation of these results and their contribution to RQ1 are presented in
 \cref{sec:analysis-rq15b}.

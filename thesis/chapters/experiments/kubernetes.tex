@@ -1,7 +1,9 @@
-\section{RQ1.4 Multi-Microservice Kubernetes Inference Chain}
+\section{Stage~K -- Multi-Microservice Kubernetes Inference Chain}
 \label{sec:rq14}
 
-\subsection{Research Question}
+\subsection{Stage Objective}
+
+As the local-Kubernetes environment of RQ1, this stage addresses the following question:
 
 \begin{quote}
 \textit{How does increasing the number of microservices affect end-to-end inference
@@ -9,8 +11,8 @@ cost when ResNet-18 is decomposed into synchronously chained coarse architectura
 under in-cluster Kubernetes execution?}
 \end{quote}
 
-RQ1.4 moves from the local split-selection and explanatory stages of
-RQ1.1--RQ1.3 to the final thesis-facing local Kubernetes benchmark for the
+Stage~K moves from the controlled-local split-selection and explanatory stages of
+Stages~L1--L3 to the final thesis-facing local Kubernetes benchmark for the
 coarse-stage ResNet-18 chain family.
 Rather than selecting a boundary through carry-forward, this stage benchmarks a
 predefined set of five in-cluster conditions from \texttt{monolithic\_k8s\_1svc} to
@@ -23,7 +25,7 @@ deployment overhead is discussed in
 
 \subsection{Experimental Setup}
 
-The thesis-facing RQ1.4 benchmark used the frozen controlled local Kubernetes run
+The thesis-facing Stage~K benchmark used the frozen controlled local Kubernetes run
 \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}. The environment snapshot
 (\texttt{merged\_results/environment.json}) records an Ubuntu/Linux runtime
 (\texttt{Linux-6.17.0-23-generic-x86\_64-with-glibc2.41}), Python~3.10.20, and
@@ -39,7 +41,7 @@ with CPU-only FP32 execution and input shape $1 \times 3 \times 224 \times 224$.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4 benchmark configuration}
+\caption{Stage~K benchmark configuration}
 \label{tab:rq14_config}
 \begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
 \toprule
@@ -67,7 +69,7 @@ Service pod memory request / limit & 512~MiB / 512~MiB \\
 Client CPU request / limit & 1 core / 1 core \\
 Client memory request / limit & 1~GiB / 1~GiB \\
 Image pull policy & \texttt{IfNotPresent} \\
-Carry-forward & Not applicable; RQ1.4 benchmarks a predefined configuration set \\
+Carry-forward & Not applicable; Stage~K benchmarks a predefined configuration set \\
 Parity validation & Local segment validation and live gRPC chain validation; \texttt{num\_inputs} $= 5$, \texttt{atol} $= 1 \times 10^{-5}$ \\
 Warmup calibration & Trailing window $= 10$, CV threshold $= 0.02$ \\
 \bottomrule
@@ -108,15 +110,15 @@ split-selection sections.
     \item \textbf{\texttt{chain\_5svc}}: Five services with splits after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. Recorded tensor bytes per request: 2058~KiB.
 \end{itemize}
 
-Carry-forward is not applicable in RQ1.4. The frozen \texttt{carry\_forward.json}
+Carry-forward is not applicable in Stage~K. The frozen \texttt{carry\_forward.json}
 states that carry-forward is defined only for the two-service split-selection experiments
-(RQ1.1 and RQ1.2), whereas RQ1.4 benchmarks this predefined Kubernetes chain set.
+(Stages~L1 and~L2), whereas Stage~K benchmarks this predefined Kubernetes chain set.
 
 \subsection{Results}
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4 summary of mean latency and overhead vs.\ Kubernetes monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
+\caption{Stage~K summary of mean latency and overhead vs.\ Kubernetes monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
 \label{tab:rq14_results}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lccccc}
@@ -138,7 +140,7 @@ states that carry-forward is defined only for the two-service split-selection ex
 \resizebox{0.92\textwidth}{!}{%
 \input{figures/tikz/results/rq14_kubernetes_chain_latency}
 }
-\caption{Mean end-to-end latency for the RQ1.4 local Kubernetes chain family
+\caption{Mean end-to-end latency for the Stage~K local Kubernetes chain family
 (\texttt{rq1\_4\_fully\_controlled\_20260515\_141036}). Latency increases as
 the predefined service-chain configurations move from one to five services, but
 the adjacent differences are descriptive comparisons across this predefined
@@ -154,7 +156,7 @@ configuration.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4 overhead and non-compute/platform cost breakdown. Recorded tensor-byte totals are taken from \texttt{total\_activation\_bytes\_mean} in \texttt{merged\_results/condition\_summaries.csv} and converted to KiB (1024 bytes/KiB); the metric includes the input tensor. The platform column is \texttt{non\_compute\_overhead\_ms\_mean}.}
+\caption{Stage~K overhead and non-compute/platform cost breakdown. Recorded tensor-byte totals are taken from \texttt{total\_activation\_bytes\_mean} in \texttt{merged\_results/condition\_summaries.csv} and converted to KiB (1024 bytes/KiB); the metric includes the input tensor. The platform column is \texttt{non\_compute\_overhead\_ms\_mean}.}
 \label{tab:rq14_overhead}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -172,7 +174,7 @@ configuration.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4 effect sizes relative to monolithic baseline. Source: \texttt{merged\_results/effect\_sizes.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
+\caption{Stage~K effect sizes relative to monolithic baseline. Source: \texttt{merged\_results/effect\_sizes.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
 \label{tab:rq14_effects}
 \begin{tabular}{lccc}
 \toprule
@@ -196,7 +198,7 @@ result stability and methodological validity.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4 cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
+\caption{Stage~K cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
 \label{tab:rq14_rounds}
 \begin{tabular}{lcccc}
 \toprule
@@ -218,19 +220,19 @@ remained low for all five conditions: 0.0085 for \texttt{monolithic\_k8s\_1svc},
 parity checks above, this supports treating the reported condition means as
 representative of the local in-cluster benchmark.
 
-The interpretation of these results and the answer to RQ1.4 are presented in
+The interpretation of these results and their contribution to RQ1 are presented in
 \cref{sec:analysis-rq14}.
 
-\section{RQ1.4b kind Multi-Worker CNI Sensitivity (appendix-only)}
+\section{Stage~K (Cross-Node Alternative) -- kind Multi-Worker CNI Sensitivity (appendix-only)}
 \label{sec:rq14b-stub}
 
-RQ1.4b is the kind multi-worker CNI sensitivity probe declared in
-\cref{sec:methods-rq14b}. As established in the methods, RQ1.4b is reported as
+The cross-node alternative to Stage~K is the kind multi-worker CNI sensitivity probe declared in
+\cref{sec:methods-rq14b}. As established in the methods, this alternative is reported as
 supporting sensitivity evidence only, not as a primary thesis-facing number:
 kind's worker ``nodes'' are Docker containers sharing one host kernel, so
-RQ1.4b measures CNI-bridge cost on a single physical host rather than real
+it measures CNI-bridge cost on a single physical host rather than real
 cross-host networking, and the genuine multi-host inter-node penalty is
-measured separately in \cref{sec:rq15b} on AKS. The condition summaries,
+measured separately by the Stage~C multi-node alternative in \cref{sec:rq15b} on AKS. The condition summaries,
 cross-round consistency, and per-condition kind-vs.-single-node deltas for
 this stage are therefore reported in \cref{sec:appendix-rq14b} rather than in
 the main results stream. The analytical reading of the same evidence -- its

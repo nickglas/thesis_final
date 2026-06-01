@@ -16,7 +16,7 @@ A reading note before the detail: this was a *positive* session. The supervisor'
 - [x] **Phase 0** — Lock the new RQ structure *(Opus high)* — **DONE 2026-06-01**; 2 RQs, environment-coded stages. See `_rq_refactor_phase0_lock.md`.
 - [x] **Phase 1** — §1.3 + §1.4 — **DONE 2026-06-01**; rewrote RQ list to 2 RQs + stage paragraphs, updated Approach + Outline (`introduction.tex`).
 - [x] **Phase 2** — §4.7 — **DONE 2026-06-01**; relabeled all of `methods.tex` (§4.1 overview + §4.7 stage subsections + inline refs) to L1/L2/L3/K/C/H1/H2 + trade-off. Compiles clean (148 pp, no undefined refs). `\label` keys kept for Phase 6.
-- [ ] **Phase 3** — Chapter 5
+- [x] **Phase 3** — Chapter 5 — **DONE 2026-06-01**; relabeled all 6 experiment files (coarse/fine/timing/kubernetes/azure/security) to the stage scheme; "Research Question" subsections → "Stage Objective"; frozen-artifact paths + `\label` keys preserved. Compiles clean (148 pp, no undefined refs).
 - [ ] **Phase 4** — Chapter 6
 - [ ] **Phase 5** — §7.1 + Abstract
 - [ ] **Phase 6** — Sweep cross-refs / `\label` / captions
@@ -458,7 +458,7 @@ Propagate the locked table outward in dependency order. Each is a separate, shor
 
 - [x] **Phase 1 — §1.3 + §1.4.** Rewrite the RQ list and the Approach paragraph. *(Highest leverage; do first.)* — **DONE 2026-06-01.**
 - [x] **Phase 2 — §4.7.** Relabel the stage-specific method subsections to the new scheme. — **DONE 2026-06-01** (whole `methods.tex` relabeled; verified by grep + clean compile).
-- [ ] **Phase 3 — Chapter 5.** Section headers + the one-line intro per stage.
+- [x] **Phase 3 — Chapter 5.** Section headers + the one-line intro per stage. — **DONE 2026-06-01** (all 6 files; verified by grep + clean compile).
 - [ ] **Phase 4 — Chapter 6.** Section headers + the synthesis cross-references.
 - [ ] **Phase 5 — §7.1 + Abstract.** Update the summary narrative.
 - [ ] **Phase 6 — Sweep.** grep the source for stray `RQ1.4`, `RQ1.5b`, etc.; fix `\label` / `\ref` cross-references and figure captions.

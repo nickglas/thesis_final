@@ -1,26 +1,26 @@
-\section{RQ1.1 Coarse Architectural Boundary Selection}
+\section{Stage~L1 -- Coarse Architectural Boundary Selection}
 \label{sec:rq11}
 
-\subsection{Research Question}
-This subsection addresses the following sub-research question:
+\subsection{Stage Objective}
+As the first controlled-local stage of RQ1, this stage addresses the following question:
 
 \begin{quote}
 \textit{Which coarse architectural stage boundaries provide the most suitable two-part microservice decompositions of ResNet-18 under controlled local execution, and how do their latency and boundary-crossing costs compare to monolithic inference?}
 \end{quote}
 
-RQ1.1 is designed as a coarse-boundary screening stage rather than an exhaustive exploration of all possible split points. Its purpose is to identify architecturally meaningful two-part decompositions that can be compared against monolithic inference under controlled local execution, and to determine which coarse boundaries provide the strongest carry-forward basis for later refinement. In this stage, suitability is not treated as a question of raw latency alone. It is evaluated in relation to the joint trade-off between end-to-end latency, activation-transfer burden, boundary-crossing cost, and the structural balance of computation across the two resulting services.
+Stage~L1 is designed as a coarse-boundary screening stage rather than an exhaustive exploration of all possible split points. Its purpose is to identify architecturally meaningful two-part decompositions that can be compared against monolithic inference under controlled local execution, and to determine which coarse boundaries provide the strongest carry-forward basis for later refinement. In this stage, suitability is not treated as a question of raw latency alone. It is evaluated in relation to the joint trade-off between end-to-end latency, activation-transfer burden, boundary-crossing cost, and the structural balance of computation across the two resulting services.
 
 The literature framing for coarse architectural boundary selection is discussed
 in \cref{sec:rw-split-computing,sec:rw-granularity}.
 
 \subsection{Experimental Setup}
-The RQ1.1 benchmark used the fully controlled local CPU-only configuration in order to minimize variance and isolate the effect of the partition boundary itself. The source configuration file is \texttt{configs/rq1/1.1/rq1\_1\_fully\_controlled.yaml}; an exact byte-for-byte snapshot is preserved alongside the frozen results as \texttt{config.yaml} in the artifact directory. The evaluated model was ResNet-18 with pretrained weights, executed on CPU in FP32 precision with an input shape of $1 \times 3 \times 224 \times 224$. The benchmark compared one monolithic baseline against four two-part split configurations, each corresponding to a coarse architectural stage boundary in ResNet-18.
+The Stage~L1 benchmark used the fully controlled local CPU-only configuration in order to minimize variance and isolate the effect of the partition boundary itself. The source configuration file is \texttt{configs/rq1/1.1/rq1\_1\_fully\_controlled.yaml}; an exact byte-for-byte snapshot is preserved alongside the frozen results as \texttt{config.yaml} in the artifact directory. The evaluated model was ResNet-18 with pretrained weights, executed on CPU in FP32 precision with an input shape of $1 \times 3 \times 224 \times 224$. The benchmark compared one monolithic baseline against four two-part split configurations, each corresponding to a coarse architectural stage boundary in ResNet-18.
 
-Activation-tensor sizes in this section are quoted in binary kibibytes (KiB, $1024$ bytes) for consistency with the gRPC message-size limit, which is also a binary quantity. Three further configuration files are present under \texttt{configs/rq1/1.1/} but do not contribute to the local-controlled RQ1.1 thesis-facing result reported here: \texttt{rq1\_1\_experimental.yaml} (a smoke test with minimal iterations, used only for pipeline validation), \texttt{rq1\_1\_threaded.yaml} (a four-core ancillary profile retained as a historical comparison point), and \texttt{rq1\_1\_azure\_fully\_controlled.yaml} (an AKS-backed coarse-split variant driven by \texttt{scripts/run\_rq11\_azure\_fully\_controlled.py}, retained for completeness but not part of the local single-host result reported in this section).
+Activation-tensor sizes in this section are quoted in binary kibibytes (KiB, $1024$ bytes) for consistency with the gRPC message-size limit, which is also a binary quantity. Three further configuration files are present under \texttt{configs/rq1/1.1/} but do not contribute to the local-controlled Stage~L1 thesis-facing result reported here: \texttt{rq1\_1\_experimental.yaml} (a smoke test with minimal iterations, used only for pipeline validation), \texttt{rq1\_1\_threaded.yaml} (a four-core ancillary profile retained as a historical comparison point), and \texttt{rq1\_1\_azure\_fully\_controlled.yaml} (an AKS-backed coarse-split variant driven by \texttt{scripts/run\_rq11\_azure\_fully\_controlled.py}, retained for completeness but not part of the local single-host result reported in this section).
 
 \begin{table}[htbp]
 \centering
-\caption{RQ1.1 benchmark configuration}
+\caption{Stage~L1 benchmark configuration}
 \label{tab:rq11-config}
 \begin{tabular}{ll}
 \toprule
@@ -73,7 +73,7 @@ These stage boundaries provide a coarse sweep across the network from earlier to
 
 \subsection{Results}
 \label{sec:rq11-results}
-The thesis-facing RQ1.1 benchmark used the frozen artifact
+The thesis-facing Stage~L1 benchmark used the frozen artifact
 \texttt{rq1\_1\_20260515\_111428} (source:
 \texttt{results/frozen\_new/rq1\_1\_20260515\_111428/condition\_summaries.csv}).
 Monolithic execution achieved the lowest mean end-to-end latency at
@@ -86,7 +86,7 @@ respectively, compared to monolithic execution.
 
 \begin{table}[htbp]
 \centering
-\caption{RQ1.1 summary of mean latency, dispersion, descriptive within-run per-iteration 95\% confidence interval on the mean, and overhead vs.\ monolithic. Source:
+\caption{Stage~L1 summary of mean latency, dispersion, descriptive within-run per-iteration 95\% confidence interval on the mean, and overhead vs.\ monolithic. Source:
 \texttt{condition\_summaries.csv} in
 \texttt{rq1\_1\_20260515\_111428}. Confidence intervals are reported from the same artifact's \texttt{ci95\_lower\_ms} / \texttt{ci95\_upper\_ms} columns and summarise per-iteration variation within this run.}
 \label{tab:rq11-results}
@@ -108,7 +108,7 @@ Split after layer4 & 79.58 & 78.85 & 2.43 & $[79.43,\ 79.73]$ & 3.0\% \\
 \resizebox{0.92\textwidth}{!}{%
 \input{figures/tikz/results/rq11_coarse_split_results}
 }
-\caption{RQ1.1 coarse split latency results under controlled local execution. Bar heights are the mean end-to-end latency per condition for the frozen run \texttt{rq1\_1\_20260515\_111428}; bar colours encode the role assigned by the carry-forward rule (baseline, selected\_main, selected\_reference, rejected, degenerate). \texttt{split\_after\_layer3} is the raw-fastest split in this run and is also non-degenerate; \texttt{split\_after\_layer4} is excluded by the compute-degeneracy rule despite its small intermediate activation. The carry-forward decision (see \texttt{carry\_forward.json} for the same run) selects \texttt{split\_after\_layer3} as the main candidate and \texttt{split\_after\_layer2} as the reference candidate. The figure is generated deterministically from the frozen \texttt{condition\_summaries.csv} and \texttt{carry\_forward.json} by \texttt{scripts/render\_rq11\_figure.py}.}
+\caption{Stage~L1 coarse split latency results under controlled local execution. Bar heights are the mean end-to-end latency per condition for the frozen run \texttt{rq1\_1\_20260515\_111428}; bar colours encode the role assigned by the carry-forward rule (baseline, selected\_main, selected\_reference, rejected, degenerate). \texttt{split\_after\_layer3} is the raw-fastest split in this run and is also non-degenerate; \texttt{split\_after\_layer4} is excluded by the compute-degeneracy rule despite its small intermediate activation. The carry-forward decision (see \texttt{carry\_forward.json} for the same run) selects \texttt{split\_after\_layer3} as the main candidate and \texttt{split\_after\_layer2} as the reference candidate. The figure is generated deterministically from the frozen \texttt{condition\_summaries.csv} and \texttt{carry\_forward.json} by \texttt{scripts/render\_rq11\_figure.py}.}
 \label{fig:rq11_coarse_split_results}
 \end{figure}
 
@@ -124,7 +124,7 @@ The boundary-crossing measurements further support this interpretation. The spli
 
 Cross-round consistency was strong across all configurations, indicating stable execution behavior. Per \texttt{round\_consistency.json} for the same artifact, the monolithic condition had a round coefficient of variation (CV) of 0.002, while \texttt{split\_after\_layer1}, \texttt{split\_after\_layer2}, \texttt{split\_after\_layer3}, and \texttt{split\_after\_layer4} had round CVs of 0.005, 0.011, 0.003, and 0.005, respectively.
 
-\paragraph{Scope caveat.} The numbers reported in this section are derived from a single frozen artifact (\texttt{rq1\_1\_20260515\_111428}) generated by a single benchmark run with the fixed seed $42$. The five rounds within that run randomise condition order but do not vary the input seed, the host, or the build, and cross-host or cross-seed replication is not in scope for RQ1.1. The mean-latency differences between the non-degenerate split conditions are small relative to their per-iteration standard deviation. Although the descriptive within-run per-iteration 95\% confidence intervals in \cref{tab:rq11-results} do not overlap between \texttt{split\_after\_layer3} and \texttt{split\_after\_layer2}, those intervals should not be read as host-independent uncertainty estimates. The absolute ranking within the non-degenerate set should therefore be read as ``the strongest carry-forward candidate observed in this frozen run'' rather than as a general ordering. The carry-forward decision is stated in terms of the predeclared rule (\cref{sec:methods-carryforward}) applied to this artifact, and the ranking is carried forward for refinement in RQ1.2 rather than treated as a final answer.
+\paragraph{Scope caveat.} The numbers reported in this section are derived from a single frozen artifact (\texttt{rq1\_1\_20260515\_111428}) generated by a single benchmark run with the fixed seed $42$. The five rounds within that run randomise condition order but do not vary the input seed, the host, or the build, and cross-host or cross-seed replication is not in scope for Stage~L1. The mean-latency differences between the non-degenerate split conditions are small relative to their per-iteration standard deviation. Although the descriptive within-run per-iteration 95\% confidence intervals in \cref{tab:rq11-results} do not overlap between \texttt{split\_after\_layer3} and \texttt{split\_after\_layer2}, those intervals should not be read as host-independent uncertainty estimates. The absolute ranking within the non-degenerate set should therefore be read as ``the strongest carry-forward candidate observed in this frozen run'' rather than as a general ordering. The carry-forward decision is stated in terms of the predeclared rule (\cref{sec:methods-carryforward}) applied to this artifact, and the ranking is carried forward for refinement in Stage~L2 rather than treated as a final answer.
 
-The interpretation of these results and the answer to RQ1.1 are presented in
+The interpretation of these results and their contribution to RQ1 are presented in
 \cref{sec:analysis-rq11}.
