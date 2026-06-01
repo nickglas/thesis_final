@@ -1,4 +1,4 @@
-% RQ1.4/1.5 vs RQ1.4b/1.5b placement — side-by-side comparison.
+% Stage K / Stage C single-node vs multi-node placement — side-by-side comparison.
 % Top panel: single-node placement (all six pods inside one node box).
 % Bottom panel: multi-node placement (each pod in its own node box, with
 % explicit VNet clouds between adjacent nodes).
@@ -114,7 +114,7 @@
 ]
 
 % =====================================================================
-% TOP PANEL — single-node placement (RQ1.4 / RQ1.5)
+% TOP PANEL — single-node placement (Stage K / Stage C)
 % =====================================================================
 \node[clientpod] (a_client) at (0,0) {Benchmark\\client pod};
 \node[pod, right=0.85cm of a_client] (a_p1) {Pod 1\\\texttt{stem+layer1}};
@@ -140,7 +140,7 @@
     cluster,
     fit=(a_node),
     label={[panelbanner]above:%
-        \textbf{(a)} RQ1.4 / RQ1.5 single-node placement \textemdash{} all pods on one node, every gRPC hop is loopback}
+        \textbf{(a)} Stage~K / Stage~C single-node placement \textemdash{} all pods on one node, every gRPC hop is loopback}
 ] (a_clusterbox) {};
 \end{pgfonlayer}
 
@@ -162,7 +162,7 @@
     (a_client.south);
 
 % =====================================================================
-% BOTTOM PANEL — multi-node placement (RQ1.4b / RQ1.5b)
+% BOTTOM PANEL — multi-node placement (Stage K / Stage C)
 % =====================================================================
 % Place far enough below the top panel to leave room for both clusters
 \node[clientpod] (b_client) at (0,-7.5) {Benchmark\\client pod};
@@ -190,7 +190,7 @@
     cluster,
     fit=(b_n0)(b_n1)(b_n2)(b_n3)(b_n4)(b_n5),
     label={[panelbanner]above:%
-        \textbf{(b)} RQ1.4b / RQ1.5b multi-node placement \textemdash{} every chain segment on a distinct node, every gRPC hop crosses the network}
+        \textbf{(b)} Stage~K / Stage~C multi-node placement \textemdash{} every chain segment on a distinct node, every gRPC hop crosses the network}
 ] (b_clusterbox) {};
 \end{pgfonlayer}
 

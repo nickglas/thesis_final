@@ -3,9 +3,9 @@
 
 % TODO(author): expand the appendix with supporting material as needed. The
 % intended contents, established in the evidence manifest, are:
-%   - RQ1.4b local-kind multi-node sensitivity (marked appendix-only in
+%   - Stage K (cross-node) local-kind multi-node sensitivity (marked appendix-only in
 %     thesis/papers/thesis_evidence_manifest.md, row "RQ1.4b").
-%   - RQ2.1 mTLS split-sensitivity and ablation campaign details
+%   - Stage H1 mTLS split-sensitivity and ablation campaign details
 %     (results/frozen_new/rq2_1_mtls_split_20260516_095406 and
 %     results/frozen_new/rq2_1_ablation_20260516_112348).
 %   - Any additional figures or tables too large for the main chapters.
@@ -16,28 +16,28 @@ figures or tables that are too large for the experiment chapters. The
 thesis-facing primary results remain those reported in
 \cref{ch:experiments,ch:analysis}.
 
-\section{RQ1.4b: kind Multi-Worker CNI Sensitivity Data}
+\section{Stage~K (Cross-Node Alternative): kind Multi-Worker CNI Sensitivity Data}
 \label{sec:appendix-rq14b}
 
-This section holds the appendix-only data tables for the RQ1.4b kind
+This section holds the appendix-only data tables for the Stage~K (cross-node) kind
 multi-worker CNI sensitivity stage. The methodological framing of this
 stage is given in \cref{sec:methods-rq14b}; the analytical reading and
 its scope-bounding role in the deployment narrative are in
 \cref{sec:analysis-rq14b}. As established in \cref{sec:methods-rq14b},
-RQ1.4b is reported as supporting sensitivity evidence only, not as a
+Stage~K (cross-node) is reported as supporting sensitivity evidence only, not as a
 primary thesis-facing number: kind's worker ``nodes'' are Docker
 containers sharing one host kernel and communicating over kind's CNI
-bridge, so RQ1.4b measures CNI-bridge cost on a single physical host
+bridge, so Stage~K (cross-node) measures CNI-bridge cost on a single physical host
 rather than real cross-host networking. The genuine multi-host
 inter-node penalty is measured separately in \cref{sec:rq15b} on AKS.
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4b condition summary on the six-worker kind cluster with
+\caption{Stage~K (cross-node) condition summary on the six-worker kind cluster with
 \texttt{multi\_node\_anti\_affinity} placement. Source:
 \texttt{merged\_results/condition\_summaries.csv} in
 \texttt{rq1\_4b\_20260515\_163322}. Overheads are computed against the
-RQ1.4b monolithic baseline.}
+Stage~K (cross-node) monolithic baseline.}
 \label{tab:rq14b_results}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lccccc}
@@ -56,10 +56,10 @@ RQ1.4b monolithic baseline.}
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4b cross-round consistency. Source:
+\caption{Stage~K (cross-node) cross-round consistency. Source:
 \texttt{merged\_results/round\_consistency.json} in
 \texttt{rq1\_4b\_20260515\_163322}. Round CVs are materially inflated
-relative to the single-node RQ1.4 baseline (\cref{tab:rq14_rounds}); the
+relative to the single-node Stage~K baseline (\cref{tab:rq14_rounds}); the
 highest CVs do not track chain depth, consistent with kind-CNI
 variability and shared-host effects on the single physical machine that
 hosts all six kind worker containers rather than with a chain-specific
@@ -80,8 +80,8 @@ noise mechanism.}
 
 \begin{table}[ht]
 \centering
-\caption{RQ1.4b kind-CNI per-condition penalty, condition-by-condition
-vs.\ the frozen single-node RQ1.4 baseline. Source:
+\caption{Stage~K (cross-node) kind-CNI per-condition penalty, condition-by-condition
+vs.\ the frozen single-node Stage~K baseline. Source:
 \texttt{merged\_results/condition\_summaries.csv} in
 \texttt{rq1\_4\_fully\_controlled\_20260515\_141036} and
 \texttt{rq1\_4b\_20260515\_163322}. The per-condition delta is computed
@@ -89,10 +89,10 @@ as $\Delta_c = \mathrm{mean}_c^{\mathrm{kind\text{-}cni}} -
 \mathrm{mean}_c^{\mathrm{single}}$, as declared in
 \cref{sec:methods-rq14b}. Following the cross-stage host-control caveat
 in \cref{sec:methods-rq14b}, the comparison is interpreted at the
-per-condition delta level only: RQ1.4b differs from RQ1.4 in host
+per-condition delta level only: Stage~K (cross-node) differs from Stage~K in host
 control state (governor / turbo / nice) as well as in topology. The
 monolithic delta is negative on average but is dominated by a
-first-round shift in RQ1.4b
+first-round shift in Stage~K (cross-node)
 (round means $\{62.000, 68.553, 68.677, 69.107, 69.119\}$~ms;
 \cref{tab:rq14b_rounds}) and a heavily skewed per-iteration
 distribution (mean 67.491~ms vs.\ median 61.917~ms;
@@ -102,7 +102,7 @@ kind multi-worker topology is faster than single-node placement.}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lccc}
 \toprule
-\textbf{Condition} & \textbf{RQ1.4 single-node mean (ms)} & \textbf{RQ1.4b kind multi-worker mean (ms)} & \textbf{$\Delta_c$ (ms)} \\
+\textbf{Condition} & \textbf{Stage~K single-node mean (ms)} & \textbf{Stage~K (cross-node) kind multi-worker mean (ms)} & \textbf{$\Delta_c$ (ms)} \\
 \midrule
 \texttt{monolithic\_k8s\_1svc} & 81.066 & 67.491  & $-13.575$ \\
 \texttt{chain\_2svc}           & 83.387 & 87.378  & $+3.991$ \\
@@ -127,12 +127,12 @@ profile, one thread per pool, CPU affinity to core~0) were applied
 uniformly across the five conditions, as preserved in
 \texttt{merged\_results/deployment\_metadata.json} and
 \texttt{merged\_results/environment.json}. Host-level controls were
-weaker than in RQ1.4: writes to \texttt{/sys} failed because those
+weaker than in Stage~K: writes to \texttt{/sys} failed because those
 paths were read-only in the containerised environment, the detected
 governor was \texttt{schedutil} (rather than \texttt{performance}),
 turbo was enabled, and the \texttt{nice~-5} request failed for
 permission reasons (\texttt{environment.json}). This degraded
 host-control state is one reason \cref{sec:analysis-rq14b} interprets
-the comparison against RQ1.4 at the per-condition delta level only and
-treats RQ1.4b as a kind-CNI sensitivity envelope rather than a clean
-topology-only swap from RQ1.4.
+the comparison against Stage~K at the per-condition delta level only and
+treats Stage~K (cross-node) as a kind-CNI sensitivity envelope rather than a clean
+topology-only swap from Stage~K.

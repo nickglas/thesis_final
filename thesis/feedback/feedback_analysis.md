@@ -19,7 +19,16 @@ A reading note before the detail: this was a *positive* session. The supervisor'
 - [x] **Phase 3** — Chapter 5 — **DONE 2026-06-01**; relabeled all 6 experiment files (coarse/fine/timing/kubernetes/azure/security) to the stage scheme; "Research Question" subsections → "Stage Objective"; frozen-artifact paths + `\label` keys preserved. Compiles clean (148 pp, no undefined refs).
 - [x] **Phase 4** — Chapter 6 — **DONE 2026-06-01**; relabeled all analysis files (split/deployment/security per-stage + synthesis + validation + threats + evaluation). Per-stage "Answer to RQ1.x" → "Stage~Lx outcome" etc.; RQ2.3→"Trade-off Synthesis". Compiles clean (150 pp, no undefined refs).
 - [x] **Phase 5** — §7.1 + Abstract — **DONE 2026-06-01**; conclusion §7.1/Contributions/Limitations relabeled to stage scheme (RQ1/RQ2 strands kept top-level; RQ2.3→trade-off synthesis). Abstract already narrative (no RQ IDs). Compiles clean (150 pp).
-- [ ] **Phase 6** — Sweep cross-refs / `\label` / captions — **remaining stray sub-IDs: `related_work.tex` (Ch.3, F19) and `background.tex` (Ch.2); plus appendix + tikz figure files.**
+- [x] **Phase 6** — Sweep cross-refs / `\label` / captions — **DONE 2026-06-01**; relabeled `related_work.tex`, `background.tex`, `appendix.tex`, and all `figures/tikz/background/*` figure node-text + comments. Whole repo now has **zero** stray sub-IDs except one intentional comment in `appendix.tex:7` referencing the external evidence-manifest row `"RQ1.4b"` (preserved like a frozen-artifact key). `\label`/`\cref` keys left intact. Final compile: 152 pp, no undefined refs/citations. **F1 COMPLETE.**
+
+**✅ Full F1 audit re-verified 2026-06-01** (source-level, not just trusted from prior notes):
+- Repo-wide grep `RQ\d\.\d`: **0** stray sub-IDs (only intentional `appendix.tex:7` manifest-row reference remains).
+- `Answer to RQ` / `sub-research question` / `\subsection{Research Question}`: **0** remaining (all reframed to "Stage … outcome." / "Stage Objective").
+- Replacement-corruption check (`Stage~Kb`/`Stage~Cb`/…): **0**.
+- All §4.7 method subsections, all Ch.5 section headers, all Ch.6 per-stage subsections, the appendix section, and 6 TikZ figures carry the new stage labels (verified by header grep).
+- Intro carries the 2-RQ `description` list (`\label{rq:rq1/rq2}`) + "Stages of RQ1/RQ2" paragraphs; all 9 analysis stages carry "Stage … outcome." headers.
+- No stray `RQ3+` or residual `b`-suffix tokens.
+- Final build: **main.pdf 152 pp**, log has **no undefined/multiply-defined references or citations** (only pre-existing benign small-caps font-shape warnings).
 
 Per-item progress for everything else is tracked in the **Done** column of §6.
 
@@ -407,14 +416,14 @@ Then make the current RQ1.1–RQ1.5b into **sub-stages / evaluation environments
 ## 5. Revision Roadmap (prioritised)
 
 ### Critical revisions — affect acceptance / examiner expectations / integrity
-1. ☐ **F1** — Refactor research questions into ~2–3 conceptual RQs; separate conceptual variables from evaluation environments. *(Do this first; everything else re-aligns to it — broken into Phase 0–6 in §5A.)* — confirm count via **C1/C8**.
+1. ✅ **F1** — Refactor research questions into ~2–3 conceptual RQs; separate conceptual variables from evaluation environments. *(Do this first; everything else re-aligns to it — broken into Phase 0–6 in §5A.)* — confirm count via **C1/C8**. — **DONE 2026-06-01 (2 RQs; environment-coded stages; Phases 0–6 complete).**
 2. ☐ **F4** — Add AI-usage disclosure (+ sample prompt in annex). — confirm scope via **C3**.
 3. ☐ **F5** — Verify every reference is genuine and correctly cited.
 
 ### Important revisions — improve rigor, clarity, coherence
 4. ☐ **F14** — Promote RQ1.4b into the main evaluation (after F1), keeping its scope caveat — confirm via **C4**.
-5. ☐ **F2** — Frame `b`-variants as base-case vs. alternative.
-6. ☐ **F3** — Keep RQ2.3 as the trade-off contribution under RQ2 — confirm via **C8**.
+5. ✅ **F2** — Frame `b`-variants as base-case vs. alternative. — **DONE (folded into F1).**
+6. ✅ **F3** — Keep RQ2.3 as the trade-off contribution under RQ2 — confirm via **C8**. — **DONE (folded into F1; retained as "Trade-off Synthesis").**
 7. ☐ **F6 + F7 + F22** — Add a Discussion reflection on generalisability (transformers/other NNs) and broader impact (per-layer policy, cross-org "digital embassies", inter-layer API).
 8. ☐ **F16** — Add local-vs-cloud infrastructure comparison table.
 9. ☐ **F11** — Add error bars / variability bands to latency figures — confirm scope via **C6**.
@@ -461,7 +470,7 @@ Propagate the locked table outward in dependency order. Each is a separate, shor
 - [x] **Phase 3 — Chapter 5.** Section headers + the one-line intro per stage. — **DONE 2026-06-01** (all 6 files; verified by grep + clean compile).
 - [x] **Phase 4 — Chapter 6.** Section headers + the synthesis cross-references. — **DONE 2026-06-01** (all analysis files; verified by grep + clean compile).
 - [x] **Phase 5 — §7.1 + Abstract.** Update the summary narrative. — **DONE 2026-06-01** (conclusion relabeled; abstract had no RQ IDs; clean compile).
-- [ ] **Phase 6 — Sweep.** grep the source for stray `RQ1.4`, `RQ1.5b`, etc.; fix `\label` / `\ref` cross-references and figure captions.
+- [x] **Phase 6 — Sweep.** grep the source for stray `RQ1.4`, `RQ1.5b`, etc.; fix `\label` / `\ref` cross-references and figure captions. — **DONE 2026-06-01** (Ch.2/3, appendix, tikz figures; zero stray sub-IDs repo-wide except the intentional manifest reference; clean 152 pp compile).
 
 ### Rate-limit strategy
 - **Model split:** Opus high for **Phase 0 only**; **Sonnet 4.6** (or Opus without extended thinking) for Phases 1–6 — mechanical edits don't need the reasoning budget and won't drain the Opus limit. Paste only the section being edited, never the whole thesis.
@@ -474,9 +483,9 @@ Propagate the locked table outward in dependency order. Each is a separate, shor
 
 | Done | # | Task | Thesis section(s) | Reason for change | Effort | Dependencies |
 |:----:|---|------|-------------------|-------------------|--------|--------------|
-| ☐ | 1 | Restructure RQs into 2–3 conceptual questions; demote environments to sub-stages *(see §5A, Phase 0–6)* | §1.3; propagate to §1.4, §4.7, Ch.5, Ch.6, §7.1, Abstract | Examiner says environments aren't RQs (F1) | **High** | Resolve C1, C8 first |
-| ☐ | 2 | Reframe single-node as base case, multi-node as alternative | §1.3, §4.7.5/.7/.11, §5.5/5.7/5.10, §6.2.2/6.2.4 | "B without A" reads oddly (F2) | Low | After #1 |
-| ☐ | 3 | Keep RQ2.3 as trade-off contribution under RQ2 | §1.3, §4.7.13, §5.12, §6.3.3 | Valued conceptual contribution (F3) | Low | After #1; C8 |
+| ✅ | 1 | Restructure RQs into 2–3 conceptual questions; demote environments to sub-stages *(see §5A, Phase 0–6)* | §1.3; propagate to §1.4, §4.7, Ch.5, Ch.6, §7.1, Abstract | Examiner says environments aren't RQs (F1) | **High** | Resolve C1, C8 first — **DONE 2026-06-01 (C1=2 RQs, C8=RQ2.3 under RQ2). Phases 0–6 all complete; 152pp clean compile.** |
+| ✅ | 2 | Reframe single-node as base case, multi-node as alternative | §1.3, §4.7.5/.7/.11, §5.5/5.7/5.10, §6.2.2/6.2.4 | "B without A" reads oddly (F2) | Low | After #1 — **DONE; folded into F1: base case vs. "Stage K/C/H1 (cross-node/multi-node) alternative" used throughout.** |
+| ✅ | 3 | Keep RQ2.3 as trade-off contribution under RQ2 | §1.3, §4.7.13, §5.12, §6.3.3 | Valued conceptual contribution (F3) | Low | After #1; C8 — **DONE; retained as "Trade-off Synthesis" under RQ2 (not standalone).** |
 | ☐ | 4 | Promote RQ1.4b to main evaluation, retain single-host caveat | §5.5, Appendix A.1, §4.7.5, §6.2.2 | One of the evaluation environments (F14) | Medium | After #1; C4 |
 | ☐ | 5 | Write AI-usage disclosure section | New subsection in Ch.6/7; extend §4.10 | Required disclosure (F4) | Medium | C3 |
 | ☐ | 6 | Add sample AI prompt to annex | Appendix A | Builds reader trust (F4) | Low | #5; C3 |

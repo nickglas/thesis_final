@@ -61,7 +61,7 @@ activation tensor.
 \label{sec:bg-coarse-splits}
 
 The stage structure of ResNet-18 motivates the coarse split choices used later in
-RQ1.1. The thesis does not treat every primitive operation as an equally meaningful
+Stage~L1. The thesis does not treat every primitive operation as an equally meaningful
 split candidate. Instead, the initial coarse sweep uses the four residual-stage
 boundaries after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and
 \texttt{layer4}. These boundaries preserve the architectural stage structure of
@@ -82,11 +82,11 @@ search over depth alone~\cite{dnnsplit,deeperthings,survey_partitioning}.
 \resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/rq11_coarse_split_boundaries.tex}%
 }
-\caption{Coarse ResNet-18 partition boundaries evaluated in RQ1.1. The stem and classification head are collapsed into single blocks, while the four residual stages are shown as the candidate split locations.}
+\caption{Coarse ResNet-18 partition boundaries evaluated in Stage~L1. The stem and classification head are collapsed into single blocks, while the four residual stages are shown as the candidate split locations.}
 \label{fig:rq11_coarse_split_boundaries}
 \end{figure}
 
-As shown in \cref{fig:rq11_coarse_split_boundaries}, RQ1.1 evaluates split
+As shown in \cref{fig:rq11_coarse_split_boundaries}, Stage~L1 evaluates split
 points after the four major residual stages rather than inside the stem or
 classification head.
 
@@ -130,7 +130,7 @@ computational structure~\cite{fine_grained_partitioning,hierarchical_partitionin
 \resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/rq12_split_after_layer3_block0_segments.tex}%
 }
-\caption{Block-level two-segment decomposition used in RQ1.2. The refined split point is placed inside \texttt{layer3}, after the first residual block. Segment 1 executes the stem through \texttt{layer3.0}; Segment 2 receives the intermediate activation tensor and executes \texttt{layer3.1} through the classification head.}
+\caption{Block-level two-segment decomposition used in Stage~L2. The refined split point is placed inside \texttt{layer3}, after the first residual block. Segment 1 executes the stem through \texttt{layer3.0}; Segment 2 receives the intermediate activation tensor and executes \texttt{layer3.1} through the classification head.}
 \label{fig:rq12_split_after_layer3_block0_segments}
 \end{figure}
 
@@ -173,13 +173,13 @@ effects from container execution, service networking, CNI behavior, and managed-
 infrastructure. The single-node and multi-node placements used later are shown in
 \cref{fig:rq14_chain5_kubernetes_placement,fig:rq15b_chain5_multinode_placement}.
 
-%% RQ1.4 Kubernetes 5-service pod/service placement figure
+%% Stage~K Kubernetes 5-service pod/service placement figure
 \begin{figure}[htbp]
 \centering
 \resizebox{0.98\textwidth}{!}{%
 \input{../figures/tikz/background/rq14_chain5_kubernetes_placement.tex}%
 }
-\caption{Kubernetes pod and service placement for the RQ1.4 five-service chain. The benchmark client and all inference pods are placed on the same Kubernetes node, while each model segment is exposed through a Kubernetes Service and communicates using synchronous gRPC forwarding. The labels above the arrows show the activation-transfer size at each coarse ResNet-18 boundary.}
+\caption{Kubernetes pod and service placement for the Stage~K five-service chain. The benchmark client and all inference pods are placed on the same Kubernetes node, while each model segment is exposed through a Kubernetes Service and communicates using synchronous gRPC forwarding. The labels above the arrows show the activation-transfer size at each coarse ResNet-18 boundary.}
 \label{fig:rq14_chain5_kubernetes_placement}
 \end{figure}
 
@@ -188,11 +188,11 @@ infrastructure. The single-node and multi-node placements used later are shown i
 \resizebox{0.95\textwidth}{!}{%
 \input{../figures/tikz/background/rq15b_chain5_multinode_placement.tex}%
 }
-\caption{RQ1.5b AKS multi-node placement of \texttt{chain\_5svc}.
+\caption{Stage~C (multi-node) AKS placement of \texttt{chain\_5svc}.
 Each chain segment lands on a distinct cluster node; the benchmark
 client pod lands on a sixth dedicated node. Every gRPC hop therefore
 crosses a node boundary, in contrast to the same-node
-layout used for RQ1.4 and RQ1.5
+layout used for Stage~K and Stage~C
 (\cref{fig:rq14_chain5_kubernetes_placement}).}
 \label{fig:rq15b_chain5_multinode_placement}
 \end{figure}
@@ -239,7 +239,7 @@ identity issuer that mints SPIFFE workload identities and certificates for each
 sidecar, which is what allows the receiving sidecar to bind an
 \texttt{AuthorizationPolicy} to a peer service-account identity. A non-mesh
 probe that lacks a SPIFFE identity is denied at the receiving sidecar; this is
-the property that the RQ2.1 direct non-mesh denial probe exercises against
+the property that the Stage~H1 direct non-mesh denial probe exercises against
 the protected downstream segments.
 
 \begin{figure}[htbp]

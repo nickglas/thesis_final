@@ -52,7 +52,7 @@ position of the boundary remains central to the latency and accuracy
 trade-off~\cite{bottlefit,bottlenet_pp}.
 
 The experiments in this thesis use these findings to justify a coarse-to-fine design.
-RQ1.1 evaluates residual-stage boundaries in ResNet-18, and RQ1.2 adds a block-level
+Stage~L1 evaluates residual-stage boundaries in ResNet-18, and Stage~L2 adds a block-level
 boundary inside the carried-forward region. The goal is not to claim that the selected
 boundaries are globally optimal for all DNNs. Instead, the goal is to show how
 activation-transfer size and compute placement interact in a reproducible microservice
@@ -79,7 +79,7 @@ Kubernetes networking can affect communication cost~\cite{cni_k8s_ic2e21}. Cloud
 environments also exhibit network-performance variability that can change application
 scalability and measurement stability~\cite{noise_in_clouds}. For this reason, this
 thesis does not treat the local Kubernetes and AKS stages as numerical replicas.
-Instead, RQ1.5 asks whether the ordering and relative overhead trends from local
+Instead, Stage~C asks whether the ordering and relative overhead trends from local
 Kubernetes transfer directionally to managed AKS.
 
 \section{Security Hardening}
@@ -94,7 +94,7 @@ boundaries, but also that it can add latency and CPU/resource overhead, with the
 cost depending on mesh configuration and workload~\cite{meshinsight_socc23,bremlerbarr2025mtls}.
 Work on service-mesh control-plane
 trust further cautions that mesh CAs and control planes remain security-critical
-components~\cite{poudel2025mazu}. RQ2.1 therefore treats mTLS and authorization as a
+components~\cite{poudel2025mazu}. Stage~H1 therefore treats mTLS and authorization as a
 bounded communication-hardening layer, not as a complete security solution.
 
 Confidential-computing work motivates the second hardening layer. The motivation
@@ -122,7 +122,7 @@ under SEV-SNP: HECKLER~\cite{schluter2024_heckler} uses malicious-interrupt
 injection to bypass OpenSSH and sudo authentication on production SEV-SNP
 and TDX, and additionally breaks execution integrity of analytical
 workloads on SEV-SNP, an attack surface that hardware memory encryption
-alone does not cover. RQ2.2 follows this bounded framing by
+alone does not cover. Stage~H2 follows this bounded framing by
 measuring VM-level confidential execution on AKS for the downstream service
 only, rather than claiming application-level enclave isolation or evaluating
 those residual attack surfaces.
