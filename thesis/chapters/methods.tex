@@ -206,6 +206,60 @@ cloud-native deployment rather than as experimental flaws, because they affect a
 conditions within a stage symmetrically.
 
 % ─────────────────────────────────────────────────────────────────────────────
+\section{Execution Environments and Resource Parity}
+\label{sec:methods-envparity}
+
+To make the comparison across environments fair, and to pre-empt the concern that the
+cloud deployment was simply given a larger machine, \cref{tab:env-parity} sets the local
+and cloud infrastructure side by side. The binding control is that each inference service
+is constrained to a single CPU core and a fixed memory request in every environment ---
+pinned to one physical core locally, and capped at one CPU through Guaranteed-QoS pod
+requests in both Kubernetes settings --- so the per-service compute budget is identical
+whether a service runs on the local host, in the local \texttt{kind} cluster, or on AKS.
+If anything, the managed AKS node (8~vCPUs) is \emph{smaller} than the local host (8
+physical cores / 16 hardware threads), so the cloud is not advantaged in per-service or
+per-node compute.
+
+The processor microarchitectures do differ: the local host is an AMD Ryzen~7 7800X3D
+desktop part, whereas the AKS SKUs are datacentre Intel Xeon (\texttt{Standard\_D8s\_v3})
+and AMD EPYC (the \texttt{Standard\_D8as\_v5} and AMD SEV-SNP \texttt{Standard\_DC8as\_v5}
+parts) processors. This is precisely why the thesis compares \emph{within-environment}
+normalised overhead rather than absolute latency across environments
+(\cref{sec:methods-statistics}); the parity that matters for fairness is the per-service
+resource allocation, not identical silicon. The table also records the CPU-stabilisation
+controls that are enforceable locally but not on the managed nodes (\cref{sec:methods-cpu}).
+
+\begin{table}[ht]
+\centering
+\caption{Local versus cloud infrastructure and per-service resource allocation across the
+evaluation environments. The per-service CPU and memory rows are the binding allocation;
+the node rows are the host or VM size. The AKS column lists the \texttt{Standard\_D8s\_v3}
+SKU used for the Stage~C and Stage~H1 clusters; Stage~H2 substitutes the matched
+\texttt{Standard\_D8as\_v5} (standard) and \texttt{Standard\_DC8as\_v5} (AMD SEV-SNP)
+SKUs, both also 8~vCPU / 32~GiB. Sources: the frozen local \texttt{environment.json}; the
+AKS \texttt{deployment\_metadata.json}; and the published Azure VM-size specifications.}
+\label{tab:env-parity}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{llll}
+\toprule
+\textbf{Property} & \textbf{Controlled local} & \textbf{Local \texttt{kind}} & \textbf{Azure AKS} \\
+                  & (Stages~L1--L3) & (Stage~K) & (Stage~C, RQ2) \\
+\midrule
+Host / node          & AMD Ryzen~7 7800X3D     & same host               & \texttt{Standard\_D8s\_v3} \\
+Node CPUs            & 8 cores / 16 threads    & 8 cores / 16 threads    & 8 vCPUs \\
+Node memory          & 32~GB DDR5              & 32~GB DDR5              & 32~GiB \\
+Per-service CPU      & 1 physical core (pinned) & 1 CPU (request = limit) & 1 CPU (Guaranteed QoS) \\
+Per-service memory   & single host process     & 512~MiB pod             & 1~GiB pod \\
+Threads (PyTorch/OMP/MKL) & 1                  & 1                       & 1 \\
+CPU governor         & \texttt{performance} (enforced) & not enforceable & unavailable \\
+Turbo boost          & disabled (enforced)     & not enforceable         & unavailable \\
+Process priority (\texttt{nice}) & $-5$ (applied) & requested, not applied & $0$ (denied) \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
 \section{Measurement and Statistical Analysis}
 \label{sec:methods-statistics}
 

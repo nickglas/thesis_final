@@ -90,7 +90,10 @@ a managed-cloud constraint: it affects pod admission and the cgroup memory
 ceiling but not the single-threaded ResNet-18 CPU inference path itself. The
 client memory profile (1~GiB request / limit) is unchanged from Stage~K, and the
 Guaranteed QoS class, CPU request/limit, image, and pull policy are otherwise
-identical to the Stage~K carry-forward setup.
+identical to the Stage~K carry-forward setup. Each service is capped at one CPU,
+the same per-service budget enforced in the local stages, so the managed-cloud
+run is not given a larger per-service allocation than the local benchmark;
+\cref{tab:env-parity} compares the local and cloud infrastructure directly.
 
 Threading, affinity, and priority controls followed the same stabilisation intent as
 the preceding stages and were applied where the managed AKS runtime allowed.
