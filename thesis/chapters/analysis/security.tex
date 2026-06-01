@@ -1,15 +1,15 @@
 \section{Security Hardening}
 \label{sec:analysis-security}
 
-\subsection{RQ2.1: Service Identity and Mutual TLS}
+\subsection{Stage~H1: Service Identity and Mutual TLS}
 \label{sec:analysis-rq21}
 
-RQ2.1 asks what performance and operational cost is paid when the AKS
+Stage~H1 asks what performance and operational cost is paid when the AKS
 \texttt{chain\_2svc} inference path selected in \cref{sec:analysis-rq15} is
 hardened with service identity, managed-Istio mTLS, and inter-service
 authorisation policy. The analytical contribution is not to revisit the split
-choice from RQ1.1--RQ1.5b, and not to claim end-to-end security, but to
-convert the paired RQ2.1 measurements into a bounded statement about
+choice from Stages~L1 through~C, and not to claim end-to-end security, but to
+convert the paired Stage~H1 measurements into a bounded statement about
 \emph{where} the hardening cost lives, \emph{how} it scales with protected
 chain depth, and \emph{what} part of the trust model it actually changes.
 
@@ -36,7 +36,7 @@ mesh-default sidecar condition (\texttt{c1}) accounts for +2.569~ms of the
 +2.840~ms full hardened-path delta, while strict downstream mTLS
 (\texttt{c2}) and the AuthorizationPolicy step (\texttt{c3}) each sit within
 pass-level noise. The defensible reading is therefore that most of the
-measured RQ2.1 overhead is the cost of routing inter-service traffic
+measured Stage~H1 overhead is the cost of routing inter-service traffic
 through the managed-Istio data plane, and that strict mTLS and identity-based
 authorisation add enforcement semantics with little additional steady-state
 latency for this workload. This is consistent with the cross-mesh comparison
@@ -64,7 +64,7 @@ practical implication for the RQ1--RQ2 axis is direct: a chain that is
 tolerable without communication hardening can become materially less
 attractive once every boundary also pays identity, encryption, proxying, and
 policy-enforcement cost, so the security choice cannot be made independently
-of the topology choice carried forward from RQ1.5.
+of the topology choice carried forward from Stage~C.
 
 \paragraph{Finding 4: the latency cost is not the only cost.}
 The hardening bundle also raises resource requests, deployment object count,
@@ -96,7 +96,7 @@ pod still traverses loopback in plaintext: this is an architectural property
 of sidecar-based mTLS, not a measured finding of this thesis, and it is
 relevant for the trust-boundary discussion below.
 
-\paragraph{Finding 6: RQ2.1 hardens inter-service communication; it does not
+\paragraph{Finding 6: Stage~H1 hardens inter-service communication; it does not
 re-shape the trust model.}
 Static manifest validation, runtime policy validation, full-chain positive
 probes, and direct non-mesh denial probes all passed in every mTLS pass of
@@ -114,7 +114,7 @@ evaluation, which this thesis does not perform.
 
 \paragraph{Finding 7: the chain-2 mTLS overhead survives a multi-node
 sensitivity check.}
-The RQ2.1b multi-node sensitivity run forces each chain-2 segment onto a
+The Stage~H1 (multi-node) multi-node sensitivity run forces each chain-2 segment onto a
 distinct AKS node, with a dedicated benchmark client node, and re-paires
 plain against mTLS under the same managed-Istio configuration. The measured
 mean mTLS overhead is +2.71~ms, or +3.90\%, with every paired execution
@@ -123,15 +123,15 @@ and order of magnitude as the +3.488~ms / +4.62\% single-node primary result
 and is, if anything, slightly smaller in percent terms, which is consistent
 with a larger plain baseline absorbing more of the proxy cost once
 inter-node transport is added. The defensible reading is that the
-single-node RQ2.1 primary number is not an artefact of strict same-node
+single-node Stage~H1 primary number is not an artefact of strict same-node
 placement on the benchmark pool; cloud-network variability is known to
 shift absolute latency without changing the underlying architectural
-direction~\cite{noise_in_clouds}, and the RQ2.1b run does not contradict the
+direction~\cite{noise_in_clouds}, and the Stage~H1 (multi-node) run does not contradict the
 primary finding under that lens.
 
 \paragraph{Validation and evaluation reasoning.}
-The RQ2.1 results rest on two frozen, ACR-digest-pinned paired runs that
-share the same application image as RQ1.5 and use the same single-node
+The Stage~H1 results rest on two frozen, ACR-digest-pinned paired runs that
+share the same application image as Stage~C and use the same single-node
 benchmark substrate. The paired-pass design, the alternating execution
 order, the positivity of every per-pass delta, and the small pass-delta
 standard deviations (1.091~ms on \texttt{chain\_2svc}, 0.881~ms on
@@ -143,14 +143,14 @@ itself is policy validation under known probes rather than adversarial
 testing. Cross-environment transfer should be read as ranking-preserving
 rather than millisecond-equivalent, following the benchmarking practice
 that informs the rest of this thesis~\cite{benchmarking_sc15}. Evaluated
-against the question RQ2.1 actually poses --- the cost of adding
+against the question Stage~H1 actually poses --- the cost of adding
 managed-Istio mTLS and AuthZ to the selected AKS chain --- the evidence is
 sufficient to support a cautious positive answer for \texttt{chain\_2svc},
 qualified by the depth-sensitivity finding at \texttt{chain\_5svc}, the
 multi-node sensitivity in Finding 7, and the trust-boundary scope above.
 
-\paragraph{Answer to RQ2.1.}
-Under the paired AKS RQ2.1 benchmark, adding service identity,
+\paragraph{Stage~H1 outcome.}
+Under the paired AKS Stage~H1 benchmark, adding service identity,
 managed-Istio mTLS, and inter-service authorisation policy introduces
 measurable but bounded overhead for the selected \texttt{chain\_2svc}
 deployment: mean latency rises from 75.557~ms to 79.045~ms (+3.488~ms,
@@ -167,7 +167,7 @@ order of magnitude as the single-node primary result. Beyond latency, the
 bundle adds sidecar CPU and memory requests, five-to-fourteen additional
 Kubernetes objects, and a 6.30--6.84~s schedule-to-ready delta. Security
 validation, static and runtime, passed in every mTLS pass, including direct
-non-mesh denial probes against protected downstream segments. RQ2.1
+non-mesh denial probes against protected downstream segments. Stage~H1
 therefore supports a cautious conclusion: service identity and
 managed-Istio mTLS/AuthZ are a feasible \emph{communication-level}
 hardening layer for the selected Azure chain at a modest latency cost, but
@@ -176,25 +176,25 @@ boundaries, and is paid against a residual trust model that still depends
 on the mesh control plane, the local CA, and the sidecar-to-application
 loopback inside each pod~\cite{poudel2025mazu}.
 
-\subsection{RQ2.2: Confidential VM Execution}
+\subsection{Stage~H2: Confidential VM Execution}
 \label{sec:analysis-rq22}
 
-RQ2.2 asks what additional performance and operational cost is paid when the
-already-communication-secured \texttt{chain\_2svc} pipeline from RQ2.1 is
+Stage~H2 asks what additional performance and operational cost is paid when the
+already-communication-secured \texttt{chain\_2svc} pipeline from Stage~H1 is
 hardened a second time by placing the downstream activation-receiving
 service on an AMD SEV-SNP confidential VM. The analytical contribution is
 not to relitigate the mTLS overhead (already settled in
 \cref{sec:analysis-rq21}), and not to relitigate the split or chain choice
 (carried forward from \cref{sec:analysis-rq15}), but to convert the single
-frozen paired RQ2.2 measurement into a bounded statement about (i) the
+frozen paired Stage~H2 measurement into a bounded statement about (i) the
 incremental latency cost of selective VM-level confidential execution
 \emph{on top of} mTLS, (ii) how the protection scope changes relative to
-RQ2.1, and (iii) what is still trusted after the additional hardening
+Stage~H1, and (iii) what is still trusted after the additional hardening
 layer is added.
 
 \paragraph{Finding 1: VM-level confidential execution adds measurable but
 bounded incremental overhead on top of mTLS.}
-With the RQ2.1 mTLS/AuthZ contract held fixed and only \texttt{service2}
+With the Stage~H1 mTLS/AuthZ contract held fixed and only \texttt{service2}
 rolled between \texttt{Standard\_D8as\_v5} (standard) and
 \texttt{Standard\_DC8as\_v5} (AMD SEV-SNP), mean end-to-end latency rises
 from 58.492~ms to 60.346~ms, an increase of 1.854~ms or 3.17\%
@@ -217,7 +217,7 @@ studies targets sidecar-mediated DNN inference.
 \paragraph{Finding 2: the tail widens more than the mean.}
 Median latency increases by 1.467~ms (+2.52\%), while p95 increases by
 3.601~ms (+5.98\%) --- approximately 1.9 times the mean delta in
-percent terms (\cref{tab:rq22_service2_results}). RQ2.1's chain\_2svc
+percent terms (\cref{tab:rq22_service2_results}). Stage~H1's chain\_2svc
 result, by contrast, shows the p95 delta (3.623~ms, +4.62\% baseline) and
 the mean delta (3.488~ms) sitting in the same range, so the tail-vs-mean
 ratio is more skewed under TEE than under mTLS for the same topology.
@@ -232,26 +232,26 @@ throughout~\cite{benchmarking_sc15}. For workloads with tight tail-latency
 SLOs, the 5.98\% p95 delta is the more conservative number to plan
 against rather than the 3.17\% mean.
 
-\paragraph{Finding 3: the RQ2.2 standard baseline is not the RQ2.1 mTLS
+\paragraph{Finding 3: the Stage~H2 standard baseline is not the Stage~H1 mTLS
 chain\_2svc number.}
-The RQ2.2 cluster runs in \texttt{westeurope} on
-\texttt{Standard\_D8as\_v5} nodes, whereas the RQ2.1 cluster runs in
+The Stage~H2 cluster runs in \texttt{westeurope} on
+\texttt{Standard\_D8as\_v5} nodes, whereas the Stage~H1 cluster runs in
 \texttt{swedencentral} on \texttt{Standard\_D8s\_v3} nodes
-(\cref{sec:methods-rq22}). The mean RQ2.2 standard baseline (58.492~ms)
-and the mean RQ2.1 mTLS chain\_2svc value (79.045~ms) therefore cannot be
-differenced to obtain a "TEE-on-top-of-RQ2.1" overhead. The RQ2.2 finding
+(\cref{sec:methods-rq22}). The mean Stage~H2 standard baseline (58.492~ms)
+and the mean Stage~H1 mTLS chain\_2svc value (79.045~ms) therefore cannot be
+differenced to obtain a "TEE-on-top-of-Stage~H1" overhead. The Stage~H2 finding
 is strictly the within-cluster paired delta against its own freshly
 collected standard-node mTLS baseline; absolute cross-region comparison
 is not supported, consistent with the benchmarking-practice convention
 that managed-cloud absolute latency should be read as ranking-preserving
 across environments rather than millisecond-equivalent~\cite{benchmarking_sc15,noise_in_clouds}.
-This is a methodological feature of the RQ2.2 design, not a weakness: it
+This is a methodological feature of the Stage~H2 design, not a weakness: it
 is exactly the reason a fresh paired baseline was collected.
 
-\paragraph{Finding 4: RQ2.2 changes the trust boundary, but only at VM
+\paragraph{Finding 4: Stage~H2 changes the trust boundary, but only at VM
 granularity.}
-RQ2.1 added confidentiality and authentication to the inter-service path;
-RQ2.2 adds confidentiality and integrity to the host-platform interface
+Stage~H1 added confidentiality and authentication to the inter-service path;
+Stage~H2 adds confidentiality and integrity to the host-platform interface
 of the downstream service. The new protection layer is meaningful: under
 the AMD SEV-SNP threat model, the cloud host and hypervisor are removed
 from the trusted computing base of the confidentially placed
@@ -263,7 +263,7 @@ mTLS termination~\cite{meshinsight_socc23} now lives inside a
 host-protected VM rather than on a generic AKS node --- but it is still
 plaintext to every component above the hypervisor boundary. The
 service-mesh control plane and certificate authority remain trust-critical
-exactly as in RQ2.1~\cite{poudel2025mazu}, and confidential-VM platforms
+exactly as in Stage~H1~\cite{poudel2025mazu}, and confidential-VM platforms
 are known to differ from one another in attestation flow, attacker
 model, and residual side channels, so this SEV-SNP-specific result does
 not transfer cleanly to alternative CVM
@@ -274,7 +274,7 @@ align.}
 He~et~al.~\cite{he2021_attacking_collaborative} motivate protecting the
 intermediate activations received by the downstream segment beyond
 in-transit mTLS by showing that an untrusted cloud holding only those
-feature maps can recover the client input. RQ2.2 cites that work as
+feature maps can recover the client input. Stage~H2 cites that work as
 motivation but does not claim to defend the He~et~al.\ threat model:
 their adversary is a \emph{malicious remote service}, while SEV-SNP
 defends against an adversary on the \emph{host platform}. Selectively
@@ -282,7 +282,7 @@ placing \texttt{service2} on a confidential VM therefore reduces
 exposure to a different class of adversary (the cloud host or
 hypervisor), and not to the application-level adversary that the
 activation-inversion literature actually constructs. This is an honesty
-boundary that the analysis must respect; it is also the reason RQ2.2 is
+boundary that the analysis must respect; it is also the reason Stage~H2 is
 positioned as an incremental hardening point rather than as a complete
 answer to activation-privacy concerns.
 
@@ -294,8 +294,8 @@ malicious interrupts whose handlers manipulate CVM data and control flow,
 bypassing authentication and breaking execution integrity on workloads
 that are otherwise inside the SEV-SNP memory-encryption
 boundary~\cite{schluter2024_heckler}. This thesis does not perform an
-attack-evaluation campaign and does not measure RQ2.2 against the
-HECKLER attack or any other documented residual surface; the RQ2.2
+attack-evaluation campaign and does not measure Stage~H2 against the
+HECKLER attack or any other documented residual surface; the Stage~H2
 security claim is therefore that the measured deployment runs inside the
 SEV-SNP vendor threat model under policy validation, not that it is
 robust to all documented CVM attack surfaces. The bounded claim is
@@ -312,15 +312,15 @@ characterisation of behaviour under concurrent load; it is reported only
 for operational legibility.
 
 \paragraph{Validation and evaluation reasoning.}
-The RQ2.2 result rests on a single frozen rolling artefact
+The Stage~H2 result rests on a single frozen rolling artefact
 (\texttt{rq2\_2\_confidential\_20260516\_135726}) that pins the same ACR
-image digest as RQ1.5 and RQ2.1, preserves the RQ2.1 mTLS/AuthZ contract,
+image digest as Stage~C and Stage~H1, preserves the Stage~H1 mTLS/AuthZ contract,
 and uses an alternating standard-first / confidential-first pass order
 to limit drift artefacts. Functional parity passes in every per-pass
 \texttt{parity\_validation.json} (\texttt{max\_abs\_diff}~$=0.0$,
 \texttt{num\_inputs}~$=5$), and the standard baseline against which the
 delta is computed is collected on the same cluster, region, and SKU
-pair as the confidential condition rather than reused from RQ2.1. These
+pair as the confidential condition rather than reused from Stage~H1. These
 choices justify treating the measured direction (+3.17\% mean,
 +5.98\% p95) and its sign as robust within the tested configuration.
 The validation envelope does not extend further than that: only one
@@ -328,7 +328,7 @@ TEE scope is evaluated (\texttt{service2\_only}); only one CVM platform
 is evaluated (AMD SEV-SNP); only one model, batch size, and chain depth
 are evaluated; only policy-validation security checks are performed,
 not adversarial testing; and the absolute baseline is not portable
-across regions. Evaluated against the question RQ2.2 actually poses ---
+across regions. Evaluated against the question Stage~H2 actually poses ---
 the incremental cost of placing the downstream protected service on a
 confidential VM while keeping the communication-security contract
 fixed --- the evidence is sufficient to support a cautious positive
@@ -337,8 +337,8 @@ observation in Finding~2, the threat-model boundary in Findings~4--6,
 and the explicit out-of-scope status of the full two-service TEE
 configuration.
 
-\paragraph{Answer to RQ2.2.}
-Under the paired AKS RQ2.2 benchmark, placing only the downstream
+\paragraph{Stage~H2 outcome.}
+Under the paired AKS Stage~H2 benchmark, placing only the downstream
 protected service on an AMD SEV-SNP confidential VM introduces
 measurable but bounded incremental overhead on top of the already
 mTLS-secured \texttt{chain\_2svc} chain: mean latency rises from
@@ -346,10 +346,10 @@ mTLS-secured \texttt{chain\_2svc} chain: mean latency rises from
 (+2.52\%), and p95 rises by 3.601~ms (+5.98\%), with the tail amplified
 relative to the mean by roughly 1.9 times in percent terms. Functional
 parity is preserved across all paired passes
-(\texttt{max\_abs\_diff}~$=0.0$). RQ2.2 therefore extends RQ2.1 by
+(\texttt{max\_abs\_diff}~$=0.0$). Stage~H2 therefore extends Stage~H1 by
 adding a \emph{runtime} protection boundary at VM granularity for the
 downstream segment, not by re-establishing the communication-level
-security already settled in RQ2.1. The claim is bounded by the SEV-SNP
+security already settled in Stage~H1. The claim is bounded by the SEV-SNP
 threat model~\cite{amd_sevsnp_whitepaper}, by the residual
 host-platform attack surfaces that this thesis does not experimentally
 evaluate~\cite{schluter2024_heckler}, by the platform-specificity of
@@ -360,21 +360,21 @@ He~et~al.~\cite{he2021_attacking_collaborative}: SEV-SNP defends
 against the cloud host, not against an actively malicious remote
 service holding the activations. Extending the confidential-execution
 boundary to both services (full two-service TEE) is out of the
-thesis-facing scope of RQ2.2 per the evidence manifest and is treated
-as future work; the RQ2.3 trade-off in
+thesis-facing scope of Stage~H2 per the evidence manifest and is treated
+as future work; the trade-off synthesis in
 \cref{sec:analysis-rq23} therefore compares plain AKS, mTLS, and mTLS
 plus selective TEE only.
 
-\subsection{RQ2.3: Trade-off Synthesis}
+\subsection{Trade-off Synthesis: Security-Hardening Recommendation}
 \label{sec:analysis-rq23}
 
-RQ2.3 asks which of the evaluated security-hardening configurations is the
+The trade-off synthesis asks which of the evaluated security-hardening configurations is the
 most defensible default for the selected AKS \texttt{chain\_2svc} inference
 chain, given a target threat model and performance budget. The analytical
 contribution is not to add a measurement, and not to re-litigate the mTLS
 cost (settled in \cref{sec:analysis-rq21}), the TEE cost (settled in
 \cref{sec:analysis-rq22}), or the chain selection (carried forward from
-\cref{sec:analysis-rq15}). Instead, RQ2.3 promotes the three frozen paired
+\cref{sec:analysis-rq15}). Instead, the trade-off synthesis promotes the three frozen paired
 measurements into a single synthesis-level statement about (i) what each
 hardening layer actually protects, (ii) how its cost is distributed across
 the latency distribution and the operational footprint, and (iii) which
@@ -429,7 +429,7 @@ request, 82.1--223.7~MiB of sidecar memory, and a 6.30--6.84~s
 schedule-to-ready delta on the mTLS layer alone. The CVM step adds a
 confidential node-pool change and an attestation/manifest validation
 step on top, although per-deployment CVM resource deltas are not pinned
-in the RQ2.2 artefact and are therefore reported qualitatively only. A
+in the Stage~H2 artefact and are therefore reported qualitatively only. A
 defensible default therefore cannot be selected by latency mean alone:
 the operational footprint, the rollout time, and the requested resources
 of the always-on data plane and control plane are part of the same
@@ -437,7 +437,7 @@ trade-off and grow with the number of protected service boundaries.
 
 \paragraph{Finding 4: the cost-of-protection grows with topology, not
 just with the choice of mechanism.}
-RQ2.1 establishes that the mTLS overhead at four protected boundaries
+Stage~H1 establishes that the mTLS overhead at four protected boundaries
 (\texttt{chain\_5svc}) is approximately $2.5\times$ its
 \texttt{chain\_2svc} value in absolute milliseconds and
 $2.3\times$ in percent terms (+10.74\% vs +4.62\%;
@@ -447,19 +447,19 @@ applies to: a default that is defensible at \texttt{chain\_2svc} is not
 automatically defensible at \texttt{chain\_5svc}. The RQ1 chain-depth
 axis and the RQ2 hardening axis therefore interact rather than acting
 independently, and the synthesis must be read as a recommendation for
-the specific \texttt{chain\_2svc} topology selected by RQ1.5.
+the specific \texttt{chain\_2svc} topology selected by Stage~C.
 
 \paragraph{Finding 5: the three rows of the trade-off table are
 delta-on-paired-baseline and are not composable into a single absolute
 latency.}
-The RQ2.1 plain \texttt{chain\_2svc} baseline (75.557~ms,
-\texttt{swedencentral}, \texttt{Standard\_D8s\_v3}) and the RQ2.2
+The Stage~H1 plain \texttt{chain\_2svc} baseline (75.557~ms,
+\texttt{swedencentral}, \texttt{Standard\_D8s\_v3}) and the Stage~H2
 standard \texttt{chain\_2svc} baseline (58.492~ms, \texttt{westeurope},
 \texttt{Standard\_D8as\_v5}) differ by region, node SKU, and freshly
 collected paired baseline. The three rows of
 \cref{tab:rq23_security_tradeoff} therefore each carry a delta against
 their own paired baseline; they are not three measurements at the same
-operating point. This is a methodological feature of the RQ2.2 rolling
+operating point. This is a methodological feature of the Stage~H2 rolling
 design, not a flaw: it is the reason the SEV-SNP overhead is honest as
 a within-cluster paired delta rather than as a contaminated cross-cluster
 difference. The reading discipline is that absolute latency is
@@ -489,12 +489,12 @@ any adversarial sense.
 The three measurements that the synthesis rests on are independently
 validated: each is a frozen, ACR-digest-pinned, paired alternating run
 against its own freshly collected baseline, with per-pass functional
-parity (\texttt{max\_abs\_diff}~$=0.0$) holding across all RQ2.1, RQ2.1b,
-and RQ2.2 passes. The synthesis is therefore internally
+parity (\texttt{max\_abs\_diff}~$=0.0$) holding across all Stage~H1, Stage~H1 (multi-node),
+and Stage~H2 passes. The synthesis is therefore internally
 \emph{delta-on-delta} consistent: each comparison is computed within its
 own paired window before it enters \cref{tab:rq23_security_tradeoff}.
 The evaluation envelope does not extend further than that. The
-synthesis is evaluated against the question RQ2.3 actually poses --- the
+synthesis is evaluated against the question the trade-off synthesis actually poses --- the
 relative trade-off between three measured hardening points on the
 selected \texttt{chain\_2svc} AKS deployment --- and not against (i)
 cross-region absolute equivalence, (ii) full-chain TEE, (iii) chain-depth
@@ -503,7 +503,7 @@ bounds, the evidence is sufficient to support a defensible default for
 the evaluated topology; outside them, the answer is explicitly
 unresolved.
 
-\paragraph{Answer to RQ2.3.}
+\paragraph{Trade-off synthesis outcome.}
 For the selected AKS \texttt{chain\_2svc} inference chain, the most
 defensible default in the evaluated set is mTLS with service identity
 and AuthorizationPolicy: it removes the inter-service plaintext path at
@@ -517,7 +517,7 @@ baseline, and its cost is tail-concentrated rather than centred. Plain
 AKS remains the fastest evaluated configuration but provides the weakest
 protection set. Because the three rows of
 \cref{tab:rq23_security_tradeoff} are deltas against three different
-paired baselines, RQ2.3 does not claim a single composed absolute-latency
+paired baselines, the trade-off synthesis does not claim a single composed absolute-latency
 trajectory across them; because mTLS overhead grows with the number of
 protected boundaries, the recommendation is specific to
 \texttt{chain\_2svc} and is not transferred to \texttt{chain\_5svc}

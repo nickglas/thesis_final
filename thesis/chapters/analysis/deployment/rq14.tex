@@ -1,7 +1,7 @@
-\subsection{RQ1.4: Local Kubernetes Chain}
+\subsection{Stage~K: Local Kubernetes Chain}
 \label{sec:analysis-rq14}
 
-RQ1.4 asks how end-to-end inference cost changes when ResNet-18 is
+Stage~K asks how end-to-end inference cost changes when ResNet-18 is
 decomposed into synchronously chained coarse architectural stages under
 in-cluster Kubernetes execution. The analytical contribution of this
 subsection is not to repeat the per-condition latencies tabulated in
@@ -10,7 +10,7 @@ benchmark adds on top of the on-host findings of
 \cref{sec:analysis-rq11,sec:analysis-rq12,sec:analysis-rq13} and what
 it deliberately does not establish. Two analytical points carry the
 subsection. First, the architectural ordering established on
-\texttt{127.0.0.1} in RQ1.1 (more synchronously chained boundaries
+\texttt{127.0.0.1} in Stage~L1 (more synchronously chained boundaries
 imply more end-to-end cost in this ResNet-18 family~\cite{resnet})
 remains visible once the workload is lifted into a Kubernetes pod
 network, but the per-hop surcharge is not a constant. Second, the
@@ -31,8 +31,8 @@ baseline, the overhead grows from +2.321~ms (+2.9\%) to +11.469~ms
 chain family rather than a carry-forward selection: as declared in
 \cref{sec:methods-carryforward} and recorded in the frozen
 \texttt{carry\_forward.json}, the carry-forward rule does not apply to
-RQ1.4 because the Kubernetes condition set is predefined rather than
-selected. The analytical reading is therefore continuity with RQ1.1
+Stage~K because the Kubernetes condition set is predefined rather than
+selected. The analytical reading is therefore continuity with Stage~L1
 under a new platform: the same ResNet-18 chain family that showed a
 monotonic split-cost gradient on \texttt{127.0.0.1} continues to do so
 in-cluster, with a worst-case overhead bounded at +14.1\% on this
@@ -77,7 +77,7 @@ real share of microservice latency even between same-host
 processes~\cite{rpc_overhead_hotos25,notnets_apsys24}. Two caveats
 bound this comparison. The platform column is the runner's composite
 \texttt{non\_compute\_overhead\_ms\_mean}; it is not decomposed into
-kernel, kube-proxy, CNI, and gRPC sub-shares, and the RQ1.4 evidence
+kernel, kube-proxy, CNI, and gRPC sub-shares, and the Stage~K evidence
 does not support such a decomposition. The cited papers measure the
 RPC-tax share in different workloads (a key-value store and the
 \textsc{DeathStarBench} hotel-reservation application), not chained
@@ -96,7 +96,7 @@ include a cross-node hop, a heterogeneous-node CNI traversal, or any
 of the sources of variability that managed cloud Kubernetes
 introduces. Cross-node sensitivity and managed-cloud transfer are
 deferred to \cref{sec:analysis-rq15,sec:analysis-rq15b} respectively;
-RQ1.4 itself should be read as a valid local in-cluster benchmark of
+Stage~K itself should be read as a valid local in-cluster benchmark of
 the predefined chain family, not as a statement about deployment
 behaviour in production Kubernetes.
 
@@ -134,13 +134,13 @@ and turbo controls were requested but writes to \texttt{/sys} failed
 because the containerised environment exposes those paths as
 read-only; the detected governor was already \texttt{performance} and
 turbo was already disabled, so the comparison is internally fair but
-governor/turbo are observed rather than enforced. Finally, RQ1.4 is
+governor/turbo are observed rather than enforced. Finally, Stage~K is
 a single host, single \texttt{kind} cluster, single-node placement,
 fixed seed; cross-host or repeated clean-cluster replication is not
 in scope for this stage.
 
 \paragraph{Evaluation.}
-The evaluative reading of RQ1.4 has three facets. First, against the
+The evaluative reading of Stage~K has three facets. First, against the
 Kubernetes monolithic baseline, every chained condition is measurably
 slower at this local setup, with relative overheads of +2.9\%,
 +8.2\%, +11.7\%, and +14.1\% for \texttt{chain\_2svc} through
@@ -157,7 +157,7 @@ smallest non-monolithic overhead is \texttt{chain\_2svc} at
 +2.321~ms (+2.9\%); within the predefined family it is therefore the
 least expensive way to move from a single Kubernetes service to a
 chained deployment while preserving exact functional parity in the
-benchmarked workload. Third, against the boundaries of what RQ1.4
+benchmarked workload. Third, against the boundaries of what Stage~K
 can claim, the result is sufficient to support a local-in-cluster
 feasibility claim --- the chained ResNet-18 family runs end-to-end,
 with bounded overhead and without functional divergence from the
@@ -166,10 +166,10 @@ readiness, scalability, multi-tenant robustness, or portability of
 the absolute millisecond values. Cross-node sensitivity,
 managed-cloud transfer, and service-mesh hardening are addressed in
 \cref{sec:analysis-rq15,sec:analysis-rq15b} and in the security
-analysis subsections respectively; RQ1.4's contribution stops at the
+analysis subsections respectively; Stage~K's contribution stops at the
 local-feasibility boundary.
 
-\paragraph{Answer to RQ1.4.}
+\paragraph{Stage~K outcome.}
 Under the controlled local Kubernetes setup, increasing the number of
 synchronously chained coarse-stage ResNet-18 services raises
 end-to-end latency from \texttt{monolithic\_k8s\_1svc} through

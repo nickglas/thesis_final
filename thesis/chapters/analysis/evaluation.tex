@@ -80,7 +80,7 @@ substitute for a threat-model-aware composition once the threat
 model includes both inter-service and host-platform adversaries.
 
 \paragraph{Against the published literature for analogous mechanisms.}
-The measured RQ2.1 mTLS overhead on the selected
+The measured Stage~H1 mTLS overhead on the selected
 \texttt{chain\_2svc} topology is in the same direction as, and
 substantially smaller in percent than, the high-load Istio penalties
 reported in MeshInsight and in the cross-mesh comparison of
@@ -89,7 +89,7 @@ The right reading is qualitative agreement, not numerical
 disagreement: those studies use open-loop benchmark traffic at
 sustained load with little per-request application compute, so the
 sidecar critical-path cost is amortised over very little useful work,
-while the RQ2.1 path amortises the same proxy cost over the full
+while the Stage~H1 path amortises the same proxy cost over the full
 ResNet-18 inference. The evaluative implication is that the system
 sits in the favourable amortisation regime that the service-mesh
 literature predicts for compute-heavy request paths, not that it

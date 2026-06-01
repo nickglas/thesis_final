@@ -1,16 +1,16 @@
-\subsection{RQ1.3: Explanatory Synthesis}
+\subsection{Stage~L3: Explanatory Synthesis}
 \label{sec:analysis-rq13}
 
-RQ1.3 asks how activation-transfer size and compute distribution together
+Stage~L3 asks how activation-transfer size and compute distribution together
 explain the latency and boundary-crossing behaviour observed for the
-decomposition choices in RQ1.1 and RQ1.2. The analytical contribution of
+decomposition choices in Stage~L1 and Stage~L2. The analytical contribution of
 this section is not to add a measurement but to fuse the two preceding
 readings into a single, scoped explanatory model and to state precisely
-what that model does and does not answer. RQ1.1 gave the joint reading
+what that model does and does not answer. Stage~L1 gave the joint reading
 across four coarse boundaries but could not separate the two dimensions
 because activation size moved with stage depth across all four
-conditions. RQ1.2 supplied the controlled contrast at constant
-activation size that RQ1.1 lacked. The supporting internal-timing study
+conditions. Stage~L2 supplied the controlled contrast at constant
+activation size that Stage~L1 lacked. The supporting internal-timing study
 (\cref{sec:rq13}) supplies the structural mechanism that links both
 observations to the architecture of ResNet-18~\cite{resnet}.
 
@@ -49,9 +49,9 @@ the classification head accounts for \(0.44\%\)
 Two predictions follow. First, a split after \texttt{layer4} leaves
 the downstream service with only the classification head and is
 therefore expected to be compute-degenerate; this is consistent with
-the \(0.62\%\) downstream-compute share measured in RQ1.1
+the \(0.62\%\) downstream-compute share measured in Stage~L1
 (\texttt{carry\_forward.json}). Second, the wire-cost-equal contrast
-in RQ1.2 moves precisely the \texttt{layer3.1} block across the
+in Stage~L2 moves precisely the \texttt{layer3.1} block across the
 boundary; the monolithic cost of that block (\(7.48\)~ms) and the
 measured service-B compute gap (\(7.81\)~ms) agree to within roughly
 \(4\%\). The agreement should not be read as identity, because the
@@ -76,7 +76,7 @@ dimension is dominant on the late side. The mid-to-late region around
 \texttt{layer2}, \texttt{layer3.0}, and \texttt{layer3} is the only
 band in which both dimensions are simultaneously tolerable, and it is
 the band that the carry-forward rule selects from in both stages
-(\texttt{carry\_forward.json} in both frozen runs). RQ1.2 further
+(\texttt{carry\_forward.json} in both frozen runs). Stage~L2 further
 shows that this band is operationally flat at the available
 measurement resolution: the three refined splits cluster in a
 \(0.235\)~ms window whose internal ordering is not separated at the
@@ -84,13 +84,13 @@ per-iteration \(95\%\) CI level, and the mean separation between the
 rule-selected main and the rejected condition is smaller than the
 round-to-round range of the rule-selected main itself
 (\texttt{round\_consistency.json}). The two-dimensional account
-therefore reframes the RQ1.2 tie-break: it is the rule choosing
+therefore reframes the Stage~L2 tie-break: it is the rule choosing
 legitimately within a genuinely flat valley, not a discovery that
 \texttt{split\_after\_layer3\_block0} is meaningfully faster than the
 other two refined candidates.
 
 \paragraph{Validation.}
-The synthesis rests on the union of the RQ1.1 and RQ1.2 validation
+The synthesis rests on the union of the Stage~L1 and Stage~L2 validation
 arguments together with the validation of the supporting
 internal-timing run. Functional parity holds across every split used
 in the synthesis (\texttt{max\_abs\_diff} \(=0.0\) at tolerance
@@ -99,7 +99,7 @@ frozen runs), so the \(7.81\)~ms wire-cost-equal gap and the coarse
 boundary-crossing gradient are not confounded with numerical drift
 across the partition. Round-level consistency remains low in both
 stages (per-condition round CV between \(0.002\) and \(0.011\) in
-RQ1.1 and between \(0.0017\) and \(0.0070\) in RQ1.2,
+Stage~L1 and between \(0.0017\) and \(0.0070\) in Stage~L2,
 \texttt{round\_consistency.json}), which is the reporting practice on
 which the cross-stage comparison rests~\cite{benchmarking_sc15}. The
 internal-timing run is itself functionally equivalent
@@ -123,12 +123,12 @@ been decomposed into independent transport and compute channels in
 the general case.
 
 \paragraph{Evaluation.}
-The evaluative reading of RQ1.3 has three facets. First, against the
+The evaluative reading of Stage~L3 has three facets. First, against the
 monolithic baseline, the two-dimensional account does \emph{not}
 identify a configuration that is faster than monolithic execution
-under RQ1.1 and RQ1.2 conditions --- every split is measurably slower
-(\(+2.4\%\) to \(+4.7\%\) in RQ1.1; \(+3.34\%\) to \(+3.64\%\) in
-RQ1.2). The contribution of RQ1.3 is therefore explanatory, not
+under Stage~L1 and Stage~L2 conditions --- every split is measurably slower
+(\(+2.4\%\) to \(+4.7\%\) in Stage~L1; \(+3.34\%\) to \(+3.64\%\) in
+Stage~L2). The contribution of Stage~L3 is therefore explanatory, not
 optimisation-oriented. Second, against a single-dimension decision
 rule, the joint criterion is strictly stronger: a transfer-only rule
 would select \texttt{split\_after\_layer4} and produce a structurally
@@ -139,13 +139,13 @@ selection of the mid-to-late band without ratifying any particular
 split inside it: the rule's tie-break is a deterministic choice within
 an operationally flat valley, and the defensible carry-forward set is
 the pair \texttt{split\_after\_layer3\_block0} (rule-selected main)
-plus \texttt{split\_after\_layer2} (reference). RQ1.3 does not
+plus \texttt{split\_after\_layer2} (reference). Stage~L3 does not
 establish that this carry-forward set is host-independent; it
 establishes that it is the set the joint criterion identifies under
 these conditions.
 
-\paragraph{Answer to RQ1.3.}
-Under the controlled local conditions of RQ1.1 and RQ1.2, the latency
+\paragraph{Stage~L3 outcome.}
+Under the controlled local conditions of Stage~L1 and Stage~L2, the latency
 and boundary-crossing behaviour of the evaluated splits is well
 explained by a two-dimensional model: activation-transfer size
 dominates at the coarse level and accounts for the monotonic
@@ -169,7 +169,7 @@ band in which both dimensions are simultaneously tolerable, and the
 carry-forward outcome \texttt{split\_after\_layer3\_block0} (main)
 plus \texttt{split\_after\_layer2} (reference) is the rule's
 deterministic selection within that band rather than a separation
-discovered by RQ1.2. These claims are scoped to single-host,
+discovered by Stage~L2. These claims are scoped to single-host,
 single-build, fixed-seed, CPU-only batch-one localhost gRPC; whether
 the joint criterion is shaped by infrastructure context is the
 empirical question that the later Kubernetes and Azure stages address.

@@ -1,14 +1,14 @@
 \subsection{Synthesis: Deployment Context}
 \label{sec:analysis-deployment-synthesis}
 
-RQ1.4 and RQ1.5 show that the architectural pattern remains visible after the
+Stage~K and Stage~C show that the architectural pattern remains visible after the
 workload is moved into Kubernetes-style service chains. In local
 \texttt{kind}, latency increases from the monolithic Kubernetes baseline
 through the four-service chain, while the final five-service increment is
 small because the added late-stage boundary transfers a much smaller
 activation tensor. The same ordering and the same bounded-non-linearity
 pattern also survive the kind multi-worker CNI sensitivity probe of
-RQ1.4b (\cref{sec:analysis-rq14b}), so neither finding is an artefact
+the Stage~K cross-node alternative (\cref{sec:analysis-rq14b}), so neither finding is an artefact
 of single-node pod colocation on the local cluster; the kind multi-node
 per-condition deltas are, however, an order of magnitude larger than the
 AKS multi-node deltas of \cref{sec:analysis-rq15b} and should be read as
