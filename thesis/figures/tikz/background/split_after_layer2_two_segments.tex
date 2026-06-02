@@ -1,11 +1,11 @@
 \begin{tikzpicture}[
-    font=\small,
+    font=\normalsize,
     block/.style={
         draw=black!55,
         fill=black!5,
         rounded corners=3pt,
         minimum width=1.35cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -14,7 +14,7 @@
         fill=orange!15,
         rounded corners=3pt,
         minimum width=1.35cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -23,7 +23,7 @@
         fill=blue!14,
         rounded corners=3pt,
         minimum width=1.35cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -32,7 +32,7 @@
         fill=green!12,
         rounded corners=3pt,
         minimum width=1.65cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -82,13 +82,13 @@
 \node[
     segmentA,
     fit=(img)(stem)(l1)(l2),
-    label={[font=\small\bfseries, text=orange!75!black]above:Segment 1 / Service A}
+    label={[font=\normalsize\bfseries, text=orange!75!black]above:Segment 1 / Service A}
 ] (segA) {};
 
 \node[
     segmentB,
     fit=(l3)(l4)(head),
-    label={[font=\small\bfseries, text=blue!65!black]above:Segment 2 / Service B}
+    label={[font=\normalsize\bfseries, text=blue!65!black]above:Segment 2 / Service B}
 ] (segB) {};
 \end{pgfonlayer}
 
@@ -101,7 +101,7 @@
     (l2) -- node[
         midway,
         above=1.05cm of splitline,
-        font=\scriptsize,
+        font=\small,
         text=red!75!black
     ] {activation tensor}
     (l3);
@@ -114,7 +114,7 @@
     ($(splitline)+(0,1)$) -- ($(splitline)+(0,-1)$);
 
 \node[
-    font=\scriptsize\bfseries,
+    font=\small\bfseries,
     text=red!75!black,
     align=center,
     below=1.05cm of splitline
