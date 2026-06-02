@@ -1,11 +1,11 @@
 \begin{tikzpicture}[
-    font=\small,
+    font=\normalsize,
     block/.style={
         draw=black!55,
         fill=black!5,
         rounded corners=3pt,
         minimum width=1.35cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -14,7 +14,7 @@
         fill=orange!15,
         rounded corners=3pt,
         minimum width=1.35cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -23,7 +23,7 @@
         fill=blue!14,
         rounded corners=3pt,
         minimum width=1.35cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -32,7 +32,7 @@
         fill=green!12,
         rounded corners=3pt,
         minimum width=1.55cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -47,7 +47,7 @@
         draw=red!75!black
     },
     splitlabel/.style={
-        font=\scriptsize,
+        font=\small,
         text=red!75!black,
         align=center
     },
@@ -72,10 +72,10 @@
 \draw[arrow] (l4) -- (head);
 
 % Stage~L1 coarse split markers after each residual stage
-\draw[split] ($(l1.east)+(0.15,0.65)$) -- ($(l1.east)+(0.15,-0.65)$);
-\draw[split] ($(l2.east)+(0.15,0.65)$) -- ($(l2.east)+(0.15,-0.65)$);
-\draw[split] ($(l3.east)+(0.15,0.65)$) -- ($(l3.east)+(0.15,-0.65)$);
-\draw[split] ($(l4.east)+(0.15,0.65)$) -- ($(l4.east)+(0.15,-0.65)$);
+\draw[split] ($(l1.east)+(0.15,0.75)$) -- ($(l1.east)+(0.15,-0.75)$);
+\draw[split] ($(l2.east)+(0.15,0.75)$) -- ($(l2.east)+(0.15,-0.75)$);
+\draw[split] ($(l3.east)+(0.15,0.75)$) -- ($(l3.east)+(0.15,-0.75)$);
+\draw[split] ($(l4.east)+(0.15,0.75)$) -- ($(l4.east)+(0.15,-0.75)$);
 
 % Labels under split markers
 \node[splitlabel, below=0.75cm of l1.east, xshift=0.15cm] {split after\\layer1};
@@ -85,7 +85,7 @@
 
 % Optional RQ label
 \node[
-    font=\small\bfseries,
+    font=\normalsize\bfseries,
     text=red!75!black,
     above=0.65cm of l2,
     xshift=0.95cm
