@@ -1,11 +1,11 @@
 \begin{tikzpicture}[
-    font=\small,
+    font=\normalsize,
     image/.style={
         draw=black!55,
         fill=black!5,
         rounded corners=3pt,
         minimum width=1.25cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -14,7 +14,7 @@
         fill=orange!15,
         rounded corners=3pt,
         minimum width=1.35cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -23,7 +23,7 @@
         fill=blue!14,
         rounded corners=3pt,
         minimum width=1.25cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -32,7 +32,7 @@
         fill=green!12,
         rounded corners=3pt,
         minimum width=1.65cm,
-        minimum height=0.85cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -87,18 +87,18 @@
 % Layer labels using braces
 \draw[layerbrace]
     ($(l1b1.north west)+(0,0.18)$) -- ($(l1b2.north east)+(0,0.18)$)
-    node[midway, yshift=0.45cm] {\small Layer 1};
+    node[midway, yshift=0.45cm] {Layer 1};
 
 \draw[layerbrace]
     ($(l2b1.north west)+(0,0.18)$) -- ($(l2b2.north east)+(0,0.18)$)
-    node[midway, yshift=0.45cm] {\small Layer 2};
+    node[midway, yshift=0.45cm] {Layer 2};
 
 \draw[layerbrace]
     ($(l3b1.north west)+(0,0.18)$) -- ($(l3b2.north east)+(0,0.18)$)
-    node[midway, yshift=0.45cm] {\small Layer 3};
+    node[midway, yshift=0.45cm] {Layer 3};
 
 \draw[layerbrace]
     ($(l4b1.north west)+(0,0.18)$) -- ($(l4b2.north east)+(0,0.18)$)
-    node[midway, yshift=0.45cm] {\small Layer 4};
+    node[midway, yshift=0.45cm] {Layer 4};
 
 \end{tikzpicture}%
