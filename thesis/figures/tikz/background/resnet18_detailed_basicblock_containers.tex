@@ -1,11 +1,10 @@
-\begin{tikzpicture}[
-    font=\scriptsize,
-    stem/.style={
+\begin{tikzpicture}[     font=\normalsize,
+   stem/.style={
         draw=black!65,
         fill=red!18,
         rounded corners=2pt,
         minimum width=0.72cm,
-        minimum height=2.1cm,
+        minimum height=2.6cm,
         align=center,
         thick
     },
@@ -14,7 +13,7 @@
         fill=black!8,
         rounded corners=2pt,
         minimum width=0.72cm,
-        minimum height=2.1cm,
+        minimum height=2.6cm,
         align=center,
         thick
     },
@@ -23,7 +22,7 @@
         fill=cyan!20,
         rounded corners=2pt,
         minimum width=0.72cm,
-        minimum height=2.1cm,
+        minimum height=2.6cm,
         align=center,
         thick
     },
@@ -32,7 +31,7 @@
         fill=orange!18,
         rounded corners=2pt,
         minimum width=0.72cm,
-        minimum height=2.1cm,
+        minimum height=2.6cm,
         align=center,
         thick
     },
@@ -41,7 +40,7 @@
         fill=yellow!25,
         rounded corners=2pt,
         minimum width=0.72cm,
-        minimum height=2.1cm,
+        minimum height=2.6cm,
         align=center,
         thick
     },
@@ -50,7 +49,7 @@
         fill=green!18,
         rounded corners=2pt,
         minimum width=0.72cm,
-        minimum height=2.1cm,
+        minimum height=2.6cm,
         align=center,
         thick
     },
@@ -59,7 +58,7 @@
         fill=black!12,
         rounded corners=2pt,
         minimum width=0.78cm,
-        minimum height=2.1cm,
+        minimum height=2.6cm,
         align=center,
         thick
     },
@@ -69,10 +68,10 @@
         rounded corners=5pt,
         thick,
         inner xsep=10pt,
-        inner ysep=16pt
+        inner ysep=8pt
     },
     basicblocklabel/.style={
-        font=\scriptsize\bfseries,
+        font=\normalsize,
         text=black!70
     },
     arrow/.style={
@@ -87,7 +86,7 @@
         draw=purple!65!black
     },
     shortcutlabel/.style={
-        font=\tiny,
+        font=\normalsize,
         text=purple!65!black,
         align=center
     },
@@ -96,33 +95,29 @@
 
 % Input and stem
 \node[head] (input) {\rotatebox{90}{Image}};
-\node[stem, right=of input] (conv1) {\rotatebox{90}{$7{\times}7$ conv, 64, /2}};
+\node[stem, right=of input] (conv1) {\rotatebox{90}{$7{\times}7$, 64, /2}};
 \node[pool, right=of conv1] (pool1) {\rotatebox{90}{MaxPool, /2}};
 
 % Layer 1: two BasicBlocks
-\node[lone, right=1.10cm of pool1] (l10c1) {\rotatebox{90}{$3{\times}3$ conv, 64}};
-\node[lone, right=of l10c1]        (l10c2) {\rotatebox{90}{$3{\times}3$ conv, 64}};
-\node[lone, right=1.10cm of l10c2] (l11c1) {\rotatebox{90}{$3{\times}3$ conv, 64}};
-\node[lone, right=of l11c1]        (l11c2) {\rotatebox{90}{$3{\times}3$ conv, 64}};
-
+\node[lone, right=1.10cm of pool1] (l10c1) {\rotatebox{90}{$3{\times}3$, 64}};
+\node[lone, right=of l10c1]        (l10c2) {\rotatebox{90}{$3{\times}3$, 64}};
+\node[lone, right=1.10cm of l10c2] (l11c1) {\rotatebox{90}{$3{\times}3$, 64}};
+\node[lone, right=of l11c1]        (l11c2) {\rotatebox{90}{$3{\times}3$, 64}};
 % Layer 2
-\node[ltwo, right=1.60cm of l11c2] (l20c1) {\rotatebox{90}{$3{\times}3$ conv, 128, /2}};
-\node[ltwo, right=of l20c1]        (l20c2) {\rotatebox{90}{$3{\times}3$ conv, 128}};
-\node[ltwo, right=1.10cm of l20c2] (l21c1) {\rotatebox{90}{$3{\times}3$ conv, 128}};
-\node[ltwo, right=of l21c1]        (l21c2) {\rotatebox{90}{$3{\times}3$ conv, 128}};
-
+\node[ltwo, right=1.60cm of l11c2] (l20c1) {\rotatebox{90}{$3{\times}3$, 128, /2}};
+\node[ltwo, right=of l20c1]        (l20c2) {\rotatebox{90}{$3{\times}3$, 128}};
+\node[ltwo, right=1.10cm of l20c2] (l21c1) {\rotatebox{90}{$3{\times}3$, 128}};
+\node[ltwo, right=of l21c1]        (l21c2) {\rotatebox{90}{$3{\times}3$, 128}};
 % Layer 3
-\node[lthree, right=1.60cm of l21c2] (l30c1) {\rotatebox{90}{$3{\times}3$ conv, 256, /2}};
-\node[lthree, right=of l30c1]         (l30c2) {\rotatebox{90}{$3{\times}3$ conv, 256}};
-\node[lthree, right=1.10cm of l30c2]  (l31c1) {\rotatebox{90}{$3{\times}3$ conv, 256}};
-\node[lthree, right=of l31c1]         (l31c2) {\rotatebox{90}{$3{\times}3$ conv, 256}};
-
+\node[lthree, right=1.60cm of l21c2] (l30c1) {\rotatebox{90}{$3{\times}3$, 256, /2}};
+\node[lthree, right=of l30c1]         (l30c2) {\rotatebox{90}{$3{\times}3$, 256}};
+\node[lthree, right=1.10cm of l30c2]  (l31c1) {\rotatebox{90}{$3{\times}3$, 256}};
+\node[lthree, right=of l31c1]         (l31c2) {\rotatebox{90}{$3{\times}3$, 256}};
 % Layer 4
-\node[lfour, right=1.60cm of l31c2] (l40c1) {\rotatebox{90}{$3{\times}3$ conv, 512, /2}};
-\node[lfour, right=of l40c1]         (l40c2) {\rotatebox{90}{$3{\times}3$ conv, 512}};
-\node[lfour, right=1.10cm of l40c2]  (l41c1) {\rotatebox{90}{$3{\times}3$ conv, 512}};
-\node[lfour, right=of l41c1]         (l41c2) {\rotatebox{90}{$3{\times}3$ conv, 512}};
-
+\node[lfour, right=1.60cm of l31c2] (l40c1) {\rotatebox{90}{$3{\times}3$, 512, /2}};
+\node[lfour, right=of l40c1]         (l40c2) {\rotatebox{90}{$3{\times}3$, 512}};
+\node[lfour, right=1.10cm of l40c2]  (l41c1) {\rotatebox{90}{$3{\times}3$, 512}};
+\node[lfour, right=of l41c1]         (l41c2) {\rotatebox{90}{$3{\times}3$, 512}};
 % Head
 \node[head, right=1.60cm of l41c2] (avg) {\rotatebox{90}{AvgPool}};
 \node[head, right=of avg]           (fc)  {\rotatebox{90}{FC}};
@@ -188,18 +183,18 @@
 % Stage braces and labels
 \draw[decorate, decoration={brace, amplitude=5pt}]
     ($(bb10.north west)+(0,0.25)$) -- ($(bb11.north east)+(0,0.25)$)
-    node[midway, yshift=0.48cm] {\small Layer 1};
+    node[midway, yshift=0.48cm] {Layer 1};
 
 \draw[decorate, decoration={brace, amplitude=5pt}]
     ($(bb20.north west)+(0,0.25)$) -- ($(bb21.north east)+(0,0.25)$)
-    node[midway, yshift=0.48cm] {\small Layer 2};
+    node[midway, yshift=0.48cm] {Layer 2};
 
 \draw[decorate, decoration={brace, amplitude=5pt}]
     ($(bb30.north west)+(0,0.25)$) -- ($(bb31.north east)+(0,0.25)$)
-    node[midway, yshift=0.48cm] {\small Layer 3};
+    node[midway, yshift=0.48cm] {Layer 3};
 
 \draw[decorate, decoration={brace, amplitude=5pt}]
     ($(bb40.north west)+(0,0.25)$) -- ($(bb41.north east)+(0,0.25)$)
-    node[midway, yshift=0.48cm] {\small Layer 4};
+    node[midway, yshift=0.48cm] {Layer 4};
 
 \end{tikzpicture}%

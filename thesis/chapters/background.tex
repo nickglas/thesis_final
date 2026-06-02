@@ -176,7 +176,7 @@ infrastructure. The single-node and multi-node placements used later are shown i
 %% Stage~K Kubernetes 5-service pod/service placement figure
 \begin{figure}[htbp]
 \centering
-\resizebox{0.98\textwidth}{!}{%
+\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/rq14_chain5_kubernetes_placement.tex}%
 }
 \caption{Kubernetes pod and service placement for the Stage~K five-service chain. The benchmark client and all inference pods are placed on the same Kubernetes node, while each model segment is exposed through a Kubernetes Service and communicates using synchronous gRPC forwarding. The labels above the arrows show the activation-transfer size at each coarse ResNet-18 boundary.}
@@ -244,7 +244,7 @@ the protected downstream segments.
 
 \begin{figure}[htbp]
 \centering
-\resizebox{0.98\textwidth}{!}{%
+\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/rq21_mtls_identity_authz.tex}%
 }
 \caption{Service identity, mTLS, and authorization between two inference
@@ -267,7 +267,7 @@ the inter-pod segment is mTLS-protected.
 
 \begin{figure}[htbp]
 \centering
-\resizebox{0.98\textwidth}{!}{%
+\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/rq21_mtls_identity_authz_flow.tex}%
 }
 \caption{End-to-end request flow through the protected two-service chain. A
@@ -300,7 +300,7 @@ around only the model code or activation tensor.
 
 \begin{figure}[htbp]
 \centering
-\resizebox{0.98\textwidth}{!}{%
+\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/confidential_vm_boundary.tex}%
 }
 \caption{Protection boundaries in the secured two-service AKS deployment. The service
