@@ -1,11 +1,11 @@
 \begin{tikzpicture}[
-    font=\small,
+    font=\normalsize,
     image/.style={
         draw=black!55,
         fill=black!5,
         rounded corners=3pt,
         minimum width=1.15cm,
-        minimum height=0.8cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -14,7 +14,7 @@
         fill=orange!15,
         rounded corners=3pt,
         minimum width=1.25cm,
-        minimum height=0.8cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -23,7 +23,7 @@
         fill=blue!14,
         rounded corners=3pt,
         minimum width=1.25cm,
-        minimum height=0.8cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -32,7 +32,7 @@
         fill=green!12,
         rounded corners=3pt,
         minimum width=1.25cm,
-        minimum height=0.8cm,
+        minimum height=1.0cm,
         align=center,
         thick
     },
@@ -41,7 +41,7 @@
         thick,
         draw=black!70
     },
-    node distance=0.28cm
+    node distance=0.35cm
 ]
 
 %% image of resnet18
@@ -72,14 +72,14 @@
 
 \draw[decorate, decoration={brace, mirror, amplitude=5pt}]
     ($(conv.south west)+(0,-0.12)$) -- ($(maxpool.south east)+(0,-0.12)$)
-    node[midway, yshift=-0.45cm] {\small Stem};
+    node[midway, yshift=-0.45cm] {Stem};
 
 \draw[decorate, decoration={brace, amplitude=5pt}]
     ($(l1.north west)+(0,0.12)$) -- ($(l4.north east)+(0,0.12)$)
-    node[midway, yshift=0.45cm] {\small Residual stages};
+    node[midway, yshift=0.45cm] {Residual stages};
 
 \draw[decorate, decoration={brace, mirror, amplitude=5pt}]
     ($(avgpool.south west)+(0,-0.12)$) -- ($(fc.south east)+(0,-0.12)$)
-    node[midway, yshift=-0.45cm] {\small Classification head};
+    node[midway, yshift=-0.45cm] {Classification head};
 
 \end{tikzpicture}%
