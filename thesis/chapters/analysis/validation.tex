@@ -36,11 +36,13 @@ or transport layer at any stage.
 Each benchmark stage reports per-condition round CVs computed as the standard
 deviation of per-round condition means divided by the grand mean
 (\cref{sec:methods-statistics}). The local screening stages (Stage~L1, Stage~L2)
-achieve round CVs in the range 0.001--0.015. The local Kubernetes stage
+achieve round CVs in the range 0.0017--0.0113. The local Kubernetes stage
 (Stage~K) sees round CVs of 0.0074--0.0161 (\cref{tab:rq14_rounds}). The AKS
-single-node stage (Stage~C) sees round CVs of 0.0075--0.0225 across the chained
-conditions and the monolithic baseline (\cref{tab:rq15_rounds}); the AKS
-multi-node sensitivity stage (Stage~C (multi-node)) tightens these to 0.0020--0.0099
+single-node stage (Stage~C) sees round CVs of 0.0019--0.0061 across the chained
+conditions, with the monolithic baseline at 0.0117 (\cref{tab:rq15_rounds}); the
+AKS multi-node sensitivity stage (Stage~C (multi-node)) records round CVs of
+0.0036--0.0127 across the chained conditions and 0.0084 on the monolithic
+baseline, remaining in the same low range rather than tightening uniformly
 (\cref{tab:rq15b_rounds}). The placement metadata confirms distinct AKS nodes
 for the service pods, but the run does not isolate a single causal source for
 the low cross-round drift. These low CVs support treating the reported
@@ -51,7 +53,7 @@ artefacts of a single favourable or unfavourable run.
 Stage~H1 uses a paired alternated design (three mTLS-first passes, two
 plain-first passes) to defend against slow performance drift over the course
 of the benchmark. Pass-level mTLS deltas remain positive in every pass:
-2.693--3.318~ms for \texttt{chain\_2svc} and 8.203--9.968~ms for
+2.223--5.230~ms for \texttt{chain\_2svc} and 7.623--9.985~ms for
 \texttt{chain\_5svc} (\cref{tab:rq21_paired_deltas}). Stage~C preserves the
 complete Stage~K condition ordering (\texttt{monolithic\_k8s\_1svc}~$<$
 \texttt{chain\_2svc}~$<$ \texttt{chain\_3svc}~$<$ \texttt{chain\_4svc}~$<$

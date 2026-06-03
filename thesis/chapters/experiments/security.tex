@@ -226,22 +226,131 @@ single protected hop's activation size across \texttt{layer1},
 point's plain and mTLS conditions, in order to measure whether the
 single-hop mTLS overhead scales with the activation crossing that hop.
 
-\begin{quote}
-\textbf{TODO (author).} The split-sensitivity campaign results
-(per-split mean and p95 mTLS overheads, per-split operational overhead, and
-per-split resource summary derived from
-\texttt{rq2\_1\_mtls\_split\_20260516\_095406}) are not yet written into this
-chapter. The appendix entry for this campaign is also marked as pending in
-\cref{ch:appendix} (see the planning comment at the top of
-\texttt{appendix/appendix.tex}). Until the per-split numbers are inserted
-here -- or moved into an appendix subsection and forward-referenced from
-this stub -- the split-sensitivity finding declared in
-\cref{sec:methods-rq21-splitsens} has no visible Results entry in this
-chapter and must not be cited as a measured outcome. This stub is
-intentionally a placeholder so that the gap is visible at the
-table-of-contents level and is not silently absorbed into the primary Stage~H1
-result.
-\end{quote}
+\subsection{Experimental Setup}
+
+The split-sensitivity campaign used the frozen paired AKS artifact
+\texttt{rq2\_1\_mtls\_split\_20260516\_095406}. It ran on the same AKS cluster
+(\texttt{thesis-rq15}), the same managed-Istio revision (\texttt{asm-1-29}), the
+same isolated system node pool, and the same strict same-node placement as the
+primary Stage~H1 design, and reused the identical pinned application image
+digest:
+\begin{center}
+\small\texttt{sha256:d292aef407ee8a15da2bdaa680de1cc2}\\
+\small\texttt{4b0975e7de81d27e1fc3a7d128b8736b}
+\end{center}
+The independent variable is the split point that produces the activation crossing
+the single protected hop (hop~2 of \texttt{chain\_2svc}). It is varied across
+\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}, yielding
+protected activations of 784, 392, 196, and 98~KiB respectively
+($802{,}816$, $401{,}408$, $200{,}704$, and $100{,}352$~bytes), which match the
+Stage~L1 activation sizes. For each split point a plain and an mTLS condition form
+a paired pair, giving eight conditions in total. The campaign ran five
+seeded-interleaved passes (\texttt{order\_seed}~$=42$, protected hop index~2)
+across the eight conditions, for $5 \times 8 \times 200 = 8{,}000$ measured
+iterations (1{,}000 per condition). Functional parity against the monolithic
+reference held for every condition, and the per-pass security validation --
+static manifest checks, runtime policy-object counts, full-chain positive probes,
+and direct non-mesh denial probes against the protected downstream segment --
+passed as in the primary Stage~H1 run.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~H1 single-hop mTLS overhead by split point]{Stage~H1 split-sensitivity: single-hop mTLS overhead as a function of the activation crossing the protected hop. Each row is a paired plain/mTLS pair at one split point, aggregated over five interleaved passes (1{,}000 measured iterations per condition). Source: \texttt{merged/split\_sensitivity\_summary.csv} and \texttt{merged/aggregated\_results.csv} in \texttt{rq2\_1\_mtls\_split\_20260516\_095406}. As documented in the evidence manifest, these per-split deltas are internally comparable within this interleaved campaign and must not be spliced into the frozen two-condition \texttt{chain\_2svc} or \texttt{chain\_5svc} paired results.}
+\label{tab:rq21_splitsens}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Split point} & \textbf{Protected (KiB)} & \textbf{Plain mean (ms)} & \textbf{mTLS mean (ms)} & \textbf{Mean $\Delta$ (ms)} & \textbf{Mean $\Delta$ (\%)} & \textbf{p95 $\Delta$ (ms)} \\
+\midrule
+\texttt{split\_after\_layer1}            & 784 & 58.752 & 63.172 & +4.420 & +7.52 & +5.359 \\
+\texttt{split\_after\_layer2}            & 392 & 59.317 & 63.004 & +3.687 & +6.22 & +4.172 \\
+\texttt{split\_after\_layer3}            & 196 & 57.992 & 61.473 & +3.481 & +6.00 & +3.428 \\
+\texttt{split\_after\_layer4}$^{\dagger}$ & 98  & 56.815 & 59.401 & +2.586 & +4.55 & +2.918 \\
+\bottomrule
+\end{tabular}
+}
+\\[2pt]
+{\footnotesize $^{\dagger}$\,\texttt{split\_after\_layer4} remains compute-degenerate under the Stage~L1 degeneracy rule (\cref{sec:methods-carryforward}) and is retained only as a low-payload diagnostic endpoint, not as a candidate deployment.}
+\end{table}
+
+The single-hop mTLS overhead scales monotonically with the size of the activation
+crossing the protected hop. As the protected activation falls from 784~KiB
+(\texttt{layer1}) to 98~KiB (\texttt{layer4}), the mean overhead decreases
+monotonically from +4.420~ms to +2.586~ms, the percentage overhead from +7.52\%
+to +4.55\%, and the p95 overhead from +5.359~ms to +2.918~ms
+(\cref{tab:rq21_splitsens}). This is the activation-transfer dimension of the
+Stage~L3 two-dimensional account (\cref{sec:analysis-rq13}) reappearing at the
+security layer: a larger protected activation costs proportionally more to push
+through the mTLS-mediated sidecar data path.
+
+The increase is attributable to the communication/platform path rather than to
+model computation. The inferred non-compute/platform component of the mTLS
+overhead decreases in step with activation size --- +4.253~ms, +3.481~ms,
++3.026~ms, and +2.560~ms for \texttt{layer1} through \texttt{layer4} --- while the
+total-compute delta between the plain and mTLS conditions stays within
+$\pm0.46$~ms at every split point (0.167, 0.206, 0.455, and 0.026~ms
+respectively, from \texttt{aggregated\_results.csv}). The mTLS condition therefore
+changes the platform path, not the ResNet-18 computation, exactly as expected for
+a sidecar-mediated boundary.
+
+Two further readings sharpen the result. First, the overhead does not vanish as
+the activation shrinks: even the smallest 98~KiB \texttt{layer4} hop pays
++2.586~ms. This is consistent with the Stage~H1 ablation
+(\cref{tab:rq21_ablation}), which localised most of the hardening cost to entry
+into the managed-Istio data path rather than to the bytes encrypted; the
+split-sensitivity campaign decomposes the same cost into a fixed sidecar-entry
+component plus an activation-scaling component. Second, the \texttt{layer2}
+single-hop delta measured here (+3.687~ms) reproduces the primary
+\texttt{chain\_2svc} paired overhead (+3.488~ms, \cref{tab:rq21_latency}) to
+within roughly 0.2~ms, even though the plain absolute baseline in this campaign
+(59.317~ms) sits well below the primary \texttt{chain\_2svc} plain baseline
+(75.557~ms). The two runs are separate campaigns and their absolutes are not
+comparable --- which is precisely why the thesis reports paired deltas rather than
+absolute latencies --- but the close agreement of the \emph{delta} is an
+order-of-magnitude cross-check on the primary single-node Stage~H1 number, in the
+same spirit as the ablation cross-check.
+
+\begin{table}[ht]
+\centering
+\caption[Stage~H1 split-sensitivity resource and operational overhead]{Stage~H1 split-sensitivity per-split resource and operational overhead of the mTLS condition relative to plain. Source: \texttt{merged/resource\_summary\_by\_split.csv} and \texttt{merged/operational\_overhead\_by\_split.json} in \texttt{rq2\_1\_mtls\_split\_20260516\_095406}. The window-level sidecar-CPU, total-pod-CPU, and schedule-to-ready columns are operational measurements over the run window rather than perfect causal attributions; as in the primary Stage~H1 run, the total-pod-CPU delta can read negative when measured application-container CPU happens to be lower in the mTLS pass (here at \texttt{layer3}).}
+\label{tab:rq21_splitsens_resource}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Split point} & \textbf{Protected (KiB)} & \textbf{Sidecar CPU $\Delta$ (mCPU)} & \textbf{Sidecar mem $\Delta$ (MiB)} & \textbf{Total pod CPU $\Delta$ (mCPU)} & \textbf{Sched.-to-ready $\Delta$ (s)} \\
+\midrule
+\texttt{split\_after\_layer1} & 784 & 54.1 & 85.2 & $+97.6$ & 3.2 \\
+\texttt{split\_after\_layer2} & 392 & 44.9 & 83.8 & $+93.2$ & 3.3 \\
+\texttt{split\_after\_layer3} & 196 & 29.7 & 82.0 & $-10.4$ & 0.2 \\
+\texttt{split\_after\_layer4} & 98  & 27.7 & 82.7 & $+45.0$ & 3.4 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The operational footprint of the hardening is otherwise constant across split
+points, because the \texttt{chain\_2svc} topology and the single protected hop do
+not change: every split point adds the same five Kubernetes objects (two service
+accounts, two peer-authentication objects, and one authorization policy), the same
+two injected sidecars, and the same requested sidecar budget of $+200$~mCPU and
+$+256$~MiB. What varies is the \emph{window-level} sidecar resource use:
+\cref{tab:rq21_splitsens_resource} shows that the measured sidecar CPU delta
+itself decreases with activation size, from 54.1~mCPU at \texttt{layer1} to
+27.7~mCPU at \texttt{layer4}, reinforcing the latency finding that the sidecar
+performs proportionally more work for larger protected activations. The
+total-pod-CPU and schedule-to-ready columns are noisier window-level counters and
+are not interpreted beyond the direction noted above.
+
+This campaign is supporting evidence, not a headline Stage~H1 result. Its
+contribution is to confirm that the single-hop mTLS overhead is activation-size
+dependent and dominated by the platform path, which is consistent with both the
+Stage~L3 activation-transfer mechanism (\cref{sec:analysis-rq13}) and the primary
+Stage~H1 finding that the hardening cost lives in the managed-Istio data path
+(\cref{sec:analysis-rq21}). Per the evidence manifest, the per-split deltas remain
+campaign-internal and are not spliced into the frozen \texttt{chain\_2svc} or
+\texttt{chain\_5svc} paired numbers.
 
 \section{Stage~H1 (Multi-Node Alternative) -- Inter-Node Sensitivity of mTLS Overhead}
 \label{sec:rq21b}
