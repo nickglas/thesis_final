@@ -1,168 +1,52 @@
-\begingroup
-\def\mtlspodwidth{4.6cm}
-\def\mtlspodheight{4.65cm}
-\def\mtlscolwidth{4.8cm}
-
 \begin{tikzpicture}[
-    font=\small,
-    pod/.style={
-        draw=blue!65!black,
-        fill=blue!6,
-        rounded corners=5pt,
-        thick,
-        inner xsep=8pt,
-        inner ysep=6pt
-    },
-    podbox/.style={
-        draw=black!55,
-        fill=black!2,
-        rounded corners=8pt,
-        thick,
-        minimum width=\mtlscolwidth,
-        minimum height=\mtlspodheight,
-        inner sep=0pt
-    },
-    app/.style={
-        draw=orange!75!black,
-        fill=orange!14,
-        rounded corners=3pt,
-        minimum width=2.25cm,
-        minimum height=0.72cm,
-        align=center,
-        thick
-    },
-    sidecar/.style={
-        draw=purple!60!black,
-        fill=purple!10,
-        rounded corners=3pt,
-        minimum width=2.25cm,
-        minimum height=0.72cm,
-        align=center,
-        thick
-    },
-    controlplane/.style={
-        draw=teal!65!black,
-        fill=teal!10,
-        rounded corners=6pt,
-        minimum width=6.0cm,
-        minimum height=1.0cm,
-        align=center,
-        thick,
-        font=\small
-    },
-    attacker/.style={
-        draw=red!65!black,
-        fill=red!7,
-        rounded corners=4pt,
-        minimum width=4.0cm,
-        minimum height=0.95cm,
-        align=center,
-        font=\scriptsize,
-        thick
-    },
-    plaintextarrow/.style={
-        -{Latex[length=2mm]},
-        thick,
-        draw=orange!75!black
-    },
-    mtlsarrow/.style={
-        -{Latex[length=2.4mm]},
-        very thick,
-        draw=purple!70!black,
-        double,
-        double distance=1.2pt
-    },
-    identityarrow/.style={
-        -{Latex[length=2mm]},
-        thick,
-        dashed,
-        draw=teal!65!black
-    },
-    deniedarrow/.style={
-        -{Latex[length=2.2mm]},
-        thick,
-        draw=red!70!black
-    },
-    labeltext/.style={
-        font=\scriptsize,
-        text=black!68,
-        align=center
-    },
-    plainlabel/.style={
-        font=\tiny,
-        text=black!68,
-        align=center
-    },
-    salabel/.style={
-        font=\scriptsize\itshape,
-        text=blue!55!black,
-        align=center
-    },
-    node distance=0.55cm
+    thesisfig,
+    app/.style={tfbox, draw=orange!75!black, fill=orange!14, minimum width=2.7cm, minimum height=0.85cm, inner xsep=3pt},
+    sidecar/.style={tfbox, draw=purple!60!black, fill=purple!12, minimum width=2.7cm, minimum height=0.85cm, inner xsep=3pt},
+    podbox/.style={draw=black!55, fill=black!2, rounded corners=8pt, thick, inner xsep=8pt, inner ysep=7pt},
+    control/.style={tfbox, draw=teal!65!black, fill=teal!10, minimum height=0.9cm, inner xsep=8pt},
+    probe/.style={tfbox, draw=red!65!black, fill=red!7, minimum height=0.85cm, inner xsep=6pt},
+    plaintextarrow/.style={-{Latex[length=1.8mm]}, thick, draw=orange!75!black},
+    mtlsarrow/.style={-{Latex[length=2.4mm]}, very thick, draw=purple!70!black, double, double distance=1.2pt},
+    identityarrow/.style={-{Latex[length=1.8mm]}, thick, dashed, draw=teal!65!black},
+    deniedarrow/.style={-{Latex[length=2mm]}, thick, draw=red!70!black},
+    podtitle/.style={font=\small\bfseries, text=black!70},
+    salbl/.style={font=\small\itshape, text=blue!55!black},
+    annot/.style={font=\small, text=black!62, align=center},
+    mtlslbl/.style={font=\small\bfseries, text=purple!70!black, align=center}
 ]
 
-% --- Control plane (top) ---------------------------------------------------
-\node[controlplane] (cp) at (3.4,3.65) {Istio control plane\\\scriptsize CA / SPIFFE identity issuer};
+% --- Two pods: header (title + ServiceAccount), app, sidecar ----------------
+\node[podtitle] (t1)      at (0,1.5)     {Pod: service1};
+\node[salbl]    (sa1)     at (0,1.05)    {\texttt{sa-svc1}};
+\node[app]      (s1app)   at (0,0.2)     {Service 1\\{\small model segment}};
+\node[sidecar]  (s1proxy) at (0,-1.45)   {Istio sidecar\\{\small proxy}};
 
-% --- Service 1 pod (left) --------------------------------------------------
-\node[app]     (s1app)   at (0,0.55) {Service 1\\model segment};
-\node[sidecar] (s1proxy) at (0,-0.90) {Istio sidecar\\proxy};
-
-\begin{pgfonlayer}{background}
-\node[podbox] (col1) at (0,0) {};
-\node[pod, fit=(s1app)(s1proxy)] (pod1) {};
-\end{pgfonlayer}
-
-\node[font=\small\bfseries, text=black!70, anchor=north]
-    at ($(col1.north)+(0,-0.18cm)$) {Pod: service1};
-\node[salabel, anchor=south west]
-    at ($(col1.south west)+(0.25cm,0.18cm)$) {ServiceAccount: \texttt{sa-svc1}};
-
-% --- Service 2 pod (right) -------------------------------------------------
-\node[app]     (s2app)   at (6.8,0.55) {Service 2\\downstream segment};
-\node[sidecar] (s2proxy) at (6.8,-0.90) {Istio sidecar\\proxy};
+\node[podtitle] (t2)      at (7,1.5)      {Pod: service2};
+\node[salbl]    (sa2)     at (7,1.05)     {\texttt{sa-svc2}};
+\node[app]      (s2app)   at (7,0.2)      {Service 2\\{\small downstream seg.}};
+\node[sidecar]  (s2proxy) at (7,-1.45)    {Istio sidecar\\{\small proxy}};
 
 \begin{pgfonlayer}{background}
-\node[podbox] (col2) at (6.8,0) {};
-\node[pod, fit=(s2app)(s2proxy)] (pod2) {};
+\node[podbox, fit=(t1)(sa1)(s1app)(s1proxy)] (col1) {};
+\node[podbox, fit=(t2)(sa2)(s2app)(s2proxy)] (col2) {};
 \end{pgfonlayer}
 
-\node[font=\small\bfseries, text=black!70, anchor=north]
-    at ($(col2.north)+(0,-0.18cm)$) {Pod: service2};
-\node[salabel, anchor=south west]
-    at ($(col2.south west)+(0.25cm,0.18cm)$) {ServiceAccount: \texttt{sa-svc2}};
-
-% --- Identity issuance arrows (control plane -> sidecars) ------------------
-\draw[identityarrow]
-    (cp.south -| col1.north) -- node[labeltext, left, text=teal!55!black, text width=1.7cm]
-    {workload\\identity + cert} ($(col1.north)+(0,0.02cm)$);
-\draw[identityarrow]
-    (cp.south -| col2.north) -- node[labeltext, right, text=teal!55!black, text width=1.7cm]
-    {workload\\identity + cert} ($(col2.north)+(0,0.02cm)$);
+% --- Control plane (identity issuer) ---------------------------------------
+\node[control] (cp) at (3.5,3.15) {Istio control plane\\{\small CA / SPIFFE identity issuer}};
+\draw[identityarrow] (cp.south -| col1.north) -- node[annot, left, text=teal!55!black] {identity\\+ cert} (col1.north);
+\draw[identityarrow] (cp.south -| col2.north) -- node[annot, right, text=teal!55!black] {identity\\+ cert} (col2.north);
 
 % --- Plaintext loopback inside each pod ------------------------------------
-\draw[plaintextarrow] (s1app) -- node[plainlabel, right=0.02cm, text width=1.3cm]
-    {plaintext\\loopback} (s1proxy);
-\draw[plaintextarrow] (s2proxy) -- node[plainlabel, right=0.02cm, text width=1.3cm]
-    {plaintext\\loopback} (s2app);
+\draw[plaintextarrow] (s1app) -- node[annot, right=2pt] {plaintext\\loopback} (s1proxy);
+\draw[plaintextarrow] (s2proxy) -- node[annot, right=2pt] {plaintext\\loopback} (s2app);
 
-% --- The mTLS hop ---------------------------------------------------------
-\draw[mtlsarrow] (s1proxy.east) -- node[labeltext, above=0.10cm,
-    text=purple!70!black, text width=3.0cm, font=\scriptsize\bfseries]
+% --- The protected mTLS hop ------------------------------------------------
+\draw[mtlsarrow] (s1proxy.east) -- node[mtlslbl, above=1pt, text width=3.2cm]
     {mTLS\\+ peer-identity check\\+ AuthorizationPolicy} (s2proxy.west);
 
-% --- Non-mesh denial probe (bottom) ----------------------------------------
-\node[attacker] (probe) at (7.55,-3.80)
-    {Non-mesh probe\\\scriptsize (no SPIFFE identity)};
-
-\coordinate (denytarget) at ($(s2proxy.south east)+(-0.35cm,-0.02cm)$);
-\draw[deniedarrow] (probe.north) -- (denytarget)
-    node[pos=0.32, right, labeltext, text=red!70!black, text width=1.55cm]
-    {denied by\\AuthZ policy};
-
-% Big "X" cross on the denied arrow
-\node[font=\Large\bfseries, text=red!70!black]
-    at ($(probe.north)!0.55!(denytarget)$) {$\boldsymbol\times$};
+% --- Non-mesh denial probe (enters the now-free bottom of pod 2) ------------
+\node[probe] (probe) at (7,-3.55) {Non-mesh probe\\{\small (no SPIFFE identity)}};
+\draw[deniedarrow] (probe) -- node[annot, right=3pt, text=red!70!black] {denied by\\AuthZ policy} (s2proxy.south);
+\node[font=\large\bfseries, text=red!70!black] at ($(probe.north)!0.5!(s2proxy.south)$) {$\boldsymbol\times$};
 
 \end{tikzpicture}%
-\endgroup

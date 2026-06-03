@@ -48,6 +48,7 @@
 \urlstyle{same}
 
 \usepackage{booktabs} % publication quality tables
+\usepackage{array} % extended column specifiers (>{...} ragged paragraph columns)
 \usepackage{mathtools} % mathematical tools to use with amsmath
 \usepackage{cleveref} % intelligent cross-referencing
 \usepackage{blindtext} % producing 'blind' text for testing
@@ -56,6 +57,7 @@
 \usepackage[colorinlistoftodos]{todonotes} % marking things to do in a LaTeX document
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,decorations.pathreplacing,calc,fit,backgrounds}
+\input{figures/tikz/_thesisstyle.tex} % shared figure styling (font size, boxes, arrows)
 \usepackage[acronym,shortcuts=ac,nomain,nonumberlist]{glossaries-extra}
 \makeglossaries{}
 \setabbreviationstyle[acronym]{long-short}
@@ -70,6 +72,23 @@
 % Change table numbers to lininig instead of oldstyle
 \usepackage{etoolbox}
 \AtBeginEnvironment{tabular}{\addfontfeatures{Numbers={Lining}}}
+
+% --- Line breaking for long code tokens (paths, identifiers, hashes) ---
+% Long snake_case identifiers and file paths inside \texttt{} are otherwise
+% unbreakable and overflow the margin. Scope a breakable underscore to
+% typewriter text only (leaving \_ in math mode, e.g. \mathrm{round\_index},
+% untouched) so such tokens wrap without an inserted hyphen.
+\makeatletter
+\NewCommandCopy{\thesis@orig@texttt}{\texttt}
+\DeclareRobustCommand{\texttt}[1]{%
+  \begingroup
+    \def\_{\textunderscore\penalty\z@\hskip\z@skip}%
+    \thesis@orig@texttt{#1}%
+  \endgroup
+}
+\makeatother
+% Absorb the last bit of overflow on otherwise-unbreakable prose lines.
+\setlength{\emergencystretch}{3em}
 
 %---------------------------------------------------------------------%
 %                     Options                                         %

@@ -11,10 +11,235 @@
 %   - Any additional figures or tables too large for the main chapters.
 
 This appendix collects supporting material that is auxiliary to the main
-argument: extended sensitivity data, additional ablation breakdowns, and any
-figures or tables that are too large for the experiment chapters. The
-thesis-facing primary results remain those reported in
-\cref{ch:experiments,ch:analysis}.
+argument: the full benchmark configuration tables, extended sensitivity data,
+additional ablation breakdowns, and any figures or tables that are too large for
+the experiment chapters. The thesis-facing primary results remain those reported
+in \cref{ch:experiments,ch:analysis}.
+
+\section{Benchmark Configuration Tables}
+\label{sec:appendix-benchmark-configs}
+
+This section collects the complete per-stage benchmark configurations. The
+parameters salient to interpreting each result are stated inline in the
+corresponding section of \cref{ch:experiments}; the full settings are reproduced
+here so that the body chapters remain uncluttered while every run remains exactly
+reproducible from the frozen artifacts cited in each caption.
+
+\begin{table}[htbp]
+\centering
+\caption{Stage~L1 benchmark configuration}
+\label{tab:rq11-config}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{ll}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Model & ResNet-18 (pretrained) \\
+Device & CPU \\
+Precision & FP32 \\
+Input shape & $1 \times 3 \times 224 \times 224$ \\
+Conditions & Monolithic + split after layer1, layer2, layer3, layer4 \\
+Rounds & 5 \\
+Warmup iterations & 50 \\
+Measured iterations & 200 \\
+Cooldown between conditions & 5 seconds \\
+Random seed & 42 \\
+Communication & gRPC over localhost (\texttt{127.0.0.1:50051}) \\
+Maximum message size & 16 MiB ($16777216$ bytes) \\
+Parity tolerance & $1.0 \times 10^{-5}$ \\
+Parity inputs & 5 \\
+Warmup window & 10 iterations \\
+Warmup CV threshold & 0.02 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Stage~L2 benchmark configuration}
+\label{tab:rq12-config}
+\begin{tabular}{ll}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Model                          & ResNet-18 (pretrained) \\
+Device                         & CPU \\
+Precision                      & FP32 \\
+Input shape                    & $1 \times 3 \times 224 \times 224$ \\
+Conditions                     & Monolithic + split after layer2, layer3.0, layer3 \\
+Rounds                         & 5 \\
+Warmup iterations              & 50 \\
+Measured iterations            & 200 \\
+Cooldown between conditions    & 5 seconds \\
+Random seed                    & 42 \\
+Communication                  & gRPC over localhost (\texttt{127.0.0.1:50051}) \\
+Maximum message size           & 16~MiB ($16{,}777{,}216$ bytes) \\
+Parity tolerance               & $1.0 \times 10^{-5}$ \\
+Parity inputs                  & 5 \\
+Warmup window                  & 10 iterations \\
+Warmup CV threshold            & 0.02 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption[Stage~L3 internal timing configuration]{Stage~L3 supporting internal timing configuration. Source: \texttt{config.yaml} and \texttt{instrumentation\_overhead.json} in \texttt{internal\_timing\_resnet18\_20260515\_113614}.}
+\label{tab:rq13-config}
+\begin{tabular}{ll}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Model                       & ResNet-18 (pretrained) \\
+Device                      & CPU \\
+Precision                   & FP32 \\
+Profiling mode              & Monolithic internal timing (supporting evidence) \\
+Timing scope                & Stage-, block-, and selected operation-level timing \\
+Rounds                      & 10 \\
+Warmup iterations           & 50 \\
+Measured iterations         & 200 \\
+Validation inputs           & 5 \\
+Validation tolerance        & $1.0 \times 10^{-6}$ \\
+CPU stabilisation           & Single-threaded, single-core pinned execution \\
+Instrumentation overhead    & 0.708~ms (0.94\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Stage~K benchmark configuration}
+\label{tab:rq14_config}
+\begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Runtime & Local Ubuntu/Linux Kubernetes benchmark \\
+Cluster & Single-node \texttt{kind} cluster (\texttt{kind-thesis-rq14}) \\
+Namespace & \texttt{rq14} \\
+Conditions & Five predefined configurations from \texttt{monolithic\_k8s\_1svc} to \texttt{chain\_5svc} \\
+Execution mode & Local in-cluster rolling orchestration over the predefined condition set \\
+Model & ResNet-18 (pretrained) \\
+Device & CPU \\
+Precision & FP32 \\
+Input shape & $1 \times 3 \times 224 \times 224$ \\
+Rounds & 5 \\
+Warmup iterations & 50 \\
+Measured iterations & 200 \\
+Cooldown between conditions & 5 seconds \\
+Random seed & 42 \\
+Communication & gRPC (in-cluster Kubernetes) \\
+gRPC port & 50051 \\
+Maximum message size & 16~MiB ($16{,}777{,}216$ bytes) \\
+Service pod CPU request / limit & 1 core / 1 core \\
+Service pod memory request / limit & 512~MiB / 512~MiB \\
+Client CPU request / limit & 1 core / 1 core \\
+Client memory request / limit & 1~GiB / 1~GiB \\
+Image pull policy & \texttt{IfNotPresent} \\
+Carry-forward & Not applicable; Stage~K benchmarks a predefined configuration set \\
+Parity validation & Local segment validation and live gRPC chain validation; \texttt{num\_inputs} $= 5$, \texttt{atol} $= 1 \times 10^{-5}$ \\
+Warmup calibration & Trailing window $= 10$, CV threshold $= 0.02$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~C AKS benchmark configuration]{Stage~C AKS benchmark configuration. Source: \texttt{merged\_results/config.yaml} and \texttt{deployment\_metadata.json} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
+\label{tab:rq15_config}
+\begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Runtime & Azure Kubernetes Service benchmark \\
+Cluster & Single-node AKS cluster \texttt{thesis-rq15} \\
+Node type & \texttt{Standard\_D8s\_v3} \\
+Region & \texttt{swedencentral} \\
+Namespace & \texttt{rq15} \\
+Conditions & Five predefined configurations from \texttt{monolithic\_k8s\_1svc} to \texttt{chain\_5svc} \\
+Execution mode & In-cluster rolling orchestration with teardown between conditions \\
+Model & ResNet-18 (pretrained) \\
+Device & CPU \\
+Precision & FP32 \\
+Input shape & $1 \times 3 \times 224 \times 224$ \\
+Rounds & 5 \\
+Warmup iterations & 50 \\
+Measured iterations & 200 \\
+Cooldown between conditions & 5 seconds \\
+Random seed & 42 \\
+Communication & gRPC (in-cluster Kubernetes) \\
+gRPC port & 50051 \\
+Maximum message size & 16~MiB \\
+Service pod CPU request / limit & 1 core / 1 core \\
+Service pod memory request / limit & 1~GiB / 1~GiB \\
+Client CPU request / limit & 1 core / 1 core \\
+Client memory request / limit & 1~GiB / 1~GiB \\
+Pod QoS & \texttt{Guaranteed} for service pods \\
+Image pull policy & \texttt{Always} \\
+Carry-forward & Not applicable; Stage~C evaluates a predefined chain family \\
+Parity validation & Local segment validation and live gRPC chain validation; \texttt{num\_inputs} $= 5$, \texttt{atol} $= 1 \times 10^{-5}$ \\
+Warmup calibration & Trailing window $= 10$, CV threshold $= 0.02$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~H1 paired AKS benchmark configuration]{Stage~H1 paired AKS security benchmark configuration. Sources: \texttt{merged/paired\_summary.md} in the two artifacts named below.}
+\label{tab:rq21_config}
+\begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Primary topology & \texttt{chain\_2svc}; split after \texttt{layer2} \\
+Stress topology & \texttt{chain\_5svc}; splits after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4} \\
+Main artifact & \begin{tabular}[t]{@{}l@{}}\texttt{rq2\_1\_paired\_20260515}\\\texttt{\_160012}\end{tabular} \\
+Stress artifact & \begin{tabular}[t]{@{}l@{}}\texttt{rq2\_1\_paired\_20260517}\\\texttt{\_114303}\end{tabular} \\
+Conditions & Plain AKS chain vs.\ managed-Istio mTLS chain \\
+Mesh revision & \texttt{asm-1-29} \\
+Cluster & AKS \texttt{thesis-rq15}; isolated benchmark and system node pools \\
+Benchmark node type & \texttt{Standard\_D8s\_v3} \\
+Model & ResNet-18 (pretrained) \\
+Device / precision & CPU / FP32 \\
+Input shape & $1 \times 3 \times 224 \times 224$ \\
+Paired passes & 5 \\
+Warmup iterations & 50 per condition execution \\
+Measured iterations & 200 per condition execution; 1,000 per condition after merging \\
+Random seed & 42 \\
+Service resources & 1 CPU / 1~GiB per inference service \\
+Client resources & 100m CPU request, 1 CPU limit, 1~GiB memory \\
+Sidecar resources & 100m CPU request, 500m CPU limit, 128~MiB memory request, 512~MiB memory limit \\
+Placement & Strict same-node service placement on tainted benchmark node pool \\
+Security validation & Static manifest validation, runtime policy validation, full-chain positive probe, and non-mesh direct-denial probe \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~H2 benchmark configuration]{Stage~H2 benchmark configuration. Sources: \texttt{rq22\_rolling\_summary.json}, \texttt{rq22\_terraform.tfvars.json}, and \texttt{image\_reference.txt} in \texttt{rq2\_2\_confidential\_20260516\_135726}.}
+\label{tab:rq22_config}
+\begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Topology & \texttt{chain\_2svc}; split after \texttt{layer2} \\
+Communication security & Managed-Istio mTLS, service identity, and authorisation policy inherited from Stage~H1 \\
+Standard VM size & \texttt{Standard\_D8as\_v5} (both services in standard condition; service1 in confidential condition) \\
+Confidential VM size & \texttt{Standard\_DC8as\_v5} with AMD SEV-SNP (service2 in confidential condition) \\
+TEE scope & \texttt{service2\_only}; full two-service TEE is out of scope (future work) \\
+Region & \texttt{westeurope} \\
+Model & ResNet-18 (pretrained) \\
+Device / precision & CPU / FP32 \\
+Input shape & $1 \times 3 \times 224 \times 224$ \\
+Paired passes & 5 \\
+Warmup iterations & 50 per condition execution \\
+Measured iterations & 200 per condition execution; 1,000 per condition after merging \\
+Artifact & \texttt{rq2\_2\_confidential\_20260516\_135726} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Stage~K (Cross-Node Alternative): kind Multi-Worker CNI Sensitivity Data}
 \label{sec:appendix-rq14b}
@@ -34,7 +259,7 @@ inter-node penalty is measured separately in \cref{sec:rq15b} on AKS.
 
 \begin{table}[ht]
 \centering
-\caption{Stage~K (cross-node) condition summary on the six-worker kind cluster with
+\caption[Stage~K (cross-node) condition summary]{Stage~K (cross-node) condition summary on the six-worker kind cluster with
 \texttt{multi\_node\_anti\_affinity} placement. Source:
 \texttt{merged\_results/condition\_summaries.csv} in
 \texttt{rq1\_4b\_20260515\_163322}. Overheads are computed against the
@@ -57,7 +282,7 @@ Stage~K (cross-node) monolithic baseline.}
 
 \begin{table}[ht]
 \centering
-\caption{Stage~K (cross-node) cross-round consistency. Source:
+\caption[Stage~K (cross-node) cross-round consistency]{Stage~K (cross-node) cross-round consistency. Source:
 \texttt{merged\_results/round\_consistency.json} in
 \texttt{rq1\_4b\_20260515\_163322}. Round CVs are materially inflated
 relative to the single-node Stage~K baseline (\cref{tab:rq14_rounds}); the
@@ -66,6 +291,7 @@ variability and shared-host effects on the single physical machine that
 hosts all six kind worker containers rather than with a chain-specific
 noise mechanism.}
 \label{tab:rq14b_rounds}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
@@ -77,11 +303,12 @@ noise mechanism.}
 \texttt{chain\_5svc}           & 141.169 & 3.4935 & 8.7029  & 0.0247 \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \begin{table}[ht]
 \centering
-\caption{Stage~K (cross-node) kind-CNI per-condition penalty, condition-by-condition
+\caption[Stage~K (cross-node) kind-CNI per-condition penalty]{Stage~K (cross-node) kind-CNI per-condition penalty, condition-by-condition
 vs.\ the frozen single-node Stage~K baseline. Source:
 \texttt{merged\_results/condition\_summaries.csv} in
 \texttt{rq1\_4\_fully\_controlled\_20260515\_141036} and

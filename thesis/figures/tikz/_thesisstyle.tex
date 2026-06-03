@@ -1,0 +1,39 @@
+%======================================================================
+% _thesisstyle.tex — shared TikZ styling for every thesis figure.
+%
+% Goal (feedback F8): in-figure text renders at body-text size.
+% Body text is Crimson Pro at 10pt, so \normalsize == 10pt; TikZ nodes
+% already inherit the document font via fontspec, so matching the SIZE
+% is all that is needed.
+%
+% RULE: figures must NOT be wrapped in \resizebox{\textwidth}{!}{...}.
+% \resizebox rescales the whole picture, text included, by whatever
+% factor hits \textwidth — which differs per figure and is exactly what
+% made the fonts inconsistent. Control a figure's size through its
+% geometry (node distance / minimum width / coordinate scale) instead,
+% and apply the [thesisfig] style so the font stays fixed at body size.
+%
+% USAGE: \begin{tikzpicture}[thesisfig, <figure-specific options>]
+% This file is \input once from the preamble (main.tex), so the styles
+% are available to every figure. Change the figure font in ONE place:
+% the `font=` line below.
+%======================================================================
+\tikzset{
+    % Master style — apply to every \begin{tikzpicture}.
+    thesisfig/.style={
+        font=\normalsize,                 % single source of truth for figure font size
+        node distance=0.35cm,
+        >={Latex[length=2mm]},
+        every node/.append style={align=center},
+    },
+    % Reusable building blocks (opt-in; colours stay semantic per figure).
+    tfbox/.style={                        % generic rounded box
+        draw=black!55, fill=black!5,
+        rounded corners=3pt,
+        minimum width=1.25cm, minimum height=1.0cm,
+        align=center, thick,
+    },
+    tfarrow/.style={-{Latex[length=2mm]}, thick, draw=black!70},
+    tfbrace/.style={decorate, decoration={brace, amplitude=5pt}},
+    tfbracemirror/.style={decorate, decoration={brace, mirror, amplitude=5pt}},
+}

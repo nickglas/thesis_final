@@ -44,45 +44,13 @@ pinned container image digest:
 \texttt{daa680de1cc24b0975e7de81d27e1fc3}\allowbreak
 \texttt{a7d128b8736b}.
 
-\begin{table}[ht]
-\centering
-\caption{Stage~C AKS benchmark configuration. Source: \texttt{merged\_results/config.yaml} and \texttt{deployment\_metadata.json} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
-\label{tab:rq15_config}
-\begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
-\toprule
-\textbf{Setting} & \textbf{Value} \\
-\midrule
-Runtime & Azure Kubernetes Service benchmark \\
-Cluster & Single-node AKS cluster \texttt{thesis-rq15} \\
-Node type & \texttt{Standard\_D8s\_v3} \\
-Region & \texttt{swedencentral} \\
-Namespace & \texttt{rq15} \\
-Conditions & Five predefined configurations from \texttt{monolithic\_k8s\_1svc} to \texttt{chain\_5svc} \\
-Execution mode & In-cluster rolling orchestration with teardown between conditions \\
-Model & ResNet-18 (pretrained) \\
-Device & CPU \\
-Precision & FP32 \\
-Input shape & $1 \times 3 \times 224 \times 224$ \\
-Rounds & 5 \\
-Warmup iterations & 50 \\
-Measured iterations & 200 \\
-Cooldown between conditions & 5 seconds \\
-Random seed & 42 \\
-Communication & gRPC (in-cluster Kubernetes) \\
-gRPC port & 50051 \\
-Maximum message size & 16~MiB \\
-Service pod CPU request / limit & 1 core / 1 core \\
-Service pod memory request / limit & 1~GiB / 1~GiB \\
-Client CPU request / limit & 1 core / 1 core \\
-Client memory request / limit & 1~GiB / 1~GiB \\
-Pod QoS & \texttt{Guaranteed} for service pods \\
-Image pull policy & \texttt{Always} \\
-Carry-forward & Not applicable; Stage~C evaluates a predefined chain family \\
-Parity validation & Local segment validation and live gRPC chain validation; \texttt{num\_inputs} $= 5$, \texttt{atol} $= 1 \times 10^{-5}$ \\
-Warmup calibration & Trailing window $= 10$, CV threshold $= 0.02$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+The complete benchmark configuration is reported in
+\cref{tab:rq15_config} (\cref{sec:appendix-benchmark-configs}). The salient
+parameters are a per-service budget of 1~CPU core and 1~GiB under Guaranteed QoS
+on \texttt{Standard\_D8s\_v3} nodes, a matching 1~CPU / 1~GiB client budget, and
+the same five-round / 200-iteration protocol (50 warmup, seed~42) and 16~MiB
+in-cluster gRPC limit used in Stage~K, with parity validated at
+\texttt{atol} $= 1 \times 10^{-5}$.
 
 The service-pod memory request and limit were raised from 512~MiB in Stage~K to
 1~GiB in Stage~C. This is a within-experimenter configuration change rather than
@@ -134,7 +102,7 @@ size.
 
 \begin{table}[ht]
 \centering
-\caption{Stage~C AKS summary of mean latency and overhead vs.\ AKS monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
+\caption[Stage~C AKS latency and overhead summary]{Stage~C AKS summary of mean latency and overhead vs.\ AKS monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
 \label{tab:rq15_results}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lccccc}
@@ -153,7 +121,7 @@ size.
 
 \begin{table}[ht]
 \centering
-\caption{Stage~C AKS overhead and inferred non-compute/platform cost breakdown. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}; the platform column is \texttt{non\_compute\_overhead\_ms\_mean}.}
+\caption[Stage~C AKS overhead and non-compute cost breakdown]{Stage~C AKS overhead and inferred non-compute/platform cost breakdown. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}; the platform column is \texttt{non\_compute\_overhead\_ms\_mean}.}
 \label{tab:rq15_overhead}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -175,7 +143,7 @@ cross-stage comparison.
 
 \begin{table}[ht]
 \centering
-\caption{Stage~C transfer comparison between local Kubernetes and AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036} and \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
+\caption[Stage~C transfer comparison (local vs.\ AKS)]{Stage~C transfer comparison between local Kubernetes and AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036} and \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
 \label{tab:rq15_transfer}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -197,7 +165,7 @@ cross-stage comparison.
 \resizebox{0.92\textwidth}{!}{%
 \input{figures/tikz/results/rq15_transfer_overhead}
 }
-\caption{Stage~C normalised overhead transfer comparison between local Kubernetes and AKS. Overheads are computed relative to each environment's own monolithic Kubernetes baseline, so the figure visualises directional transfer of the service-count trend rather than raw latency equivalence.}
+\caption[Stage~C normalised overhead transfer comparison]{Stage~C normalised overhead transfer comparison between local Kubernetes and AKS. Overheads are computed relative to each environment's own monolithic Kubernetes baseline, so the figure visualises directional transfer of the service-count trend rather than raw latency equivalence.}
 \label{fig:rq15_transfer_overhead}
 \end{figure}
 
@@ -213,7 +181,7 @@ overhead trend are preserved.
 
 \begin{table}[ht]
 \centering
-\caption{Stage~C AKS cross-round consistency. Source: frozen Stage~C \texttt{merged\_results/round\_consistency.json}.}
+\caption[Stage~C AKS cross-round consistency]{Stage~C AKS cross-round consistency. Source: frozen Stage~C \texttt{merged\_results/round\_consistency.json}.}
 \label{tab:rq15_rounds}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -276,7 +244,7 @@ it.
 \resizebox{\textwidth}{!}{%
 \input{figures/tikz/background/rq14_vs_rq15b_placement_comparison}
 }
-\caption{Same chain, two topologies. (a) Stage~K / Stage~C single-node (base-case) placement:
+\caption[Single-node vs.\ multi-node chain placement]{Same chain, two topologies. (a) Stage~K / Stage~C single-node (base-case) placement:
 all six pods on one node, every gRPC hop is loopback. (b) Stage~K / Stage~C
 multi-node (alternative) placement: each chain segment lands on a distinct cluster node and
 the client lands on a sixth dedicated node, so every gRPC hop crosses the
@@ -334,7 +302,7 @@ direct comparison shown in \cref{tab:rq15b_delta}.
 
 \begin{table}[ht]
 \centering
-\caption{Stage~C (multi-node) AKS summary of mean latency and overhead vs.\ the AKS multi-node monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
+\caption[Stage~C (multi-node) AKS latency and overhead summary]{Stage~C (multi-node) AKS summary of mean latency and overhead vs.\ the AKS multi-node monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
 \label{tab:rq15b_results}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lccccc}
@@ -353,7 +321,7 @@ direct comparison shown in \cref{tab:rq15b_delta}.
 
 \begin{table}[ht]
 \centering
-\caption{Stage~C (multi-node) inter-node penalty, condition-by-condition vs.\ frozen Stage~C single-node AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954} and \texttt{rq1\_5b\_multinode\_20260515\_152628}; overhead points are with respect to each environment's own monolithic baseline (\cref{tab:rq15_results,tab:rq15b_results}).}
+\caption[Stage~C (multi-node) inter-node penalty by condition]{Stage~C (multi-node) inter-node penalty, condition-by-condition vs.\ frozen Stage~C single-node AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954} and \texttt{rq1\_5b\_multinode\_20260515\_152628}; overhead points are with respect to each environment's own monolithic baseline (\cref{tab:rq15_results,tab:rq15b_results}).}
 \label{tab:rq15b_delta}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -372,7 +340,7 @@ direct comparison shown in \cref{tab:rq15b_delta}.
 
 \begin{table}[ht]
 \centering
-\caption{Stage~C (multi-node) AKS cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
+\caption[Stage~C (multi-node) AKS cross-round consistency]{Stage~C (multi-node) AKS cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
 \label{tab:rq15b_rounds}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
@@ -418,7 +386,7 @@ omitted to avoid implying that Stage~C (multi-node) is a second primary result.
 \resizebox{0.92\textwidth}{!}{%
 \input{figures/tikz/results/rq15b_multinode_delta}
 }
-\caption{Stage~C (multi-node) inter-node penalty per condition. Same SKU
+\caption[Stage~C (multi-node) inter-node penalty per condition]{Stage~C (multi-node) inter-node penalty per condition. Same SKU
 (\texttt{Standard\_D8s\_v3}), same region (\texttt{swedencentral}); the
 intentional experimental contrast is single-node colocation versus
 \texttt{multi\_node\_anti\_affinity} placement. The figure is manually

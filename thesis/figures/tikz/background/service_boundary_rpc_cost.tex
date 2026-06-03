@@ -1,118 +1,44 @@
 \begin{tikzpicture}[
-    font=\small,
-    service/.style={
-        draw=black!60,
-        fill=black!3,
-        rounded corners=6pt,
-        thick,
-        inner xsep=16pt,
-        inner ysep=14pt
-    },
-    stepA/.style={
-        draw=orange!75!black,
-        fill=orange!14,
-        rounded corners=3pt,
-        minimum width=2.6cm,
-        minimum height=0.85cm,
-        align=center,
-        thick
-    },
-    stepB/.style={
-        draw=blue!65!black,
-        fill=blue!12,
-        rounded corners=3pt,
-        minimum width=2.6cm,
-        minimum height=0.85cm,
-        align=center,
-        thick
-    },
-    rpc/.style={
-        draw=red!70!black,
-        fill=red!8,
-        rounded corners=3pt,
-        minimum width=2.9cm,
-        minimum height=0.85cm,
-        align=center,
-        thick
-    },
-    arrow/.style={
-        -{Latex[length=2mm]},
-        thick,
-        draw=black!70
-    },
-    returnarrow/.style={
-        -{Latex[length=2mm]},
-        thick,
-        draw=black!55,
-        dashed
-    },
-    boundary/.style={
-        dashed,
-        very thick,
-        draw=red!75!black
-    },
-    labeltext/.style={
-        font=\scriptsize,
-        text=black!65,
-        align=center
-    }
+    thesisfig,
+    stepA/.style={tfbox, draw=orange!75!black, fill=orange!14, minimum width=2.2cm, minimum height=0.8cm, inner xsep=3pt},
+    stepB/.style={tfbox, draw=blue!65!black,   fill=blue!12,  minimum width=2.2cm, minimum height=0.8cm, inner xsep=3pt},
+    service/.style={draw=black!60, fill=black!3, rounded corners=6pt, thick, inner xsep=10pt, inner ysep=10pt},
+    arrow/.style={tfarrow},
+    rpcarrow/.style={-{Latex[length=2mm]}, very thick, draw=red!70!black},
+    rpclabel/.style={font=\small, text=red!70!black, align=center, fill=white, inner sep=2pt},
+    boundary/.style={dashed, very thick, draw=red!75!black}
 ]
 
-% Top row: forward path
-\node[stepA] (a_compute) {compute\\Segment 1};
-\node[stepA, right=0.75cm of a_compute] (a_ser)    {serialize\\activation};
+% Two lanes (time flows downward); gRPC request/response cross the boundary.
+\node[stepA] (a_compute) at (0,0)      {compute\\Segment 1};
+\node[stepA] (a_ser)      at (0,-1.5)   {serialize\\activation};
+\node[stepA] (a_deser)    at (0,-4.5)   {deserialize\\output};
 
-\node[rpc,   right=1.5cm  of a_ser]     (grpc_req) {gRPC request\\activation tensor};
+\node[stepB] (b_deser)    at (6,-1.5)   {deserialize\\activation};
+\node[stepB] (b_compute)  at (6,-3.0)   {compute\\Segment 2};
+\node[stepB] (b_ser)      at (6,-4.5)   {serialize\\output};
 
-\node[stepB, right=1.5cm  of grpc_req]  (b_deser)  {deserialize\\activation};
-\node[stepB, right=0.75cm of b_deser]   (b_compute){compute\\Segment 2};
-\node[stepB, right=0.75cm of b_compute] (b_ser)    {serialize\\output};
-
-% Bottom row: return path
-% a_deser sits directly below a_ser so the columns stay aligned.
-% grpc_resp sits directly below grpc_req so the boundary stays vertical.
-\node[stepA, below=2.5cm of a_ser]     (a_deser)   {deserialize\\output};
-\node[rpc,   below=2.5cm of grpc_req]  (grpc_resp) {gRPC response\\output tensor};
-
-% Service background boxes
+% Service background lanes
 \begin{pgfonlayer}{background}
-\node[
-    service,
-    fit=(a_compute)(a_ser)(a_deser),
-    label={[font=\small\bfseries, text=orange!75!black]above:Service A / Segment 1}
-] (serviceA) {};
-
-\node[
-    service,
-    fit=(b_deser)(b_compute)(b_ser),
-    label={[font=\small\bfseries, text=blue!65!black]above:Service B / Segment 2}
-] (serviceB) {};
+\node[service, fit=(a_compute)(a_ser)(a_deser),
+    label={[font=\small\bfseries, text=orange!75!black]above:Service A / Segment 1}] (serviceA) {};
+\node[service, fit=(b_deser)(b_compute)(b_ser),
+    label={[font=\small\bfseries, text=blue!65!black]above:Service B / Segment 2}] (serviceB) {};
 \end{pgfonlayer}
 
-% Forward arrows
+% Service boundary (drawn before the RPC labels so their white background masks it)
+\coordinate (btop)    at ($(serviceA.north east)!0.5!(serviceB.north west)$);
+\coordinate (bbottom) at ($(serviceA.south east)!0.5!(serviceB.south west)$);
+\draw[boundary] ($(btop)+(0,0.15)$) -- ($(bbottom)+(0,-0.15)$);
+\node[font=\small\bfseries, text=red!75!black, align=center, above=0.05cm of btop] {service\\boundary};
+
+% In-lane (compute / (de)serialise) flow
 \draw[arrow] (a_compute) -- (a_ser);
-\draw[arrow] (a_ser)     -- (grpc_req);
-\draw[arrow] (grpc_req)  -- (b_deser);
 \draw[arrow] (b_deser)   -- (b_compute);
 \draw[arrow] (b_compute) -- (b_ser);
 
-% Return arrows
-\draw[returnarrow] (b_ser.south)  |- (grpc_resp.east);
-\draw[returnarrow] (grpc_resp)    -- (a_deser);
-
-% Service boundary line
-\coordinate (boundarytop)
-    at ($(a_ser.east)!0.5!(grpc_req.west)+(0,1.1)$);
-\coordinate (boundarybottom)
-    at ($(a_deser.east)!0.5!(grpc_resp.west)+(0,-1.1)$);
-
-\draw[boundary] (boundarytop) -- (boundarybottom);
-
-\node[
-    font=\scriptsize\bfseries,
-    text=red!75!black,
-    align=center,
-    above=0.08cm of boundarytop
-] {service\\boundary};
+% Boundary-crossing RPC hops
+\draw[rpcarrow] (a_ser) -- node[rpclabel, above] {gRPC request\\(activation tensor)} (b_deser);
+\draw[rpcarrow] (b_ser) -- node[rpclabel, above] {gRPC response\\(output tensor)} (a_deser);
 
 \end{tikzpicture}%

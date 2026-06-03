@@ -1,5 +1,5 @@
 \begin{tikzpicture}[
-    font=\small,
+    font=\normalsize,
     axis/.style={thick, draw=black!70, -{Latex[length=2mm]}},
     grid/.style={draw=black!12, thin},
     localpoint/.style={
@@ -20,11 +20,10 @@
     },
     localseries/.style={very thick, draw=blue!65!black},
     aksseries/.style={very thick, draw=green!45!black},
-    pointlabel/.style={font=\scriptsize\bfseries, align=center},
-    xlabel/.style={font=\scriptsize, text=black!75, align=center},
-    ylabel/.style={font=\small, text=black!75},
-    legendlabel/.style={font=\scriptsize, text=black!75},
-    note/.style={font=\scriptsize, text=black!65, align=center}
+    pointlabel/.style={font=\small\bfseries, align=center},
+    xlabel/.style={font=\footnotesize, text=black!75, align=center},
+    ylabel/.style={font=\normalsize, text=black!75},
+    legendlabel/.style={font=\footnotesize, text=black!75}
 ]
 
 % y scale: y = overhead percentage * 0.25
@@ -33,7 +32,7 @@
 
 \foreach \pct/\y in {0/0,5/1.25,10/2.5,15/3.75} {
     \draw[grid] (0,\y) -- (10.4,\y);
-    \node[anchor=east, font=\scriptsize, text=black!65] at (-0.18,\y) {\pct};
+    \node[anchor=east, font=\footnotesize, text=black!65] at (-0.18,\y) {\pct};
 }
 
 \draw[axis] (0,0) -- (10.75,0);
@@ -92,10 +91,5 @@
 \draw[aksseries] (6.25,0.28) -- (6.95,0.28);
 \node[akspoint] at (6.60,0.28) {};
 \node[legendlabel, anchor=west] at (7.15,0.28) {AKS};
-
-\node[note, text width=9.4cm] at (5.2,-1.85) {
-    Both environments preserve the same condition ordering; percentages are normalised
-    to each environment's own monolithic baseline.
-};
 
 \end{tikzpicture}

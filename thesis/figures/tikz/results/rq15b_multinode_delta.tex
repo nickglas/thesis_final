@@ -14,7 +14,7 @@
 %   exact delta (ms), rounded to three decimals in the thesis table:
 %        2.305 /  3.033 /  2.131 /  3.808 /  4.086
 \begin{tikzpicture}[
-    font=\small,
+    font=\normalsize,
     axis/.style={thick, draw=black!70, -{Latex[length=2mm]}},
     grid/.style={draw=black!12, thin},
     snpoint/.style={
@@ -33,51 +33,44 @@
         minimum size=5.5pt,
         inner sep=0pt
     },
-    deltapoint/.style={
-        diamond,
-        draw=black!70,
-        fill=black!12,
-        thick,
-        minimum size=6pt,
-        inner sep=0pt
-    },
     snseries/.style={very thick, draw=blue!65!black},
     mnseries/.style={very thick, draw=red!65!black},
     deltaseries/.style={thick, draw=black!55, dashed},
-    pointlabel/.style={font=\scriptsize\bfseries, align=center},
-    xlabel/.style={font=\scriptsize, text=black!75, align=center},
-    ylabel/.style={font=\small, text=black!75},
-    legendlabel/.style={font=\scriptsize, text=black!75},
-    note/.style={font=\scriptsize, text=black!65, align=center}
+    pointlabel/.style={font=\small\bfseries, align=center},
+    xlabel/.style={font=\footnotesize, text=black!75, align=center},
+    ylabel/.style={font=\normalsize, text=black!75},
+    legendlabel/.style={font=\footnotesize, text=black!75},
+    note/.style={font=\footnotesize, text=black!65, align=center}
 ]
 
-% y scale: y = (ms - 68) * 0.13  (range ~70.8..84.6 ms -> y in ~0.36..2.16)
-% gridlines every 2 ms from 68 to 86 ms.
+% y scale: y = (ms - 68) * 0.26  (range ~70.8..84.6 ms -> y in ~0.73..4.32)
+% gridlines every 2 ms from 68 to 86 ms; the wide spacing gives each
+% per-condition +delta annotation room inside its channel.
 
-\foreach \ms/\y in {68/0,70/0.26,72/0.52,74/0.78,76/1.04,78/1.30,80/1.56,82/1.82,84/2.08,86/2.34} {
+\foreach \ms/\y in {68/0,70/0.52,72/1.04,74/1.56,76/2.08,78/2.60,80/3.12,82/3.64,84/4.16,86/4.68} {
     \draw[grid] (0,\y) -- (10.4,\y);
-    \node[anchor=east, font=\scriptsize, text=black!65] at (-0.18,\y) {\ms};
+    \node[anchor=east, font=\footnotesize, text=black!65] at (-0.18,\y) {\ms};
 }
 
 \draw[axis] (0,0) -- (10.75,0);
-\draw[axis] (0,0) -- (0,2.7);
+\draw[axis] (0,0) -- (0,5.10);
 
-\node[ylabel, rotate=90] at (-1.10,1.30) {Mean latency (ms)};
-\node[ylabel] at (5.2,-0.85) {Condition};
+\node[ylabel, rotate=90] at (-1.10,2.34) {Mean latency (ms)};
+\node[ylabel] at (5.2,-1.15) {Condition};
 
-% Single-node coordinates: y = (ms - 68) * 0.13
-\coordinate (s1) at (1, 0.36426);   % 70.802
-\coordinate (s2) at (3, 0.70681);   % 73.437
-\coordinate (s3) at (5, 0.96330);   % 75.410
-\coordinate (s4) at (7, 1.33822);   % 78.294
-\coordinate (s5) at (9, 1.62747);   % 80.519
+% Single-node coordinates: y = (ms - 68) * 0.26
+\coordinate (s1) at (1, 0.729);   % 70.802
+\coordinate (s2) at (3, 1.414);   % 73.437
+\coordinate (s3) at (5, 1.927);   % 75.410
+\coordinate (s4) at (7, 2.676);   % 78.294
+\coordinate (s5) at (9, 3.255);   % 80.519
 
 % Multi-node coordinates
-\coordinate (m1) at (1, 0.66404);   % 73.108
-\coordinate (m2) at (3, 1.10010);   % 76.470
-\coordinate (m3) at (5, 1.23933);   % 77.541
-\coordinate (m4) at (7, 1.83339);   % 82.103
-\coordinate (m5) at (9, 2.15865);   % 84.605
+\coordinate (m1) at (1, 1.328);   % 73.108
+\coordinate (m2) at (3, 2.202);   % 76.470
+\coordinate (m3) at (5, 2.481);   % 77.541
+\coordinate (m4) at (7, 3.667);   % 82.103
+\coordinate (m5) at (9, 4.317);   % 84.605
 
 \draw[snseries] (s1) -- (s2) -- (s3) -- (s4) -- (s5);
 \draw[mnseries] (m1) -- (m2) -- (m3) -- (m4) -- (m5);
@@ -93,45 +86,42 @@
 }
 
 % Single-node value labels
-\node[pointlabel, text=blue!65!black, below=0.10cm of s1] {70.80};
-\node[pointlabel, text=blue!65!black, below=0.10cm of s2] {73.44};
-\node[pointlabel, text=blue!65!black, below=0.10cm of s3] {75.41};
-\node[pointlabel, text=blue!65!black, below=0.10cm of s4] {78.29};
-\node[pointlabel, text=blue!65!black, below=0.10cm of s5] {80.52};
+\node[pointlabel, text=blue!65!black, below=0.12cm of s1] {70.80};
+\node[pointlabel, text=blue!65!black, below=0.12cm of s2] {73.44};
+\node[pointlabel, text=blue!65!black, below=0.12cm of s3] {75.41};
+\node[pointlabel, text=blue!65!black, below=0.12cm of s4] {78.29};
+\node[pointlabel, text=blue!65!black, below=0.12cm of s5] {80.52};
 
 % Multi-node value labels
-\node[pointlabel, text=red!65!black, above=0.10cm of m1] {73.11};
-\node[pointlabel, text=red!65!black, above=0.10cm of m2] {76.47};
-\node[pointlabel, text=red!65!black, above=0.10cm of m3] {77.54};
-\node[pointlabel, text=red!65!black, above=0.10cm of m4] {82.10};
-\node[pointlabel, text=red!65!black, above=0.10cm of m5] {84.61};
+\node[pointlabel, text=red!65!black, above=0.12cm of m1] {73.11};
+\node[pointlabel, text=red!65!black, above=0.12cm of m2] {76.47};
+\node[pointlabel, text=red!65!black, above=0.12cm of m3] {77.54};
+\node[pointlabel, text=red!65!black, above=0.12cm of m4] {82.10};
+\node[pointlabel, text=red!65!black, above=0.12cm of m5] {84.61};
 
-% Per-condition delta annotations on the bracket midpoint
-\node[note, text=black!70, font=\scriptsize\itshape, anchor=west]
-    at ($(s1)!0.5!(m1) + (0.18,0)$) {+2.31 ms};
-\node[note, text=black!70, font=\scriptsize\itshape, anchor=west]
-    at ($(s2)!0.5!(m2) + (0.18,0)$) {+3.03};
-\node[note, text=black!70, font=\scriptsize\itshape, anchor=west]
-    at ($(s3)!0.5!(m3) + (0.18,0)$) {+2.13};
-\node[note, text=black!70, font=\scriptsize\itshape, anchor=west]
-    at ($(s4)!0.5!(m4) + (0.18,0)$) {+3.81};
-\node[note, text=black!70, font=\scriptsize\itshape, anchor=west]
-    at ($(s5)!0.5!(m5) + (0.18,0)$) {+4.09};
+% Per-condition delta annotations, hand-placed in the open part of each
+% channel (raised toward the upper line where the lower line rises steeply)
+% so the rising series does not cross the text. Units are on the y-axis.
+\node[note, text=black!70, font=\footnotesize\itshape, anchor=west] at (1.12,1.17) {+2.31};
+\node[note, text=black!70, font=\footnotesize\itshape, anchor=west] at (3.12,1.85) {+3.03};
+\node[note, text=black!70, font=\footnotesize\itshape, anchor=west] at (5.12,2.33) {+2.13};
+\node[note, text=black!70, font=\footnotesize\itshape, anchor=west] at (7.12,3.17) {+3.81};
+\node[note, text=black!70, font=\footnotesize\itshape, anchor=west] at (9.18,3.79) {+4.09};
 
 % X-axis condition labels
-\node[xlabel] at (1,-0.30) {\texttt{1svc}\\mono};
-\node[xlabel] at (3,-0.30) {\texttt{2svc}};
-\node[xlabel] at (5,-0.30) {\texttt{3svc}};
-\node[xlabel] at (7,-0.30) {\texttt{4svc}};
-\node[xlabel] at (9,-0.30) {\texttt{5svc}};
+\node[xlabel] at (1,-0.42) {\texttt{1svc}\\mono};
+\node[xlabel] at (3,-0.42) {\texttt{2svc}};
+\node[xlabel] at (5,-0.42) {\texttt{3svc}};
+\node[xlabel] at (7,-0.42) {\texttt{4svc}};
+\node[xlabel] at (9,-0.42) {\texttt{5svc}};
 
-% Legend
-\draw[snseries] (6.20,-0.55) -- (6.85,-0.55);
-\node[snpoint] at (6.525,-0.55) {};
-\node[legendlabel, anchor=west] at (6.95,-0.55) {Single-node AKS (Stage~C)};
+% Legend (top-left, in the open upper region above the data)
+\draw[snseries] (1.05,4.60) -- (1.70,4.60);
+\node[snpoint] at (1.375,4.60) {};
+\node[legendlabel, anchor=west] at (1.85,4.60) {Single-node AKS (Stage~C)};
 
-\draw[mnseries] (6.20,-0.78) -- (6.85,-0.78);
-\node[mnpoint] at (6.525,-0.78) {};
-\node[legendlabel, anchor=west] at (6.95,-0.78) {Multi-node AKS (Stage~C alternative)};
+\draw[mnseries] (1.05,4.30) -- (1.70,4.30);
+\node[mnpoint] at (1.375,4.30) {};
+\node[legendlabel, anchor=west] at (1.85,4.30) {Multi-node AKS (Stage~C alternative)};
 
 \end{tikzpicture}

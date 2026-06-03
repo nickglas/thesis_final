@@ -1,181 +1,54 @@
-\begingroup
-\def\confvmcolumnwidth{4.6cm}
-\def\confvmcolumnheight{5.6cm}
-\def\confvmnodeheight{3.95cm}
-\def\confvmhostheight{0.9cm}
-
 \begin{tikzpicture}[
-    font=\small,
-    nodebox/.style={
-        draw=black!55,
-        fill=black!2,
-        rounded corners=8pt,
-        thick,
-        minimum width=\confvmcolumnwidth,
-        minimum height=\confvmcolumnheight,
-        inner sep=0pt
-    },
-    confidentialvm/.style={
-        draw=green!45!black,
-        fill=green!8,
-        rounded corners=8pt,
-        very thick,
-        minimum width=\confvmcolumnwidth,
-        minimum height=\confvmnodeheight,
-        inner sep=0pt
-    },
-    pod/.style={
-        draw=blue!65!black,
-        fill=blue!6,
-        rounded corners=5pt,
-        thick,
-        inner xsep=8pt,
-        inner ysep=6pt
-    },
-    app/.style={
-        draw=orange!75!black,
-        fill=orange!14,
-        rounded corners=3pt,
-        minimum width=2.25cm,
-        minimum height=0.72cm,
-        align=center,
-        thick
-    },
-    sidecar/.style={
-        draw=purple!60!black,
-        fill=purple!10,
-        rounded corners=3pt,
-        minimum width=2.25cm,
-        minimum height=0.72cm,
-        align=center,
-        thick
-    },
-    host/.style={
-        draw=red!65!black,
-        fill=red!7,
-        rounded corners=4pt,
-        minimum width=\confvmcolumnwidth,
-        minimum height=\confvmhostheight,
-        align=center,
-        font=\scriptsize,
-        thick
-    },
-    arrow/.style={
-        -{Latex[length=2mm]},
-        thick,
-        draw=black!70
-    },
-    mtlsarrow/.style={
-        -{Latex[length=2.2mm]},
-        very thick,
-        draw=purple!70!black
-    },
-    plaintextarrow/.style={
-        -{Latex[length=2mm]},
-        thick,
-        draw=orange!75!black
-    },
-    boundaryarrow/.style={
-        -{Latex[length=2mm]},
-        thick,
-        dashed,
-        draw=red!70!black
-    },
-    labeltext/.style={
-        font=\scriptsize,
-        text=black!68,
-        align=center
-    },
-    boundarylabel/.style={
-        font=\scriptsize\bfseries,
-        align=center
-    },
-    node distance=0.55cm
+    thesisfig,
+    app/.style={tfbox, draw=orange!75!black, fill=orange!14, minimum width=2.7cm, minimum height=0.85cm, inner xsep=3pt},
+    sidecar/.style={tfbox, draw=purple!60!black, fill=purple!12, minimum width=2.7cm, minimum height=0.85cm, inner xsep=3pt},
+    podbox/.style={draw=blue!65!black, fill=blue!6, rounded corners=5pt, thick, inner xsep=6pt, inner ysep=6pt},
+    nodebox/.style={draw=black!55, fill=black!2, rounded corners=8pt, thick, inner xsep=7pt, inner ysep=6pt},
+    cvmbox/.style={draw=green!45!black, fill=green!8, rounded corners=8pt, very thick, inner xsep=7pt, inner ysep=6pt},
+    host/.style={tfbox, draw=red!65!black, fill=red!7, minimum width=2.7cm, minimum height=0.85cm, inner xsep=6pt},
+    mtlsarrow/.style={-{Latex[length=2.2mm]}, very thick, draw=purple!70!black},
+    plaintextarrow/.style={-{Latex[length=1.8mm]}, thick, draw=orange!75!black},
+    boundaryarrow/.style={-{Latex[length=2mm]}, thick, dashed, draw=red!70!black},
+    nodetitle/.style={font=\small\bfseries, text=black!70, align=center},
+    cvmtitle/.style={font=\small\bfseries, text=green!45!black, align=center},
+    annot/.style={font=\small, text=black!62, align=center},
+    mtlslbl/.style={font=\small\bfseries, text=purple!70!black, align=center},
+    boundarylbl/.style={font=\small\bfseries, text=green!45!black, align=center},
+    note/.style={font=\small, text=black!55, align=center}
 ]
 
-% Service 1 on a standard AKS node.
-\node[app] (s1app) at (0,-0.30) {Service 1\\model segment};
-\node[sidecar] (s1proxy) at (0,-1.95) {Istio sidecar\\proxy};
-
+% --- Left: standard AKS node -----------------------------------------------
+\node[nodetitle] (t1)      at (0,1.15)   {Standard AKS node};
+\node[app]       (s1app)   at (0,0.2)    {Service 1\\{\small model segment}};
+\node[sidecar]   (s1proxy) at (0,-2.05)  {Istio sidecar\\{\small proxy}};
 \begin{pgfonlayer}{background}
-\node[
-    nodebox
-] (node1) at (0,0) {};
-
-\node[
-    pod,
-    fit=(s1app)(s1proxy)
-] (pod1) {};
+\node[podbox, fit=(s1app)(s1proxy)]   (pod1)  {};
+\node[nodebox, fit=(t1)(pod1)]        (node1) {};
 \end{pgfonlayer}
 
-% Service 2 on a confidential AKS node.
-\node[app] (s2app) at (6.8,-0.20) {Service 2\\downstream segment};
-\node[sidecar] (s2proxy) at (6.8,-1.95) {Istio sidecar\\proxy};
-
+% --- Right: confidential VM node -------------------------------------------
+\node[cvmtitle]  (t2)      at (7,1.2)    {AMD SEV-SNP\\confidential VM node};
+\node[app]       (s2app)   at (7,0.2)    {Service 2\\{\small downstream seg.}};
+\node[sidecar]   (s2proxy) at (7,-2.05)  {Istio sidecar\\{\small proxy}};
 \begin{pgfonlayer}{background}
-\node[
-    confidentialvm
-] (cvm) at (6.8,-0.825) {};
-
-\node[
-    pod,
-    fit=(s2app)(s2proxy)
-] (pod2) {};
+\node[podbox, fit=(s2app)(s2proxy)]   (pod2) {};
+\node[cvmbox, fit=(t2)(pod2)]         (cvm)  {};
 \end{pgfonlayer}
 
-% Node titles are kept inside the outer boxes to avoid collisions with callouts.
-\node[
-    font=\small\bfseries,
-    text=black!70,
-    anchor=north
-] at ($(node1.north)+(0,-0.18cm)$) {Standard AKS node};
-\node[
-    font=\tiny\bfseries,
-    text=green!45!black,
-    anchor=north,
-    align=center
-] at ($(cvm.north)+(0,-0.05cm)$) {AMD SEV-SNP\\confidential VM node};
+% --- Cloud host / hypervisor (outside the confidential boundary) -----------
+\node[host] (host) at (7,3.5) {Cloud host / hypervisor};
+\draw[boundaryarrow] (host.south) -- node[annot, right=2pt, text=red!70!black] {outside guest\\memory boundary} (cvm.north);
 
-% Host platform outside the confidential VM boundary.
-\node[host] (host) at (6.8,2.35) {Cloud host / hypervisor};
+% --- Intra-pod plaintext handoffs ------------------------------------------
+\draw[plaintextarrow] (s1app) -- node[annot, right=2pt] {plaintext\\in pod} (s1proxy);
+\draw[plaintextarrow] (s2proxy) -- node[annot, right=2pt] {plaintext\\in endpoint} (s2app);
 
-% Application-to-sidecar handoff and mTLS path.
-\draw[plaintextarrow] (s1app) -- node[labeltext, right, text width=1.35cm] {activation\\inside pod} (s1proxy);
-\draw[mtlsarrow] (s1proxy.east) -- node[
-    labeltext,
-    above=0.12cm,
-    text=purple!70!black,
-    text width=2.2cm
-] {mTLS + identity\\between proxies} (s2proxy.west);
-\draw[plaintextarrow] (s2proxy) -- node[labeltext, right, font=\tiny, text width=1.55cm] {plaintext\\activation\\inside endpoint} (s2app);
+% --- mTLS hop between sidecars ---------------------------------------------
+\draw[mtlsarrow] (s1proxy.east) -- node[mtlslbl, above=1pt, text width=2.6cm]
+    {mTLS + identity\\between proxies} (s2proxy.west);
 
-% Boundary callouts.
-\coordinate (hostboundarymid) at ($(host.south)!0.55!(cvm.north)$);
-\draw[boundaryarrow] (host.south) -- (cvm.north);
-\node[
-    labeltext,
-    anchor=west,
-    text=red!70!black,
-    text width=2.0cm
-] at ($(hostboundarymid)+(0.1cm,0)$) {outside guest\\memory boundary};
-
-\node[
-    boundarylabel,
-    text=green!45!black,
-    below=0.25cm of cvm,
-    text width=4.2cm
-] {VM-level confidential-execution boundary};
-
-\coordinate (bottomnote) at ($(node1.south)!0.5!(cvm.south)$);
-\node[
-    labeltext,
-    below=1.15cm of bottomnote,
-    text width=10.6cm
-] {
-    mTLS protects traffic on the service-to-service path. SEV-SNP shifts the
-    downstream service into a confidential VM boundary, but plaintext still exists
-    inside the trusted endpoint after decryption.
-};
+% --- Boundary label below the confidential node ----------------------------
+\node[boundarylbl, below=0.3cm of cvm, text width=4.2cm] (bnd)
+    {VM-level confidential-execution boundary};
 
 \end{tikzpicture}%
-\endgroup

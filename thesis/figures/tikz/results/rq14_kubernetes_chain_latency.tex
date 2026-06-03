@@ -1,5 +1,5 @@
 \begin{tikzpicture}[
-    font=\small,
+    font=\normalsize,
     axis/.style={
         thick,
         draw=black!70,
@@ -18,30 +18,25 @@
         inner sep=0pt
     },
     pointlabel/.style={
-        font=\scriptsize\bfseries,
+        font=\small\bfseries,
         text=blue!65!black,
         align=center
     },
     xlabel/.style={
-        font=\scriptsize,
+        font=\footnotesize,
         text=black!75,
         align=center
     },
     ylabel/.style={
-        font=\small,
+        font=\normalsize,
         text=black!75
     },
     transferlabel/.style={
-        font=\scriptsize,
+        font=\footnotesize,
         text=black!60,
         align=center
     },
-    note/.style={
-        font=\scriptsize,
-        text=black!65,
-        align=center
-    },
-    errbar/.style={draw=black!80, semithick, line cap=round}
+    band/.style={fill=blue!55!black, fill opacity=0.16}
 ]
 
 % y-axis: 76--98 ms at 0.28 plot-units per ms, widened from the bar-top range
@@ -49,7 +44,7 @@
 % y(lat) = (lat - 76) * 0.28.
 \foreach \lat/\y in {76/0,78/0.56,80/1.12,82/1.68,84/2.24,86/2.80,88/3.36,90/3.92,92/4.48,94/5.04,96/5.60,98/6.16} {
     \draw[grid] (0,\y) -- (10,\y);
-    \node[anchor=east, font=\scriptsize, text=black!65] at (-0.18,\y) {\lat};
+    \node[anchor=east, font=\footnotesize, text=black!65] at (-0.18,\y) {\lat};
 }
 
 \draw[axis] (0,0) -- (10.45,0);
@@ -64,26 +59,19 @@
 \coordinate (p4) at (7,4.080);
 \coordinate (p5) at (9,4.630);
 
-% Error bars: mean +/- 1 SD of per-iteration latency (Std column of the
-% Stage~K results table). Half-cap width 0.18.
-\draw[errbar] (1,0.294) -- (1,2.543);
-\draw[errbar] (0.82,0.294) -- (1.18,0.294);
-\draw[errbar] (0.82,2.543) -- (1.18,2.543);
-\draw[errbar] (3,1.081) -- (3,3.055);
-\draw[errbar] (2.82,1.081) -- (3.18,1.081);
-\draw[errbar] (2.82,3.055) -- (3.18,3.055);
-\draw[errbar] (5,2.099) -- (5,4.469);
-\draw[errbar] (4.82,2.099) -- (5.18,2.099);
-\draw[errbar] (4.82,4.469) -- (5.18,4.469);
-\draw[errbar] (7,2.980) -- (7,5.180);
-\draw[errbar] (6.82,2.980) -- (7.18,2.980);
-\draw[errbar] (6.82,5.180) -- (7.18,5.180);
-\draw[errbar] (9,3.520) -- (9,5.740);
-\draw[errbar] (8.82,3.520) -- (9.18,3.520);
-\draw[errbar] (8.82,5.740) -- (9.18,5.740);
+% Shaded band: mean +/- 1 SD of per-iteration latency (Std column of the
+% Stage~K results table), drawn only across the measured 1--5 service range.
+% Upper edge left-to-right, then lower edge right-to-left, then close.
+\fill[band]
+    plot[smooth, tension=0.7] coordinates
+        {(1,2.543) (3,3.055) (5,4.469) (7,5.180) (9,5.740)}
+    -- plot[smooth, tension=0.7] coordinates
+        {(9,3.520) (7,2.980) (5,2.099) (3,1.081) (1,0.294)}
+    -- cycle;
 
-\draw[very thick, draw=blue!65!black]
-    (p1) -- (p2) -- (p3) -- (p4) -- (p5);
+\draw[very thick, draw=blue!65!black, line cap=round]
+    plot[smooth, tension=0.7] coordinates
+        {(1,1.418) (3,2.068) (5,3.284) (7,4.080) (9,4.630)};
 
 \node[point] at (p1) {};
 \node[point] at (p2) {};
@@ -91,11 +79,13 @@
 \node[point] at (p4) {};
 \node[point] at (p5) {};
 
-\node[pointlabel, anchor=south] at (1,2.66) {81.07 ms};
-\node[pointlabel, anchor=south] at (3,3.18) {83.39 ms};
-\node[pointlabel, anchor=south] at (5,4.59) {87.73 ms};
-\node[pointlabel, anchor=south] at (7,5.30) {90.57 ms};
-\node[pointlabel, anchor=south] at (9,5.86) {92.54 ms};
+% Value labels hug each marker (anchor south-east, up-left of the point) so the
+% number reads as the data point, not the upper band edge.
+\node[pointlabel, anchor=south] at (1,1.60) {81.07 ms};
+\node[pointlabel, anchor=south east] at (2.92,2.20) {83.39 ms};
+\node[pointlabel, anchor=south east] at (4.92,3.42) {87.73 ms};
+\node[pointlabel, anchor=south east] at (6.92,4.22) {90.57 ms};
+\node[pointlabel, anchor=south east] at (8.92,4.78) {92.54 ms};
 
 \node[xlabel] at (1,-0.45) {\texttt{1svc}\\monolithic};
 \node[xlabel] at (3,-0.45) {\texttt{2svc}};
@@ -110,8 +100,5 @@
 \node[transferlabel] at (9,-0.95) {2058 KiB};
 
 \node[transferlabel, anchor=east] at (-0.25,-0.95) {recorded\\tensor bytes};
-
-\node[note, text width=10cm] at (5,-1.95)
-    {Error bars show $\pm 1$\,SD of per-iteration latency. The ordering is monotonic and the trend approximately linear (slope $\approx 3.0$\,ms/service, $R^{2}\approx0.98$); adjacent gaps compare predefined configurations.};
 
 \end{tikzpicture}

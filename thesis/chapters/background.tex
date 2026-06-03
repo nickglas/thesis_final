@@ -25,10 +25,8 @@ stages reduce spatial resolution while increasing channel depth~\cite{resnet}.
 
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/resnet18_pipeline.tex}%
-}
-\caption{Top-level ResNet-18 inference pipeline used in this thesis. The model is treated as a stem, four residual stages, and a classification head.}
+\caption[Top-level ResNet-18 inference pipeline]{Top-level ResNet-18 inference pipeline used in this thesis. The model is treated as a stem, four residual stages, and a classification head. The stem (convolution, batch normalisation, ReLU, and max pooling) and the classification head (average pooling and the fully connected classifier) are shown as single boxes; their internals are described in the surrounding text.}
 \label{fig:resnet18_pipeline}
 \end{figure}
 
@@ -43,10 +41,8 @@ network inference across devices, edge nodes, or cloud resources~\cite{neurosurg
 
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/split_after_layer2_two_segments.tex}%
-}
-\caption{Example two-segment decomposition produced by a split after \texttt{layer2}. The first segment executes the stem through \texttt{layer2}; the second segment receives the intermediate activation tensor and executes \texttt{layer3} through the classification head.}
+\caption[Example two-segment decomposition (split after \texttt{layer2})]{Example two-segment decomposition produced by a split after \texttt{layer2}. The first segment executes the stem through \texttt{layer2}; the second segment receives the intermediate activation tensor and executes \texttt{layer3} through the classification head.}
 \label{fig:split_after_layer2_two_segments}
 \end{figure}
 
@@ -79,10 +75,8 @@ search over depth alone~\cite{dnnsplit,deeperthings,survey_partitioning}.
 
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/rq11_coarse_split_boundaries.tex}%
-}
-\caption{Coarse ResNet-18 partition boundaries evaluated in Stage~L1. The stem and classification head are collapsed into single blocks, while the four residual stages are shown as the candidate split locations.}
+\caption[Coarse ResNet-18 partition boundaries (Stage~L1)]{Coarse ResNet-18 partition boundaries evaluated in Stage~L1. The stem and classification head are collapsed into single blocks, while the four residual stages are shown as the candidate split locations.}
 \label{fig:rq11_coarse_split_boundaries}
 \end{figure}
 
@@ -101,20 +95,16 @@ boundaries~\cite{resnet}.
 
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/resnet18_block_structure.tex}%
-}
-\caption{Simplified ResNet-18 block structure. The stem and classification head are shown as single components, while each residual stage is shown as two basic blocks.}
+\caption[Simplified ResNet-18 block structure]{Simplified ResNet-18 block structure. The stem and classification head are shown as single components, while each residual stage is shown as its two basic blocks, abbreviated \texttt{B0} and \texttt{B1} to match the zero-indexed \texttt{layerN.0}/\texttt{layerN.1} module names used throughout.}
 \label{fig:resnet18_block_structure}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
-\input{../figures/tikz/background/resnet18_detailed_basicblock_containers.tex}%
-}
-\caption{Detailed ResNet-18 structure with BasicBlock containers. Each residual stage contains two BasicBlocks, and each BasicBlock contains two convolution operations. The first block of layers 2--4 includes a projection shortcut for downsampling.}
-\label{fig:resnet18_detailed_basicblock_containers}
+\input{../figures/tikz/background/basicblock_anatomy.tex}%
+\caption[Anatomy of a ResNet-18 BasicBlock]{Anatomy of a ResNet-18 BasicBlock. Each block applies two $3{\times}3$ convolutions (each followed by batch normalisation, with a ReLU after the first) and adds a residual shortcut before a final ReLU. In the first block of layers 2--4 the shortcut is a $1{\times}1$ projection with stride~2 for downsampling; elsewhere it is an identity connection. The convolution width is 64, 128, 256, and 512 channels across \texttt{layer1}--\texttt{layer4} respectively.}
+\label{fig:basicblock_anatomy}
 \end{figure}
 
 The block-level view matters because two boundaries with the same activation tensor can
@@ -127,10 +117,8 @@ computational structure~\cite{fine_grained_partitioning,hierarchical_partitionin
 
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/rq12_split_after_layer3_block0_segments.tex}%
-}
-\caption{Block-level two-segment decomposition used in Stage~L2. The refined split point is placed inside \texttt{layer3}, after the first residual block. Segment 1 executes the stem through \texttt{layer3.0}; Segment 2 receives the intermediate activation tensor and executes \texttt{layer3.1} through the classification head.}
+\caption[Block-level two-segment decomposition (Stage~L2)]{Block-level two-segment decomposition used in Stage~L2. Layers 1, 2, and 4 are drawn as single boxes; only \texttt{layer3} is expanded into its two residual blocks (\texttt{B0}, \texttt{B1}, zero-indexed) so the refined split point inside it is visible. The split falls between the blocks: Segment 1 executes the stem through \texttt{layer3.0} (block \texttt{B0}); Segment 2 receives the intermediate activation tensor and executes \texttt{layer3.1} through the classification head.}
 \label{fig:rq12_split_after_layer3_block0_segments}
 \end{figure}
 
@@ -146,10 +134,8 @@ boundary, and response handling.
 
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/service_boundary_rpc_cost.tex}%
-}
-\caption{Runtime cost components introduced by a two-service inference
+\caption[Runtime cost components of an inference boundary]{Runtime cost components introduced by a two-service inference
 boundary. In addition to the model computation on each side of the split,
 the intermediate activation must be serialized, transferred through gRPC,
 deserialized by the downstream service, and followed by response
@@ -170,31 +156,23 @@ In the Kubernetes and AKS stages, each model segment is packaged as a separate s
 and communicates through synchronous gRPC forwarding. This makes the inference pipeline
 closer to a cloud-native microservice deployment, but it also introduces platform
 effects from container execution, service networking, CNI behavior, and managed-cluster
-infrastructure. The single-node and multi-node placements used later are shown in
-\cref{fig:rq14_chain5_kubernetes_placement,fig:rq15b_chain5_multinode_placement}.
+infrastructure. The single-node and multi-node placements used later are compared in
+\cref{fig:chain5_placement_comparison}.
 
-%% Stage~K Kubernetes 5-service pod/service placement figure
+%% Single-node vs multi-node placement of the five-service chain
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
-\input{../figures/tikz/background/rq14_chain5_kubernetes_placement.tex}%
-}
-\caption{Kubernetes pod and service placement for the Stage~K five-service chain. The benchmark client and all inference pods are placed on the same Kubernetes node, while each model segment is exposed through a Kubernetes Service and communicates using synchronous gRPC forwarding. The labels above the arrows show the activation-transfer size at each coarse ResNet-18 boundary.}
-\label{fig:rq14_chain5_kubernetes_placement}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\resizebox{\textwidth}{!}{%
-\input{../figures/tikz/background/rq15b_chain5_multinode_placement.tex}%
-}
-\caption{Stage~C (multi-node) AKS placement of \texttt{chain\_5svc}.
-Each chain segment lands on a distinct cluster node; the benchmark
-client pod lands on a sixth dedicated node. Every gRPC hop therefore
-crosses a node boundary, in contrast to the same-node
-layout used for Stage~K and Stage~C
-(\cref{fig:rq14_chain5_kubernetes_placement}).}
-\label{fig:rq15b_chain5_multinode_placement}
+\input{../figures/tikz/background/chain5_placement_comparison.tex}%
+\caption[Single-node vs.\ multi-node pod placement]{Pod placement for the\texttt{chain\_5svc} five-service chain under the
+two placements used in this thesis. \textbf{(a)} Single-node placement (Stage~K
+local Kubernetes, and the single-node Stage~C AKS base case): the benchmark
+client and all five inference pods share one node, so every synchronous gRPC hop
+stays on-host. \textbf{(b)} Multi-node placement (the Stage~C alternative):
+anti-affinity places each chain segment on a distinct node and the client on a
+sixth, so every gRPC hop crosses a node boundary. The chain topology and the
+per-boundary activation-transfer sizes (784, 392, 196, and 98~KiB) are identical
+in both placements; only the network path differs.}
+\label{fig:chain5_placement_comparison}
 \end{figure}
 
 Prior Kubernetes and cloud-performance studies show that container execution, service
@@ -214,72 +192,33 @@ service-to-service path because a downstream service can reject traffic that doe
 come from the expected peer identity, while the traffic between proxies is encrypted and
 mutually authenticated~\cite{ashraf2025policy_workflow,bremlerbarr2025mtls}.
 
-\Cref{fig:rq21_mtls_identity_authz_simple} shows the basic shape of this mechanism
-between two services in the inference chain: each service runs alongside an Istio
-sidecar proxy that terminates TLS, so the inter-pod hop carries mTLS plus
-identity-bound authorization while application-to-sidecar traffic stays plaintext
-inside the pod boundary.
+\Cref{fig:rq21_mtls_identity_authz} shows this mechanism between two services in
+the inference chain. Each service runs alongside an Istio sidecar proxy that
+terminates TLS, so the inter-pod hop carries mTLS plus an identity-bound
+\texttt{AuthorizationPolicy} check while application-to-sidecar traffic stays
+plaintext inside the pod boundary. The Istio control plane acts as the identity
+issuer that mints SPIFFE workload identities and certificates for each sidecar
+(dashed teal arrows), which is what allows the receiving sidecar to bind an
+\texttt{AuthorizationPolicy} to a peer service-account identity (\texttt{sa-svc1}
+and \texttt{sa-svc2}). A request therefore enters the first service, is handed to
+its sidecar as plaintext, crosses the protected inter-pod hop as mTLS, and is
+delivered to the downstream service as a plaintext loopback; the response returns
+along the same sidecar path. A non-mesh probe that lacks a SPIFFE identity is
+denied at the receiving sidecar; this is the property that the Stage~H1 direct
+non-mesh denial probe exercises against the protected downstream segments.
 
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
-\input{../figures/tikz/background/rq21_mtls_identity_authz_simple.tex}%
-}
-\caption{Communication-level hardening between two inference services. Each pod
-runs an Istio sidecar proxy that terminates TLS at the pod boundary. The
-inter-pod hop carries mTLS plus an identity-bound \texttt{AuthorizationPolicy}
-check between the workload identities \texttt{sa-svc1} and \texttt{sa-svc2}.
-Application-to-sidecar traffic inside each pod remains plaintext.}
-\label{fig:rq21_mtls_identity_authz_simple}
-\end{figure}
-
-\Cref{fig:rq21_mtls_identity_authz} expands this view with the two pieces that
-make the mechanism enforceable in practice. The Istio control plane acts as the
-identity issuer that mints SPIFFE workload identities and certificates for each
-sidecar, which is what allows the receiving sidecar to bind an
-\texttt{AuthorizationPolicy} to a peer service-account identity. A non-mesh
-probe that lacks a SPIFFE identity is denied at the receiving sidecar; this is
-the property that the Stage~H1 direct non-mesh denial probe exercises against
-the protected downstream segments.
-
-\begin{figure}[htbp]
-\centering
-\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/rq21_mtls_identity_authz.tex}%
-}
-\caption{Service identity, mTLS, and authorization between two inference
-services, with the issuance and denial paths made explicit. The Istio control
-plane mints SPIFFE workload identities and certificates for each sidecar
-(dashed teal arrows). The protected inter-pod hop carries mTLS plus an
-identity-bound \texttt{AuthorizationPolicy} check between the workload
-identities \texttt{sa-svc1} and \texttt{sa-svc2} (purple double arrow). A
-non-mesh probe that lacks a SPIFFE identity is rejected at the receiving
-sidecar by the same authorization policy (red arrow with cross).}
+\caption[Service identity, mTLS, and authorization]{Service identity, mTLS, and authorization between two inference
+services. The Istio control plane mints SPIFFE workload identities and
+certificates for each sidecar (dashed teal arrows). The protected inter-pod hop
+carries mTLS plus an identity-bound \texttt{AuthorizationPolicy} check between
+the workload identities \texttt{sa-svc1} and \texttt{sa-svc2} (purple double
+arrow), while application-to-sidecar traffic inside each pod stays plaintext
+(orange arrows). A non-mesh probe that lacks a SPIFFE identity is rejected at
+the receiving sidecar by the same authorization policy (red arrow with cross).}
 \label{fig:rq21_mtls_identity_authz}
-\end{figure}
-
-\Cref{fig:rq21_mtls_identity_authz_flow} traces a single request end-to-end
-through the protected two-service chain. The client enters the chain at the
-first service, the activation crosses the mTLS-protected inter-pod hop between
-sidecars, and the response returns along the same sidecar path. The
-application-to-sidecar handoff on either side is plaintext inside the pod; only
-the inter-pod segment is mTLS-protected.
-
-\begin{figure}[htbp]
-\centering
-\resizebox{\textwidth}{!}{%
-\input{../figures/tikz/background/rq21_mtls_identity_authz_flow.tex}%
-}
-\caption{End-to-end request flow through the protected two-service chain. A
-client request enters Service~1, is handed off to its sidecar as plaintext
-gRPC, crosses the inter-pod hop as mTLS with an identity-bound
-\texttt{AuthorizationPolicy} check between \texttt{sa-svc1} and
-\texttt{sa-svc2} (dark-red double arrow), and is delivered to Service~2 as a
-plaintext loopback. The response (thin dashed arrow) returns along the same
-sidecar path. The Istio control plane issues the workload identities,
-certificates, and policies that make this enforcement possible (dashed teal
-arrows).}
-\label{fig:rq21_mtls_identity_authz_flow}
 \end{figure}
 
 This protection boundary is still a communication boundary. Once a request has reached
@@ -300,10 +239,8 @@ around only the model code or activation tensor.
 
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
 \input{../figures/tikz/background/confidential_vm_boundary.tex}%
-}
-\caption{Protection boundaries in the secured two-service AKS deployment. The service
+\caption[Protection boundaries in the secured AKS deployment]{Protection boundaries in the secured two-service AKS deployment. The service
 mesh provides communication-level protection between sidecar proxies using mTLS and
 workload identity. AMD SEV-SNP confidential nodes add a VM-level host-protection boundary
 around the downstream service's Kubernetes node. The figure is schematic: plaintext

@@ -1,0 +1,30 @@
+\begin{tikzpicture}[
+    thesisfig,
+    node distance=0.7cm,
+    conv/.style ={tfbox, draw=blue!65!black, fill=blue!14, minimum width=1.7cm, minimum height=0.95cm},
+    io/.style   ={tfbox, minimum width=0.9cm, inner xsep=3pt},
+    add/.style  ={draw=black!65, fill=black!5, thick, circle, inner sep=1pt, minimum size=0.55cm},
+    arrow/.style={tfarrow},
+    skip/.style ={-{Latex[length=1.8mm]}, dashed, thick, draw=purple!65!black},
+    skiplabel/.style={font=\small, text=purple!65!black, align=center}
+]
+
+% One BasicBlock: two stacked 3x3 convolutions plus a residual shortcut.
+\node[io] (in) {Input};
+\node[conv, right=of in] (c1) {$3{\times}3$ conv\\BN, ReLU};
+\node[conv, right=of c1] (c2) {$3{\times}3$ conv\\BN};
+\node[add, right=0.7cm of c2] (sum) {$+$};
+\node[io, right=0.7cm of sum] (out) {ReLU};
+
+\draw[arrow] (in) -- (c1);
+\draw[arrow] (c1) -- (c2);
+\draw[arrow] (c2) -- (sum);
+\draw[arrow] (sum) -- (out);
+
+% Residual shortcut: identity, or a 1x1 projection in the downsampling block.
+\draw[skip]
+    (in.north) -- ($(in.north)+(0,0.85)$)
+    -| (sum.north)
+    node[skiplabel, pos=0.25, above] {identity shortcut\quad(\,$1{\times}1$ proj, /2 in downsampling block\,)};
+
+\end{tikzpicture}%

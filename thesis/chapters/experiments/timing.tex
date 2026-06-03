@@ -28,35 +28,11 @@ Stage~L3 draws on three bodies of evidence:
     \item \textbf{Internal timing experiment on monolithic ResNet-18.} A separate instrumented forward-pass profiling experiment was conducted on the same monolithic model under a closely matched single-threaded CPU-stabilised environment, frozen as \texttt{internal\_timing\_resnet18\_20260515\_113614}. This experiment measured per-stage, per-block, and selected internal operation timings for a single-threaded CPU forward pass, averaged over 200 measured iterations preceded by 50 warmup iterations, using 10 rounds and the same randomisation seed. Functional equivalence was verified (maximum absolute difference of 0.0 against the uninstrumented model in \texttt{validation.json}), and instrumentation overhead was measured at 0.708~ms (0.94\% of total forward-pass time, per \texttt{instrumentation\_overhead.json}), confirming that the profiling did not meaningfully distort the timing distribution. This experiment is used as supporting evidence to characterise the internal compute distribution of ResNet-18; it is not a split benchmark and does not introduce new split conditions.
 \end{enumerate}
 
-No new split benchmark was conducted for Stage~L3. The explanatory analysis is based entirely on measurements already reported in Stage~L1 and Stage~L2, supplemented by the internal timing experiment described above. To keep this supporting evidence auditable without turning Stage~L3 into a separate benchmark stream, \cref{tab:rq13-config,tab:rq13-internal-summary,fig:rq13-stage-compute-distribution,tab:rq13-topops} provide a compact summary of the internal timing configuration and the specific internal timing results used in the explanatory analysis.
+No new split benchmark was conducted for Stage~L3. The explanatory analysis is based entirely on measurements already reported in Stage~L1 and Stage~L2, supplemented by the internal timing experiment described above. To keep this supporting evidence auditable without turning Stage~L3 into a separate benchmark stream, \cref{tab:rq13-internal-summary,fig:rq13-stage-compute-distribution,tab:rq13-topops} provide a compact summary of the specific internal timing results used in the explanatory analysis; the full internal timing configuration --- 10 rounds of 200 measured iterations (50 warmup) on the single-threaded, single-core CPU profile, with 0.708~ms (0.94\%) measured instrumentation overhead --- is given in \cref{tab:rq13-config} (\cref{sec:appendix-benchmark-configs}).
 
 \begin{table}[t]
 \centering
-\caption{Stage~L3 supporting internal timing configuration. Source: \texttt{config.yaml} and \texttt{instrumentation\_overhead.json} in \texttt{internal\_timing\_resnet18\_20260515\_113614}.}
-\label{tab:rq13-config}
-\begin{tabular}{ll}
-\toprule
-\textbf{Setting} & \textbf{Value} \\
-\midrule
-Model                       & ResNet-18 (pretrained) \\
-Device                      & CPU \\
-Precision                   & FP32 \\
-Profiling mode              & Monolithic internal timing (supporting evidence) \\
-Timing scope                & Stage-, block-, and selected operation-level timing \\
-Rounds                      & 10 \\
-Warmup iterations           & 50 \\
-Measured iterations         & 200 \\
-Validation inputs           & 5 \\
-Validation tolerance        & $1.0 \times 10^{-6}$ \\
-CPU stabilisation           & Single-threaded, single-core pinned execution \\
-Instrumentation overhead    & 0.708~ms (0.94\%) \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[t]
-\centering
-\caption{Stage~L3 supporting internal timing summary used in the explanatory analysis. Source: \texttt{summary.csv} in \texttt{internal\_timing\_resnet18\_20260515\_113614}. Classification head is the sum of \texttt{avgpool} and \texttt{fc}. The convolution and batch-norm rows are aggregated over all matching units at level L3 in the same summary file.}
+\caption[Stage~L3 internal timing summary]{Stage~L3 supporting internal timing summary used in the explanatory analysis. Source: \texttt{summary.csv} in \texttt{internal\_timing\_resnet18\_20260515\_113614}. Classification head is the sum of \texttt{avgpool} and \texttt{fc}. The convolution and batch-norm rows are aggregated over all matching units at level L3 in the same summary file.}
 \label{tab:rq13-internal-summary}
 \begin{tabular}{lrr}
 \toprule
@@ -208,13 +184,13 @@ BatchNorm ops (L3 agg.)   &  2.580 & 3.4\% \\
 
 \end{tikzpicture}%
 }
-\caption{Stage-level compute distribution from the Stage~L3 internal timing analysis. The final classification head contributes less than 1\% of total forward-pass compute, while \texttt{layer4} accounts for the largest stage-level share. This explains why \texttt{split\_after\_layer4} is raw-fast but compute-degenerate: almost all meaningful model computation remains before the split.}
+\caption[Stage-level compute distribution (Stage~L3)]{Stage-level compute distribution from the Stage~L3 internal timing analysis. The final classification head contributes less than 1\% of total forward-pass compute, while \texttt{layer4} accounts for the largest stage-level share. This explains why \texttt{split\_after\_layer4} is raw-fast but compute-degenerate: almost all meaningful model computation remains before the split.}
 \label{fig:rq13-stage-compute-distribution}
 \end{figure}
 
 \begin{table}[t]
 \centering
-\caption{Stage~L3 heaviest internal compute units from the supporting timing analysis. Source: \texttt{summary.csv} in \texttt{internal\_timing\_resnet18\_20260515\_113614}, sorted by \texttt{mean\_ms} at level L3.}
+\caption[Stage~L3 heaviest internal compute units]{Stage~L3 heaviest internal compute units from the supporting timing analysis. Source: \texttt{summary.csv} in \texttt{internal\_timing\_resnet18\_20260515\_113614}, sorted by \texttt{mean\_ms} at level L3.}
 \label{tab:rq13-topops}
 \begin{tabular}{lrr}
 \toprule

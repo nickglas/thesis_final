@@ -1,7 +1,7 @@
 % Auto-generated from results/frozen_new/rq1_1_20260515_111428/condition_summaries.csv and carry_forward.json
 % via scripts/render_rq11_figure.py. Do not edit by hand -- re-run the script.
 \begin{tikzpicture}[
-    font=\small,
+    font=\normalsize,
     axis/.style={thick, draw=black!70, -{Latex[length=2mm]}},
     grid/.style={draw=black!12, thin},
     baselinebar/.style={draw=black!60, fill=black!10, rounded corners=2pt, thick},
@@ -9,10 +9,10 @@
     selectedrefbar/.style={draw=green!40!black, fill=green!10, rounded corners=2pt, thick},
     rejectedbar/.style={draw=red!70!black, fill=red!10, rounded corners=2pt, thick},
     degeneratebar/.style={draw=orange!75!black, fill=orange!15, rounded corners=2pt, thick},
-    label/.style={font=\scriptsize, text=black!75, align=center},
-    vallabel/.style={font=\scriptsize\bfseries, text=black!75},
-    note/.style={font=\scriptsize, text=black!65, align=center},
-    errbar/.style={draw=black!80, semithick, line cap=round}
+    label/.style={font=\footnotesize, text=black!75, align=center},
+    vallabel/.style={font=\small\bfseries, text=black!75},
+    errbar/.style={draw=black!80, semithick, line cap=round},
+    ynum/.style={anchor=east, font=\footnotesize, text=black!65}
 ]
 
 % Frozen means +/- 1 SD (ms) used for this figure:
@@ -28,35 +28,35 @@
 % Rejected: ['split_after_layer1', 'split_after_layer4']
 
 \draw[grid] (0,0.000) -- (9.300,0.000);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,0.000) {73};
+\node[ynum] at (-0.15,0.000) {73};
 \draw[grid] (0,0.636) -- (9.300,0.636);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,0.636) {74};
+\node[ynum] at (-0.15,0.636) {74};
 \draw[grid] (0,1.273) -- (9.300,1.273);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,1.273) {75};
+\node[ynum] at (-0.15,1.273) {75};
 \draw[grid] (0,1.909) -- (9.300,1.909);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,1.909) {76};
+\node[ynum] at (-0.15,1.909) {76};
 \draw[grid] (0,2.545) -- (9.300,2.545);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,2.545) {77};
+\node[ynum] at (-0.15,2.545) {77};
 \draw[grid] (0,3.182) -- (9.300,3.182);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,3.182) {78};
+\node[ynum] at (-0.15,3.182) {78};
 \draw[grid] (0,3.818) -- (9.300,3.818);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,3.818) {79};
+\node[ynum] at (-0.15,3.818) {79};
 \draw[grid] (0,4.455) -- (9.300,4.455);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,4.455) {80};
+\node[ynum] at (-0.15,4.455) {80};
 \draw[grid] (0,5.091) -- (9.300,5.091);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,5.091) {81};
+\node[ynum] at (-0.15,5.091) {81};
 \draw[grid] (0,5.727) -- (9.300,5.727);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,5.727) {82};
+\node[ynum] at (-0.15,5.727) {82};
 \draw[grid] (0,6.364) -- (9.300,6.364);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,6.364) {83};
+\node[ynum] at (-0.15,6.364) {83};
 \draw[grid] (0,7.000) -- (9.300,7.000);
-\node[anchor=east, font=\scriptsize, text=black!65] at (-0.15,7.000) {84};
+\node[ynum] at (-0.15,7.000) {84};
 
 \draw[axis] (0,0) -- (9.600,0);
 \draw[axis] (0,0) -- (0,7.400);
 
-\node[rotate=90, font=\small, text=black!75] at (-0.85,3.500) {Mean end-to-end latency (ms)};
-\node[font=\small, text=black!75] at (5.050,-1.15) {Stage~L1 condition};
+\node[rotate=90, font=\normalsize, text=black!75] at (-0.85,3.500) {Mean end-to-end latency (ms)};
+\node[font=\normalsize, text=black!75] at (5.050,-1.15) {Stage~L1 condition};
 
 \draw[baselinebar] (0.800,0) rectangle (1.800,2.697);
 \draw[rejectedbar] (2.600,0) rectangle (3.600,5.013);
@@ -91,9 +91,5 @@
 \node[label] at (4.900,-0.45) {\texttt{layer2}\\reference};
 \node[label] at (6.700,-0.45) {\texttt{layer3}\\selected};
 \node[label] at (8.500,-0.45) {\texttt{layer4}\\degenerate};
-
-\node[note, text width=9.2cm] at (5.050,-1.85) {
-    \texttt{split\_after\_layer3} is the raw-fastest split. \texttt{split\_after\_layer4} is excluded by the compute-degeneracy rule (minor side $<$ 10\% of split compute). The carry-forward rule (5\% near-best window) selects \texttt{split\_after\_layer3} as the main candidate and \texttt{split\_after\_layer2} as the reference candidate.
-};
 
 \end{tikzpicture}
