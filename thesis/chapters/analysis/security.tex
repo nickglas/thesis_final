@@ -144,7 +144,8 @@ testing. Cross-environment transfer should be read as ranking-preserving
 rather than millisecond-equivalent, following the benchmarking practice
 that informs the rest of this thesis~\cite{benchmarking_sc15}. Evaluated
 against the question Stage~H1 actually poses --- the cost of adding
-managed-Istio mTLS and AuthZ to the selected AKS chain --- the evidence is
+managed-Istio mTLS and AuthZ to the selected \texttt{chain\_2svc} AKS
+chain-family hardening baseline --- the evidence is
 sufficient to support a cautious positive answer for \texttt{chain\_2svc},
 qualified by the depth-sensitivity finding at \texttt{chain\_5svc}, the
 multi-node sensitivity in Finding 7, and the trust-boundary scope above.
@@ -538,7 +539,8 @@ trade-off point.
 The three security stages settle three independent analytical points
 that are then combined in \cref{sec:analysis-rq23}: the
 \emph{communication-level} cost and trust boundary of managed-Istio mTLS
-and AuthZ on the selected AKS chain (\cref{sec:analysis-rq21}), the
+and AuthZ on the selected \texttt{chain\_2svc} AKS chain-family hardening
+baseline (\cref{sec:analysis-rq21}), the
 \emph{runtime-protection} cost and trust boundary of selective AMD
 SEV-SNP execution on the downstream service while keeping the mTLS
 contract fixed (\cref{sec:analysis-rq22}), and the delta-space

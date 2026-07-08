@@ -14,12 +14,12 @@ under controlled local execution, how the resulting chain family
 behaves under local Kubernetes and managed AKS, and how much
 inter-node placement contributes to the cost. RQ2 asked what
 performance and operational overhead is introduced when the selected
-AKS path is hardened with managed-Istio mTLS and authorisation policy,
-and when VM-level confidential execution under AMD SEV-SNP is added
-to the downstream service. The approach was a staged experimental
-pipeline that fixed the model, the timing protocol, and the functional
-parity contract across stages, and changed only one layer of the
-system at a time.
+\texttt{chain\_2svc} AKS chain-family path is hardened with managed-Istio
+mTLS and authorisation policy, and when VM-level confidential execution
+under AMD SEV-SNP is added to the downstream service. The approach was a
+staged experimental pipeline that fixed the model, the timing protocol,
+and the functional parity contract across stages, and changed only one
+layer of the system at a time.
 
 On the architectural side, Stage~L1 established that coarse ResNet-18
 stage boundaries are not interchangeable under controlled local

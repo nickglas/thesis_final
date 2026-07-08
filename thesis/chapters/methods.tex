@@ -634,6 +634,8 @@ of policy object counts; a full-chain positive probe confirming that valid upstr
 downstream requests succeed; and a direct non-mesh denial probe confirming that
 unauthenticated access to protected downstream services is blocked.
 
+In RQ2, the ``selected AKS path'' refers to the selected AKS chain-family hardening
+baseline, not to the rule-selected refined local split candidate from Stage~L2.
 The primary topology is \texttt{chain\_2svc} (split after \texttt{layer2}). It is the
 lowest-overhead non-monolithic chain in the preceding Stage~K and Stage~C stages. The split
 point used is \texttt{layer2}, which corresponds to the Stage~L1 \emph{reference}
