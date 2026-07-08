@@ -19,12 +19,12 @@
 \node[podtitle] (t1)      at (0,1.5)     {Pod: service1};
 \node[salbl]    (sa1)     at (0,1.05)    {\texttt{sa-svc1}};
 \node[app]      (s1app)   at (0,0.2)     {Service 1\\{\small model segment}};
-\node[sidecar]  (s1proxy) at (0,-1.45)   {Istio sidecar\\{\small proxy}};
+\node[sidecar]  (s1proxy) at (0,-2.05)   {Istio sidecar\\{\small proxy}};
 
-\node[podtitle] (t2)      at (7,1.5)      {Pod: service2};
-\node[salbl]    (sa2)     at (7,1.05)     {\texttt{sa-svc2}};
-\node[app]      (s2app)   at (7,0.2)      {Service 2\\{\small downstream seg.}};
-\node[sidecar]  (s2proxy) at (7,-1.45)    {Istio sidecar\\{\small proxy}};
+\node[podtitle] (t2)      at (7.25,1.5)      {Pod: service2};
+\node[salbl]    (sa2)     at (7.25,1.05)     {\texttt{sa-svc2}};
+\node[app]      (s2app)   at (7.25,0.2)      {Service 2\\{\small downstream seg.}};
+\node[sidecar]  (s2proxy) at (7.25,-2.05)    {Istio sidecar\\{\small proxy}};
 
 \begin{pgfonlayer}{background}
 \node[podbox, fit=(t1)(sa1)(s1app)(s1proxy)] (col1) {};
@@ -32,7 +32,7 @@
 \end{pgfonlayer}
 
 % --- Control plane (identity issuer) ---------------------------------------
-\node[control] (cp) at (3.5,3.15) {Istio control plane\\{\small CA / SPIFFE identity issuer}};
+\node[control, minimum width=10.2cm] (cp) at (3.625,3.55) {Istio control plane\\{\small CA / SPIFFE identity issuer}};
 \draw[identityarrow] (cp.south -| col1.north) -- node[annot, left, text=teal!55!black] {identity\\+ cert} (col1.north);
 \draw[identityarrow] (cp.south -| col2.north) -- node[annot, right, text=teal!55!black] {identity\\+ cert} (col2.north);
 
@@ -45,8 +45,8 @@
     {mTLS\\+ peer-identity check\\+ AuthorizationPolicy} (s2proxy.west);
 
 % --- Non-mesh denial probe (enters the now-free bottom of pod 2) ------------
-\node[probe] (probe) at (7,-3.55) {Non-mesh probe\\{\small (no SPIFFE identity)}};
-\draw[deniedarrow] (probe) -- node[annot, right=3pt, text=red!70!black] {denied by\\AuthZ policy} (s2proxy.south);
+\node[probe] (probe) at (7.25,-4.35) {Non-mesh probe\\{\small (no SPIFFE identity)}};
+\draw[deniedarrow] (probe) -- node[annot, right=9pt, text=red!70!black] {denied by\\AuthZ policy} (s2proxy.south);
 \node[font=\large\bfseries, text=red!70!black] at ($(probe.north)!0.5!(s2proxy.south)$) {$\boldsymbol\times$};
 
 \end{tikzpicture}%

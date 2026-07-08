@@ -116,7 +116,7 @@ Amsterdam, The Netherlands
     	\noindent\rule{\textwidth}{1.5pt}
     	\vskip 1em
     	\begin{center}
-    		{\Huge \@title \par}
+    		{\LARGE \@title \par}
     		\vskip 1em
     		\rule{\textwidth}{1.5pt} \par \nobreak
     		\vskip 2em
@@ -159,27 +159,6 @@ Amsterdam, The Netherlands
           \@university
           \end{center}
         \fi
-        \newpage
-        \thispagestyle{empty}
-        \noindent\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
-        \multicolumn{2}{@{}l@{}}{\emph{Thesis Committee}}\\[1ex]
-        Examiner (chair): & \@examinername{} (\@examineraffiliation{})\\
-        Second Reviewer: & \@reviewername{} (\@revieweraffilication{})\\
-        \ifdefined\@dailysupervisorname
-        Daily Supervisor: & \@dailysupervisorname{} (\@dailysupervisoraffilication{})\\
-        \fi
-        \ifdefined\@externalsupervisorname
-        External Supervisor: & \@externalsupervisorname{} (\@externalsupervisoraffiliation{})\\
-        \fi
-        \ifdefined\@othermemberslist
-          Other members: & \@othermemberslist{} \\
-        \fi
-        \end{tabularx}
-        \null\vfill
-        \footnotesize
-        \setlength{\parindent}{0pt}
-        \setlength{\parskip}{\baselineskip}
-        \@colophon{}
         \clearpage
   \endgroup
 }

@@ -163,9 +163,11 @@ The Netherlands
 % \import{frontmatter/}{epigraph.tex}
 
 % abstract
-\cleartorecto{}
+% Keep the abstract directly after the title page instead of forcing a blank verso.
+\openany
 \chapter{Abstract}
 \import{frontmatter/}{abstract.tex}
+\openright
 % reset all used acronyms so we can properly introduce them next time
 \glsresetall{}
 
