@@ -45,10 +45,11 @@ measured here.
 
 On the deployment side, Stage~K established the service-count ordering
 inside local Kubernetes: end-to-end latency grows
-monotonically and approximately linearly with service count from the
+monotonically and approximately linearly over the measured one-to-five-service
+family from the
 monolithic in-cluster baseline through the five-service chain (a
 descriptive linear fit gives $R^{2}\approx0.98$ locally and $\approx0.998$
-on AKS), and the marginal cost of an added boundary is
+on AKS), and the descriptive marginal cost of an added boundary is
 shaped by the tensor transferred at it rather than by a constant
 per-hop surcharge. Total compute is approximately flat across the
 chained conditions while the runner's non-compute component grows
@@ -92,7 +93,8 @@ explicitly includes the host platform of the downstream segment.
 \paragraph{Significance.} Taken together, these findings establish that the
 decomposition required to treat a neural network as a set of independently
 deployable and independently governable services carries a bounded, characterised
-overhead across controlled, orchestrated, cloud, and security-hardened settings.
+overhead across the controlled, orchestrated, cloud, and security-hardened settings
+evaluated here.
 That result is the precondition for the broader significance discussed in
 \cref{sec:analysis-significance}: per-layer policy control, selective protection of
 individual segments, and --- prospectively --- the composition of a model from
@@ -129,7 +131,7 @@ activation-transfer size dominates at the coarse level and compute
 placement at the boundary is independently observable at the refined
 level; a characterisation of the chain-cost gradient under local
 Kubernetes and managed AKS, in which the condition ordering and
-non-constant marginal boundary cost transfer directionally between substrates;
+non-constant descriptive marginal boundary cost transfer directionally between substrates;
 a per-condition multi-node penalty envelope quantifying
 the inter-node cost that the single-node primary design hides;
 paired, ablation-supported measurements of the managed-Istio

@@ -164,9 +164,9 @@ single-node Stage~C design intentionally hides --- the result is sufficient.
 On this AKS configuration the worst-case multi-node penalty across the
 chained conditions is +4.086~ms (\texttt{chain\_5svc},
 \cref{tab:rq15b_delta}) and the monolithic baseline gains +2.305~ms; the
-single-node Stage~K / Stage~C design therefore underestimates true
-production-style latency by a bounded margin that is now quantified per
-condition rather than acknowledged abstractly. Second, against the Stage~C
+single-node Stage~K / Stage~C design therefore underestimates the
+same-region, same-VNet forced-placement latency by a bounded margin that is
+now quantified per condition rather than acknowledged abstractly. Second, against the Stage~C
 ordering and bounded-non-linearity claims, the result is confirmatory:
 \cref{tab:rq15b_results} reproduces the Stage~C ordering and the
 activation-driven last-step pattern under enforced cross-host placement,
@@ -205,9 +205,9 @@ Read against \cref{sec:analysis-rq14b}, these per-condition deltas are an
 order of magnitude smaller than the kind multi-worker CNI-bridge deltas
 of +3.991~ms\,..\,+48.634~ms (\cref{tab:rq14b_delta}), which confirms
 that kind multi-worker is a CNI sensitivity envelope rather than a
-substitute for the managed-cloud cross-host bound that Stage~C (multi-node) actually
+substitute for the managed-cloud cross-host envelope that Stage~C (multi-node) actually
 measures~\cite{cni_k8s_ic2e21,virtualization_costs}. The single-node
-Stage~K / Stage~C design therefore underestimates true production latency by
-a bounded margin that is now quantified per condition on this AKS
-configuration; Stage~C (multi-node) does not support production-readiness, scalability,
+Stage~K / Stage~C design therefore underestimates the same-region, same-VNet
+forced-placement latency by a bounded margin that is now quantified per condition on
+this AKS configuration; Stage~C (multi-node) does not support production-readiness, scalability,
 or cross-substrate-portability claims.

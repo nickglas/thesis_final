@@ -275,8 +275,8 @@ passed as in the primary Stage~H1 run.
 {\footnotesize $^{\dagger}$\,\texttt{split\_after\_layer4} remains compute-degenerate under the Stage~L1 degeneracy rule (\cref{sec:methods-carryforward}) and is retained only as a low-payload diagnostic endpoint, not as a candidate deployment.}
 \end{table}
 
-The single-hop mTLS overhead scales monotonically with the size of the activation
-crossing the protected hop. As the protected activation falls from 784~KiB
+The single-hop mTLS overhead decreases monotonically with the size of the activation
+crossing the protected hop in this supporting campaign. As the protected activation falls from 784~KiB
 (\texttt{layer1}) to 98~KiB (\texttt{layer4}), the mean overhead decreases
 monotonically from +4.420~ms to +2.586~ms, the percentage overhead from +7.52\%
 to +4.55\%, and the p95 overhead from +5.359~ms to +2.918~ms
@@ -436,9 +436,10 @@ authorisation semantics, and five paired passes of 200 iterations per condition
 The benchmark compared two conditions. In the standard condition, service1 and
 service2 both ran on \texttt{Standard\_D8as\_v5}. In the confidential
 condition, service1 remained on \texttt{Standard\_D8as\_v5}, while service2 ran
-on \texttt{Standard\_DC8as\_v5} backed by AMD SEV-SNP. This isolates the cost
-of protecting the downstream service that receives intermediate activations
-and executes the later ResNet-18 segment. The rolling design alternates
+on \texttt{Standard\_DC8as\_v5} backed by AMD SEV-SNP. This estimates the paired
+standard-vs-confidential node-pool delta for protecting the downstream service
+that receives intermediate activations and executes the later ResNet-18 segment.
+The rolling design alternates
 standard and confidential passes from a seeded order (standard-first on passes
 1, 3, 5; confidential-first on passes 2, 4 per
 \texttt{execution\_plan.json}), and parity validation against the monolithic

@@ -507,9 +507,11 @@ unresolved.
 \paragraph{Trade-off synthesis outcome.}
 For the selected AKS \texttt{chain\_2svc} inference chain, the most
 defensible default in the evaluated set is mTLS with service identity
-and AuthorizationPolicy: it removes the inter-service plaintext path at
-a +3.488~ms / +4.62\% mean and +3.623~ms / +4.53\% p95 overhead, and its
-cost is roughly symmetric across the latency distribution. Selective
+and AuthorizationPolicy: it protects the proxy-mediated inter-pod path
+with service identity and mTLS, while plaintext still exists between the
+sidecar and application inside each pod. It adds a +3.488~ms / +4.62\%
+mean and +3.623~ms / +4.53\% p95 overhead, and its cost is roughly
+symmetric across the latency distribution. Selective
 SEV-SNP execution on \texttt{service2} is the next defensible step
 \emph{when, and only when}, the threat model includes the host platform
 or hypervisor of the downstream segment; it adds +1.854~ms / +3.17\%

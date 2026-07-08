@@ -101,6 +101,9 @@ relatable to prior split-computing and DNN-partitioning work~\cite{neurosurgeon,
 
 All experiments use FP32 precision with a fixed input shape of
 $1 \times 3 \times 224 \times 224$ and a batch size of one.
+All model instances are set to evaluation mode and executed without gradient
+tracking, so training-mode batch-normalisation behaviour and gradient overhead are
+not part of the measured inference path.
 Batch size one reflects the latency-oriented framing of the research questions: the
 thesis measures per-request end-to-end inference latency rather than throughput.
 
@@ -341,6 +344,9 @@ diagnostics, not as the decision rule. Per-iteration latency is right-skewed rat
 normal, so a non-parametric rank-based test (Mann--Whitney) is used rather than a
 parametric two-sample $t$-test, and the median is reported alongside the mean throughout;
 Cohen's~$d$ is reported as a sample-size-independent measure of effect magnitude.
+The experimental stability claim rests primarily on rounds and paired passes rather than
+on treating all pooled iterations as independent experimental replications; pooled
+per-iteration statistics are therefore interpreted as descriptive diagnostics.
 
 The $p$-value is down-weighted by design: at $N = 1{,}000$ the test is so highly powered
 that even a practically negligible difference is statistically significant. Methodological
@@ -486,7 +492,7 @@ This family deliberately spans the full range of Stage~L1 activation sizes from 
 (\texttt{layer1}) down to 98~KiB (\texttt{layer4}), and consequently re-introduces
 boundaries that Stage~L1 rejected (\texttt{layer1} as too transfer-heavy and
 \texttt{layer4} as compute-degenerate). The resulting cost curve should therefore be
-read as an \emph{upper-bound envelope} on the cost of adding service boundaries -- a
+read as a \emph{conservative envelope} on the cost of adding service boundaries -- a
 purely best-boundary chain at each depth would lie below this envelope -- not as a
 generic per-hop cost.
 Service pods are allocated one CPU core and 512~MiB of memory with Guaranteed QoS to
@@ -652,7 +658,7 @@ when more service boundaries are protected. \texttt{chain\_5svc} reuses the same
 Stage~C split family (\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, \texttt{layer4}),
 which deliberately includes the Stage~L1-rejected boundaries to span the full activation
 range. The chain\_5svc overhead figure should therefore be read against the same
-upper-bound-envelope caveat introduced in \cref{sec:methods-rq14}.
+conservative-envelope caveat introduced in \cref{sec:methods-rq14}.
 
 A known limitation of sidecar-based mTLS is that the measured protection boundary is the
 proxy-mediated inter-service data path, not all data handling inside the pod or
@@ -764,8 +770,9 @@ still reflects the practical platform change from the standard AMD node pool to 
 confidential AMD SEV-SNP node pool.
 
 The thesis-facing TEE scope is \texttt{service2\_only}.
-This selective placement isolates the cost of protecting the downstream service
-that receives intermediate activations, motivated by activation-privacy work
+This selective placement estimates the paired standard-vs-confidential node-pool
+delta for protecting the downstream service that receives intermediate activations,
+motivated by activation-privacy work
 \cite{he2021_attacking_collaborative} showing that those activations are
 recoverable when held by an untrusted remote partition.
 Extending the confidential-execution boundary to both services (full

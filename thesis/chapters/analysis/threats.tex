@@ -56,7 +56,7 @@ joint suitability criterion of \cref{sec:analysis-rq13} is a property
 of this construct rather than a universal split rule. The construct
 boundary on the security strand is stronger and is paid for in
 \cref{sec:analysis-rq21,sec:analysis-rq22,sec:analysis-rq23}:
-``security works'' is operationalised as static manifest validation,
+policy-enforcement success is operationalised as static manifest validation,
 runtime policy validation, full-chain positive probes, and direct
 non-mesh denial probes, which is communication-level hardening under
 policy validation rather than evidence of robustness under attack. The
@@ -145,8 +145,8 @@ and an order of magnitude but is not a fitted per-hop scaling law, as
 \cref{sec:analysis-rq21} explicitly states. Second, the Stage~H2 finding
 rests on five paired passes per condition on a single confidential
 node pool against a freshly collected within-cluster mTLS standard
-baseline; this design isolates the incremental TEE delta from
-session-level drift but is not powered to decompose the observed
+baseline; this design estimates the incremental standard-vs-confidential
+node-pool delta while reducing session-level drift, but is not powered to decompose the observed
 tail-vs-mean asymmetry into a specific mechanism (per-iteration
 memory-encryption work, scheduler interactions on the confidential
 node, and warm-vs-cold cache behaviour are all consistent), and the
