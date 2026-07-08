@@ -24,10 +24,13 @@ This thesis is organised around two research questions. The first concerns the a
 RQ1 is evaluated across three deployment environments. Under controlled local execution, \emph{Stage~L1} performs a coarse sweep over the major residual-stage boundaries of ResNet-18, \emph{Stage~L2} refines the carried-forward region at block level, and \emph{Stage~L3} explains the observed behaviour using activation-transfer size and internal compute distribution. The same coarse-stage chain family is then evaluated in local Kubernetes as \emph{Stage~K}, where default same-node placement is treated as the base case and forced cross-node placement as the alternative. Finally, \emph{Stage~C} transfers the chain to Azure Kubernetes Service, again comparing a single-node base case with a forced multi-node alternative.
 
 \paragraph{Stages of RQ2.}
-RQ2 builds on the selected AKS chain-family topology from RQ1: the
-\texttt{chain\_2svc} AKS deployment using the local reference boundary
-\texttt{split\_after\_layer2}, rather than re-measuring the refined local main
-boundary. \emph{Stage~H1} adds communication-level hardening through service identity, mutual TLS, and inter-service authorization policy, measured against the plain AKS chain. \emph{Stage~H2} keeps that communication-security configuration fixed and places the downstream protected service on AMD SEV-SNP confidential nodes to measure the additional cost of VM-level confidential execution. The final trade-off analysis compares the plain, communication-secured, and selectively confidential configurations across performance, operational complexity, and protection scope.
+RQ2 builds on the selected AKS chain-family hardening baseline from RQ1:
+the lowest-overhead non-monolithic AKS member, \texttt{chain\_2svc}, using
+the local reference boundary \texttt{split\_after\_layer2}. This is distinct
+from the Stage~L2 rule-selected local main candidate
+\texttt{split\_after\_layer3\_block0}; RQ2 hardens the already-frozen AKS
+chain-family path rather than re-measuring the refined local main boundary.
+\emph{Stage~H1} adds communication-level hardening through service identity, mutual TLS, and inter-service authorization policy, measured against the plain AKS chain. \emph{Stage~H2} keeps that communication-security configuration fixed and places the downstream protected service on AMD SEV-SNP confidential nodes to measure the additional cost of VM-level confidential execution. The final trade-off analysis compares the plain, communication-secured, and selectively confidential configurations across performance, operational complexity, and protection scope.
 
 \section{Approach}
 The thesis uses a staged experimental methodology centred on ResNet-18, a residual architecture whose stage structure provides natural coarse split candidates~\cite{resnet}. The initial benchmark compares one monolithic baseline with four two-part split configurations placed after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. These boundaries correspond to major architectural stages in the network and provide a principled sweep from early to late splits. This first stage is executed locally with CPU-only inference, FP32 precision, gRPC over localhost, fixed warmup and measurement windows, and functional parity checks between monolithic and split execution. This isolates boundary effects under controlled conditions, following systems-benchmarking guidance that emphasises controlled comparisons and explicit reporting of measurement context~\cite{benchmarking_sc15}.

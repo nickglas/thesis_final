@@ -374,6 +374,9 @@ as the main carry-forward candidate, and the next-lowest is retained as the refe
 candidate. Ties on mean latency are broken in favour of the smaller activation-transfer
 size, so that activation size acts as a structural tie-breaker rather than as a primary
 selection criterion.
+The 5\% near-best window and 10\% compute-degeneracy threshold are pragmatic,
+predeclared cutoffs: they avoid over-reading small mean-latency gaps while excluding
+structurally empty downstream services, and are not proposed as universal constants.
 
 Carry-forward is not applicable in Stages~K and~C, which benchmark a predefined chain
 family rather than selecting among candidates.
