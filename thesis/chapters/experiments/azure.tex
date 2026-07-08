@@ -237,21 +237,11 @@ becomes a bounded, measured cost rather than an unspecified one. Public-cloud
 networks exhibit performance variability that can shift absolute latency without
 changing the application~\cite{noise_in_clouds}, which is precisely why this
 sensitivity stage measures the multi-node penalty directly rather than assuming
-it.
-
-\begin{figure}[htbp]
-\centering
-\resizebox{\textwidth}{!}{%
-\input{figures/tikz/background/rq14_vs_rq15b_placement_comparison}
-}
-\caption[Single-node vs.\ multi-node chain placement]{Same chain, two topologies. (a) Stage~K / Stage~C single-node (base-case) placement:
-all six pods on one node, every gRPC hop is loopback. (b) Stage~K / Stage~C
-multi-node (alternative) placement: each chain segment lands on a distinct cluster node and
-the client lands on a sixth dedicated node, so every gRPC hop crosses the
-Azure VNet. The chain itself is identical between the two panels; only the
-pod-to-node assignment changes.}
-\label{fig:rq14_vs_rq15b_placement}
-\end{figure}
+it. The single-node base case and this multi-node alternative are the two
+placements already contrasted in \cref{fig:chain5_placement_comparison}: the same
+five-service chain either runs co-located on one node, so every gRPC hop is a
+loopback call, or is spread across distinct nodes so that every hop crosses the
+Azure VNet, with the chain itself and the per-boundary transfer sizes unchanged.
 
 \subsection{Experimental Setup}
 
