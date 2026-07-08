@@ -9,17 +9,16 @@ subsection is not to repeat the per-condition latencies tabulated in
 benchmark adds on top of the on-host findings of
 \cref{sec:analysis-rq11,sec:analysis-rq12,sec:analysis-rq13} and what
 it deliberately does not establish. Two analytical points carry the
-subsection. First, the architectural ordering established on
-\texttt{127.0.0.1} in Stage~L1 (more synchronously chained boundaries
-imply more end-to-end cost in this ResNet-18 family~\cite{resnet})
-remains visible once the workload is lifted into a Kubernetes pod
-network, but the per-hop surcharge is not a constant. Second, the
-chain overhead decomposes recognisably into a roughly linear platform
-component and a tensor-payload-dependent component, in line with the
-two-dimensional account synthesised in
+subsection. First, Stage~K establishes the service-count ordering for
+the predefined Kubernetes chain family: more synchronously chained
+boundaries imply more end-to-end cost in this ResNet-18 family, but the
+per-hop surcharge is not a constant. Second, the chain overhead
+decomposes recognisably into a roughly linear platform component and a
+tensor-payload-dependent component, in line with the activation/compute
+mechanisms identified in Stages~L1--L3 and synthesised in
 \cref{sec:analysis-rq13}~\cite{dnnsplit,deeperthings}.
 
-\paragraph{The architectural ordering survives the move into Kubernetes with measurable cost.}
+\paragraph{The service-count ordering is established in Kubernetes with measurable cost.}
 Under the controlled local \texttt{kind} setup, mean end-to-end latency
 increases monotonically from 81.066~ms for
 \texttt{monolithic\_k8s\_1svc} to 83.387~ms, 87.728~ms, 90.572~ms, and
@@ -32,11 +31,12 @@ chain family rather than a carry-forward selection: as declared in
 \cref{sec:methods-carryforward} and recorded in the frozen
 \texttt{carry\_forward.json}, the carry-forward rule does not apply to
 Stage~K because the Kubernetes condition set is predefined rather than
-selected. The analytical reading is therefore continuity with Stage~L1
-under a new platform: the same ResNet-18 chain family that showed a
-monotonic split-cost gradient on \texttt{127.0.0.1} continues to do so
-in-cluster, with a worst-case overhead bounded at +14.1\% on this
-hardware.
+selected. The analytical reading is therefore the first deployment-level
+service-count ordering for the predefined chain family: the same
+activation/compute mechanisms identified in Stages~L1--L3 remain useful
+for interpreting why the in-cluster increments differ, while the
+monotonic chain-depth cost itself is established here, with a worst-case
+overhead bounded at +14.1\% on this hardware.
 
 \paragraph{The marginal cost of an additional boundary is shaped by the tensor moved at that boundary, not by a constant per-hop surcharge.}
 The step from \texttt{chain\_4svc} to \texttt{chain\_5svc} adds

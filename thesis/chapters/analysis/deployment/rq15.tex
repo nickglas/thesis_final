@@ -6,7 +6,7 @@ coarse-stage ResNet-18 microservice chain family transfers to Azure
 Kubernetes Service (AKS), and how absolute and relative costs change
 under managed cloud execution. The analytical contribution is not to add
 a measurement on top of \cref{sec:analysis-rq14}, and not to re-select a
-split point, but to test whether the Stage~K architectural ordering
+split point, but to test whether the Stage~K service-count ordering
 survives a substrate change from a local single-node \texttt{kind}
 cluster to a managed AKS single-node cluster, and to scope precisely
 what that test does and does not establish. The natural reporting
@@ -27,11 +27,11 @@ node placement), the Stage~K ordering now survives three orthogonal
 stresses: managed-cloud substrate (Stage~C), CNI-bridge routing on the
 local host (Stage~K (cross-node)), and genuine cross-host placement (Stage~C (multi-node)). Read
 across the deployment strand, this is a triple-coverage transfer of the
-same architectural ordering established on \texttt{127.0.0.1} in
-Stage~L1: from a single-host loopback gRPC chain (Stage~L1), to a single-
-node local \texttt{kind} cluster (Stage~K), to managed AKS (Stage~C). The
-ordering claim of the deployment strand is therefore not specific to
-the single-node \texttt{kind} substrate on which Stage~K was measured.
+service-count ordering established in Stage~K, while the activation/compute
+mechanisms identified in Stages~L1--L3 explain why the marginal increments
+are not constant. The ordering claim of the deployment strand is therefore
+not specific to the single-node \texttt{kind} substrate on which Stage~K was
+measured.
 
 \paragraph{The relative-overhead trend transfers within a small pp band.}
 Relative to each environment's own monolithic baseline, the AKS overhead

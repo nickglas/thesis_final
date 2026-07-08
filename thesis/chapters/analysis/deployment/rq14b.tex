@@ -17,10 +17,10 @@ cross-host networking. The genuine multi-host inter-node penalty for
 the same chain family is measured in
 \cref{sec:analysis-rq15b}; the role of Stage~K (cross-node) is to bound how much
 the single-node placement of Stage~K hides on the \emph{same physical
-host}, and to test whether the Stage~K architectural ordering survives
+host}, and to test whether the Stage~K service-count ordering survives
 when the chain traffic is forced through the kind CNI bridge.
 
-\paragraph{The architectural ordering and the bounded-non-linearity pattern survive the kind-CNI probe.}
+\paragraph{The service-count ordering and the bounded-non-linearity pattern survive the kind-CNI probe.}
 Under the kind multi-worker condition, mean end-to-end latency
 increases monotonically from 67.491~ms for
 \texttt{monolithic\_k8s\_1svc} to 87.378~ms, 120.465~ms, 135.639~ms,

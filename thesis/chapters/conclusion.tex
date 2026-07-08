@@ -43,8 +43,8 @@ refined level, and the mid-to-late band is the only region in which
 both dimensions are simultaneously tolerable under the conditions
 measured here.
 
-On the deployment side, Stage~K showed that the architectural ordering
-survives the move into local Kubernetes: end-to-end latency grows
+On the deployment side, Stage~K established the service-count ordering
+inside local Kubernetes: end-to-end latency grows
 monotonically and approximately linearly with service count from the
 monolithic in-cluster baseline through the five-service chain (a
 descriptive linear fit gives $R^{2}\approx0.98$ locally and $\approx0.998$
@@ -147,7 +147,8 @@ recorded alongside each artefact.
 
 \paragraph{Practical / deployment.} A delta-space security-hardening
 trade-off statement identifying managed-Istio mTLS with service
-identity and authorisation policy as the best supported default for
+identity and authorisation policy as the most defensible default among
+the evaluated configurations for
 the selected \texttt{chain\_2svc} AKS deployment, with selective
 SEV-SNP on the downstream service as the next defensible step only
 when the threat model includes the host platform of that segment.
