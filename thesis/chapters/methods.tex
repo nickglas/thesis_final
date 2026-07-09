@@ -101,6 +101,16 @@ relatable to prior split-computing and DNN-partitioning work~\cite{neurosurgeon,
 
 All experiments use FP32 precision with a fixed input shape of
 $1 \times 3 \times 224 \times 224$ and a batch size of one.
+The three-channel $224 \times 224$ image shape follows the torchvision
+pretrained ResNet-18 inference transform, whose preprocessing uses a
+$224$-pixel centre crop~\cite{torchvision_resnet18_weights}; the leading
+dimension fixes the latency experiment at batch size one. FP32 is used because
+PyTorch's initial default floating-point dtype is \texttt{torch.float32}
+\cite{pytorch_get_default_dtype}, making it a hardware-neutral baseline for
+CPU-only and Kubernetes measurements. Reduced precision formats such as FP16,
+BF16, and INT8 would introduce separate quantisation, calibration, or
+hardware-acceleration questions, while FP64 would increase compute cost without
+matching the deployed model's standard inference configuration.
 All model instances are set to evaluation mode and executed without gradient
 tracking, so training-mode batch-normalisation behaviour and gradient overhead are
 not part of the measured inference path.
@@ -184,13 +194,30 @@ Systematic CPU stabilisation is applied in all local and Kubernetes stages to re
 variance attributable to hardware noise rather than to the partition boundary.
 The following controls are requested in every thesis-facing local run.
 Thread counts for PyTorch intra-op and inter-op threads, and for OpenMP, MKL, and
-OpenBLAS, are all set to one, ensuring single-threaded model execution.
-CPU affinity is pinned to one physical core with simultaneous multithreading (SMT)
-excluded, preventing the benchmark process from migrating between cores or sharing a
-physical core with a sibling hyperthread.
-Process scheduling priority is raised using \texttt{nice~-5} where the runtime permits.
-The CPU frequency governor is set to \texttt{performance} and turbo boost is disabled
-to prevent frequency scaling from affecting measurements.
+OpenBLAS, are all set to one, ensuring single-threaded model execution. Here,
+PyTorch intra-op threads are the threads used inside individual CPU operations,
+whereas inter-op threads control CPU parallelism between operations; both are
+fixed through PyTorch's thread controls~\cite{pytorch_set_num_threads,pytorch_set_num_interop_threads}.
+The \texttt{OMP\_NUM\_THREADS}, \texttt{MKL\_NUM\_THREADS}, and
+\texttt{OPENBLAS\_NUM\_THREADS} settings cap OpenMP, Intel MKL, and OpenBLAS
+thread pools so that backend libraries do not introduce hidden parallelism
+\cite{pytorch_threading_env,openblas_faq}. CPU affinity is pinned to one
+physical core, restricting the logical CPUs on which the benchmark process can
+run~\cite{linux_sched_setaffinity}. Simultaneous multithreading (SMT) is excluded
+by avoiding Linux topology-reported sibling hardware threads on the same physical
+core~\cite{linux_cpu_topology}. Process scheduling priority is raised using
+\texttt{nice~-5} where the runtime permits; lower nice values correspond to higher
+priority~\cite{linux_nice}. The value \texttt{-5} is used as a moderate negative
+nice level: it gives the benchmark process a stronger share under the normal
+Linux scheduler, reducing preemption by ordinary background work, without moving
+the benchmark into a real-time scheduling class such as \texttt{SCHED\_FIFO}.
+This matches the benchmarking aim of reducing operating-system noise while
+keeping the execution environment comparable and non-real-time
+\cite{benchmarking_sc15,noise_in_clouds,linux_sched_nice_design}. The CPU
+frequency governor is set to \texttt{performance}, which requests the highest
+frequency allowed by the policy, and turbo boost is disabled to prevent
+short-duration frequency-boost states from affecting single-thread benchmark
+timings~\cite{linux_cpufreq}.
 
 These controls are applied symmetrically across all conditions within a benchmark so
 that differences in measured latency can be attributed to the independent variable
@@ -253,7 +280,7 @@ Node CPUs            & 8 cores / 16 threads    & 8 cores / 16 threads    & 8 vCP
 Node memory          & 32~GB DDR5              & 32~GB DDR5              & 32~GiB \\
 Per-service CPU      & 1 physical core (pinned) & 1 CPU (request = limit) & 1 CPU (Guaranteed QoS) \\
 Per-service memory   & single host process     & 512~MiB pod             & 1~GiB pod \\
-Threads (PyTorch/OMP/MKL) & 1                  & 1                       & 1 \\
+Threads (PyTorch/OMP/MKL/OpenBLAS) & 1        & 1                       & 1 \\
 CPU governor         & \texttt{performance} (enforced) & not enforceable & unavailable \\
 Turbo boost          & disabled (enforced)     & not enforceable         & unavailable \\
 Process priority (\texttt{nice}) & $-5$ (applied) & requested, not applied & $0$ (denied) \\

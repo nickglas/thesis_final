@@ -18,7 +18,7 @@ reproducible from the frozen artifacts cited in each caption.
 
 \begin{table}[htbp]
 \centering
-\caption{Stage~L1 benchmark configuration}
+\caption[Stage~L1 benchmark configuration]{Stage~L1 benchmark configuration. Source: \texttt{config.yaml} in \texttt{rq1\_1\_20260515\_111428}.}
 \label{tab:rq11-config}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{ll}
@@ -48,7 +48,7 @@ Warmup CV threshold & 0.02 \\
 
 \begin{table}[t]
 \centering
-\caption{Stage~L2 benchmark configuration}
+\caption[Stage~L2 benchmark configuration]{Stage~L2 benchmark configuration. Source: \texttt{config.yaml} in \texttt{rq1\_2\_20260515\_112636}.}
 \label{tab:rq12-config}
 \begin{tabular}{ll}
 \toprule
@@ -100,7 +100,7 @@ Instrumentation overhead    & 0.708~ms (0.94\%) \\
 
 \begin{table}[ht]
 \centering
-\caption{Stage~K benchmark configuration}
+\caption[Stage~K benchmark configuration]{Stage~K benchmark configuration. Source: \texttt{merged\_results/config.yaml} and \texttt{deployment\_metadata.json} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
 \label{tab:rq14_config}
 \begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
 \toprule
@@ -232,6 +232,8 @@ Artifact & \texttt{rq2\_2\_confidential\_20260516\_135726} \\
 \end{tabular}
 \end{table}
 
+\clearpage
+
 \section{Stage~K (Cross-Node Alternative): kind Multi-Worker CNI Sensitivity Data}
 \label{sec:appendix-rq14b}
 
@@ -355,6 +357,8 @@ host-control state is one reason \cref{sec:analysis-rq14b} interprets
 the comparison against Stage~K at the per-condition delta level only and
 treats Stage~K (cross-node) as a kind-CNI sensitivity envelope rather than a clean
 topology-only swap from Stage~K.
+
+\clearpage
 
 \section{Sample Generative AI Prompts}
 \label{sec:appendix-ai-prompts}

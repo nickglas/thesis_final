@@ -19,11 +19,11 @@ The complete Stage~K condition ordering is preserved in the frozen AKS
 benchmark: \texttt{monolithic\_k8s\_1svc} at 70.802~ms is the fastest,
 followed by \texttt{chain\_2svc} at 73.437~ms, \texttt{chain\_3svc} at
 75.410~ms, \texttt{chain\_4svc} at 78.294~ms, and \texttt{chain\_5svc}
-at 80.519~ms (\cref{tab:rq15_results}). Together with the kind multi-
-worker probe in \cref{sec:analysis-rq14b} (which preserves the ordering
+at 80.519~ms (\cref{tab:rq15_results}). Together with the kind
+multi-worker probe in \cref{sec:analysis-rq14b} (which preserves the ordering
 under same-host CNI-bridge routing) and the AKS multi-node sensitivity
-in \cref{sec:analysis-rq15b} (which preserves it under enforced inter-
-node placement), the Stage~K ordering now survives three orthogonal
+in \cref{sec:analysis-rq15b} (which preserves it under enforced
+inter-node placement), the Stage~K ordering now survives three orthogonal
 stresses: managed-cloud substrate (Stage~C), CNI-bridge routing on the
 local host (Stage~K (cross-node)), and genuine cross-host placement (Stage~C (multi-node)). Read
 across the deployment strand, this is a triple-coverage transfer of the
@@ -52,20 +52,18 @@ managed-Kubernetes provider defaults on absolute
 performance~\cite{managed_k8s_perf}.
 
 \paragraph{The bounded-non-linearity at the last hop reappears with the same activation-transfer signature.}
-The AKS marginal increments are
-$+2.635$~ms (\texttt{mono}~$\rightarrow$~\texttt{chain\_2svc}),
-$+1.973$~ms (\texttt{chain\_2svc}~$\rightarrow$~\texttt{chain\_3svc}),
-$+2.884$~ms (\texttt{chain\_3svc}~$\rightarrow$~\texttt{chain\_4svc}),
-and $+2.225$~ms (\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc})
-(\cref{tab:rq15_results}). The final increment is smaller than the
+The AKS marginal increments are $+2.635$~ms from the monolithic baseline to
+\texttt{chain\_2svc}, then $+1.973$, $+2.884$, and $+2.225$~ms for
+\texttt{chain\_3svc}, \texttt{chain\_4svc}, and \texttt{chain\_5svc},
+respectively (\cref{tab:rq15_results}). The final increment is smaller than the
 preceding one because the layer-4 boundary that distinguishes
 \texttt{chain\_5svc} from \texttt{chain\_4svc} transfers only the
 98~KiB \texttt{layer4} output, against the 196--784~KiB tensors moved
 at the earlier \texttt{layer1}, \texttt{layer2}, and \texttt{layer3}
 boundaries (boundary-only activation sizes, consistent with the Stage~L1
 metric and distinct from the runner's input-inclusive
-\texttt{total\_activation\_bytes\_mean}). This is the activation-
-transfer dimension of the Stage~L3 two-dimensional
+\texttt{total\_activation\_bytes\_mean}). This is the activation-transfer
+dimension of the Stage~L3 two-dimensional
 account~\cite{deeperthings} reappearing in a third substrate, after
 \texttt{127.0.0.1} in Stage~L1 and single-node \texttt{kind} in Stage~K.
 The triple coverage strengthens the architectural reading of the
@@ -98,8 +96,8 @@ not be read as evidence that AKS is generally faster than local
 Kubernetes for this workload. Independent of this thesis, container,
 VM, CNI, and managed-cluster differences are known to shift absolute
 timings across substrates~\cite{virtualization_costs,cni_k8s_ic2e21,
-noise_in_clouds,managed_k8s_perf}, which is why Stage~C uses within-
-environment ordering and relative-overhead transfer as the primary
+noise_in_clouds,managed_k8s_perf}, which is why Stage~C uses
+within-environment ordering and relative-overhead transfer as the primary
 comparison and treats absolute latency as deployment-specific.
 
 \paragraph{Validation.}
@@ -142,8 +140,8 @@ The evaluative reading of Stage~C has three facets. First, against the
 within-environment AKS monolithic baseline, every chained condition is
 measurably slower with overhead growing monotonically from
 $+2.635$~ms (3.7\%, \texttt{chain\_2svc}) to $+9.717$~ms (13.7\%,
-\texttt{chain\_5svc}) (\cref{tab:rq15_results}). The smallest non-
-monolithic overhead is again \texttt{chain\_2svc}, in agreement with the
+\texttt{chain\_5svc}) (\cref{tab:rq15_results}). The smallest
+non-monolithic overhead is again \texttt{chain\_2svc}, in agreement with the
 Stage~K reading that within the predefined family this is the
 least-expensive way to move from a single Kubernetes service to a
 chained AKS deployment while preserving exact functional parity. Second,

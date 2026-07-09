@@ -4,8 +4,8 @@
 Stage~K and Stage~C show that the architectural pattern remains visible after the
 workload is moved into Kubernetes-style service chains. In local
 \texttt{kind}, latency increases from the monolithic Kubernetes baseline
-through the four-service chain, while the final five-service increment is
-small because the added late-stage boundary transfers a much smaller
+through the five-service chain, with a smaller final increment because
+the added late-stage boundary transfers a much smaller
 activation tensor. The same ordering and the same bounded-non-linearity
 pattern also survive the kind multi-worker CNI sensitivity probe of
 the Stage~K cross-node alternative (\cref{sec:analysis-rq14b}), so neither finding is an artefact

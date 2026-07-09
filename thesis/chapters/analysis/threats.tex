@@ -40,7 +40,7 @@ and Stage~K (cross-node) records failed governor/turbo writes inside its
 containerised environment (\cref{sec:analysis-rq14b}); thread pinning,
 OMP/MKL/OpenBLAS thread counts, and CPU affinity remain applied
 symmetrically across conditions, and cross-round CVs stay below
-$0.023$ for all AKS stages (\cref{sec:analysis-validation}), but
+$0.023$ for the Stage~C AKS variants (\cref{sec:analysis-validation}), but
 host-level scheduler and frequency noise are not eliminated. Reading
 discipline for absolute milliseconds therefore follows established
 benchmarking practice and treats within-environment overhead as the
@@ -99,7 +99,7 @@ another in attacker model, attestation flow, and residual side
 channels, so the SEV-SNP-specific finding does not transfer cleanly
 to alternative CVM
 substrates~\cite{guanciale2022_confidential_quartet}. The single-node
-placement of the Stage~K / Stage~C / Stage~H1 / Stage~H2 primary runs is bounded
+placement of the Stage~K / Stage~C / Stage~H1 primary runs is bounded
 by the multi-node sensitivity stages
 (\cref{sec:analysis-rq14b,sec:analysis-rq15b}), which establish that
 the chain-cost ordering and the activation-driven bounded-non-linearity

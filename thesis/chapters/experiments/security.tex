@@ -360,7 +360,10 @@ This stage corresponds to the methodological design declared in
 \texttt{chain\_2svc} inference services onto distinct AKS nodes and re-pairs
 the plain and mTLS conditions under the same managed-Istio configuration as
 the primary Stage~H1 run. Every paired execution passed the multi-node placement
-contract described in \cref{sec:methods-rq21b}.
+contract described in \cref{sec:methods-rq21b}. The supporting result is
+frozen as \texttt{rq2\_1b\_multinode\_20260516\_174806}; the reported
+overhead is taken from \texttt{merged/paired\_summary.md} and
+\texttt{merged/aggregated\_results.csv}.
 
 Under the multi-node placement, the mean mTLS overhead on \texttt{chain\_2svc}
 is +2.71~ms, or +3.90\%, with every paired execution passing multi-node
@@ -531,30 +534,34 @@ evaluate such attacks.
 
 \subsection{Trade-off Summary}
 
-\begin{table}[t]
+\begin{table}[!htbp]
 \centering
 \caption[Trade-off synthesis of security-hardening levels]{Trade-off synthesis of evaluated security-hardening levels. mTLS overheads are taken from \cref{tab:rq21_latency}; the selective TEE overhead is taken from \cref{tab:rq22_service2_results} relative to its own paired standard-node mTLS baseline. Each cost is reported as both the mean delta and the p95 delta, because the two security mechanisms differ in how the latency cost is distributed between the centre and the tail of the distribution.}
 \label{tab:rq23_security_tradeoff}
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.14\textwidth}>{\raggedright\arraybackslash}p{0.30\textwidth}>{\raggedright\arraybackslash}p{0.21\textwidth}>{\raggedright\arraybackslash}p{0.21\textwidth}}
+\begingroup
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.18\textwidth}>{\raggedright\arraybackslash}p{0.31\textwidth}>{\raggedright\arraybackslash}p{0.205\textwidth}>{\raggedright\arraybackslash}p{0.205\textwidth}}
 \toprule
-Configuration & Protection scope & Mean cost & p95 cost \\
+\mbox{Configuration} & Protection scope & Mean cost & p95 cost \\
 \midrule
 Plain AKS
 & Baseline AKS deployment without mesh mTLS/AuthZ or confidential-node placement.
 & Baseline (reference).
 & Baseline (reference). \\
 \addlinespace
-mTLS/AuthZ
+\mbox{mTLS/AuthZ}
 & Service identity, encrypted service-to-service communication, and authorization policy for the selected inference path.
 & chain\_2svc: +3.488~ms / +4.62\%\newline chain\_5svc: +8.837~ms / +10.74\%.
 & chain\_2svc: +3.623~ms / +4.53\%\newline chain\_5svc: +8.983~ms / +10.27\%. \\
 \addlinespace
-mTLS/AuthZ + selective TEE
+\mbox{mTLS/AuthZ} + selective TEE
 & Communication hardening plus AMD SEV-SNP VM-level confidential execution for the downstream protected service (\texttt{service2\_only}).
 & +1.854~ms / +3.17\% over the newly paired standard-node mTLS baseline.
 & +3.601~ms / +5.98\% over the same baseline. \\
 \bottomrule
 \end{tabular}
+\endgroup
 \end{table}
 
 The trade-off is not a single global ranking because the preferred configuration

@@ -78,8 +78,9 @@ downstream service on an AMD SEV-SNP confidential VM adds a further
 +1.854~ms / +3.17\% on the mean and +3.601~ms / +5.98\% at p95 over
 a within-cluster standard-node mTLS baseline, with the tail amplified
 relative to the mean. The security claims are bounded by the
-mTLS termination boundary, by the SEV-SNP threat
-model~\cite{schluter2024_heckler}, and by the threat-model gap with
+mTLS termination boundary, by the SEV-SNP vendor threat
+model~\cite{amd_sevsnp_whitepaper} and residual confidential-VM attack
+surfaces~\cite{schluter2024_heckler}, and by the threat-model gap with
 activation-privacy attacks against an untrusted remote
 partition~\cite{he2021_attacking_collaborative}: SEV-SNP defends
 against a host-platform adversary, not against a malicious remote
@@ -166,12 +167,16 @@ setup. The model under test is ResNet-18 in FP32 on CPU at batch
 size one with synchronous gRPC, so the headline numbers may not
 transfer quantitatively to GPU execution, mixed precision, larger or
 transformer-based models, or throughput-oriented batched workloads.
-The primary Stage~K, Stage~C, Stage~H1, and Stage~H2 designs colocate all
-chain services on a single node so that the measured cost is
-attributable to orchestration, gRPC, and security mechanisms rather
-than to inter-node networking; Stage~K (cross-node), Stage~C (multi-node), and Stage~H1 (multi-node) are
-explicit sensitivity stages that bound this design choice but do not
-extend the primary numbers to arbitrary multi-node deployments.
+The base cases of Stage~K, Stage~C, and Stage~H1 colocate the chain
+services on a single node so that the measured cost is attributable to
+orchestration, gRPC, and communication-security mechanisms rather than
+to inter-node networking; Stage~K (cross-node), Stage~C (multi-node), and
+Stage~H1 (multi-node) are explicit sensitivity stages that bound this
+design choice but do not extend the primary numbers to arbitrary
+multi-node deployments. Stage~H2 follows a different paired design: it
+keeps the communication-security contract fixed and compares the
+downstream service on a standard AMD node pool against the same service
+on an AMD SEV-SNP confidential node pool.
 Controlled-versus-production variability remains a known threat:
 CPU governor, turbo, and \texttt{nice} controls are enforceable on
 the local stages but not on AKS, so the measurement environment is
@@ -193,8 +198,9 @@ addresses a malicious-remote-service adversary, while SEV-SNP
 defends against a host-platform adversary. The mTLS depth-sensitivity
 finding rests on two measured chain depths and is therefore an
 order-of-magnitude observation rather than a fitted per-hop scaling
-law. The full set of limitations and threats to validity is
-consolidated in \cref{sec:analysis-threats}.
+law. A more detailed category-by-category discussion of the
+analysis-level validity boundaries is provided in
+\cref{sec:analysis-threats}.
 
 \section{Future Work}
 
