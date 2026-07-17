@@ -305,7 +305,9 @@ The median provides a robust central tendency estimate in the presence of tail s
 The mean is used as the primary comparison value because the thesis is concerned with
 expected per-request cost.
 The 95th-percentile (p95) latency is reported in the deployment and security stages to
-characterise tail behaviour under more realistic conditions.
+characterise tail behaviour under more realistic conditions: 95\% of measured
+iterations complete at or below this value, so p95 is a tail-latency statistic rather
+than a confidence interval on the mean.
 
 Overhead is reported both in absolute milliseconds and as a percentage of the relevant
 baseline mean latency.
