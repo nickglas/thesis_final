@@ -1,0 +1,173 @@
+\chapter{Related Work}\label{ch:related}
+
+This chapter positions the thesis within prior work on split neural-network inference,
+cloud-native deployment overhead, and security hardening for microservice systems. The
+central distinction is that most prior partitioning work focuses on selecting or
+optimising split points, while this thesis follows one workload through a staged
+software-engineering evaluation: local split screening, Kubernetes deployment, managed
+AKS transfer validation, and security hardening.
+
+\section{Split Computing and DNN Partitioning}
+\label{sec:rw-split-computing}
+
+Early split-computing systems established that neural-network inference can be divided
+between execution environments, but that the split point determines whether the
+distributed design is useful. Neurosurgeon models the latency trade-off between mobile
+and cloud execution and shows that different layers have different computation and data
+transfer profiles~\cite{neurosurgeon}. JointDNN frames partitioning as an optimisation
+problem in which upload and download costs depend on the intermediate tensor at the
+chosen boundary~\cite{jointdnn}. DeeperThings extends this line of work to fully
+distributed CNN inference on constrained edge devices and reinforces the observation
+that early feature maps can be expensive to move because they remain spatially
+large~\cite{deeperthings}.
+
+More recent work broadens the partitioning objective beyond a single latency value.
+DNNSplit selects split points by jointly considering latency and cost in multi-tier
+settings~\cite{dnnsplit}. Genetic-algorithm and delay-aware approaches likewise treat
+the split point as dependent on device capability, bandwidth, throughput, and parallelism
+constraints~\cite{ga_partitioning,delay_aware_inference}. Survey work on DNN
+partitioning and split computing summarizes this literature as a multi-objective problem
+involving activation size, compute allocation, deployment tier, and runtime
+conditions~\cite{survey_partitioning}. This thesis adopts that view but keeps the
+optimisation scope deliberately narrow: it studies a fixed ResNet-18 workload and
+evaluates how a small number of architecturally meaningful split choices behave across
+deployment layers.
+
+\section{Granularity and Internal Model Structure}
+\label{sec:rw-granularity}
+
+Several studies show that coarse layer depth is not enough to explain split performance.
+Fine-grained elastic partitioning demonstrates that more detailed placement decisions
+can improve distributed DNN inference when the placement is aware of both computation
+and communication conditions~\cite{fine_grained_partitioning}. Hierarchical
+partitioning similarly combines global partitioning with local refinement, showing
+that staged decisions can account for heterogeneity at both cluster and node
+levels~\cite{hierarchical_partitioning}.
+Pareto-front analysis of DNN partitioning further shows that execution time can vary
+across blocks inside the same model, so boundaries with similar activation sizes may
+still differ in compute distribution~\cite{pareto_split}. BottleFit and BottleNet++
+approach the problem from the feature-compression side, showing that intermediate
+representations can be compressed or shaped to reduce communication cost, but that the
+position of the boundary remains central to the latency and accuracy
+trade-off~\cite{bottlefit,bottlenet_pp}.
+
+The experiments in this thesis use these findings to justify a coarse-to-fine design.
+Stage~L1 evaluates residual-stage boundaries in ResNet-18, and Stage~L2 adds a block-level
+boundary inside the carried-forward region. The goal is not to claim that the selected
+boundaries are globally optimal for all DNNs. Instead, the goal is to show how
+activation-transfer size and compute placement interact in a reproducible microservice
+setting.
+
+\section{Kubernetes and Cloud-Native Inference}
+\label{sec:rw-cloud-native}
+
+Moving from local split inference to Kubernetes changes the systems context. A
+microservice boundary is not only a model partition; it is also an RPC path with
+serialization, protocol handling, socket operations, scheduling effects, and service
+networking. Recent RPC and microservice studies show that communication overhead can
+come from layered protocol processing and network-stack traversal, not only from the
+application payload itself~\cite{rpc_overhead_hotos25,notnets_apsys24}. Service-mesh
+work reaches a similar conclusion for proxied microservices: sidecars and data-plane
+components add workload-dependent overhead through additional critical-path
+processing~\cite{meshinsight_socc23}.
+
+Kubernetes and cloud studies also show why local and managed-cluster results should be
+compared carefully. Managed Kubernetes performance varies across services and
+configurations~\cite{managed_k8s_perf}. Container and VM layers can differ from
+bare-metal execution~\cite{virtualization_costs}. CNI plugins and edge-oriented
+Kubernetes networking can affect communication cost~\cite{cni_k8s_ic2e21}. Cloud
+environments also exhibit network-performance variability that can change application
+scalability and measurement stability~\cite{noise_in_clouds}. For this reason, this
+thesis does not treat the local Kubernetes and AKS stages as numerical replicas.
+Instead, Stage~C asks whether the ordering and relative overhead trends from local
+Kubernetes transfer directionally to managed AKS.
+
+\section{Security Hardening}
+\label{sec:rw-security}
+
+The security stages build on prior work in service identity, mTLS, service meshes, and
+confidential computing. Policy-driven Kubernetes security work motivates combining
+encrypted communication with explicit authorization policy rather than treating TLS
+alone as the complete protection mechanism~\cite{ashraf2025policy_workflow}. Service
+mesh studies show that sidecar-based mTLS can improve service-to-service trust
+boundaries, but also that it can add latency and CPU/resource overhead, with the
+cost depending on mesh configuration and workload~\cite{meshinsight_socc23,bremlerbarr2025mtls}.
+Work on service-mesh control-plane
+trust further cautions that mesh CAs and control planes remain security-critical
+components~\cite{poudel2025mazu}. Stage~H1 therefore treats mTLS and authorization as a
+bounded communication-hardening layer, not as a complete security solution.
+
+Confidential-computing work motivates the second hardening layer. The motivation
+itself comes from work on activation-level privacy attacks:
+He~et~al.~\cite{he2021_attacking_collaborative} demonstrate that a remote partition
+holding only intermediate feature maps can reconstruct the edge client's input, and
+that simple noise-based defenses fail. This shows that in-transit mTLS alone does
+not protect activations once they reach the downstream segment, although their
+threat model is malicious-remote-service rather than the infrastructure-level
+adversary that confidential VMs address.
+
+AMD SEV-SNP provides VM-level memory encryption and integrity protection against
+parts of the host platform~\cite{amd_sevsnp_whitepaper,kaplan2023_hardware_vm}.
+Comparative studies of virtualization-based confidential-computing platforms
+emphasize that these systems have specific attacker models, attestation
+mechanisms, and residual limitations~\cite{guanciale2022_confidential_quartet,misono2024_cvm_explained}.
+Performance studies show that confidential VM overhead is workload-dependent,
+with CPU-bound, memory-intensive, and I/O-heavy workloads affected
+differently~\cite{misono2024_cvm_explained,akram2021_hpc_tees}. Machine-learning
+confidential computing surveys identify protected model execution and data
+privacy as important motivations, while also emphasizing deployment and
+performance trade-offs~\cite{mo2024_ml_confidential_computing}. Recent work
+additionally shows that the hypervisor remains a meaningful adversary even
+under SEV-SNP: HECKLER~\cite{schluter2024_heckler} uses malicious-interrupt
+injection to bypass OpenSSH and sudo authentication on production SEV-SNP
+and TDX, and additionally breaks execution integrity of analytical
+workloads on SEV-SNP, an attack surface that hardware memory encryption
+alone does not cover. Stage~H2 follows this bounded framing by
+measuring VM-level confidential execution on AKS for the downstream service
+only, rather than claiming application-level enclave isolation or evaluating
+those residual attack surfaces.
+
+\section{Research Gap Analysis and Scope}
+\label{sec:rw-positioning}
+
+The related literature establishes the individual concerns that motivate this thesis:
+split points affect activation-transfer and compute costs, microservice and Kubernetes
+deployment add platform overhead, and security hardening strengthens protection while
+introducing additional cost. Each concern, however, is typically studied in isolation.
+Partitioning work optimises split points without carrying the chosen decomposition into
+an orchestrated or hardened deployment, while cloud-native and service-mesh work
+characterises platform and security overhead without tying it to a specific
+model-partitioning decision. The gap this thesis addresses is the absence of a single
+staged evaluation that follows one workload across all of these layers. Instead of
+evaluating partitioning, orchestration, and hardening as separate problems, the thesis
+tracks the same ResNet-18 microservice inference workload from local split selection
+through Kubernetes, AKS, mTLS/AuthZ, and confidential VM execution.
+
+To make the link between the surveyed gaps and the research questions explicit, the
+following summarises which gap each research question --- and its constituent stages ---
+addresses:
+
+\begin{description}
+    \item[\textbf{RQ1} (architectural split \& deployment).] Prior partitioning work
+    selects or optimises split points, frequently for a single execution environment
+    (\cref{sec:rw-split-computing,sec:rw-granularity}), while cloud-native studies
+    characterise deployment overhead independently of any particular partition
+    (\cref{sec:rw-cloud-native}). RQ1 connects these by screening coarse and fine
+    boundaries on a fixed ResNet-18 workload under controlled local execution
+    (Stages~L1--L3) and then carrying the \emph{same} decomposition into local Kubernetes
+    (Stage~K) and managed AKS (Stage~C), testing whether the split behaviour established
+    locally transfers directionally to orchestrated and cloud settings rather than
+    assuming that it does.
+    \item[\textbf{RQ2} (security hardening).] Service-mesh and confidential-computing work
+    shows that mutual TLS and VM-level protection add workload-dependent overhead
+    (\cref{sec:rw-security}), but typically in isolation from a concrete partitioned
+    inference deployment. RQ2 connects these by measuring the incremental performance and
+    operational cost of communication-level hardening (Stage~H1) and selective VM-level
+    confidential execution (Stage~H2) on the \emph{specific} AKS deployment selected under
+    RQ1, and by synthesising the result into a threat-model-aware trade-off recommendation.
+\end{description}
+
+Across both questions, the distinguishing scope of this thesis is therefore not a new
+partitioning algorithm or a new security mechanism, but the end-to-end, single-workload
+staged pipeline that connects split selection, deployment context, and security hardening
+under one reproducible measurement contract.

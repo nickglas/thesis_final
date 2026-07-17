@@ -1,0 +1,62 @@
+\begin{tikzpicture}[
+    thesisfig,
+    node distance=0.26cm,
+    image/.style={tfbox, minimum width=1.0cm, inner xsep=3pt},
+    stem/.style ={tfbox, minimum width=1.0cm, inner xsep=3pt, draw=orange!75!black, fill=orange!15},
+    layer/.style={tfbox, minimum width=1.0cm, inner xsep=3pt, draw=blue!65!black, fill=blue!12},
+    block/.style={tfbox, minimum width=1.0cm, inner xsep=3pt, draw=blue!70!black, fill=blue!26},
+    head/.style ={tfbox, minimum width=1.0cm, inner xsep=3pt, draw=green!45!black, fill=green!12},
+    arrow/.style={tfarrow},
+    layerbrace/.style={decorate, decoration={brace, amplitude=5pt}, thick, draw=black!65},
+    split/.style={dashed, very thick, draw=red!75!black},
+    splitlabel/.style={font=\small, text=red!75!black, align=center},
+    segmentA/.style={draw=orange!75!black, fill=orange!7, rounded corners=6pt, thick, inner xsep=4pt, inner ysep=5pt},
+    segmentB/.style={draw=blue!65!black,   fill=blue!6,  rounded corners=6pt, thick, inner xsep=4pt, inner ysep=5pt}
+]
+
+% Layers 1, 2, 4 are collapsed to single boxes; only layer3 is expanded into
+% its two residual blocks so the refined split point inside it stands out.
+\node[image] (img) {Image};
+\node[stem, right=of img] (stem) {Stem};
+\node[layer, right=0.32cm of stem] (l1) {Layer 1};
+\node[layer, right=of l1] (l2) {Layer 2};
+
+% Layer 3 expanded; the Stage L2 split falls between its two blocks.
+\node[block, right=0.32cm of l2]  (l3b1) {B0};
+\node[block, right=0.95cm of l3b1] (l3b2) {B1};
+
+\node[layer, right=0.32cm of l3b2] (l4) {Layer 4};
+\node[head, right=0.32cm of l4]   (head) {Head};
+
+% Split coordinate inside Layer 3
+\coordinate (splitline) at ($(l3b1.east)!0.5!(l3b2.west)$);
+
+% Segment backgrounds
+\begin{pgfonlayer}{background}
+\node[segmentA, fit=(img)(stem)(l1)(l2)(l3b1)] (segA) {};
+\node[segmentB, fit=(l3b2)(l4)(head)]          (segB) {};
+\end{pgfonlayer}
+
+% Segment labels (raised clear of the layer-3 brace)
+\node[font=\small\bfseries, text=orange!75!black, above=0.32cm of segA.north] {Segment 1 / Service A};
+\node[font=\small\bfseries, text=blue!65!black,   above=0.32cm of segB.north] {Segment 2 / Service B};
+
+% Arrows
+\draw[arrow] (img) -- (stem);
+\draw[arrow] (stem) -- (l1);
+\draw[arrow] (l1) -- (l2);
+\draw[arrow] (l2) -- (l3b1);
+\draw[arrow] (l3b1) -- (l3b2);
+\draw[arrow] (l3b2) -- (l4);
+\draw[arrow] (l4) -- (head);
+
+% Brace over the two layer-3 blocks (spans the split: layer3 straddles both services)
+\draw[layerbrace]
+    ($(segA.north -| l3b1.west)+(0,0.10)$) -- ($(segB.north -| l3b2.east)+(0,0.10)$)
+    node[midway, yshift=0.36cm] {Layer 3};
+
+% Split marker between Layer 3 block 0 and block 1
+\draw[split] ($(splitline)+(0,0.62)$) -- ($(splitline)+(0,-0.62)$);
+\node[splitlabel, below=0.30cm of segA.south -| splitline] {Stage~L2 split point\\after \texttt{layer3.0}};
+
+\end{tikzpicture}%

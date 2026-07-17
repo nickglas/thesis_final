@@ -1,0 +1,25 @@
+{
+  "condition": "chain_2svc_plain_multinode",
+  "passed": true,
+  "errors": [],
+  "service_pod_nodes": [
+    "aks-rq21bpool-33797924-vmss000000",
+    "aks-rq21bpool-33797924-vmss000002"
+  ],
+  "client_node": "aks-rq21bpool-33797924-vmss000001",
+  "placement_validation": {
+    "strategy": "multi_node_anti_affinity",
+    "service_pod_node_placement": {
+      "chain-2svc-plain-multinode-svc-1-859d5ff55f-qsn9r": "aks-rq21bpool-33797924-vmss000000",
+      "chain-2svc-plain-multinode-svc-2-755db8fc77-nmz2g": "aks-rq21bpool-33797924-vmss000002"
+    },
+    "service_pod_nodes": [
+      "aks-rq21bpool-33797924-vmss000000",
+      "aks-rq21bpool-33797924-vmss000002"
+    ],
+    "client_node": "aks-rq21bpool-33797924-vmss000001",
+    "service_nodes_distinct": true,
+    "dedicated_client_node": true,
+    "min_nodes": 3
+  }
+}

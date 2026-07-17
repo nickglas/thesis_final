@@ -1,0 +1,277 @@
+{
+  "timestamp": "2026-05-16T12:06:43.168686",
+  "platform": "Linux-5.15.0-1110-azure-x86_64-with-glibc2.41",
+  "processor": "",
+  "python_version": "3.10.20",
+  "torch_version": "2.11.0+cpu",
+  "cpu_count": 8,
+  "git_commit": "unknown",
+  "cpu_stabilisation": {
+    "threading": {
+      "requested": {
+        "pytorch_intra_op": 1,
+        "pytorch_inter_op": 1,
+        "omp_num_threads": 1,
+        "mkl_num_threads": 1,
+        "openblas_num_threads": 1
+      },
+      "applied": {
+        "pytorch_intra_op": 1,
+        "pytorch_inter_op": 1,
+        "omp_num_threads": "1",
+        "mkl_num_threads": "1",
+        "openblas_num_threads": "1"
+      }
+    },
+    "affinity": {
+      "requested": {
+        "enabled": true,
+        "num_cores": 1,
+        "avoid_smt": true,
+        "explicit_cpus": null
+      },
+      "detected": {
+        "physical_cores_available": [
+          0,
+          2,
+          4,
+          6
+        ],
+        "total_cpus": 8
+      },
+      "applied": true,
+      "applied_cores": [
+        0
+      ],
+      "method": "auto-detected physical cores (SMT excluded), first 1"
+    },
+    "priority": {
+      "requested": {
+        "enabled": true,
+        "nice_value": -5
+      },
+      "detected": {
+        "current_nice": 0
+      },
+      "applied": false,
+      "applied_nice": 0,
+      "error": "Insufficient privileges for nice=-5 ([Errno 13] Permission denied); running as root was not enough, so CAP_SYS_NICE may be missing in this environment"
+    },
+    "governor": {
+      "requested": {
+        "set_governor": false,
+        "requested_mode": "performance"
+      },
+      "detected": "unavailable",
+      "note": "cpufreq sysfs not exposed (expected on WSL2/Hyper-V or non-Linux). CPU frequency is managed by the host OS.",
+      "applied": false,
+      "reason": "Not requested and sysfs unavailable"
+    },
+    "turbo": {
+      "requested": {
+        "disable_turbo": false
+      },
+      "detected": "unavailable",
+      "note": "Neither intel_pstate/no_turbo nor cpufreq/boost sysfs entries are exposed. Turbo behaviour is controlled by the host OS.",
+      "applied": false,
+      "reason": "Not requested and sysfs unavailable"
+    },
+    "aslr": {
+      "detected": "2",
+      "note": "Detection only; disabling requires root and has negligible impact on wall-clock inference latency."
+    }
+  },
+  "deployment": {
+    "type": "kubernetes",
+    "cluster_type": "aks",
+    "cluster_version": "1.34",
+    "node_count": 2,
+    "node_instance_type": "Standard_D2s_v3, Standard_D8s_v3",
+    "azure_region": "swedencentral",
+    "cni": "kubenet",
+    "namespace": "rq21-ab-c3-authz",
+    "pod_colocation_enforced": true,
+    "pod_placement": {
+      "benchmark-client": "aks-rq15pool-31581052-vmss000000",
+      "chain-2svc-mesh-strict-mtls-authz-svc-1": "aks-rq15pool-31581052-vmss000000",
+      "chain-2svc-mesh-strict-mtls-authz-svc-2": "aks-rq15pool-31581052-vmss000000"
+    },
+    "container_image_digest": "sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b",
+    "acr_registry": "thesisrq15acr.azurecr.io",
+    "mesh": {
+      "enabled": true,
+      "implementation": "managed AKS Istio add-on",
+      "revision": "asm-1-29",
+      "service_namespace": "rq21-ab-c3-authz",
+      "client_namespace": "rq21-ab-c3-client",
+      "service_accounts": {
+        "1": "rq21-ab-c3-svc1",
+        "2": "rq21-ab-c3-svc2"
+      },
+      "proxy_resources": {
+        "cpu_request": "100m",
+        "cpu_limit": "500m",
+        "memory_request": "128Mi",
+        "memory_limit": "512Mi"
+      },
+      "peer_authentication": {
+        "declared": {
+          "enabled": true,
+          "namespace_mode": "PERMISSIVE",
+          "strict_workloads": [
+            {
+              "name": "service2-strict",
+              "segment_index": "2",
+              "mode": "STRICT"
+            }
+          ]
+        },
+        "observed": [
+          {
+            "name": "default",
+            "namespace": "rq21-ab-c3-authz",
+            "labels": {
+              "app": "thesis-inference",
+              "condition": "chain_2svc_mesh_strict_mtls_authz",
+              "experiment": "rq21-ab-c3-authz",
+              "experiment-condition": "chain_2svc_mesh_strict_mtls_authz",
+              "mesh-enabled": "true",
+              "security-condition": "mesh_strict_mtls_authz",
+              "workload-role": "mesh-policy"
+            },
+            "spec": {
+              "mtls": {
+                "mode": "PERMISSIVE"
+              }
+            }
+          },
+          {
+            "name": "service2-strict",
+            "namespace": "rq21-ab-c3-authz",
+            "labels": {
+              "app": "thesis-inference",
+              "condition": "chain_2svc_mesh_strict_mtls_authz",
+              "experiment": "rq21-ab-c3-authz",
+              "experiment-condition": "chain_2svc_mesh_strict_mtls_authz",
+              "mesh-enabled": "true",
+              "security-condition": "mesh_strict_mtls_authz",
+              "segment-index": "2",
+              "workload-role": "mesh-policy"
+            },
+            "spec": {
+              "mtls": {
+                "mode": "STRICT"
+              },
+              "selector": {
+                "matchLabels": {
+                  "condition": "chain_2svc_mesh_strict_mtls_authz",
+                  "segment-index": "2",
+                  "workload-role": "service"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "control_plane_pods": [
+        {
+          "namespace": "aks-istio-system",
+          "pod_name": "istiod-asm-1-29-75c9d9c6bd-hcft8",
+          "node_name": "aks-systempool-14271749-vmss000000",
+          "phase": "Running",
+          "labels": {
+            "app": "istiod",
+            "app.kubernetes.io/instance": "azure-service-mesh-istio-discovery",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "istiod",
+            "app.kubernetes.io/part-of": "istio",
+            "app.kubernetes.io/version": "1.0.0-v20260410-addon-260507-1",
+            "azureservicemesh/istio.component": "istio-discovery",
+            "helm.sh/chart": "azure-service-mesh-istio-discovery-addon-1.0.0-v20260410-addon",
+            "install.operator.istio.io/owning-resource": "unknown",
+            "istio": "istiod",
+            "istio.io/dataplane-mode": "none",
+            "istio.io/rev": "asm-1-29",
+            "kubernetes.azure.com/managedby": "aks",
+            "operator.istio.io/component": "Pilot",
+            "pod-template-hash": "75c9d9c6bd",
+            "sidecar.istio.io/inject": "false"
+          },
+          "owner_references": [
+            {
+              "apiVersion": "apps/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "ReplicaSet",
+              "name": "istiod-asm-1-29-75c9d9c6bd",
+              "uid": "e9aaac16-909f-4bf1-897c-16b9eba56be4"
+            }
+          ]
+        },
+        {
+          "namespace": "aks-istio-system",
+          "pod_name": "istiod-asm-1-29-75c9d9c6bd-s7bcs",
+          "node_name": "aks-systempool-14271749-vmss000000",
+          "phase": "Running",
+          "labels": {
+            "app": "istiod",
+            "app.kubernetes.io/instance": "azure-service-mesh-istio-discovery",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "istiod",
+            "app.kubernetes.io/part-of": "istio",
+            "app.kubernetes.io/version": "1.0.0-v20260410-addon-260507-1",
+            "azureservicemesh/istio.component": "istio-discovery",
+            "helm.sh/chart": "azure-service-mesh-istio-discovery-addon-1.0.0-v20260410-addon",
+            "install.operator.istio.io/owning-resource": "unknown",
+            "istio": "istiod",
+            "istio.io/dataplane-mode": "none",
+            "istio.io/rev": "asm-1-29",
+            "kubernetes.azure.com/managedby": "aks",
+            "operator.istio.io/component": "Pilot",
+            "pod-template-hash": "75c9d9c6bd",
+            "sidecar.istio.io/inject": "false"
+          },
+          "owner_references": [
+            {
+              "apiVersion": "apps/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "ReplicaSet",
+              "name": "istiod-asm-1-29-75c9d9c6bd",
+              "uid": "e9aaac16-909f-4bf1-897c-16b9eba56be4"
+            }
+          ]
+        }
+      ]
+    },
+    "namespaces": {
+      "service": {
+        "name": "rq21-ab-c3-authz",
+        "labels": {
+          "experiment": "rq21-ab-c3-authz",
+          "istio.io/rev": "asm-1-29",
+          "kubernetes.io/metadata.name": "rq21-ab-c3-authz",
+          "mesh-enabled": "true",
+          "security-condition": "mesh_strict_mtls_authz",
+          "workload-role": "inference"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq21-ab-c3-authz\",\"istio.io/rev\":\"asm-1-29\",\"mesh-enabled\":\"true\",\"security-condition\":\"mesh_strict_mtls_authz\",\"workload-role\":\"inference\"},\"name\":\"rq21-ab-c3-authz\"}}\n"
+        }
+      },
+      "client": {
+        "name": "rq21-ab-c3-client",
+        "labels": {
+          "experiment": "rq21-ab-c3-authz",
+          "kubernetes.io/metadata.name": "rq21-ab-c3-client",
+          "mesh-enabled": "false",
+          "security-condition": "mesh_strict_mtls_authz",
+          "workload-role": "benchmark-client"
+        },
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq21-ab-c3-authz\",\"mesh-enabled\":\"false\",\"security-condition\":\"mesh_strict_mtls_authz\",\"workload-role\":\"benchmark-client\"},\"name\":\"rq21-ab-c3-client\"}}\n"
+        }
+      }
+    }
+  }
+}

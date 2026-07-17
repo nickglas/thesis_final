@@ -1,0 +1,71 @@
+\begin{tikzpicture}[
+    thesisfig,
+    node distance=0.24cm,
+    block/.style={tfbox, minimum width=1.2cm},
+    stem/.style ={tfbox, minimum width=1.2cm, draw=orange!75!black, fill=orange!15},
+    layer/.style={tfbox, minimum width=1.2cm, draw=blue!65!black,   fill=blue!14},
+    head/.style ={tfbox, minimum width=1.2cm, draw=green!45!black,  fill=green!12},
+    arrow/.style={tfarrow},
+    split/.style={dashed, very thick, draw=red!75!black},
+    segmentA/.style={draw=orange!75!black, fill=orange!7, rounded corners=5pt, thick, inner sep=5pt},
+    segmentB/.style={draw=blue!65!black,   fill=blue!6,  rounded corners=5pt, thick, inner sep=5pt}
+]
+
+% Main pipeline
+\node[block] (img) {Image};
+\node[stem, right=of img] (stem) {Stem};
+\node[layer, right=of stem] (l1) {Layer 1};
+\node[layer, right=of l1] (l2) {Layer 2};
+
+% Larger gap around the split
+\node[layer, right=0.7cm of l2] (l3) {Layer 3};
+\node[layer, right=of l3] (l4) {Layer 4};
+\node[head, right=of l4] (head) {Classification\\Head};
+
+% Split coordinate halfway between Layer 2 and Layer 3
+\coordinate (splitline) at ($(l2.east)!0.5!(l3.west)$);
+
+% Segment backgrounds
+\begin{pgfonlayer}{background}
+\node[
+    segmentA,
+    fit=(img)(stem)(l1)(l2),
+    label={[font=\normalsize, text=orange!75!black]above:Segment 1 / Service A}
+] (segA) {};
+
+\node[
+    segmentB,
+    fit=(l3)(l4)(head),
+    label={[font=\normalsize, text=blue!65!black]above:Segment 2 / Service B}
+] (segB) {};
+\end{pgfonlayer}
+
+% Arrows
+\draw[arrow] (img) -- (stem);
+\draw[arrow] (stem) -- (l1);
+\draw[arrow] (l1) -- (l2);
+
+\draw[arrow]
+    (l2) -- node[
+        midway,
+        above=1.05cm of splitline,
+        font=\normalsize,
+        text=red!75!black
+    ] {activation tensor}
+    (l3);
+
+\draw[arrow] (l3) -- (l4);
+\draw[arrow] (l4) -- (head);
+
+% Split marker after layer2
+\draw[split]
+    ($(splitline)+(0,1)$) -- ($(splitline)+(0,-1)$);
+
+\node[
+    font=\normalsize,
+    text=red!75!black,
+    align=center,
+    below=1.05cm of splitline
+] {split point\\after layer2};
+
+\end{tikzpicture}%

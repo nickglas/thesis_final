@@ -1,0 +1,2 @@
+[pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-5z9cf/inference] READY
+[pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-f8zjd/inference] READY

@@ -1,0 +1,6 @@
+LAST SEEN   TYPE     REASON      OBJECT                 MESSAGE
+84s         Normal   Scheduled   pod/benchmark-client   Successfully assigned rq21-client-chain5-plain/benchmark-client to aks-rq15pool-34343338-vmss000000
+85s         Normal   Pulling     pod/benchmark-client   Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+85s         Normal   Pulled      pod/benchmark-client   Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 163ms (163ms including waiting). Image size: 413013146 bytes.
+85s         Normal   Created     pod/benchmark-client   Created container: client
+85s         Normal   Started     pod/benchmark-client   Started container client

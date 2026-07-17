@@ -1,0 +1,95 @@
+% Auto-generated from results/frozen_new/rq1_1_20260515_111428/condition_summaries.csv and carry_forward.json
+% via scripts/render_rq11_figure.py. Do not edit by hand -- re-run the script.
+\begin{tikzpicture}[
+    font=\normalsize,
+    axis/.style={thick, draw=black!70, -{Latex[length=2mm]}},
+    grid/.style={draw=black!12, thin},
+    baselinebar/.style={draw=black!60, fill=black!10, rounded corners=2pt, thick},
+    selectedmainbar/.style={draw=green!45!black, fill=green!22, rounded corners=2pt, thick},
+    selectedrefbar/.style={draw=green!40!black, fill=green!10, rounded corners=2pt, thick},
+    rejectedbar/.style={draw=red!70!black, fill=red!10, rounded corners=2pt, thick},
+    degeneratebar/.style={draw=orange!75!black, fill=orange!15, rounded corners=2pt, thick},
+    label/.style={font=\footnotesize, text=black!75, align=center},
+    vallabel/.style={font=\small\bfseries, text=black!75},
+    errbar/.style={draw=black!80, semithick, line cap=round},
+    ynum/.style={anchor=east, font=\footnotesize, text=black!65}
+]
+
+% Frozen means +/- 1 SD (ms) used for this figure:
+%   monolithic: 77.2375 +/- 3.5873
+%   split_after_layer1: 80.8774 +/- 2.2730
+%   split_after_layer2: 80.1176 +/- 2.4037
+%   split_after_layer3: 79.0843 +/- 2.3075
+%   split_after_layer4: 79.5831 +/- 2.4343
+% Raw fastest split: split_after_layer3
+% Selected main: split_after_layer3
+% Selected reference: split_after_layer2
+% Degenerate candidates: ['split_after_layer4']
+% Rejected: ['split_after_layer1', 'split_after_layer4']
+
+\draw[grid] (0,0.000) -- (9.300,0.000);
+\node[ynum] at (-0.15,0.000) {73};
+\draw[grid] (0,0.636) -- (9.300,0.636);
+\node[ynum] at (-0.15,0.636) {74};
+\draw[grid] (0,1.273) -- (9.300,1.273);
+\node[ynum] at (-0.15,1.273) {75};
+\draw[grid] (0,1.909) -- (9.300,1.909);
+\node[ynum] at (-0.15,1.909) {76};
+\draw[grid] (0,2.545) -- (9.300,2.545);
+\node[ynum] at (-0.15,2.545) {77};
+\draw[grid] (0,3.182) -- (9.300,3.182);
+\node[ynum] at (-0.15,3.182) {78};
+\draw[grid] (0,3.818) -- (9.300,3.818);
+\node[ynum] at (-0.15,3.818) {79};
+\draw[grid] (0,4.455) -- (9.300,4.455);
+\node[ynum] at (-0.15,4.455) {80};
+\draw[grid] (0,5.091) -- (9.300,5.091);
+\node[ynum] at (-0.15,5.091) {81};
+\draw[grid] (0,5.727) -- (9.300,5.727);
+\node[ynum] at (-0.15,5.727) {82};
+\draw[grid] (0,6.364) -- (9.300,6.364);
+\node[ynum] at (-0.15,6.364) {83};
+\draw[grid] (0,7.000) -- (9.300,7.000);
+\node[ynum] at (-0.15,7.000) {84};
+
+\draw[axis] (0,0) -- (9.600,0);
+\draw[axis] (0,0) -- (0,7.400);
+
+\node[rotate=90, font=\normalsize, text=black!75] at (-0.85,3.500) {Mean end-to-end latency (ms)};
+\node[font=\normalsize, text=black!75] at (5.050,-1.15) {Stage~L1 condition};
+
+\draw[baselinebar] (0.800,0) rectangle (1.800,2.697);
+\draw[rejectedbar] (2.600,0) rectangle (3.600,5.013);
+\draw[selectedrefbar] (4.400,0) rectangle (5.400,4.529);
+\draw[selectedmainbar] (6.200,0) rectangle (7.200,3.872);
+\draw[degeneratebar] (8.000,0) rectangle (9.000,4.189);
+
+\draw[errbar] (1.300,0.414) -- (1.300,4.979);
+\draw[errbar] (1.120,4.979) -- (1.480,4.979);
+\draw[errbar] (1.120,0.414) -- (1.480,0.414);
+\draw[errbar] (3.100,3.566) -- (3.100,6.459);
+\draw[errbar] (2.920,6.459) -- (3.280,6.459);
+\draw[errbar] (2.920,3.566) -- (3.280,3.566);
+\draw[errbar] (4.900,3.000) -- (4.900,6.059);
+\draw[errbar] (4.720,6.059) -- (5.080,6.059);
+\draw[errbar] (4.720,3.000) -- (5.080,3.000);
+\draw[errbar] (6.700,2.403) -- (6.700,5.340);
+\draw[errbar] (6.520,5.340) -- (6.880,5.340);
+\draw[errbar] (6.520,2.403) -- (6.880,2.403);
+\draw[errbar] (8.500,2.640) -- (8.500,5.738);
+\draw[errbar] (8.320,5.738) -- (8.680,5.738);
+\draw[errbar] (8.320,2.640) -- (8.680,2.640);
+
+\node[vallabel, above] at (1.300,4.979) {77.24};
+\node[vallabel, above] at (3.100,6.459) {80.88};
+\node[vallabel, above] at (4.900,6.059) {80.12};
+\node[vallabel, above] at (6.700,5.340) {79.08};
+\node[vallabel, above] at (8.500,5.738) {79.58};
+
+\node[label] at (1.300,-0.45) {\texttt{mono}};
+\node[label] at (3.100,-0.45) {\texttt{layer1}\\rejected};
+\node[label] at (4.900,-0.45) {\texttt{layer2}\\reference};
+\node[label] at (6.700,-0.45) {\texttt{layer3}\\selected};
+\node[label] at (8.500,-0.45) {\texttt{layer4}\\degenerate};
+
+\end{tikzpicture}

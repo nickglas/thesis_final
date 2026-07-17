@@ -1,0 +1,36 @@
+LAST SEEN   TYPE     REASON              OBJECT                                         MESSAGE
+69s         Normal   Scheduled           pod/chain-5svc-plain-svc-2-d6767685b-2xwlp     Successfully assigned rq21-chain5-plain/chain-5svc-plain-svc-2-d6767685b-2xwlp to aks-rq15pool-34343338-vmss000000
+68s         Normal   Scheduled           pod/chain-5svc-plain-svc-5-8596f68c49-r5zn7    Successfully assigned rq21-chain5-plain/chain-5svc-plain-svc-5-8596f68c49-r5zn7 to aks-rq15pool-34343338-vmss000000
+69s         Normal   Scheduled           pod/chain-5svc-plain-svc-4-d4bff7c86-p5zgr     Successfully assigned rq21-chain5-plain/chain-5svc-plain-svc-4-d4bff7c86-p5zgr to aks-rq15pool-34343338-vmss000000
+69s         Normal   Scheduled           pod/chain-5svc-plain-svc-1-cd99c9549-kjnnn     Successfully assigned rq21-chain5-plain/chain-5svc-plain-svc-1-cd99c9549-kjnnn to aks-rq15pool-34343338-vmss000000
+69s         Normal   Scheduled           pod/chain-5svc-plain-svc-3-5b9b5844dc-548lq    Successfully assigned rq21-chain5-plain/chain-5svc-plain-svc-3-5b9b5844dc-548lq to aks-rq15pool-34343338-vmss000000
+70s         Normal   SuccessfulCreate    replicaset/chain-5svc-plain-svc-1-cd99c9549    Created pod: chain-5svc-plain-svc-1-cd99c9549-kjnnn
+70s         Normal   ScalingReplicaSet   deployment/chain-5svc-plain-svc-1              Scaled up replica set chain-5svc-plain-svc-1-cd99c9549 from 0 to 1
+69s         Normal   SuccessfulCreate    replicaset/chain-5svc-plain-svc-2-d6767685b    Created pod: chain-5svc-plain-svc-2-d6767685b-2xwlp
+69s         Normal   Created             pod/chain-5svc-plain-svc-1-cd99c9549-kjnnn     Created container: inference
+69s         Normal   Pulled              pod/chain-5svc-plain-svc-2-d6767685b-2xwlp     Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 173ms (173ms including waiting). Image size: 413013146 bytes.
+69s         Normal   Created             pod/chain-5svc-plain-svc-2-d6767685b-2xwlp     Created container: inference
+69s         Normal   Started             pod/chain-5svc-plain-svc-2-d6767685b-2xwlp     Started container inference
+69s         Normal   SuccessfulCreate    replicaset/chain-5svc-plain-svc-4-d4bff7c86    Created pod: chain-5svc-plain-svc-4-d4bff7c86-p5zgr
+69s         Normal   ScalingReplicaSet   deployment/chain-5svc-plain-svc-2              Scaled up replica set chain-5svc-plain-svc-2-d6767685b from 0 to 1
+69s         Normal   Started             pod/chain-5svc-plain-svc-1-cd99c9549-kjnnn     Started container inference
+69s         Normal   Pulling             pod/chain-5svc-plain-svc-3-5b9b5844dc-548lq    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+69s         Normal   Pulling             pod/chain-5svc-plain-svc-2-d6767685b-2xwlp     Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+69s         Normal   ScalingReplicaSet   deployment/chain-5svc-plain-svc-5              Scaled up replica set chain-5svc-plain-svc-5-8596f68c49 from 0 to 1
+69s         Normal   SuccessfulCreate    replicaset/chain-5svc-plain-svc-5-8596f68c49   Created pod: chain-5svc-plain-svc-5-8596f68c49-r5zn7
+69s         Normal   SuccessfulCreate    replicaset/chain-5svc-plain-svc-3-5b9b5844dc   Created pod: chain-5svc-plain-svc-3-5b9b5844dc-548lq
+69s         Normal   ScalingReplicaSet   deployment/chain-5svc-plain-svc-3              Scaled up replica set chain-5svc-plain-svc-3-5b9b5844dc from 0 to 1
+69s         Normal   Pulled              pod/chain-5svc-plain-svc-1-cd99c9549-kjnnn     Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 147ms (147ms including waiting). Image size: 413013146 bytes.
+69s         Normal   Pulling             pod/chain-5svc-plain-svc-1-cd99c9549-kjnnn     Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+69s         Normal   ScalingReplicaSet   deployment/chain-5svc-plain-svc-4              Scaled up replica set chain-5svc-plain-svc-4-d4bff7c86 from 0 to 1
+68s         Normal   Pulled              pod/chain-5svc-plain-svc-3-5b9b5844dc-548lq    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 130ms (130ms including waiting). Image size: 413013146 bytes.
+68s         Normal   Started             pod/chain-5svc-plain-svc-4-d4bff7c86-p5zgr     Started container inference
+68s         Normal   Created             pod/chain-5svc-plain-svc-4-d4bff7c86-p5zgr     Created container: inference
+68s         Normal   Pulled              pod/chain-5svc-plain-svc-4-d4bff7c86-p5zgr     Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 177ms (177ms including waiting). Image size: 413013146 bytes.
+68s         Normal   Pulling             pod/chain-5svc-plain-svc-4-d4bff7c86-p5zgr     Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+68s         Normal   Pulling             pod/chain-5svc-plain-svc-5-8596f68c49-r5zn7    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+68s         Normal   Pulled              pod/chain-5svc-plain-svc-5-8596f68c49-r5zn7    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 164ms (164ms including waiting). Image size: 413013146 bytes.
+68s         Normal   Created             pod/chain-5svc-plain-svc-5-8596f68c49-r5zn7    Created container: inference
+68s         Normal   Started             pod/chain-5svc-plain-svc-5-8596f68c49-r5zn7    Started container inference
+68s         Normal   Started             pod/chain-5svc-plain-svc-3-5b9b5844dc-548lq    Started container inference
+68s         Normal   Created             pod/chain-5svc-plain-svc-3-5b9b5844dc-548lq    Created container: inference

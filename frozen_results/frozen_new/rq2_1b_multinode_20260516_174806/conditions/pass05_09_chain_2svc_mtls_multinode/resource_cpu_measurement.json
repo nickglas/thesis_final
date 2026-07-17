@@ -1,0 +1,160 @@
+{
+  "captured_at": "2026-05-16T18:20:19.277029+00:00",
+  "condition": "chain_2svc_mtls_multinode",
+  "condition_key": "mtls",
+  "started_at": "2026-05-16T18:19:49.033770+00:00",
+  "ended_at": "2026-05-16T18:20:17.786040+00:00",
+  "duration_seconds": 28.75225524399866,
+  "available": true,
+  "summary": {
+    "service_app_cpu_mcores": 508.8332680635089,
+    "sidecar_cpu_mcores": 38.28558805764514,
+    "client_cpu_mcores": 155.4098265363955,
+    "total_pod_cpu_mcores": 547.1188561211541
+  },
+  "measurements": [
+    {
+      "namespace": "rq21b-chain2-mtls",
+      "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 2677488000,
+      "end_usage_core_nanoseconds": 12735732000,
+      "delta_core_nanoseconds": 10058244000,
+      "cpu_mcores": 349.8245238379837
+    },
+    {
+      "namespace": "rq21b-chain2-mtls",
+      "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+      "container_name": "istio-proxy",
+      "role": "sidecar",
+      "start_usage_core_nanoseconds": 399847000,
+      "end_usage_core_nanoseconds": 1112325000,
+      "delta_core_nanoseconds": 712478000,
+      "cpu_mcores": 24.779899661913046
+    },
+    {
+      "namespace": "rq21b-client-mtls",
+      "pod_name": "benchmark-client",
+      "container_name": "client",
+      "role": "client",
+      "start_usage_core_nanoseconds": 1668753000,
+      "end_usage_core_nanoseconds": 6137136000,
+      "delta_core_nanoseconds": 4468383000,
+      "cpu_mcores": 155.4098265363955
+    },
+    {
+      "namespace": "rq21b-chain2-mtls",
+      "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+      "container_name": "inference",
+      "role": "service_app",
+      "start_usage_core_nanoseconds": 2656533000,
+      "end_usage_core_nanoseconds": 7228393000,
+      "delta_core_nanoseconds": 4571860000,
+      "cpu_mcores": 159.00874422552522
+    },
+    {
+      "namespace": "rq21b-chain2-mtls",
+      "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+      "container_name": "istio-proxy",
+      "role": "sidecar",
+      "start_usage_core_nanoseconds": 424605000,
+      "end_usage_core_nanoseconds": 812924000,
+      "delta_core_nanoseconds": 388319000,
+      "cpu_mcores": 13.505688395732095
+    }
+  ],
+  "start_snapshot": {
+    "captured_at": "2026-05-16T18:19:48.106611+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq21bpool-33797924-vmss000000",
+        "namespace": "rq21b-chain2-mtls",
+        "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 2677488000
+      },
+      {
+        "node_name": "aks-rq21bpool-33797924-vmss000000",
+        "namespace": "rq21b-chain2-mtls",
+        "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 399847000
+      },
+      {
+        "node_name": "aks-rq21bpool-33797924-vmss000001",
+        "namespace": "rq21b-client-mtls",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 1668753000
+      },
+      {
+        "node_name": "aks-rq21bpool-33797924-vmss000002",
+        "namespace": "rq21b-chain2-mtls",
+        "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 2656533000
+      },
+      {
+        "node_name": "aks-rq21bpool-33797924-vmss000002",
+        "namespace": "rq21b-chain2-mtls",
+        "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 424605000
+      }
+    ],
+    "errors": []
+  },
+  "end_snapshot": {
+    "captured_at": "2026-05-16T18:20:18.293997+00:00",
+    "containers": [
+      {
+        "node_name": "aks-rq21bpool-33797924-vmss000000",
+        "namespace": "rq21b-chain2-mtls",
+        "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 12735732000
+      },
+      {
+        "node_name": "aks-rq21bpool-33797924-vmss000000",
+        "namespace": "rq21b-chain2-mtls",
+        "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-89pft",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 1112325000
+      },
+      {
+        "node_name": "aks-rq21bpool-33797924-vmss000001",
+        "namespace": "rq21b-client-mtls",
+        "pod_name": "benchmark-client",
+        "container_name": "client",
+        "role": "client",
+        "usage_core_nanoseconds": 6137136000
+      },
+      {
+        "node_name": "aks-rq21bpool-33797924-vmss000002",
+        "namespace": "rq21b-chain2-mtls",
+        "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+        "container_name": "inference",
+        "role": "service_app",
+        "usage_core_nanoseconds": 7228393000
+      },
+      {
+        "node_name": "aks-rq21bpool-33797924-vmss000002",
+        "namespace": "rq21b-chain2-mtls",
+        "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-5z5pd",
+        "container_name": "istio-proxy",
+        "role": "sidecar",
+        "usage_core_nanoseconds": 812924000
+      }
+    ],
+    "errors": []
+  },
+  "errors": []
+}

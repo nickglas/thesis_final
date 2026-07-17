@@ -1,0 +1,47 @@
+\subsection{Synthesis: Architectural Split Choice}
+\label{sec:analysis-split-synthesis}
+
+The three preceding subsections establish the local architectural
+split-choice stage of the thesis. The two-dimensional explanatory
+account developed in \cref{sec:analysis-rq13} --- activation-transfer
+size at the coarse level and compute placement at the boundary at the
+refined level --- is not restated here; the role of this subsection is
+to make the section's contribution to the rest of the thesis explicit
+and to set the reading rule against which the Kubernetes and Azure
+stages are interpreted.
+
+The local stage contributes two things forward. First, it fixes the
+scoped two-part carry-forward result of the controlled local
+split-selection stages: \texttt{split\_after\_layer3\_block0} as the
+rule-selected main candidate and \texttt{split\_after\_layer2} as the
+reference candidate. This should not be read as a literal instruction
+that every later stage re-measures the refined main boundary. Stages~K
+and~C instead use the predefined coarse-stage chain family declared in
+\cref{sec:methods-rq14,sec:methods-rq15} to characterise service-count
+cost under Kubernetes and AKS; within that family, the two-service member
+uses \texttt{split\_after\_layer2}, the local reference boundary. Second,
+it defines a joint suitability criterion in which activation-transfer size and
+compute placement are complementary, not competing, dimensions; this
+criterion rejected the two coarse endpoints
+(\texttt{split\_after\_layer1} on activation expansion,
+\texttt{split\_after\_layer4} on compute degeneracy) and identified the
+mid-to-late band as the only region in which both dimensions are
+simultaneously tolerable under the conditions measured here. Both
+contributions are properties of the CPU-only batch-one localhost-gRPC
+environment defined in
+\cref{tab:rq11-config,tab:rq12-config} and remain bounded by the
+single-host, single-build, fixed-seed scope of those runs.
+
+What the local stage does \emph{not} establish is whether the same
+activation-transfer and compute-placement mechanisms remain visible once
+Kubernetes networking, sidecar mediation, or managed-cloud node
+variability is added to the path. This is the empirical question that the
+Kubernetes (Stage~K) and Azure (Stage~C) stages are designed to answer for
+the predefined chain family. The reading rule against which their results
+are interpreted in
+\cref{sec:analysis-deployment} is trend transfer rather than
+millisecond identity: the comparison preserves the ranking and
+direction of the local explanatory account where the underlying
+mechanism is plausibly stable across environments, and treats absolute
+latency shifts as legitimate consequences of the new
+substrate~\cite{benchmarking_sc15,noise_in_clouds}.

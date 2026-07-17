@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: monolithic-k8s-1svc-svc-1
+  namespace: rq15b
+  labels:
+    app: thesis-inference
+    experiment: rq15b
+    workload-role: service
+    condition: monolithic_k8s_1svc
+    segment-index: '1'
+spec:
+  type: ClusterIP
+  selector:
+    app: thesis-inference
+    condition: monolithic_k8s_1svc
+    segment-index: '1'
+  ports:
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+    protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monolithic-k8s-1svc-svc-1
+  namespace: rq15b
+  labels:
+    app: thesis-inference
+    experiment: rq15b
+    workload-role: service
+    condition: monolithic_k8s_1svc
+    segment-index: '1'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thesis-inference
+      condition: monolithic_k8s_1svc
+      segment-index: '1'
+  template:
+    metadata:
+      labels:
+        app: thesis-inference
+        experiment: rq15b
+        workload-role: service
+        condition: monolithic_k8s_1svc
+        experiment-condition: monolithic_k8s_1svc
+        segment-index: '1'
+    spec:
+      containers:
+      - name: inference
+        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:240631e29c8c1a66a1dfce8a430d0498c805a7a1b4dea1202746b094c289aa47
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 50051
+          name: grpc
+        args:
+        - --segment_index
+        - '0'
+        - --host
+        - 0.0.0.0
+        - --port
+        - '50051'
+        - --max_message_bytes
+        - '16777216'
+        env:
+        - name: PYTORCH_INTRA_OP_THREADS
+          value: '1'
+        - name: PYTORCH_INTER_OP_THREADS
+          value: '1'
+        - name: OMP_NUM_THREADS
+          value: '1'
+        - name: MKL_NUM_THREADS
+          value: '1'
+        - name: OPENBLAS_NUM_THREADS
+          value: '1'
+        resources:
+          requests:
+            cpu: '1'
+            memory: 1Gi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+        readinessProbe:
+          tcpSocket:
+            port: 50051
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 6
+      nodeSelector:
+        agentpool: rq15bpool

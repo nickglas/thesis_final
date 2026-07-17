@@ -1,0 +1,84 @@
+{
+  "order_mode": "seeded",
+  "order_seed": 42,
+  "ablation_passes": 5,
+  "passes": [
+    {
+      "pass": 1,
+      "order": [
+        "c2",
+        "c1",
+        "c3",
+        "c0"
+      ]
+    },
+    {
+      "pass": 2,
+      "order": [
+        "c1",
+        "c3",
+        "c0",
+        "c2"
+      ]
+    },
+    {
+      "pass": 3,
+      "order": [
+        "c3",
+        "c0",
+        "c2",
+        "c1"
+      ]
+    },
+    {
+      "pass": 4,
+      "order": [
+        "c0",
+        "c2",
+        "c1",
+        "c3"
+      ]
+    },
+    {
+      "pass": 5,
+      "order": [
+        "c2",
+        "c1",
+        "c3",
+        "c0"
+      ]
+    }
+  ],
+  "condition_keys": [
+    "c0",
+    "c1",
+    "c2",
+    "c3"
+  ],
+  "adjacent_deltas": [
+    {
+      "name": "c1_minus_c0",
+      "to": "c1",
+      "from": "c0",
+      "label": "mesh-default sidecar/auto-mTLS cost"
+    },
+    {
+      "name": "c2_minus_c1",
+      "to": "c2",
+      "from": "c1",
+      "label": "strict mTLS enforcement cost"
+    },
+    {
+      "name": "c3_minus_c2",
+      "to": "c3",
+      "from": "c2",
+      "label": "AuthorizationPolicy cost"
+    },
+    {
+      "name": "c3_minus_c0",
+      "to": "c3",
+      "from": "c0",
+      "label": "total hardened-path cost"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+LAST SEEN   TYPE     REASON              OBJECT                                                  MESSAGE
+69s         Normal   Scheduled           pod/chain-2svc-split-l3-plain-svc-1-5cc88c8f4c-vgbzx    Successfully assigned rq21-ms-l3-plain/chain-2svc-split-l3-plain-svc-1-5cc88c8f4c-vgbzx to aks-rq15pool-53575030-vmss000000
+69s         Normal   Scheduled           pod/chain-2svc-split-l3-plain-svc-2-b9f5547f5-pfht9     Successfully assigned rq21-ms-l3-plain/chain-2svc-split-l3-plain-svc-2-b9f5547f5-pfht9 to aks-rq15pool-53575030-vmss000000
+70s         Normal   ScalingReplicaSet   deployment/chain-2svc-split-l3-plain-svc-1              Scaled up replica set chain-2svc-split-l3-plain-svc-1-5cc88c8f4c from 0 to 1
+69s         Normal   ScalingReplicaSet   deployment/chain-2svc-split-l3-plain-svc-2              Scaled up replica set chain-2svc-split-l3-plain-svc-2-b9f5547f5 from 0 to 1
+69s         Normal   SuccessfulCreate    replicaset/chain-2svc-split-l3-plain-svc-2-b9f5547f5    Created pod: chain-2svc-split-l3-plain-svc-2-b9f5547f5-pfht9
+69s         Normal   SuccessfulCreate    replicaset/chain-2svc-split-l3-plain-svc-1-5cc88c8f4c   Created pod: chain-2svc-split-l3-plain-svc-1-5cc88c8f4c-vgbzx
+67s         Normal   Pulling             pod/chain-2svc-split-l3-plain-svc-2-b9f5547f5-pfht9     Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+67s         Normal   Pulling             pod/chain-2svc-split-l3-plain-svc-1-5cc88c8f4c-vgbzx    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+52s         Normal   Created             pod/chain-2svc-split-l3-plain-svc-1-5cc88c8f4c-vgbzx    Created container: inference
+52s         Normal   Pulled              pod/chain-2svc-split-l3-plain-svc-2-b9f5547f5-pfht9     Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 14.819s (14.819s including waiting). Image size: 413013146 bytes.
+52s         Normal   Created             pod/chain-2svc-split-l3-plain-svc-2-b9f5547f5-pfht9     Created container: inference
+52s         Normal   Started             pod/chain-2svc-split-l3-plain-svc-2-b9f5547f5-pfht9     Started container inference
+52s         Normal   Started             pod/chain-2svc-split-l3-plain-svc-1-5cc88c8f4c-vgbzx    Started container inference
+52s         Normal   Pulled              pod/chain-2svc-split-l3-plain-svc-1-5cc88c8f4c-vgbzx    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 14.824s (14.824s including waiting). Image size: 413013146 bytes.

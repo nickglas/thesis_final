@@ -1,0 +1,552 @@
+\section{Security Hardening}
+\label{sec:analysis-security}
+
+\subsection{Stage~H1: Service Identity and Mutual TLS}
+\label{sec:analysis-rq21}
+
+Stage~H1 asks what performance and operational cost is paid when the AKS
+\texttt{chain\_2svc} inference path selected in \cref{sec:analysis-rq15} is
+hardened with service identity, managed-Istio mTLS, and inter-service
+authorisation policy. The analytical contribution is not to revisit the split
+choice from Stages~L1 through~C, and not to claim end-to-end security, but to
+convert the paired Stage~H1 measurements into a bounded statement about
+\emph{where} the hardening cost lives, \emph{how} it scales with protected
+chain depth, and \emph{what} part of the trust model it actually changes.
+
+\paragraph{Finding 1: the mTLS/AuthZ bundle adds measurable but bounded
+overhead on the selected chain.}
+For the primary \texttt{chain\_2svc} topology, the hardening bundle adds
+3.488~ms, or 4.62\%, to mean end-to-end latency, and 3.623~ms at p95
+(\cref{tab:rq21_latency,tab:rq21_paired_deltas}). The result is supported by
+the paired-pass design: across five alternating passes, every per-pass mTLS
+delta is strictly positive (2.223~ms--5.230~ms), so the direction of the
+finding is not an artefact of slow drift inside the run. The absolute cost is
+bounded relative to the approximately 75.6~ms plain baseline, which already
+includes the ResNet-18 compute and the chain-2 boundary cost from
+\cref{sec:analysis-rq15}. This pattern is consistent with the service-mesh
+literature's observation that sidecars add critical-path work whose visible
+share depends on how much application compute the proxy cost is amortised
+over~\cite{meshinsight_socc23}.
+
+\paragraph{Finding 2: the overhead is dominated by entering the sidecar data
+path, not by mTLS enforcement or AuthZ evaluation in isolation.}
+The supporting ablation in \cref{tab:rq21_ablation} decomposes the bundle
+into adjacent steps. Moving from plain Kubernetes (\texttt{c0}) to the
+mesh-default sidecar condition (\texttt{c1}) accounts for +2.569~ms of the
++2.840~ms full hardened-path delta, while strict downstream mTLS
+(\texttt{c2}) and the AuthorizationPolicy step (\texttt{c3}) each sit within
+pass-level noise. The defensible reading is therefore that most of the
+measured Stage~H1 overhead is the cost of routing inter-service traffic
+through the managed-Istio data plane, and that strict mTLS and identity-based
+authorisation add enforcement semantics with little additional steady-state
+latency for this workload. This is consistent with the cross-mesh comparison
+in \cite{bremlerbarr2025mtls}, which attributes most of the measured mTLS
+penalty to mesh architecture and defaults rather than to mTLS cryptography
+itself, and with the observation in \cite{ashraf2025policy_workflow} that
+strict mTLS and a separate policy-enforcement layer are functionally
+complementary rather than substitutable in Kubernetes microservice
+deployments. As stated in the evidence manifest, the ablation is internally
+comparable only; its adjacent deltas are not spliced into the frozen
+two-condition paired result, but their order of magnitude
+(\texttt{c3}-\texttt{c0}~$=$~2.840~ms) is in the same range as the frozen
+\texttt{chain\_2svc} overhead.
+
+\paragraph{Finding 3: the hardening cost grows with protected chain depth.}
+The \texttt{chain\_5svc} stress run raises the mean hardening overhead to
+8.837~ms, or 10.74\%, with positive per-pass deltas of 7.623--9.985~ms
+(\cref{tab:rq21_paired_deltas}). This is approximately two and a half times
+the \texttt{chain\_2svc} overhead in absolute milliseconds. The increase is
+expected, since the stress topology contains four protected inter-service
+boundaries instead of one and pays sidecar cost at each. Because only two
+depths are measured, this two-point comparison should be read as
+depth-sensitivity rather than as a calibrated per-hop scaling law. The
+practical implication for the RQ1--RQ2 axis is direct: a chain that is
+tolerable without communication hardening can become materially less
+attractive once every boundary also pays identity, encryption, proxying, and
+policy-enforcement cost, so the security choice cannot be made independently
+of the topology choice carried forward from Stage~C.
+
+\paragraph{Finding 4: the latency cost is not the only cost.}
+The hardening bundle also raises resource requests, deployment object count,
+and rollout time (\cref{tab:rq21_resource_overhead}). For
+\texttt{chain\_2svc}, the mesh adds two injected proxies, 34.7~mCPU
+window-level sidecar CPU, 82.1~MiB sidecar memory, five additional objects,
+and a 6.30~s schedule-to-ready delta. For \texttt{chain\_5svc}, the
+corresponding numbers grow to 87.6~mCPU, 223.7~MiB, fourteen additional
+objects, and 6.84~s. The total pod-CPU delta on \texttt{chain\_2svc} is
+negative despite a clearly positive sidecar contribution because measured
+application-container CPU was lower in the mTLS condition; these counter
+deltas should be read as window-level operational measurements rather than
+perfect causal attribution. The point is that ``feasible at modest cost''
+captures the latency dimension but understates the operational footprint,
+which is non-trivial even when amortised over a CPU-bound inference path.
+
+\paragraph{Finding 5: the result is in the same direction as published mTLS
+overheads but is not directly comparable in magnitude.}
+The observed 4.62\% \texttt{chain\_2svc} overhead is much smaller than the
+high-load Istio penalties reported in
+\cite{bremlerbarr2025mtls}, but the two settings differ in workload,
+protocol, load level, mesh configuration, and reporting metric, so the
+correct comparison is qualitative. Both this thesis and the broader
+service-mesh literature show that sidecar-mediated mTLS has non-zero
+latency and resource cost; the absolute magnitude is workload-specific.
+\cite{meshinsight_socc23} additionally notes that the sidecar terminates
+TLS, so traffic between the proxy and the application container inside the
+pod still traverses loopback in plaintext: this is an architectural property
+of sidecar-based mTLS, not a measured finding of this thesis, and it is
+relevant for the trust-boundary discussion below.
+
+\paragraph{Finding 6: Stage~H1 hardens inter-service communication; it does not
+re-shape the trust model.}
+Static manifest validation, runtime policy validation, full-chain positive
+probes, and direct non-mesh denial probes all passed in every mTLS pass of
+both frozen artefacts. The intended service-account-based communication
+policy was therefore enforced for the protected downstream segments under
+the conditions tested. This is meaningful communication-level hardening, but
+the security claim is bounded: trust in the managed-Istio control plane and
+local CA is retained, the sidecar-to-application loopback inside the pod is
+not protected by mTLS, and confidential execution for model code and
+activations is not provided. Prior work identifies the mesh control plane
+and certificate authority as the residual trust points that mTLS does not
+remove~\cite{poudel2025mazu}. Probe-based validation also covers only the
+specific paths exercised; it is not a substitute for active attack
+evaluation, which this thesis does not perform.
+
+\paragraph{Finding 7: the chain-2 mTLS overhead survives a multi-node
+sensitivity check.}
+The Stage~H1 multi-node sensitivity run forces each chain-2 segment onto a
+distinct AKS node, with a dedicated benchmark client node, and re-paires
+plain against mTLS under the same managed-Istio configuration. The measured
+mean mTLS overhead is +2.71~ms, or +3.90\%, with every paired execution
+passing multi-node placement validation. This is within the same direction
+and order of magnitude as the +3.488~ms / +4.62\% single-node primary result
+and is, if anything, slightly smaller in percent terms, which is consistent
+with a larger plain baseline absorbing more of the proxy cost once
+inter-node transport is added. The defensible reading is that the
+single-node Stage~H1 primary number is not an artefact of strict same-node
+placement on the benchmark pool; cloud-network variability is known to
+shift absolute latency without changing the underlying architectural
+direction~\cite{noise_in_clouds}, and the Stage~H1 (multi-node) run does not contradict the
+primary finding under that lens.
+
+\paragraph{Validation and evaluation reasoning.}
+The Stage~H1 results rest on two frozen, ACR-digest-pinned paired runs that
+share the same application image as Stage~C and use the same single-node
+benchmark substrate. The paired-pass design, the alternating execution
+order, the positivity of every per-pass delta, and the small pass-delta
+standard deviations (1.091~ms on \texttt{chain\_2svc}, 0.881~ms on
+\texttt{chain\_5svc}) together justify treating the measured directions as
+robust within the tested configuration. The validation reasoning does not
+extend further than that: the runs are single-node, single-region,
+single-mesh-revision, single-model, and CPU-only, and the security check
+itself is policy validation under known probes rather than adversarial
+testing. Cross-environment transfer should be read as ranking-preserving
+rather than millisecond-equivalent, following the benchmarking practice
+that informs the rest of this thesis~\cite{benchmarking_sc15}. Evaluated
+against the question Stage~H1 actually poses --- the cost of adding
+managed-Istio mTLS and AuthZ to the selected \texttt{chain\_2svc} AKS
+chain-family hardening baseline --- the evidence is
+sufficient to support a cautious positive answer for \texttt{chain\_2svc},
+qualified by the depth-sensitivity finding at \texttt{chain\_5svc}, the
+multi-node sensitivity in Finding 7, and the trust-boundary scope above.
+
+\paragraph{Stage~H1 outcome.}
+Under the paired AKS Stage~H1 benchmark, adding service identity,
+managed-Istio mTLS, and inter-service authorisation policy introduces
+measurable but bounded overhead for the selected \texttt{chain\_2svc}
+deployment: mean latency rises from 75.557~ms to 79.045~ms (+3.488~ms,
++4.62\%), p95 rises by 3.623~ms, and every paired pass shows a positive
+mTLS delta. The hardening cost is dominated by entry into the managed-Istio
+data path rather than by strict mTLS enforcement or AuthorizationPolicy
+evaluation alone (\cref{tab:rq21_ablation}). The \texttt{chain\_5svc}
+stress run shows that the same hardening becomes more expensive when more
+boundaries are protected, reaching 8.837~ms (+10.74\%) at four protected
+inter-service boundaries; this is a depth-sensitivity observation, not a
+calibrated scaling law. The multi-node sensitivity in Finding 7 yields
++2.71~ms / +3.90\% on \texttt{chain\_2svc}, in the same direction and
+order of magnitude as the single-node primary result. Beyond latency, the
+bundle adds sidecar CPU and memory requests, five-to-fourteen additional
+Kubernetes objects, and a 6.30--6.84~s schedule-to-ready delta. Security
+validation, static and runtime, passed in every mTLS pass, including direct
+non-mesh denial probes against protected downstream segments. Stage~H1
+therefore supports a cautious conclusion: service identity and
+managed-Istio mTLS/AuthZ are a feasible \emph{communication-level}
+hardening layer for the selected Azure chain at a modest latency cost, but
+the cost is not negligible, grows with the number of protected service
+boundaries, and is paid against a residual trust model that still depends
+on the mesh control plane, the local CA, and the sidecar-to-application
+loopback inside each pod~\cite{poudel2025mazu}.
+
+\subsection{Stage~H2: Confidential VM Execution}
+\label{sec:analysis-rq22}
+
+Stage~H2 asks what additional performance and operational cost is paid when the
+already-communication-secured \texttt{chain\_2svc} pipeline from Stage~H1 is
+hardened a second time by placing the downstream activation-receiving
+service on an AMD SEV-SNP confidential VM. The analytical contribution is
+not to relitigate the mTLS overhead (already settled in
+\cref{sec:analysis-rq21}), and not to relitigate the split or chain choice
+(carried forward from \cref{sec:analysis-rq15}), but to convert the single
+frozen paired Stage~H2 measurement into a bounded statement about (i) the
+incremental latency cost of selective VM-level confidential execution
+\emph{on top of} mTLS, (ii) how the protection scope changes relative to
+Stage~H1, and (iii) what is still trusted after the additional hardening
+layer is added.
+
+\paragraph{Finding 1: VM-level confidential execution adds measurable but
+bounded incremental overhead on top of mTLS.}
+With the Stage~H1 mTLS/AuthZ contract held fixed and only \texttt{service2}
+rolled between \texttt{Standard\_D8as\_v5} (standard) and
+\texttt{Standard\_DC8as\_v5} (AMD SEV-SNP), mean end-to-end latency rises
+from 58.492~ms to 60.346~ms, an increase of 1.854~ms or 3.17\%
+(\cref{tab:rq22_service2_results}). The result is supported by the rolling
+paired design: five paired passes alternate standard-first and
+confidential-first execution order, and every per-pass functional parity
+check against the monolithic reference passes
+(\texttt{max\_abs\_diff}~$=0.0$ across all per-pass
+\texttt{parity\_validation.json} files in \texttt{conditions/}). The
+defensible reading is therefore that selective VM-level confidential
+execution is feasible on the AKS inference chain at a small additional
+steady-state latency cost, with no measurable change in inference output.
+The magnitude is consistent with the broader confidential-VM literature's
+expectation that CVM overhead is workload-
+and configuration-dependent rather than a single fixed
+surcharge~\cite{misono2024_cvm_explained,akram2021_hpc_tees}; this is a
+qualitative agreement, not a numerical comparison, since neither of those
+studies targets sidecar-mediated DNN inference.
+
+\paragraph{Finding 2: the tail widens more than the mean.}
+Median latency increases by 1.467~ms (+2.52\%), while p95 increases by
+3.601~ms (+5.98\%) --- approximately 1.9 times the mean delta in
+percent terms (\cref{tab:rq22_service2_results}). Stage~H1's chain\_2svc
+result, by contrast, shows the p95 delta (3.623~ms, +4.62\% baseline) and
+the mean delta (3.488~ms) sitting in the same range, so the tail-vs-mean
+ratio is more skewed under TEE than under mTLS for the same topology.
+The cautious reading is that the cost of VM-level confidential execution
+is concentrated more in the upper tail than in the centre of the
+latency distribution; the data set is too small to isolate a single cause
+(per-iteration memory-encryption effects, scheduler interactions on the
+confidential node, or warm-vs-cold cache behaviour are all consistent),
+but the asymmetry is itself a defensible observation under the
+median-plus-tail reporting practice that the thesis adopts
+throughout~\cite{benchmarking_sc15}. For workloads with tight tail-latency
+SLOs, the 5.98\% p95 delta is the more conservative number to plan
+against rather than the 3.17\% mean.
+
+\paragraph{Finding 3: the Stage~H2 standard baseline is not the Stage~H1 mTLS
+chain\_2svc number.}
+The Stage~H2 cluster runs in \texttt{westeurope} on
+\texttt{Standard\_D8as\_v5} nodes, whereas the Stage~H1 cluster runs in
+\texttt{swedencentral} on \texttt{Standard\_D8s\_v3} nodes
+(\cref{sec:methods-rq22}). The mean Stage~H2 standard baseline (58.492~ms)
+and the mean Stage~H1 mTLS chain\_2svc value (79.045~ms) therefore cannot be
+differenced to obtain a "TEE-on-top-of-Stage~H1" overhead. The Stage~H2 finding
+is strictly the within-cluster paired delta against its own freshly
+collected standard-node mTLS baseline; absolute cross-region comparison
+is not supported, consistent with the benchmarking-practice convention
+that managed-cloud absolute latency should be read as ranking-preserving
+across environments rather than millisecond-equivalent~\cite{benchmarking_sc15,noise_in_clouds}.
+This is a methodological feature of the Stage~H2 design, not a weakness: it
+is exactly the reason a fresh paired baseline was collected.
+
+\paragraph{Finding 4: Stage~H2 changes the trust boundary, but only at VM
+granularity.}
+Stage~H1 added confidentiality and authentication to the inter-service path;
+Stage~H2 adds confidentiality and integrity to the host-platform interface
+of the downstream service. The new protection layer is meaningful: under
+the AMD SEV-SNP threat model, the cloud host and hypervisor are removed
+from the trusted computing base of the confidentially placed
+service~\cite{amd_sevsnp_whitepaper}. The protection layer is also
+narrow. The guest OS, the application process, the model runtime, the
+sidecar inside the protected pod, and the service-mesh control plane all
+remain trusted, and the plaintext that exists inside the endpoint after
+mTLS termination~\cite{meshinsight_socc23} now lives inside a
+host-protected VM rather than on a generic AKS node --- but it is still
+plaintext to every component above the hypervisor boundary. The
+service-mesh control plane and certificate authority remain trust-critical
+exactly as in Stage~H1~\cite{poudel2025mazu}, and confidential-VM platforms
+are known to differ from one another in attestation flow, attacker
+model, and residual side channels, so this SEV-SNP-specific result does
+not transfer cleanly to alternative CVM
+substrates~\cite{guanciale2022_confidential_quartet}.
+
+\paragraph{Finding 5: motivation and measured protection do not perfectly
+align.}
+He~et~al.~\cite{he2021_attacking_collaborative} motivate protecting the
+intermediate activations received by the downstream segment beyond
+in-transit mTLS by showing that an untrusted cloud holding only those
+feature maps can recover the client input. Stage~H2 cites that work as
+motivation but does not claim to defend the He~et~al.\ threat model:
+their adversary is a \emph{malicious remote service}, while SEV-SNP
+defends against an adversary on the \emph{host platform}. Selectively
+placing \texttt{service2} on a confidential VM therefore reduces
+exposure to a different class of adversary (the cloud host or
+hypervisor), and not to the application-level adversary that the
+activation-inversion literature actually constructs. This is an honesty
+boundary that the analysis must respect; it is also the reason Stage~H2 is
+positioned as an incremental hardening point rather than as a complete
+answer to activation-privacy concerns.
+
+\paragraph{Finding 6: residual attack surfaces are documented but not
+experimentally evaluated.}
+Recent work shows that confidential VMs are not closed under arbitrary
+host-platform behaviour: an untrusted hypervisor can still inject
+malicious interrupts whose handlers manipulate CVM data and control flow,
+bypassing authentication and breaking execution integrity on workloads
+that are otherwise inside the SEV-SNP memory-encryption
+boundary~\cite{schluter2024_heckler}. This thesis does not perform an
+attack-evaluation campaign and does not measure Stage~H2 against the
+HECKLER attack or any other documented residual surface; the Stage~H2
+security claim is therefore that the measured deployment runs inside the
+SEV-SNP vendor threat model under policy validation, not that it is
+robust to all documented CVM attack surfaces. The bounded claim is
+consistent with the wider SoK framing that ML-with-confidential-computing
+deployments balance protection, performance, and operational complexity
+rather than maximising any one axis~\cite{mo2024_ml_confidential_computing}.
+
+\paragraph{Finding 7: throughput follows mean latency as expected.}
+Sequential throughput, computed algebraically from mean latency at batch
+size one, drops from 17.096~req/s to 16.571~req/s, a reduction of
+approximately 3.07\%. This is a restatement of the mean-latency finding
+rather than an independent measurement, and should not be read as a
+characterisation of behaviour under concurrent load; it is reported only
+for operational legibility.
+
+\paragraph{Validation and evaluation reasoning.}
+The Stage~H2 result rests on a single frozen rolling artefact
+(\texttt{rq2\_2\_confidential\_20260516\_135726}) that pins the same ACR
+image digest as Stage~C and Stage~H1, preserves the Stage~H1 mTLS/AuthZ contract,
+and uses an alternating standard-first / confidential-first pass order
+to limit drift artefacts. Functional parity passes in every per-pass
+\texttt{parity\_validation.json} (\texttt{max\_abs\_diff}~$=0.0$,
+\texttt{num\_inputs}~$=5$), and the standard baseline against which the
+delta is computed is collected on the same cluster, region, and SKU
+pair as the confidential condition rather than reused from Stage~H1. These
+choices justify treating the measured direction (+3.17\% mean,
++5.98\% p95) and its sign as robust within the tested configuration.
+The validation envelope does not extend further than that: only one
+TEE scope is evaluated (\texttt{service2\_only}); only one CVM platform
+is evaluated (AMD SEV-SNP); only one model, batch size, and chain depth
+are evaluated; only policy-validation security checks are performed,
+not adversarial testing; and the absolute baseline is not portable
+across regions. Evaluated against the question Stage~H2 actually poses ---
+the incremental cost of placing the downstream protected service on a
+confidential VM while keeping the communication-security contract
+fixed --- the evidence is sufficient to support a cautious positive
+answer for \texttt{service2\_only}, qualified by the tail-vs-mean
+observation in Finding~2, the threat-model boundary in Findings~4--6,
+and the explicit out-of-scope status of the full two-service TEE
+configuration.
+
+\paragraph{Stage~H2 outcome.}
+Under the paired AKS Stage~H2 benchmark, placing only the downstream
+protected service on an AMD SEV-SNP confidential VM introduces
+measurable but bounded incremental overhead on top of the already
+mTLS-secured \texttt{chain\_2svc} chain: mean latency rises from
+58.492~ms to 60.346~ms (+1.854~ms, +3.17\%), median rises by 1.467~ms
+(+2.52\%), and p95 rises by 3.601~ms (+5.98\%), with the tail amplified
+relative to the mean by roughly 1.9 times in percent terms. Functional
+parity is preserved across all paired passes
+(\texttt{max\_abs\_diff}~$=0.0$). Stage~H2 therefore extends Stage~H1 by
+adding a \emph{runtime} protection boundary at VM granularity for the
+downstream segment, not by re-establishing the communication-level
+security already settled in Stage~H1. The claim is bounded by the SEV-SNP
+threat model~\cite{amd_sevsnp_whitepaper}, by the residual
+host-platform attack surfaces that this thesis does not experimentally
+evaluate~\cite{schluter2024_heckler}, by the platform-specificity of
+SEV-SNP relative to other CVM
+substrates~\cite{guanciale2022_confidential_quartet}, and by the
+threat-model mismatch with the activation-privacy motivation in
+He~et~al.~\cite{he2021_attacking_collaborative}: SEV-SNP defends
+against the cloud host, not against an actively malicious remote
+service holding the activations. Extending the confidential-execution
+boundary to both services (full two-service TEE) is out of the
+thesis-facing scope of Stage~H2 per the evidence manifest and is treated
+as future work; the trade-off synthesis in
+\cref{sec:analysis-rq23} therefore compares plain AKS, mTLS, and mTLS
+plus selective TEE only.
+
+\subsection{Trade-off Synthesis: Security-Hardening Recommendation}
+\label{sec:analysis-rq23}
+
+The trade-off synthesis asks which of the evaluated security-hardening configurations is the
+most defensible default for the selected AKS \texttt{chain\_2svc} inference
+chain, given a target threat model and performance budget. The analytical
+contribution is not to add a measurement, and not to re-litigate the mTLS
+cost (settled in \cref{sec:analysis-rq21}), the TEE cost (settled in
+\cref{sec:analysis-rq22}), or the chain selection (carried forward from
+\cref{sec:analysis-rq15}). Instead, the trade-off synthesis promotes the three frozen paired
+measurements into a single synthesis-level statement about (i) what each
+hardening layer actually protects, (ii) how its cost is distributed across
+the latency distribution and the operational footprint, and (iii) which
+defaults are defensible once the threat model and SLO orientation are
+named. The synthesis is positioned inside the wider three-way trade-off
+space between protection, performance, and operational complexity that
+characterises ML deployments on confidential
+infrastructure~\cite{mo2024_ml_confidential_computing}.
+
+\paragraph{Finding 1: the three hardening layers are composable, not
+substitutable.}
+The mTLS/AuthZ layer secures the \emph{inter-proxy} network path between
+services; the SEV-SNP layer secures the \emph{host-platform interface} of
+the pod that runs the protected service. Neither layer protects the
+plaintext that exists inside the endpoint after TLS termination at the
+sidecar~\cite{meshinsight_socc23}, neither neutralises the residual trust
+in the managed-mesh control plane and the local
+CA~\cite{poudel2025mazu}, and neither addresses the malicious-remote-service
+threat model under which an untrusted partition holding only intermediate
+activations can reconstruct the client
+input~\cite{he2021_attacking_collaborative}. The two layers therefore
+operate on different axes of the same overall trust model: a deployment
+without mTLS but on a confidential VM is not ``as secure'' as a deployment
+with mTLS on a standard VM, because the threats they remove are not
+interchangeable. This is what bars \cref{tab:rq23_security_tradeoff} from
+being read as a single global ranking.
+
+\paragraph{Finding 2: mean and tail behave differently across the two
+mechanisms.}
+On the selected \texttt{chain\_2svc} topology, the mTLS/AuthZ bundle moves
+the mean and p95 by similar percent amounts (+4.62\% mean, +4.53\% p95;
+\cref{tab:rq21_latency}), so its cost is centred rather than
+tail-concentrated. The selective SEV-SNP step on \texttt{service2\_only}
+moves the mean by +3.17\% but the p95 by +5.98\% --- the tail percent
+delta is roughly $1.9 \times$ the mean percent delta
+(\cref{tab:rq22_service2_results}). The two layers are therefore not only
+quantitatively different in size but qualitatively different in
+\emph{shape}: tail-sensitive SLOs cannot be planned against the mean of
+either layer, but the p95 column is materially more conservative for the
+TEE step than for the mTLS step. This is consistent with the
+median-plus-tail reporting practice followed throughout the
+thesis~\cite{benchmarking_sc15}, and is the reason
+\cref{tab:rq23_security_tradeoff} reports both a mean and a p95 cost in
+every row.
+
+\paragraph{Finding 3: the cost surface is multi-dimensional, not
+latency-only.}
+The hardening cost discussed at the synthesis level extends beyond
+end-to-end latency. \Cref{tab:rq21_resource_overhead} reports five to
+fourteen additional Kubernetes objects, 34.7--87.6~mCPU of sidecar
+request, 82.1--223.7~MiB of sidecar memory, and a 6.30--6.84~s
+schedule-to-ready delta on the mTLS layer alone. The CVM step adds a
+confidential node-pool change and an attestation/manifest validation
+step on top, although per-deployment CVM resource deltas are not pinned
+in the Stage~H2 artefact and are therefore reported qualitatively only. A
+defensible default therefore cannot be selected by latency mean alone:
+the operational footprint, the rollout time, and the requested resources
+of the always-on data plane and control plane are part of the same
+trade-off and grow with the number of protected service boundaries.
+
+\paragraph{Finding 4: the cost-of-protection grows with topology, not
+just with the choice of mechanism.}
+Stage~H1 establishes that the mTLS overhead at four protected boundaries
+(\texttt{chain\_5svc}) is approximately $2.5\times$ its
+\texttt{chain\_2svc} value in absolute milliseconds and
+$2.3\times$ in percent terms (+10.74\% vs +4.62\%;
+\cref{tab:rq21_paired_deltas}). The synthesis-level consequence is that
+a hardening recommendation is incoherent without naming the topology it
+applies to: a default that is defensible at \texttt{chain\_2svc} is not
+automatically defensible at \texttt{chain\_5svc}. The RQ1 chain-depth
+axis and the RQ2 hardening axis therefore interact rather than acting
+independently, and the synthesis must be read as a recommendation for
+the specific \texttt{chain\_2svc} topology selected by Stage~C.
+
+\paragraph{Finding 5: the three rows of the trade-off table are
+delta-on-paired-baseline and are not composable into a single absolute
+latency.}
+The Stage~H1 plain \texttt{chain\_2svc} baseline (75.557~ms,
+\texttt{swedencentral}, \texttt{Standard\_D8s\_v3}) and the Stage~H2
+standard \texttt{chain\_2svc} baseline (58.492~ms, \texttt{westeurope},
+\texttt{Standard\_D8as\_v5}) differ by region, node SKU, and freshly
+collected paired baseline. The three rows of
+\cref{tab:rq23_security_tradeoff} therefore each carry a delta against
+their own paired baseline; they are not three measurements at the same
+operating point. This is a methodological feature of the Stage~H2 rolling
+design, not a flaw: it is the reason the SEV-SNP overhead is honest as
+a within-cluster paired delta rather than as a contaminated cross-cluster
+difference. The reading discipline is that absolute latency is
+deployment-specific and ranking-preserving rather than
+millisecond-equivalent across the three
+artefacts~\cite{benchmarking_sc15,noise_in_clouds}, and that the
+synthesis is therefore expressed in delta space.
+
+\paragraph{Finding 6: the synthesis claim is bounded by what was not
+measured.}
+The thesis-facing evaluation does not include a full two-service TEE
+configuration, a \texttt{chain\_5svc}{}+{}TEE configuration, or any
+adversarial security evaluation. Recent work demonstrates residual CVM
+attack surfaces outside SEV-SNP's memory-encryption boundary, including
+malicious-interrupt injection by the untrusted
+hypervisor~\cite{schluter2024_heckler}; this thesis does not
+experimentally evaluate such attacks. SEV-SNP-specific results also do
+not transfer cleanly to alternative CVM substrates with different
+attestation flows and residual side
+channels~\cite{guanciale2022_confidential_quartet}. The synthesis is
+therefore an answer for the evaluated configuration under
+policy-validation security, not a general claim that ``mTLS+TEE is
+sufficient'' or that the hardened deployment is ``production-ready'' in
+any adversarial sense.
+
+\paragraph{Validation and evaluation reasoning.}
+The three measurements that the synthesis rests on are independently
+validated: each is a frozen, ACR-digest-pinned, paired alternating run
+against its own freshly collected baseline, with per-pass functional
+parity (\texttt{max\_abs\_diff}~$=0.0$) holding across all Stage~H1, Stage~H1 (multi-node),
+and Stage~H2 passes. The synthesis is therefore internally
+\emph{delta-on-delta} consistent: each comparison is computed within its
+own paired window before it enters \cref{tab:rq23_security_tradeoff}.
+The evaluation envelope does not extend further than that. The
+synthesis is evaluated against the question the trade-off synthesis actually poses --- the
+relative trade-off between three measured hardening points on the
+selected \texttt{chain\_2svc} AKS deployment --- and not against (i)
+cross-region absolute equivalence, (ii) full-chain TEE, (iii) chain-depth
+scaling of the TEE layer, or (iv) adversarial robustness. Within those
+bounds, the evidence is sufficient to support a defensible default for
+the evaluated topology; outside them, the answer is explicitly
+unresolved.
+
+\paragraph{Trade-off synthesis outcome.}
+For the selected AKS \texttt{chain\_2svc} inference chain, the most
+defensible default in the evaluated set is mTLS with service identity
+and AuthorizationPolicy: it protects the proxy-mediated inter-pod path
+with service identity and mTLS, while plaintext still exists between the
+sidecar and application inside each pod. It adds a +3.488~ms / +4.62\%
+mean and +3.623~ms / +4.53\% p95 overhead, and its cost is roughly
+symmetric across the latency distribution. Selective
+SEV-SNP execution on \texttt{service2} is the next defensible step
+\emph{when, and only when}, the threat model includes the host platform
+or hypervisor of the downstream segment; it adds +1.854~ms / +3.17\%
+mean and +3.601~ms / +5.98\% p95 over its paired standard-node mTLS
+baseline, and its cost is tail-concentrated rather than centred. Plain
+AKS remains the fastest evaluated configuration but provides the weakest
+protection set. Because the three rows of
+\cref{tab:rq23_security_tradeoff} are deltas against three different
+paired baselines, the trade-off synthesis does not claim a single composed absolute-latency
+trajectory across them; because mTLS overhead grows with the number of
+protected boundaries, the recommendation is specific to
+\texttt{chain\_2svc} and is not transferred to \texttt{chain\_5svc}
+without qualification. The synthesis is bounded by the residual mesh
+control-plane and CA trust set~\cite{poudel2025mazu}, by the
+sidecar-to-application loopback plaintext inside the
+pod~\cite{meshinsight_socc23}, by the residual SEV-SNP attack surfaces
+not exercised in this thesis~\cite{schluter2024_heckler}, and by the
+threat-model mismatch with the activation-privacy
+motivation~\cite{he2021_attacking_collaborative}. Extending the
+confidential-execution boundary to both services, and to deeper chain
+topologies, is treated as future work rather than as a measured
+trade-off point.
+
+\subsection{Synthesis: Security Hardening}
+\label{sec:analysis-security-synthesis}
+
+The three security stages settle three independent analytical points
+that are then combined in \cref{sec:analysis-rq23}: the
+\emph{communication-level} cost and trust boundary of managed-Istio mTLS
+and AuthZ on the selected \texttt{chain\_2svc} AKS chain-family hardening
+baseline (\cref{sec:analysis-rq21}), the
+\emph{runtime-protection} cost and trust boundary of selective AMD
+SEV-SNP execution on the downstream service while keeping the mTLS
+contract fixed (\cref{sec:analysis-rq22}), and the delta-space
+trade-off between the three evaluated hardening points
+(\cref{sec:analysis-rq23}). The per-stage numbers, the residual trust
+sets, and the topology- and threat-model bounds of the synthesis are
+developed in the three subsections above and are not re-derived here.

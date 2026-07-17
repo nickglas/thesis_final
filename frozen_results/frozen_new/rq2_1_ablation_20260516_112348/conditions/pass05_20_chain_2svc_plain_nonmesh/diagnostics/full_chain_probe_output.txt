@@ -1,0 +1,30 @@
+{
+  "target": "chain-2svc-plain-nonmesh-svc-1.rq21-ab-c0-plain.svc.cluster.local:50051",
+  "response_shape": [
+    1,
+    1000
+  ],
+  "hop_count": 2,
+  "hop_indexes": [
+    1,
+    2
+  ],
+  "hop_timings": [
+    {
+      "hop_index": 1,
+      "deserialize_ms": 0.7891969999036519,
+      "compute_ms": 39.20914199989056,
+      "serialize_ms": 0.0718000001143082,
+      "forward_ms": 51.24639499990735,
+      "activation_bytes": 602112
+    },
+    {
+      "hop_index": 2,
+      "deserialize_ms": 0.5451980000543699,
+      "compute_ms": 37.89614800007257,
+      "serialize_ms": 0.04089999993084348,
+      "forward_ms": 0.0,
+      "activation_bytes": 401408
+    }
+  ]
+}

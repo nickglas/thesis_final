@@ -1,0 +1,15 @@
+LAST SEEN   TYPE     REASON              OBJECT                                         MESSAGE
+73s         Normal   Scheduled           pod/chain-2svc-plain-svc-1-5855ff49d8-l5ftj    Successfully assigned rq21-chain2-plain/chain-2svc-plain-svc-1-5855ff49d8-l5ftj to aks-rq15pool-95166063-vmss000000
+73s         Normal   Scheduled           pod/chain-2svc-plain-svc-2-556ccf947b-5xggs    Successfully assigned rq21-chain2-plain/chain-2svc-plain-svc-2-556ccf947b-5xggs to aks-rq15pool-95166063-vmss000000
+74s         Normal   ScalingReplicaSet   deployment/chain-2svc-plain-svc-1              Scaled up replica set chain-2svc-plain-svc-1-5855ff49d8 from 0 to 1
+74s         Normal   ScalingReplicaSet   deployment/chain-2svc-plain-svc-2              Scaled up replica set chain-2svc-plain-svc-2-556ccf947b from 0 to 1
+74s         Normal   SuccessfulCreate    replicaset/chain-2svc-plain-svc-2-556ccf947b   Created pod: chain-2svc-plain-svc-2-556ccf947b-5xggs
+74s         Normal   SuccessfulCreate    replicaset/chain-2svc-plain-svc-1-5855ff49d8   Created pod: chain-2svc-plain-svc-1-5855ff49d8-l5ftj
+73s         Normal   Created             pod/chain-2svc-plain-svc-1-5855ff49d8-l5ftj    Created container: inference
+73s         Normal   Started             pod/chain-2svc-plain-svc-1-5855ff49d8-l5ftj    Started container inference
+73s         Normal   Pulling             pod/chain-2svc-plain-svc-2-556ccf947b-5xggs    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+73s         Normal   Pulled              pod/chain-2svc-plain-svc-2-556ccf947b-5xggs    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 186ms (186ms including waiting). Image size: 413013146 bytes.
+73s         Normal   Created             pod/chain-2svc-plain-svc-2-556ccf947b-5xggs    Created container: inference
+73s         Normal   Started             pod/chain-2svc-plain-svc-2-556ccf947b-5xggs    Started container inference
+73s         Normal   Pulled              pod/chain-2svc-plain-svc-1-5855ff49d8-l5ftj    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 169ms (169ms including waiting). Image size: 413013146 bytes.
+73s         Normal   Pulling             pod/chain-2svc-plain-svc-1-5855ff49d8-l5ftj    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"

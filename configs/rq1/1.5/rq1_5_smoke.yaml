@@ -1,0 +1,135 @@
+# -----------------------------------------------------------------------------
+# RQ1.5 AKS Smoke Test Configuration
+#
+# Purpose: Pipeline validation for AKS deployment.
+#   1 round × 10 measured iterations × 5 conditions.
+#   Not suitable for thesis-facing numbers.
+#
+# Run sequence:
+#   1. Build image and push to ACR:
+#        python scripts/push_acr.py --acr <your-acr> --tag rq15-smoke
+#   2. Update kubernetes.image below with the actual ACR image reference.
+#   3. Generate AKS manifests from this config:
+#        python k8s/aks/generate_aks_manifests.py \
+#          --config configs/rq1/1.5/rq1_5_smoke.yaml
+#   4. Apply the generated directory:
+#        kubectl apply -f k8s/aks/generated/
+#   5. Wait for pods, then inject live runtime metadata from the host:
+#        python scripts/inject_k8s_runtime_metadata.py \
+#          --config configs/rq1/1.5/rq1_5_smoke.yaml \
+#          --namespace rq15 \
+#          --client-pod benchmark-client
+#   6. Run from inside the client pod:
+#        kubectl exec -it -n rq15 benchmark-client -- \
+#          python run_k8s_experiment.py --config configs/rq1/1.5/rq1_5_smoke.yaml
+#   7. Copy results out after completion:
+#        kubectl cp rq15/benchmark-client:/app/results/ ./results/rq1_5_<timestamp>/
+#
+# AKS limitations (documented, not defects):
+#   - CPU governor and turbo boost controls are unavailable on AKS managed nodes.
+#     governor.set_governor and turbo.disable_turbo are set false here.
+#   - This smoke profile intentionally uses Burstable QoS (requests < limits)
+#     so all five conditions fit on the quota-constrained D4s_v3 node.
+#   - deployment_metadata.json is the source of truth for the live deployed
+#     requests/limits captured during the smoke run.
+# -----------------------------------------------------------------------------
+experiment:
+  name: "RQ1.5 AKS smoke test"
+  description: "AKS transfer validation smoke test — pipeline validation only"
+
+model:
+  name: "resnet18"
+  pretrained: true
+  device: "cpu"
+  input_shape: [1, 3, 224, 224]
+  precision: "fp32"
+
+conditions:
+  - name: "monolithic_k8s_1svc"
+    type: "chain"
+    chain_split_points: []
+
+  - name: "chain_2svc"
+    type: "chain"
+    chain_split_points: ["layer2"]
+
+  - name: "chain_3svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer3"]
+
+  - name: "chain_4svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer2", "layer3"]
+
+  - name: "chain_5svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer2", "layer3", "layer4"]
+
+benchmark:
+  rounds: 1
+  warmup_iterations: 50
+  measured_iterations: 10
+  cooldown_seconds: 5
+  seed: 42
+
+# RQ1.5 is a chain experiment: gRPC and carry-forward fields are not used
+# (K8s wiring uses kubernetes.grpc_port / kubernetes.max_message_bytes;
+# selection is fixed by the predefined chain family). Both blocks are omitted.
+
+parity:
+  atol: 1.0e-5
+  num_inputs: 5
+
+warmup_calibration:
+  window: 10
+  cv_threshold: 0.02
+  max_extra_iterations: -1
+
+# Single-threaded execution profile.
+# Governor and turbo disabled — unavailable on AKS managed nodes.
+# Resource reservations are intentionally relaxed below limits for smoke
+# scheduling; do not treat this profile as thesis-facing isolation.
+cpu_stabilisation:
+  threading:
+    pytorch_intra_op: 1
+    pytorch_inter_op: 1
+    omp_num_threads: 1
+    mkl_num_threads: 1
+    openblas_num_threads: 1
+  affinity:
+    enabled: true
+    num_cores: 1
+    avoid_smt: true
+    explicit_cpus: null
+  priority:
+    enabled: true
+    nice_value: -5
+  governor:
+    set_governor: false
+    requested_mode: "performance"
+  turbo:
+    disable_turbo: false
+
+kubernetes:
+  namespace: "rq15"
+  service_name_template: "{condition}-svc-{index}"
+  grpc_port: 50051
+  max_message_bytes: 16777216
+  readiness_timeout: 120.0
+  # Replace this placeholder with the actual ACR image reference before running.
+  # Use a mutable tag for smoke tests; use a pinned digest for the full run.
+  # Example: myacr.azurecr.io/thesis-inference:rq15-v1
+  image: "thesisrq15acr.azurecr.io/thesis-inference:rq15-v1"
+  image_pull_policy: "Always"
+  resources:
+    cpu_request: "100m"
+    cpu_limit: "1"
+    memory_request: "256Mi"
+    memory_limit: "1Gi"
+  # Client pod resources are parsed and used by generate_aks_manifests.py,
+  # deployment_metadata.json, and the expected resolved config artifact.
+  client_resources:
+    cpu_request: "100m"
+    cpu_limit: "500m"
+    memory_request: "1Gi"
+    memory_limit: "1Gi"

@@ -1,0 +1,16 @@
+# Multi-node kind cluster used by RQ1.4b sensitivity stage.
+# Six worker nodes so chain_5svc (5 service pods + 1 client pod) places one
+# pod per node via the multi_node_anti_affinity placement strategy.
+# Host requirements: ≥6 cores and ≥6 GiB RAM free; each node is a docker
+# container, kernel/CPU shared with the host.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: thesis-rq14b
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
+  - role: worker
+  - role: worker
+  - role: worker
+  - role: worker

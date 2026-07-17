@@ -1,0 +1,1005 @@
+\chapter{Methods}
+\label{ch:methods}
+
+This chapter describes the research design used to answer the research questions
+defined in Chapter~\ref{ch:introduction}.
+It explains which methods and procedures are used at each stage, why those methods
+are appropriate, and what the known limitations and pitfalls of the chosen approach
+are.
+The thesis addresses a problem that spans software architecture, containerised
+deployment, cloud infrastructure, and communication-level security.
+Studying these layers in a single undifferentiated experiment would confound the
+effects of partition boundary placement, orchestration overhead, and security mechanisms
+into one mixed result.
+The methodology therefore follows a deliberate \emph{staged experimental pipeline}
+in which each stage changes one layer of the system at a time, preserves the model
+and benchmark contract, and compares against the nearest relevant baseline.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Overall Research Design}
+\label{sec:methods-design}
+
+The thesis is organised around two research questions, each answered through a sequence
+of evaluation \emph{stages} rather than through additional research questions. RQ1 studies
+how architectural split choice and deployment context affect microservice-based neural
+network inference; it is evaluated across three environments --- controlled local
+execution (Stages~L1--L3), local Kubernetes (Stage~K), and Azure Kubernetes Service
+(Stage~C). RQ2 studies the performance and operational cost of communication-level and
+runtime-level security hardening applied to the AKS deployment path selected from RQ1;
+it is evaluated as a communication-hardening stage (Stage~H1), a confidential-execution
+stage (Stage~H2), and a concluding trade-off synthesis. Within Stages~K, C, and H1 the
+default same-node/single-node placement is treated as the \emph{base case} and a forced
+cross-node/multi-node placement as the \emph{alternative}.
+
+The stages unfold in the following sequence.
+\emph{Stage~L1} evaluates four coarse ResNet-18 stage boundaries under tightly controlled
+local CPU-only execution in order to identify which two-part decompositions are sufficiently 
+well-supported to carry forward before the thesis moves to orchestrated or cloud deployment.
+\emph{Stage~L2} tests one block-level split inside the carried-forward late-stage region to
+determine whether finer granularity reveals meaningful differences beyond the coarse
+level; it is a targeted refinement, not a new blind search.
+\emph{Stage~L3} is a hybrid analytical stage that explains the Stage~L1 and Stage~L2 latency
+patterns using two structural properties of the partition -- activation-transfer size and
+compute distribution -- drawing on the prior benchmark summaries and on a separately
+collected internal timing experiment on the monolithic model, without conducting a new
+split benchmark.
+\emph{Stage~K} moves a predefined family of one-to-five service chains into a local
+single-node \texttt{kind} Kubernetes cluster to measure how end-to-end latency accumulates
+as synchronous service boundaries are added under in-cluster orchestration; its
+cross-node alternative adds a \texttt{kind} CNI-bridge sensitivity probe.
+\emph{Stage~C} re-runs the same predefined chain family on Azure Kubernetes Service (AKS) to
+test whether the local Kubernetes ordering and overhead pattern transfer directionally
+to managed cloud execution. Its multi-node alternative re-runs the same chain family on a
+six-node cluster with pod anti-affinity, so every chain hop is forced across a node
+boundary; it quantifies the inter-node penalty that the single-node base case
+intentionally hides.
+\emph{Stage~H1} adds managed-Istio mTLS, service accounts, and authorisation policy to the
+selected AKS deployment path, measuring the resulting latency, resource, and operational
+overhead using a paired execution design; supporting ablation and split-sensitivity
+campaigns and a multi-node alternative decompose and stress-test this overhead.
+\emph{Stage~H2} adds AMD SEV-SNP VM-level confidential execution to the already
+communication-secured chain from Stage~H1, measuring the incremental cost of selective
+downstream-service confidential-node placement (\texttt{service2\_only}); extending the
+confidential boundary to both services is out of the thesis-facing scope and is treated
+as future work.
+The concluding \emph{trade-off synthesis} combines the plain AKS base case from Stage~C, the
+mTLS/AuthZ results from Stage~H1, and the selective TEE result from Stage~H2 into a
+trade-off comparison across cost, operational complexity, and protection scope, without
+collecting any new benchmark data.
+
+The common design principle across all stages is to change one layer of the system at a
+time. This is a local design choice for the staged pipeline, motivated by general
+benchmarking guidance on reproducibility, interpretability, and the careful description
+of experimental conditions in systems performance work~\cite{benchmarking_sc15}, rather
+than a rule prescribed verbatim by that source.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{System Under Study}
+\label{sec:methods-system}
+
+\subsection{Model}
+
+The neural network architecture used in all stages is ResNet-18~\cite{resnet}.
+The implementation loads the Torchvision default pretrained ImageNet weights and keeps
+the model fixed across all conditions.
+ResNet-18 is organised into four residual stages (\texttt{layer1} through
+\texttt{layer4}).
+In this implementation the feature maps after these stages have shapes
+$64 \times 56 \times 56$, $128 \times 28 \times 28$,
+$256 \times 14 \times 14$, and $512 \times 7 \times 7$ respectively.
+Thus, after \texttt{layer1}, later stage boundaries halve spatial resolution and
+double channel count.
+This structure provides architecturally motivated split candidates with different
+activation sizes and computational loads.
+
+ResNet-18 is chosen for three reasons.
+First, its stage structure supports a principled coarse-to-fine screening methodology.
+Second, its size enables CPU-only inference at latencies realistic enough for measurement
+while avoiding the confounds of GPU scheduling variance in the early controlled stages.
+Third, as a standard reference architecture, its behaviour under partition is directly
+relatable to prior split-computing and DNN-partitioning work~\cite{neurosurgeon,deeperthings,survey_partitioning}.
+
+All experiments use FP32 precision with a fixed input shape of
+$1 \times 3 \times 224 \times 224$ and a batch size of one.
+The three-channel $224 \times 224$ image shape follows the torchvision
+pretrained ResNet-18 inference transform, whose preprocessing uses a
+$224$-pixel centre crop~\cite{torchvision_resnet18_weights}; the leading
+dimension fixes the latency experiment at batch size one. FP32 is used because
+PyTorch's initial default floating-point dtype is \texttt{torch.float32}
+\cite{pytorch_get_default_dtype}, making it a hardware-neutral baseline for
+CPU-only and Kubernetes measurements. Reduced precision formats such as FP16,
+BF16, and INT8 would introduce separate quantisation, calibration, or
+hardware-acceleration questions, while FP64 would increase compute cost without
+matching the deployed model's standard inference configuration.
+All model instances are set to evaluation mode and executed without gradient
+tracking, so training-mode batch-normalisation behaviour and gradient overhead are
+not part of the measured inference path.
+Batch size one reflects the latency-oriented framing of the research questions: the
+thesis measures per-request end-to-end inference latency rather than throughput.
+
+\subsection{Microservice Framework}
+
+A proof-of-concept gRPC-based microservice framework was developed for this thesis.
+Each service runs as an independent process -- or, in the Kubernetes stages, as an
+independent pod -- that receives an input tensor over gRPC, executes its assigned
+segment of the ResNet-18 model, and transmits the resulting intermediate activation to
+the next service in the chain.
+The final service returns the classification output to a benchmark client.
+
+gRPC is chosen as the inter-service protocol because it provides a standard RPC stack
+over typed Protocol Buffer messages.
+This keeps the benchmark close to cloud-native microservice practice while still making
+the transport path explicit; prior microservice-systems work treats RPC communication
+and Protocol Buffer serialisation as central sources of latency overhead in such
+systems~\cite{rpc_overhead_hotos25}.
+The maximum gRPC message size is set to 16~MiB in all stages, which accommodates the
+largest intermediate activation tensor in the study (approximately 784~KiB for a split
+after \texttt{layer1} in FP32).
+
+The framework supports variable chain depths: the same code path handles two-service
+chains used in Stages~L1, L2, and the RQ2 hardening stages, and chains of up to five
+services used in Stages~K and~C.
+The independent variable in each stage is therefore the choice of split point or the
+number of chained services, not the communication mechanism.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Shared Benchmark Contract}
+\label{sec:methods-contract}
+
+To support direct comparison across stages, the thesis defines a shared benchmark
+contract that is preserved unless a stage explicitly states otherwise.
+The fixed subject under test is ResNet-18 with pretrained weights, executed on CPU in
+FP32 with input shape $1 \times 3 \times 224 \times 224$, communicating over gRPC on
+port 50051 with a maximum message size of 16~MiB.
+
+The shared timing protocol consists of 50 warmup iterations followed by 200 measured
+iterations per condition execution, with a five-second cooldown between successive
+conditions, a base random seed of 42 from which a per-round permutation seed
+$\mathrm{seed} + \mathrm{round\_index}$ is derived so that condition order is independently
+permuted in each round, and a warmup calibration check using a trailing window of 10
+iterations and a coefficient-of-variation (CV) threshold of 0.02.
+Thesis-facing stages aggregate five rounds or five paired passes, yielding 1,000 measured
+iterations per condition.
+
+The warmup calibration is implemented as a minimum-plus-stability rule rather than a
+fixed 50-iteration ceiling.
+The runner always executes at least the configured 50 warmup iterations, then continues
+until the trailing-window CV falls below the 0.02 threshold.
+In the source configs, \texttt{max\_extra\_iterations = -1} denotes no experiment-level
+extra-warmup cap; the implementation still applies a safety cap of 10\,000 additional
+iterations to prevent non-terminating runs.
+Each condition's actual \texttt{total\_iterations} and
+\texttt{extra\_iterations\_used} are recorded in the frozen
+\texttt{warmup\_calibration.json} artefact for that run.
+
+The shared functional validation contract requires local segment validation before
+timing and live gRPC chain validation for any split or Kubernetes deployment, using an
+absolute tolerance of $\text{atol} = 1 \times 10^{-5}$ and five validation inputs
+unless a stage explicitly records a stricter tolerance.
+A condition is not benchmarked unless both checks pass.
+In practice, all thesis-facing frozen runs achieve a maximum absolute difference of 0.0
+against the monolithic reference, confirming that no numerical drift is introduced by
+the partition or transport layer; the Stage~L3 internal timing run records the same outcome
+under the stricter tolerance $\text{atol}=1\times10^{-6}$.
+
+This shared contract is the invariant across the staged pipeline: what changes between
+stages is the infrastructure and security context, not the model, the measurement
+discipline, or the validation requirements.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{CPU Stabilisation}
+\label{sec:methods-cpu}
+
+Systematic CPU stabilisation is applied in all local and Kubernetes stages to reduce
+variance attributable to hardware noise rather than to the partition boundary.
+The following controls are requested in every thesis-facing local run.
+Thread counts for PyTorch intra-op and inter-op threads, and for OpenMP, MKL, and
+OpenBLAS, are all set to one, ensuring single-threaded model execution. Here,
+PyTorch intra-op threads are the threads used inside individual CPU operations,
+whereas inter-op threads control CPU parallelism between operations; both are
+fixed through PyTorch's thread controls~\cite{pytorch_set_num_threads,pytorch_set_num_interop_threads}.
+The \texttt{OMP\_NUM\_THREADS}, \texttt{MKL\_NUM\_THREADS}, and
+\texttt{OPENBLAS\_NUM\_THREADS} settings cap OpenMP, Intel MKL, and OpenBLAS
+thread pools so that backend libraries do not introduce hidden parallelism
+\cite{pytorch_threading_env,openblas_faq}. CPU affinity is pinned to one
+physical core, restricting the logical CPUs on which the benchmark process can
+run~\cite{linux_sched_setaffinity}. Simultaneous multithreading (SMT) is excluded
+by avoiding Linux topology-reported sibling hardware threads on the same physical
+core~\cite{linux_cpu_topology}. Process scheduling priority is raised using
+\texttt{nice~-5} where the runtime permits; lower nice values correspond to higher
+priority~\cite{linux_nice}. The value \texttt{-5} is used as a moderate negative
+nice level: it gives the benchmark process a stronger share under the normal
+Linux scheduler, reducing preemption by ordinary background work, without moving
+the benchmark into a real-time scheduling class such as \texttt{SCHED\_FIFO}.
+This matches the benchmarking aim of reducing operating-system noise while
+keeping the execution environment comparable and non-real-time
+\cite{benchmarking_sc15,noise_in_clouds,linux_sched_nice_design}. The CPU
+frequency governor is set to \texttt{performance}, which requests the highest
+frequency allowed by the policy, and turbo boost is disabled to prevent
+short-duration frequency-boost states from affecting single-thread benchmark
+timings~\cite{linux_cpufreq}.
+
+These controls are applied symmetrically across all conditions within a benchmark so
+that differences in measured latency can be attributed to the independent variable
+rather than to hardware variability.
+
+In containerised and cloud stages, some controls are partially unavailable.
+In the local \texttt{kind} Kubernetes environment (Stage~K), governor and turbo-disable
+writes to \texttt{/sys} are blocked by the read-only sysfs exposed inside the container;
+however, the detected governor is already \texttt{performance} and turbo is already
+disabled, so the intended state is achieved through the host configuration.
+In AKS (Stage~C and the RQ2 stages), the \texttt{nice~-5} request is denied due to insufficient
+privileges and the benchmark runs at \texttt{nice~=~0}; governor and turbo controls
+are unavailable through the managed node interface.
+These constraints are documented per stage and treated as realistic limitations of
+cloud-native deployment rather than as experimental flaws, because they affect all
+conditions within a stage symmetrically.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Execution Environments and Resource Parity}
+\label{sec:methods-envparity}
+
+To make the comparison across environments fair, and to pre-empt the concern that the
+cloud deployment was simply given a larger machine, \cref{tab:env-parity} sets the local
+and cloud infrastructure side by side. The binding control is that each inference service
+is constrained to a single CPU core and a fixed memory request in every environment ---
+pinned to one physical core locally, and capped at one CPU through Guaranteed-QoS pod
+requests in both Kubernetes settings --- so the per-service compute budget is identical
+whether a service runs on the local host, in the local \texttt{kind} cluster, or on AKS.
+If anything, the managed AKS node (8~vCPUs) is \emph{smaller} than the local host (8
+physical cores / 16 hardware threads), so the cloud is not advantaged in per-service or
+per-node compute.
+
+The processor microarchitectures do differ: the local host is an AMD Ryzen~7 7800X3D
+desktop part, whereas the AKS SKUs are datacentre Intel Xeon (\texttt{Standard\_D8s\_v3})
+and AMD EPYC (the \texttt{Standard\_D8as\_v5} and AMD SEV-SNP \texttt{Standard\_DC8as\_v5}
+parts) processors. This is precisely why the thesis compares \emph{within-environment}
+normalised overhead rather than absolute latency across environments
+(\cref{sec:methods-statistics}); the parity that matters for fairness is the per-service
+resource allocation, not identical silicon. The table also records the CPU-stabilisation
+controls that are enforceable locally but not on the managed nodes (\cref{sec:methods-cpu}).
+
+\begin{table}[ht]
+\centering
+\caption[Local versus cloud infrastructure and resource allocation]{Local versus cloud infrastructure and per-service resource allocation across the
+evaluation environments. The per-service CPU and memory rows are the binding allocation;
+the node rows are the host or VM size. The AKS column lists the \texttt{Standard\_D8s\_v3}
+SKU used for the Stage~C and Stage~H1 clusters; Stage~H2 substitutes the matched
+\texttt{Standard\_D8as\_v5} (standard) and \texttt{Standard\_DC8as\_v5} (AMD SEV-SNP)
+SKUs, both also 8~vCPU / 32~GiB. Sources: the frozen local \texttt{environment.json}; the
+AKS \texttt{deployment\_metadata.json}; and the published Azure VM-size specifications.}
+\label{tab:env-parity}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{llll}
+\toprule
+\textbf{Property} & \textbf{Controlled local} & \textbf{Local \texttt{kind}} & \textbf{Azure AKS} \\
+                  & (Stages~L1--L3) & (Stage~K) & (Stage~C, RQ2) \\
+\midrule
+Host / node          & AMD Ryzen~7 7800X3D     & same host               & \texttt{Standard\_D8s\_v3} \\
+Node CPUs            & 8 cores / 16 threads    & 8 cores / 16 threads    & 8 vCPUs \\
+Node memory          & 32~GB DDR5              & 32~GB DDR5              & 32~GiB \\
+Per-service CPU      & 1 physical core (pinned) & 1 CPU (request = limit) & 1 CPU (Guaranteed QoS) \\
+Per-service memory   & single host process     & 512~MiB pod             & 1~GiB pod \\
+Threads (PyTorch/OMP/MKL/OpenBLAS) & 1        & 1                       & 1 \\
+CPU governor         & \texttt{performance} (enforced) & not enforceable & unavailable \\
+Turbo boost          & disabled (enforced)     & not enforceable         & unavailable \\
+Process priority (\texttt{nice}) & $-5$ (applied) & requested, not applied & $0$ (denied) \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Measurement and Statistical Analysis}
+\label{sec:methods-statistics}
+
+\subsection{Primary Metrics}
+
+End-to-end latency is the primary measurement in all stages, defined as the wall-clock
+time for one full inference request from the moment the benchmark client dispatches the
+input to the moment it receives the final classification output.
+
+Results are summarised using the arithmetic mean, median, and standard deviation of
+per-iteration latencies.
+The median provides a robust central tendency estimate in the presence of tail spikes.
+The mean is used as the primary comparison value because the thesis is concerned with
+expected per-request cost.
+The 95th-percentile (p95) latency is reported in the deployment and security stages to
+characterise tail behaviour under more realistic conditions.
+
+Overhead is reported both in absolute milliseconds and as a percentage of the relevant
+baseline mean latency.
+In stages that compare conditions across environments (Stage~C), within-environment
+normalised overhead is the primary comparison metric rather than raw absolute latency,
+because absolute values are environment-specific and do not transfer across different
+host CPUs, kernels, and virtualisation layers.
+
+Several derived metrics are used in specific stages, and three of them deserve an
+explicit caveat because they are \emph{not} directly measured quantities even though they
+appear as numbers in result tables.
+
+The \emph{boundary-crossing interval} is a composite that bundles serialisation,
+transport, and the work executed on the remote side after the boundary. It is not the
+cost of "crossing the wire" alone -- the thesis does not instrument the gRPC stack
+internally -- but the time observed at the client between dispatching the request and
+receiving the response, minus the local pre-boundary compute. Any interpretation as a
+"transport cost" alone is therefore unsafe; it is a from-here-to-there interval, not a
+pure transport measurement.
+
+The \emph{activation-transfer burden} is derived from the model architecture as the
+intermediate tensor size at a split boundary (or the cumulative tensor size across all
+boundaries in a chain). It is an architectural quantity, not a measured one: no network
+profiler is used to confirm the on-wire byte count. The 16~MiB gRPC message limit and
+the parity validation against the monolithic model together ensure that the architectural
+size is what is actually transmitted, but the figure itself is computed from model shapes
+rather than from packet capture.
+
+The \emph{inferred non-compute / platform cost} is an analytical residual:
+\[
+\widehat{\mathrm{non\text{-}compute}} = \mathrm{end\text{-}to\text{-}end} - \widehat{\mathrm{compute}},
+\]
+where the compute estimate comes from per-segment local timing. It is used in the
+Kubernetes, AKS, and mTLS analyses to separate platform and communication overhead from
+model computation. As a residual it inherits the error of the compute estimate; it
+cannot be falsified against a directly measured ground truth and should be interpreted
+as an upper bound on the platform + communication share rather than as a direct
+measurement of it.
+
+In Stage~H1, resource and operational overhead metrics are also reported, including sidecar
+CPU and memory, total pod resource deltas, schedule-to-ready time, and the count of
+added mesh and security objects.
+In Stage~H2, sequential throughput is derived from mean latency as requests per second to
+express the throughput impact of confidential-node placement; this is an algebraic
+restatement of mean latency at batch size one, not an independent throughput
+measurement under load.
+
+\subsection{Cross-Round Consistency}
+
+Cross-round consistency is assessed using the round CV, computed as the standard
+deviation of per-round condition means divided by the grand mean.
+A low round CV indicates stable execution across independent rounds and supports
+treating the reported condition means as representative rather than as artefacts of a
+single favourable or unfavourable run.
+Cross-round stability and parity validation are treated as the primary indicators of
+methodological validity.
+
+\subsection{Effect Size and Significance Tests}
+
+In stages with 1{,}000 per-condition measured iterations, Cohen's~$d$ and the
+Mann--Whitney~$U$ test are reported for each pairwise comparison as descriptive
+diagnostics, not as the decision rule. Per-iteration latency is right-skewed rather than
+normal, so a non-parametric rank-based test (Mann--Whitney) is used rather than a
+parametric two-sample $t$-test, and the median is reported alongside the mean throughout;
+Cohen's~$d$ is reported as a sample-size-independent measure of effect magnitude.
+The experimental stability claim rests primarily on rounds and paired passes rather than
+on treating all pooled iterations as independent experimental replications; pooled
+per-iteration statistics are therefore interpreted as descriptive diagnostics.
+
+The $p$-value is down-weighted by design: at $N = 1{,}000$ the test is so highly powered
+that even a practically negligible difference is statistically significant. Methodological
+carry-forward is therefore governed by the predeclared eligibility and near-best-window
+rules of \cref{sec:methods-carryforward}, with Cohen's~$d$ and the cross-round coefficient
+of variation used to judge the size and stability of differences. The mean remains the
+headline value, justified at this sample size by the central-limit theorem, with the
+median reported as a robust cross-check.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Carry-Forward and Selection Logic}
+\label{sec:methods-carryforward}
+
+The staged pipeline uses a carry-forward mechanism for the local split-selection stages
+(Stages~L1 and~L2).
+After each of these stages, one or two candidates are selected to enter the next stage
+according to two predeclared rules.
+
+The first rule concerns compute degeneracy.
+A split condition is classified as compute-degenerate if the smaller of the two services
+contributes less than 10\% of the total split compute, i.e.\
+$\min(t_a, t_b) / (t_a + t_b) < 0.10$, where $t_a$ and $t_b$ are the measured per-segment
+compute times.
+Compute-degenerate conditions are excluded from main-candidate eligibility because they
+produce structurally unbalanced decompositions that do not constitute meaningful
+microservice partitions, even if their raw latency is low.
+
+The second rule selects two candidates from the eligible (non-degenerate) set inside the
+5\% near-best window: the condition with the lowest mean end-to-end latency is selected
+as the main carry-forward candidate, and the next-lowest is retained as the reference
+candidate. Ties on mean latency are broken in favour of the smaller activation-transfer
+size, so that activation size acts as a structural tie-breaker rather than as a primary
+selection criterion.
+The 5\% near-best window and 10\% compute-degeneracy threshold are pragmatic,
+predeclared cutoffs: they avoid over-reading small mean-latency gaps while excluding
+structurally empty downstream services, and are not proposed as universal constants.
+
+Carry-forward is not applicable in Stages~K and~C, which benchmark a predefined chain
+family rather than selecting among candidates.
+It is also not applicable in the RQ2 hardening stages, which fix the deployment topology
+established by RQ1 and vary only the security configuration.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Stage-Specific Methods}
+\label{sec:methods-stages}
+
+\subsection{Stage~L1 -- Coarse Architectural Boundary Selection (controlled local)}
+\label{sec:methods-rq11}
+
+Stage~L1 screens the four coarse stage boundaries of ResNet-18 against a monolithic
+baseline under the maximally controlled local setup described in
+Sections~\ref{sec:methods-cpu} and~\ref{sec:methods-contract}.
+The four split conditions place the boundary after \texttt{layer1}, \texttt{layer2},
+\texttt{layer3}, and \texttt{layer4}, producing intermediate activation tensors of
+approximately 784~KiB, 392~KiB, 196~KiB, and 98~KiB in FP32 respectively.
+Both split services run as separate OS processes communicating via gRPC over
+\texttt{127.0.0.1:50051}.
+
+The justification for screening at the coarse architectural level before conducting
+any finer search is that moving directly into an exhaustive layer-by-layer search would
+risk over-fitting the selection to incidental local-execution noise.
+Prior DNN-partitioning systems commonly reason about split placement at layer or
+candidate-boundary granularity~\cite{neurosurgeon,dnnsplit}, while later work motivates
+reducing the candidate set when exhaustive layer-wise search becomes
+impractical~\cite{dnnsplit,pareto_split,survey_partitioning}.
+This thesis therefore uses stage boundaries for the first screening pass as a deliberate
+search-space reduction and only refines inside the carried-forward region in Stage~L2.
+
+The output of this stage is one main carry-forward candidate and one reference
+candidate, selected using the degeneracy and near-best-window rules defined in
+Section~\ref{sec:methods-carryforward}.
+
+\subsection{Stage~L2 -- Fine-Grained Refinement (controlled local)}
+\label{sec:methods-rq12}
+
+Stage~L2 takes the carry-forward outcome of Stage~L1 as its starting point and introduces one
+block-level split point between the two coarse carry-forward anchors.
+The new condition, \texttt{split\_after\_layer3\_block0}, bisects the \texttt{layer3}
+stage at its internal residual-block boundary.
+
+A key structural property motivates this particular design choice.
+\texttt{split\_after\_layer3\_block0} and \texttt{split\_after\_layer3} both produce
+intermediate activation tensors of approximately 196~KiB.
+The design therefore holds activation-transfer size constant while varying compute
+placement, creating a controlled comparison that can isolate the role of compute
+distribution independently of communication burden.
+This comparison is grounded in the DNN-partitioning literature, which treats compute
+distribution as a first-class criterion alongside activation-transfer
+cost~\cite{dnnsplit,fine_grained_partitioning}.
+
+The experimental setup and measurement protocol are identical to Stage~L1, ensuring that
+the two stages remain directly comparable.
+
+\subsection{Stage~L3 -- Explanatory Synthesis (controlled local)}
+\label{sec:methods-rq13}
+
+Stage~L3 is not a split benchmark.
+It is a hybrid analytical stage that explains the patterns observed in Stages~L1 and~L2
+using two structural properties: activation-transfer size and compute distribution.
+The explanatory analysis draws on three evidence sources: the split benchmark summaries
+from Stage~L1, the split benchmark summaries from Stage~L2, and a separately conducted
+internal timing experiment on the monolithic ResNet-18 model.
+
+The internal timing experiment instruments the monolithic forward pass at the stage,
+block, and selected operation level.
+It uses the same single-threaded CPU-stabilised environment as the split benchmarks,
+with 10 rounds, 50 warmup iterations per round, and 200 measured iterations per round.
+Functional equivalence against the uninstrumented model is verified
+(\texttt{max\_abs\_diff}~$= 0.0$), and instrumentation overhead is measured explicitly
+at approximately 0.71~ms (0.94\% of total forward-pass time), confirming that
+profiling does not materially distort the timing distribution.
+
+The justification for this supporting experiment is that split-benchmark
+boundary-crossing intervals reflect a composite of serialisation, transport, and
+remote-side computation.
+Disentangling those components -- particularly distinguishing activation-transfer cost
+from compute-placement effects -- requires a direct measurement of local per-block
+execution cost that the split benchmark alone cannot provide.
+
+\subsection{Stage~K -- Multi-Microservice Kubernetes Chain (local Kubernetes)}
+\label{sec:methods-rq14}
+
+Stage~K moves from local process-based communication to real Kubernetes in-cluster
+services.
+The environment is a single-node \texttt{kind} cluster running on Ubuntu/Linux, with
+all service pods colocated on the same node.
+This colocation rule is applied deliberately so that inter-service gRPC traffic remains
+in-cluster rather than traversing an external network, meaning that any observed
+overhead reflects orchestration and pod-to-pod communication rather than wide-area
+latency.
+
+The stage benchmarks a predefined family of five conditions from
+\texttt{monolithic\_k8s\_1svc} to \texttt{chain\_5svc}, corresponding to one through
+five synchronously chained ResNet-18 service segments.
+The chain family is predefined rather than selected by carry-forward because the purpose
+of this stage is not to choose among candidates but to characterise the full cost curve
+as a function of service count.
+The split points used are: \texttt{layer2} for chain\_2svc;
+\texttt{layer1}, \texttt{layer3} for chain\_3svc;
+\texttt{layer1}, \texttt{layer2}, \texttt{layer3} for chain\_4svc; and
+\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, \texttt{layer4} for chain\_5svc.
+This family deliberately spans the full range of Stage~L1 activation sizes from 784~KiB
+(\texttt{layer1}) down to 98~KiB (\texttt{layer4}), and consequently re-introduces
+boundaries that Stage~L1 rejected (\texttt{layer1} as too transfer-heavy and
+\texttt{layer4} as compute-degenerate). The resulting cost curve should therefore be
+read as a \emph{conservative envelope} on the cost of adding service boundaries -- a
+purely best-boundary chain at each depth would lie below this envelope -- not as a
+generic per-hop cost.
+Service pods are allocated one CPU core and 512~MiB of memory with Guaranteed QoS to
+fix the resource envelope and reduce scheduler and eviction variability during
+measurement windows.
+
+The use of a single-node \texttt{kind} cluster is an acknowledged limitation: it
+eliminates inter-node network hops and does not capture the scheduling and networking
+variability of a multi-node or managed cluster.
+This limitation is addressed in three steps: the Stage~K cross-node alternative adds a
+\texttt{kind} CNI-bridge sensitivity probe (still single-host, so it does not measure real
+inter-node networking), Stage~C re-runs the same chain family on managed AKS to validate
+ordering, and the Stage~C multi-node alternative adds a genuine multi-node sensitivity
+stage on a six-VM AKS cluster so the real inter-node penalty becomes a measured, bounded
+quantity.
+
+\subsection{Stage~K (Cross-Node Alternative) -- kind CNI Sensitivity}
+\label{sec:methods-rq14b}
+
+The cross-node alternative to Stage~K is a supporting sensitivity stage: it is
+summarised in the main deployment evaluation (\cref{sec:rq14b-stub}) with its full data
+tables retained in the appendix (\cref{sec:appendix-rq14b}), and is not treated as a
+headline number. It is the base-case/alternative
+counterpart to the single-node Stage~K design: the default same-node placement is the base
+case, and this forced cross-node placement is the alternative.
+
+The stage re-runs the same five-condition chain family from the Stage~K base case on a six-worker
+\texttt{kind} cluster with pod anti-affinity enforced so that every chain segment of a
+given condition lands on a distinct kind worker node and the benchmark client lands on a
+sixth dedicated worker. The shared benchmark contract is otherwise unchanged (same model,
+same Guaranteed-QoS pod profile, same five-round / 200-measured-iteration / 50-warmup
+discipline, same image tag).
+
+A methodological caveat governs how this stage should be interpreted. kind's "nodes" are
+Docker containers that share a kernel on a single host machine and communicate over kind's
+CNI bridge; they are not separate physical or virtual hosts. The cross-node alternative
+therefore measures the cost of routing inter-service gRPC through the kind CNI bridge under
+anti-affinity, rather than the cost of real cross-host networking. The genuine multi-host
+inter-node penalty is measured separately by the Stage~C multi-node alternative on a
+multi-node AKS cluster
+(\cref{sec:methods-rq15b}). Round-level cross-condition consistency (round CV) is also
+materially higher in this cross-node alternative than in the single-node Stage~K base case,
+reflecting kind-CNI variability rather than a property of the chain family. Comparisons
+against the Stage~K base case use the per-condition penalty
+$\Delta_c = \mathrm{mean}_c^{\mathrm{kind\text{-}cni}} - \mathrm{mean}_c^{\mathrm{single}}$,
+which is read as a kind-CNI sensitivity bound rather than as a deployment-grade multi-node
+result.
+
+A further cross-stage caveat must be made explicit before the per-condition delta
+$\Delta_c$ is interpreted. This alternative is not a clean topology-only swap from the
+Stage~K base case: it also runs with a weaker host-control state. Writes to \texttt{/sys}
+fail in the containerised environment, so the CPU governor is observed at \texttt{schedutil}
+(rather than \texttt{performance}) and turbo is observed as enabled (rather than disabled); the
+\texttt{nice~-5} request also fails for permission reasons. This is recorded in the frozen
+\texttt{merged\_results/environment.json} for the cross-node-alternative run and is one
+plausible co-contributor to its inflated round CVs. For this reason, comparisons against the
+Stage~K base case are interpreted at the \emph{per-condition} $\Delta_c$ level only and are
+not lifted to a cross-stage means comparison; the two runs differ in host-control state in
+addition to placement, and $\Delta_c$ should be read as an upper sensitivity bound that
+combines the kind-CNI-bridge cost with this degraded host-control state on the same host.
+
+\subsection{Stage~C -- AKS Transfer Validation (single-node base case)}
+\label{sec:methods-rq15}
+
+Stage~C re-runs the same predefined chain family from Stage~K on a single-node AKS cluster
+(\texttt{Standard\_D8s\_v3}, region \texttt{swedencentral}, \texttt{kubenet}
+networking).
+The stage does not aim to replicate the local Kubernetes absolute latency values, which
+are expected to differ because the two environments use different host CPUs, kernels,
+virtualisation layers, container runtimes, and networking paths.
+
+The transfer claim is therefore directional rather than numerical: if the same
+architectural chain ordering is preserved in AKS, that constitutes evidence that the
+ordering reflects the architecture of the model partition rather than incidental
+local-cluster noise. This emphasis on within-environment comparison is consistent with
+benchmarking guidance that absolute performance numbers do not transfer across hardware
+and software stacks without careful environment characterisation~\cite{benchmarking_sc15}.
+Within-environment normalised overhead is used as the primary comparison metric for
+this reason.
+
+All service pods and the benchmark client are colocated on the same AKS node and run
+with Guaranteed QoS, applying the same single-node placement discipline as the Stage~K
+base case. Pod resource requests differ between the two stages: Stage~K service pods
+request 1~CPU and 512~MiB of memory, whereas Stage~C service pods request 1~CPU and 1~GiB,
+matching the larger memory headroom available on \texttt{Standard\_D8s\_v3}. This difference
+is documented per artefact and does not affect placement or QoS class.
+
+\subsection{Stage~C (Multi-Node Alternative) -- AKS Inter-Node Sensitivity}
+\label{sec:methods-rq15b}
+
+The multi-node alternative to Stage~C is a sensitivity stage that quantifies the inter-node
+network cost the single-node Stage~C base case intentionally hides.
+The stage re-runs the same predefined chain family on a six-node AKS cluster
+(\texttt{Standard\_D8s\_v3} $\times$ 6, region \texttt{swedencentral}, single node pool,
+single VNet) and enforces \emph{multi-node} placement: each chain segment of a given
+condition lands on a distinct cluster node, and the benchmark client lands on a sixth
+dedicated node.
+Placement is enforced by Kubernetes pod anti-affinity keyed on
+\texttt{kubernetes.io/hostname}, with two terms per service deployment: a service-vs-service
+term using the \texttt{experiment-condition} and \texttt{workload-role: service} labels, and
+a service-vs-client term using the \texttt{workload-role: client} label.
+The benchmark client carries a mirror anti-affinity rule against
+\texttt{workload-role: service}.
+
+Compliance is verified after deployment by reading observed \texttt{nodeName} values
+from the Kubernetes API.
+A condition is admitted to the rolling merge only if its service pods are pairwise
+disjoint by node and the client node is distinct from every service node; a single
+collision aborts the run.
+The shared benchmark contract is otherwise unchanged from the Stage~C base case: same model,
+same chain family, same Guaranteed-QoS pod profile, same five-round / 200-iteration /
+50-warmup discipline, and the same image used in the same-day single-node run.
+The headline sensitivity metric is the per-condition multi-node penalty
+$\Delta_c = \mathrm{mean}_c^{\mathrm{multi}} - \mathrm{mean}_c^{\mathrm{single}}$,
+computed against the same-day frozen single-node baseline so that the inter-node
+delta is not contaminated by region-time drift.
+
+\subsection{Stage~H1 -- Service Identity and Mutual TLS Hardening}
+\label{sec:methods-rq21}
+
+Stage~H1 introduces a paired execution design.
+Each paired pass executes both the plain AKS condition and the mTLS/AuthZ condition in
+alternating order, with the order determined by a seeded plan in which three passes run
+mTLS first and two passes run plain first.
+This alternation reduces the risk that the observed delta is explained by slow
+performance drift over the course of the run rather than by the hardening mechanism
+itself.
+
+The plain condition uses standard Kubernetes service-to-service communication without
+mesh injection.
+The mTLS condition adds one Istio sidecar proxy per inference service, service accounts,
+workload-level peer-authentication objects, and authorisation-policy objects.
+These mechanisms correspond to the common Istio pattern of using sidecar proxies for
+service-to-service mTLS and policy enforcement in Kubernetes
+microservices~\cite{ashraf2025policy_workflow}.
+The benchmark client remains outside the mesh; the stage therefore measures hardening
+of the inter-service path inside the inference chain, not external ingress hardening.
+
+The managed AKS Istio add-on (\texttt{asm-1-29}) is used as the mesh implementation.
+This choice reflects the thesis's focus on realistic cloud-native deployment: managed
+add-ons represent the configuration path most likely to be used by practitioners
+adopting mTLS in AKS and their behaviour reflects actual cloud-operator defaults rather
+than custom tuning.
+
+Security validation is performed for each paired run using four methods: static manifest
+validation of peer-authentication and authorisation-policy objects; runtime validation
+of policy object counts; a full-chain positive probe confirming that valid upstream-to-
+downstream requests succeed; and a direct non-mesh denial probe confirming that
+unauthenticated access to protected downstream services is blocked.
+
+In RQ2, the ``selected AKS path'' refers to the selected AKS chain-family hardening
+baseline, not to the rule-selected refined local split candidate from Stage~L2.
+The primary topology is \texttt{chain\_2svc} (split after \texttt{layer2}). It is the
+lowest-overhead non-monolithic chain in the preceding Stage~K and Stage~C stages. The split
+point used is \texttt{layer2}, which corresponds to the Stage~L1 \emph{reference}
+carry-forward candidate rather than the main carry-forward (\texttt{layer3}); this is a
+deliberate choice because \texttt{chain\_2svc} in the Stage~K / Stage~C chain family is built
+on \texttt{layer2}, so reusing the same boundary preserves continuity with the
+already-frozen chain-cost numbers.
+
+A \texttt{chain\_5svc} stress topology is included to determine how mTLS overhead grows
+when more service boundaries are protected. \texttt{chain\_5svc} reuses the same Stage~K /
+Stage~C split family (\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, \texttt{layer4}),
+which deliberately includes the Stage~L1-rejected boundaries to span the full activation
+range. The chain\_5svc overhead figure should therefore be read against the same
+conservative-envelope caveat introduced in \cref{sec:methods-rq14}.
+
+A known limitation of sidecar-based mTLS is that the measured protection boundary is the
+proxy-mediated inter-service data path, not all data handling inside the pod or
+application process.
+MeshInsight shows that sidecar meshes add app-to-sidecar and sidecar-to-sidecar data-path
+segments whose latency and resource costs depend on proxy configuration and workload
+details~\cite{meshinsight_socc23}.
+A second limitation is that the mesh control plane and certificate authority remain
+trust-critical components even when the data-plane is fully mTLS-protected~\cite{poudel2025mazu}.
+Both limitations are acknowledged explicitly: Stage~H1 is claimed as a communication-level
+hardening layer, not as a complete runtime-secrecy mechanism.
+
+\subsection{Stage~H1 (Ablation) -- Decomposition of the Hardening Bundle}
+\label{sec:methods-rq21-ablation}
+
+The main paired design of Stage~H1 treats the mTLS configuration as a single bundle: sidecar
+injection, strict peer-authentication, and authorisation-policy enforcement are all applied
+together. An additional ablation campaign is run on \texttt{chain\_2svc} to decompose this
+bundle into its incremental contributions.
+
+The ablation introduces four conditions on the same AKS cluster, same Istio revision
+(\texttt{asm-1-29}), and same strict same-node placement as the primary Stage~H1 design:
+(c0) plain non-mesh; (c1) mesh-default sidecar with automatic mTLS but no AuthorizationPolicy;
+(c2) strict PeerAuthentication mTLS with no AuthorizationPolicy; and (c3) strict mTLS with
+AuthorizationPolicy. The conditions are run as a seeded interleaved campaign with five
+passes per condition (5 passes $\times$ 4 conditions $\times$ 200 measured iterations =
+4{,}000 measured rows).
+
+The adjacent deltas decompose the hardened path as follows. $c3-c0$ is the
+\emph{full hardened-path cost} and $c3-c2$ is the \emph{clean AuthorizationPolicy cost}; both are
+cleanly attributable. $c1-c0$ and $c2-c1$ require a methodological caveat: Istio's
+mesh-default behaviour is automatic mTLS in PERMISSIVE mode, so c1 already encrypts
+sidecar-to-sidecar traffic. The delta $c1-c0$ therefore measures the combined cost of
+\emph{sidecar process + IPC + auto-mTLS data plane} over plain non-mesh, and cannot be
+attributed to "sidecar process overhead" alone. The delta $c2-c1$ measures the cost of
+upgrading the policy from PERMISSIVE to STRICT with auto-mTLS already in effect, not the
+cost of "strict mTLS encryption" relative to plaintext sidecar traffic. A clean separation
+of sidecar process cost from mTLS cryptography cost would require a fifth condition with
+the sidecar present but \texttt{PeerAuthentication: DISABLE}; this thesis does not include
+that condition and treats the disentanglement as future work.
+
+This campaign is treated as supporting, not headline. The ablation deltas are internally
+comparable across c0--c3 within the same campaign run, but the absolute numbers must not be
+spliced into the frozen two-condition paired \texttt{chain\_2svc} and \texttt{chain\_5svc}
+results.
+
+\subsection{Stage~H1 (Split Sensitivity) -- Single-Hop mTLS vs Activation Size}
+\label{sec:methods-rq21-splitsens}
+
+A second supporting campaign measures whether the mTLS overhead at a single protected hop
+scales with the size of the activation crossing that hop. The independent variable in this
+campaign is the split point that produces hop 2's activation, varying it across
+\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4} (activation sizes
+802\,816, 401\,408, 200\,704, and 100\,352 bytes respectively, matching the Stage~L1 sizes).
+
+For each split point, a plain condition and an mTLS condition are run as a paired pair,
+yielding eight conditions in total. Only the hop between service 1 and service 2 is
+protected by the mTLS configuration; the same strict same-node placement, Istio revision,
+pod profile, and image digest as the primary Stage~H1 design are otherwise preserved. The
+campaign runs five seeded-interleaved passes across the eight conditions for a total of
+8{,}000 measured rows. The per-split deltas (mean and p95 mTLS overhead, per-split operational
+overhead, and per-split resource summary) are the headline outputs.
+
+This campaign is treated as supporting, not headline, for two reasons. First, the
+\texttt{split\_after\_layer4} condition remains compute-degenerate per the Stage~L1
+degeneracy rule and is retained only as a low-payload diagnostic endpoint, not as a
+candidate deployment. Second, the per-split mTLS deltas are campaign-internal: they may not
+be spliced into the frozen \texttt{chain\_2svc} or \texttt{chain\_5svc} paired numbers.
+
+\subsection{Stage~H1 (Multi-Node Alternative) -- Inter-Node Sensitivity of mTLS Overhead}
+\label{sec:methods-rq21b}
+
+The multi-node alternative to Stage~H1 is a paired sensitivity stage that quantifies how the
+chain\_2svc mTLS overhead changes when the two inference services are forced onto distinct
+AKS nodes. It mirrors the Stage~C multi-node alternative at the security layer: the
+\texttt{chain\_2svc} plain and mTLS conditions are deployed on a dedicated AKS node pool with
+\texttt{multi\_node\_anti\_affinity} placement and a dedicated benchmark-client node. The same
+paired alternation, five-pass budget
+(5 paired passes $\times$ 2 conditions $\times$ 200 measured iterations $= 2{,}000$ rows),
+seeded order, and security-validation contract as the primary Stage~H1 chain2 run are reused.
+
+Compliance with the multi-node placement contract is verified after deployment by reading
+observed \texttt{nodeName} values from the Kubernetes API and rejecting any pass where the
+two service pods share a node or where the client node coincides with either service node.
+The headline output is the multi-node paired mTLS delta (mean, p95, and per-pass spread)
+together with the placement-validation status of every pass.
+
+\subsection{Stage~H2 -- Confidential VM Execution Hardening}
+\label{sec:methods-rq22}
+
+Stage~H2 keeps the communication-security contract from Stage~H1 fixed and changes the
+execution environment of the downstream protected service.
+The confidential condition places \texttt{service2} on an AMD SEV-SNP confidential
+node pool (\texttt{Standard\_DC8as\_v5}); the standard condition uses matched
+non-confidential AMD nodes (\texttt{Standard\_D8as\_v5}) in the same AKS cluster.
+
+The Stage~H2 cluster is deployed in Azure region \texttt{westeurope} rather than the
+\texttt{swedencentral} region used by the Stage~C and Stage~H1 clusters (including their
+multi-node alternatives), because at
+the time of the experiments the AMD SEV-SNP DC-series SKUs (\texttt{Standard\_DC8as\_v5})
+were the constraining resource and were available with the required quota in
+\texttt{westeurope}. This region change is the reason a fresh paired standard baseline is
+collected on the Stage~H2 cluster rather than reusing the Stage~C or Stage~H1 mTLS baseline:
+absolute latency between the two regions is not directly comparable, so only the
+within-cluster paired delta between the standard and confidential conditions is reported
+as the incremental TEE overhead.
+This paired design reduces region- and session-level confounding, although the delta
+still reflects the practical platform change from the standard AMD node pool to the
+confidential AMD SEV-SNP node pool.
+
+The thesis-facing TEE scope is \texttt{service2\_only}.
+This selective placement estimates the paired standard-vs-confidential node-pool
+delta for protecting the downstream service that receives intermediate activations,
+motivated by activation-privacy work
+\cite{he2021_attacking_collaborative} showing that those activations are
+recoverable when held by an untrusted remote partition.
+Extending the confidential-execution boundary to both services (full
+two-service TEE) is out of the thesis-facing scope of Stage~H2 per the evidence
+manifest and is treated as future work rather than measured here.
+
+The protection boundary of AMD SEV-SNP must be stated precisely.
+SEV-SNP provides VM-level memory encryption and integrity protection against an
+untrusted host platform~\cite{amd_sevsnp_whitepaper,kaplan2023_hardware_vm}, but the
+guest operating system, application process, PyTorch runtime, model weights, and Istio
+sidecar all remain inside the same VM trust boundary. Recent work additionally shows residual attack surfaces beyond
+memory encryption, including malicious-interrupt injection from the untrusted
+hypervisor~\cite{schluter2024_heckler}; this thesis does not experimentally
+evaluate such attacks. The motivation for protecting the downstream segment at
+infrastructure level is supplied by activation-privacy work
+\cite{he2021_attacking_collaborative} showing that intermediate feature maps
+can be inverted to recover client inputs, although that threat model differs
+from the host-level adversary SEV-SNP defends against. Stage~H2 therefore uses the
+term \emph{VM-level confidential execution} throughout rather than claiming
+application-level enclave isolation.
+
+\subsection{Trade-off Synthesis -- Security-Hardening Recommendation}
+\label{sec:methods-rq23}
+
+The trade-off synthesis is a synthesis stage: no new benchmark data is collected.
+The stage combines the plain AKS baseline from Stage~C, the mTLS/AuthZ results from
+Stage~H1, and the selective \texttt{service2\_only} TEE result from Stage~H2 to compare
+the three thesis-facing hardening configurations across measured cost,
+operational complexity, and protection scope. Full two-service TEE is treated
+as future work rather than as a measured trade-off point.
+
+The synthesis is structured around the principle that the preferred hardening
+configuration is threat-model-dependent rather than universally optimal.
+Applying every available security mechanism to every service boundary is not always the
+best engineering choice, because each additional protection layer adds measurable
+latency, resource, and operational cost.
+The trade-off synthesis therefore frames its output as a structured trade-off comparison rather than a
+single global ranking, allowing a practitioner to match a security configuration to a
+stated threat model and performance budget.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Artifact Freezing and Reproducibility}
+\label{sec:methods-artifacts}
+
+Thesis-facing runs are exported and frozen as artifact sets before analysis is
+performed.
+This means that the reported results are derived from a fixed, immutable snapshot of the
+raw measurement data rather than from ad hoc terminal output or re-runnable live
+scripts.
+Each frozen artifact set records the full execution environment: operating system,
+Python and PyTorch version, Kubernetes version and cluster name, node type, namespace,
+container image reference, condition ordering, and parity validation outcomes. For the
+AKS stages (Stage~C and its multi-node alternative, Stage~H1 and its multi-node
+alternative, and Stage~H2) the image reference is a pinned
+\texttt{sha256} digest from the project's Azure Container Registry. For the local
+\texttt{kind} stages (Stage~K and its cross-node alternative) the image reference is a mutable tag
+(\texttt{thesis-inference:latest}) preloaded into the cluster with
+\texttt{IfNotPresent}; reproduction in those stages therefore depends on the locally
+built image alongside the recorded runtime metadata.
+
+The separation between the frozen artifact and the analysis code ensures that the
+reported numbers remain stable even if benchmark scripts are modified for subsequent
+exploratory runs.
+The repository contains both thesis-facing configs and older exploratory or smoke-test
+configs; the artifact freeze identifies which run is the thesis-facing primary result.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Methodological Threats and Mitigations}
+\label{sec:methods-limitations}
+
+This section records design-time methodological risks that are intrinsic to
+the experimental setup and explains the mitigations applied at the methods
+level. The thesis-wide consolidation of limitations and threats to validity is
+provided in \cref{sec:conclusion-limitations}; the analysis-level scope and
+generalisability discussion is in \cref{sec:analysis-threats}. The methodological
+scope of this study has known limitations covering five themes, each of which
+constrains how the results may be generalised.
+
+\emph{Single-node deployment.} The base cases of Stages~K and~C colocate all chain
+services on one node so that the measured cost is attributable to orchestration and gRPC
+rather than to wide-area or inter-node networking. The cross-node and multi-node
+alternatives of Stages~K and~C are explicit
+sensitivity stages that bound the cost the single-node base case hides; the
+Stage~C / Stage~H1 primary numbers should not be read as representative of arbitrary multi-node
+deployments.
+
+\emph{CPU-only, single-model, single-workload scope.} All experiments use ResNet-18 in
+FP32 on CPU at batch size one. Results may not transfer quantitatively to GPU
+inference, mixed precision, larger or smaller models, transformer architectures, or
+batched throughput-oriented workloads, although the staged methodology itself is
+model-agnostic.
+
+\emph{Controlled-versus-production variability.} Strict CPU stabilisation is enforceable
+on the local stages but only partially enforceable on AKS (governor and turbo are not
+exposed; \texttt{nice} is denied). The measurement environment is therefore quieter than
+a typical production AKS workload, and absolute numbers may shift under contended
+noisy-neighbour conditions.
+
+\emph{Bounded Stage~H1 threat model.} Stage~H1 measures communication-level hardening only.
+The sidecar design protects the proxy-mediated inter-service path, while data handling
+inside each pod and application process remains outside the measured mesh boundary; the
+mesh control plane plus CA also remain trust-critical. Stage~H1 must therefore be
+interpreted as a confidentiality and authenticity boundary on the inter-service path,
+not as a complete runtime-secrecy mechanism.
+
+\emph{Bounded Stage~H2 threat model.} Stage~H2 measures the incremental cost of AMD SEV-SNP at
+VM granularity. The guest OS, application, runtime, model weights, and sidecar remain
+inside the VM trust boundary, and residual attack surfaces such as malicious-interrupt
+injection from the untrusted hypervisor are out of experimental scope. Stage~H2 is therefore
+an infrastructure-level confidentiality control against a host-platform adversary, not an
+application-level enclave guarantee.
+
+In addition to the five themes above, several measurement scopes are deliberately out of
+this thesis and should be named explicitly so that the reported numbers are not
+over-generalised. \emph{Concurrency.} All measurements use batch size one and sequential
+request issuance; throughput under concurrent load is not measured, and the cost of
+mTLS, sidecar IPC, and SEV-SNP memory encryption may scale non-linearly when the sidecar
+or the CVM memory controller is contended. \emph{Tail behaviour beyond p95.} With 1{,}000
+measured iterations per condition the p95 estimate is well populated, but only ten
+samples sit beyond the p99 cut and the data do not support reliable claims about p99 or
+deeper tail percentiles. \emph{Cold start and steady state.} Pod startup, sidecar
+bootstrap, CVM boot, and SEV-SNP attestation latency are not part of the measured
+end-to-end interval; the headline numbers describe steady-state behaviour only.
+\emph{Cloud-dollar cost.} The thesis reports resource overhead in CPU-time and memory
+units rather than in Azure billing units; converting to dollar-equivalents at the SKU
+prices used (\texttt{Standard\_D8s\_v3}, \texttt{Standard\_D8as\_v5},
+\texttt{Standard\_DC8as\_v5}) is left to the trade-off synthesis discussion.
+\emph{Sidecar capacity headroom.} The Istio sidecar limits are taken from the managed-mesh
+defaults; whether the sidecar approaches its CPU limit at the measured load is checked
+via the resource sampling captured in the Stage~H1 artefacts and is reported alongside the
+overhead numbers, but no load-stress condition was run to find the sidecar's saturation
+point.
+
+The analysis-level scope and generalisability discussion of these methodological
+risks -- including their implications for the trade-off synthesis and for
+external validity -- is in \cref{sec:analysis-threats}; the consolidated
+thesis-wide limitations and threats to validity statement is in
+\cref{sec:conclusion-limitations}.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Ethical Considerations}
+\label{sec:methods-ethics}
+
+This thesis does not involve human participants, personal data, or biological material.
+The study is a software systems benchmark using a publicly available pretrained image
+classification model and standard synthetic inputs; no classification decisions derived
+from this model are used to affect any real-world outcomes, and no personal images or
+sensitive datasets are processed.
+
+ResNet-18 with pretrained ImageNet weights inherits any biases or limitations of the
+ImageNet training process.
+However, since the thesis does not evaluate model accuracy and does not deploy the model
+in a decision-making context, these concerns are not directly relevant to the research
+questions addressed here.
+
+Cloud compute resources are used responsibly: experiments are scoped to the minimum
+infrastructure required to answer each research question, and resources are
+deallocated after each benchmark stage.
+All measurement artifacts contain only timing data and system metadata; no sensitive
+data is stored on cloud infrastructure.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Use of Generative AI Tools}
+\label{sec:methods-ai}
+
+In the interest of transparency and research integrity, this section discloses the
+extent to which generative AI tools were used in the preparation of this thesis. The
+use was confined to a supporting, author-supervised role: AI tools assisted with
+language editing and with locating and triaging prior literature, but they did not
+generate the research content of the thesis. The specific uses were as follows.
+
+\begin{itemize}
+    \item \emph{Language editing.} Anthropic Claude (versions 4.7 and 4.8) was used to
+    check author-written text for grammar, spelling, punctuation, and sentence
+    structure, and to suggest clearer phrasings of passages that the author had already
+    drafted. The technical content, argument, and reported numbers of each passage were
+    fixed by the author before editing.
+    \item \emph{Literature discovery.} Perplexity and Consensus were used to surface
+    candidate peer-reviewed sources on split inference, DNN partitioning, service-mesh
+    security, and confidential computing, which the author then located and read in the
+    original.
+    \item \emph{Locating evidence within papers.} OpenAI ChatGPT (GPT-5.5) and Claude
+    (4.7) were used to help find specific results, figures, and data points within
+    papers the author had already obtained, and to summarise long papers so that their
+    relevance could be judged before a full read.
+\end{itemize}
+
+The following were performed by the author without AI generation: the research design
+and staged methodology; the proof-of-concept gRPC microservice framework and benchmark
+harness; the execution of every experiment and the production of all measurements and
+frozen artifacts; the statistical analysis; the interpretation, findings, and
+conclusions; and the figures and tables, which are rendered from the author's own frozen
+result files. No experimental result, latency value, or data table in this thesis was
+generated, estimated, or altered by an AI tool.
+
+Two safeguards were applied to every AI-assisted step. First, each reference surfaced
+with AI assistance was independently verified against its primary source --- confirming
+the authors, venue, year, and DOI, and that the cited claim actually appears in the work
+--- so that no fabricated or mis-attributed citation could enter the bibliography.
+Second, every data point or result attributed to a prior paper was checked directly
+against that paper rather than relying on an AI-generated summary. The author takes full
+responsibility for the final text and for all claims made in it. A representative sample
+of the prompts used is provided in \cref{sec:appendix-ai-prompts}.

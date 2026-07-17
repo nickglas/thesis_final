@@ -1,0 +1,138 @@
+# -----------------------------------------------------------------------------
+# RQ1.5b AKS Multi-Node Sensitivity Profile
+#
+# Purpose: Sensitivity analysis to bound the inter-node communication penalty
+#   that the single-node thesis-facing RQ1.5 run cannot capture.
+#   5 rounds x 200 measured iterations x 5 conditions = 5,000 iterations.
+#   This is NOT a replacement for the frozen single-node RQ1.5 primary run.
+#   Its role is to convert the single-node threat-to-validity from
+#   "unknown" to a bounded, measured cost reported alongside the primary
+#   numbers in the thesis evaluation chapter.
+#
+# Key differences vs rq1_5_full.yaml (the single-node primary):
+#   - 6 nodes (5 service nodes + 1 dedicated client node)
+#   - placement.strategy = multi_node_anti_affinity (forces every chain
+#     segment AND the client onto distinct nodes via pod anti-affinity)
+#   - Distinct namespace, cluster name, resource group so the two AKS runs
+#     do not collide if both are alive at once
+#
+# vCPU footprint: 6 x Standard_D8s_v3 = 48 vCPUs in swedencentral
+#   (Total Regional vCPUs >= 48; Standard DSv3 Family vCPUs >= 48).
+#
+# Run sequence:
+#   python scripts/run_rq15_fully_controlled.py \
+#     --config configs/rq1/1.5/rq1_5b_multinode.yaml \
+#     --provision --push --build \
+#     --acr-name <your-acr> \
+#     --resource-group rg-thesis-rq15b \
+#     --cluster-name thesis-rq15b \
+#     --nodepool rq15bpool \
+#     --node-count 6 \
+#     --delete-resource-group-on-success \
+#     --delete-resource-group-on-failure
+#
+# Thesis status: SECONDARY (sensitivity stage, not the frozen primary).
+# -----------------------------------------------------------------------------
+experiment:
+  name: "RQ1.5b AKS multi-node sensitivity"
+  description: "AKS multi-node sensitivity: every chain hop crosses a node boundary"
+
+model:
+  name: "resnet18"
+  pretrained: true
+  device: "cpu"
+  input_shape: [1, 3, 224, 224]
+  precision: "fp32"
+
+conditions:
+  - name: "monolithic_k8s_1svc"
+    type: "chain"
+    chain_split_points: []
+
+  - name: "chain_2svc"
+    type: "chain"
+    chain_split_points: ["layer2"]
+
+  - name: "chain_3svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer3"]
+
+  - name: "chain_4svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer2", "layer3"]
+
+  - name: "chain_5svc"
+    type: "chain"
+    chain_split_points: ["layer1", "layer2", "layer3", "layer4"]
+
+benchmark:
+  rounds: 5
+  warmup_iterations: 50
+  measured_iterations: 200
+  cooldown_seconds: 5
+  seed: 42
+
+# RQ1.5b is a chain experiment: gRPC and carry-forward fields are not used.
+
+parity:
+  atol: 1.0e-5
+  num_inputs: 5
+
+warmup_calibration:
+  window: 10
+  cv_threshold: 0.02
+  max_extra_iterations: -1
+
+# Single-threaded fully controlled profile (matches RQ1.5 primary so
+# per-node CPU profile is identical between single-node and multinode runs).
+# Governor and turbo disabled — unavailable on AKS managed nodes.
+cpu_stabilisation:
+  threading:
+    pytorch_intra_op: 1
+    pytorch_inter_op: 1
+    omp_num_threads: 1
+    mkl_num_threads: 1
+    openblas_num_threads: 1
+  affinity:
+    enabled: true
+    num_cores: 1
+    avoid_smt: true
+    explicit_cpus: null
+  priority:
+    enabled: true
+    nice_value: -5
+  governor:
+    set_governor: false
+    requested_mode: "performance"
+  turbo:
+    disable_turbo: false
+
+kubernetes:
+  namespace: "rq15b"
+  service_name_template: "{condition}-svc-{index}"
+  grpc_port: 50051
+  max_message_bytes: 16777216
+  readiness_timeout: 180.0
+  # Source-config image: replace with the digest produced by `--push`.
+  image: "thesisrq15bacr.azurecr.io/thesis-inference:rq15b-bootstrap"
+  image_pull_policy: "Always"
+  resources:
+    cpu_request: "1"
+    cpu_limit: "1"
+    memory_request: "1Gi"
+    memory_limit: "1Gi"
+  client_resources:
+    cpu_request: "1"
+    cpu_limit: "1"
+    memory_request: "1Gi"
+    memory_limit: "1Gi"
+  # Multi-node placement: each chain segment lands on a distinct node, the
+  # client lands on yet another distinct node. min_nodes=6 covers the largest
+  # condition (chain_5svc + 1 client). The orchestrator and post-deployment
+  # validator both enforce this.
+  placement:
+    strategy: "multi_node_anti_affinity"
+    require_distinct_nodes: true
+    require_dedicated_client_node: true
+    min_nodes: 6
+    node_pool: "rq15bpool"

@@ -1,0 +1,104 @@
+\begin{tikzpicture}[
+    font=\normalsize,
+    axis/.style={
+        thick,
+        draw=black!70,
+        -{Latex[length=2mm]}
+    },
+    grid/.style={
+        draw=black!12,
+        thin
+    },
+    point/.style={
+        circle,
+        draw=blue!65!black,
+        fill=blue!20,
+        thick,
+        minimum size=5.5pt,
+        inner sep=0pt
+    },
+    pointlabel/.style={
+        font=\small\bfseries,
+        text=blue!65!black,
+        align=center
+    },
+    xlabel/.style={
+        font=\footnotesize,
+        text=black!75,
+        align=center
+    },
+    ylabel/.style={
+        font=\normalsize,
+        text=black!75
+    },
+    transferlabel/.style={
+        font=\footnotesize,
+        text=black!60,
+        align=center
+    },
+    band/.style={fill=blue!55!black, fill opacity=0.16}
+]
+
+% y-axis: 76--98 ms at 0.28 plot-units per ms, widened from the bar-top range
+% so the +/- 1 SD error bars fit while keeping the original figure height.
+% y(lat) = (lat - 76) * 0.28.
+\foreach \lat/\y in {76/0,78/0.56,80/1.12,82/1.68,84/2.24,86/2.80,88/3.36,90/3.92,92/4.48,94/5.04,96/5.60,98/6.16} {
+    \draw[grid] (0,\y) -- (10,\y);
+    \node[anchor=east, font=\footnotesize, text=black!65] at (-0.18,\y) {\lat};
+}
+
+\draw[axis] (0,0) -- (10.45,0);
+\draw[axis] (0,0) -- (0,6.46);
+
+\node[ylabel, rotate=90] at (-1.05,3.08) {Mean end-to-end latency (ms)};
+\node[ylabel] at (5,-1.35) {Number of Kubernetes inference services};
+
+\coordinate (p1) at (1,1.418);
+\coordinate (p2) at (3,2.068);
+\coordinate (p3) at (5,3.284);
+\coordinate (p4) at (7,4.080);
+\coordinate (p5) at (9,4.630);
+
+% Shaded band: mean +/- 1 SD of per-iteration latency (Std column of the
+% Stage~K results table), drawn only across the measured 1--5 service range.
+% Upper edge left-to-right, then lower edge right-to-left, then close.
+\fill[band]
+    plot[smooth, tension=0.7] coordinates
+        {(1,2.543) (3,3.055) (5,4.469) (7,5.180) (9,5.740)}
+    -- plot[smooth, tension=0.7] coordinates
+        {(9,3.520) (7,2.980) (5,2.099) (3,1.081) (1,0.294)}
+    -- cycle;
+
+\draw[very thick, draw=blue!65!black, line cap=round]
+    plot[smooth, tension=0.7] coordinates
+        {(1,1.418) (3,2.068) (5,3.284) (7,4.080) (9,4.630)};
+
+\node[point] at (p1) {};
+\node[point] at (p2) {};
+\node[point] at (p3) {};
+\node[point] at (p4) {};
+\node[point] at (p5) {};
+
+% Value labels hug each marker (anchor south-east, up-left of the point) so the
+% number reads as the data point, not the upper band edge.
+\node[pointlabel, anchor=south] at (1,1.60) {81.07 ms};
+\node[pointlabel, anchor=south east] at (2.92,2.20) {83.39 ms};
+\node[pointlabel, anchor=south east] at (4.92,3.42) {87.73 ms};
+\node[pointlabel, anchor=south east] at (6.92,4.22) {90.57 ms};
+\node[pointlabel, anchor=south east] at (8.92,4.78) {92.54 ms};
+
+\node[xlabel] at (1,-0.45) {\texttt{1svc}\\monolithic};
+\node[xlabel] at (3,-0.45) {\texttt{2svc}};
+\node[xlabel] at (5,-0.45) {\texttt{3svc}};
+\node[xlabel] at (7,-0.45) {\texttt{4svc}};
+\node[xlabel] at (9,-0.45) {\texttt{5svc}};
+
+\node[transferlabel] at (1,-0.95) {588 KiB};
+\node[transferlabel] at (3,-0.95) {980 KiB};
+\node[transferlabel] at (5,-0.95) {1568 KiB};
+\node[transferlabel] at (7,-0.95) {1960 KiB};
+\node[transferlabel] at (9,-0.95) {2058 KiB};
+
+\node[transferlabel, anchor=east] at (-0.25,-0.95) {recorded\\tensor bytes};
+
+\end{tikzpicture}

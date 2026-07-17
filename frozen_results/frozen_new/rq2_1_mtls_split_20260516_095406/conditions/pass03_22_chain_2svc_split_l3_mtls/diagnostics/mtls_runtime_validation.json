@@ -1,0 +1,73 @@
+{
+  "condition": "chain_2svc_split_l3_mtls",
+  "passed": true,
+  "errors": [],
+  "service_pod_nodes": [
+    "aks-rq15pool-53575030-vmss000000"
+  ],
+  "client_node": "aks-rq15pool-53575030-vmss000000",
+  "placement_validation": {
+    "strategy": "strict_same_node",
+    "service_pod_node_placement": {
+      "chain-2svc-split-l3-mtls-svc-1-7f7d66755b-4lglx": "aks-rq15pool-53575030-vmss000000",
+      "chain-2svc-split-l3-mtls-svc-2-584cccd56d-zsdb8": "aks-rq15pool-53575030-vmss000000"
+    },
+    "service_pod_nodes": [
+      "aks-rq15pool-53575030-vmss000000"
+    ],
+    "client_node": "aks-rq15pool-53575030-vmss000000",
+    "service_nodes_distinct": false,
+    "dedicated_client_node": false,
+    "min_nodes": null
+  },
+  "peer_authentication_count": 2,
+  "authorization_policy_count": 1,
+  "peer_authentication_validation": {
+    "namespace_default_permissive": true,
+    "expected_peer_authentication_count": 2,
+    "observed_peer_authentication_count": 2,
+    "expected_strict_segments": [
+      "2"
+    ],
+    "observed_strict_segments": [
+      "2"
+    ],
+    "strict_peer_count_by_segment": {
+      "2": 1
+    }
+  },
+  "authorization_policy_validation": {
+    "expected_policy_count": 1,
+    "expected_policy_names": [
+      "service2-service1-only"
+    ],
+    "observed_policy_names": [
+      "service2-service1-only"
+    ],
+    "policies": [
+      {
+        "expected_policy_name": "service2-service1-only",
+        "expected_source_segment_index": "1",
+        "expected_downstream_segment_index": "2",
+        "expected_allowed_principal": "cluster.local/ns/rq21-ms-l3-mtls/sa/rq21-ms-l3-svc1",
+        "present": true,
+        "selects_downstream_service": true,
+        "allows_only_expected_principal": true,
+        "observed_selector": {
+          "condition": "chain_2svc_split_l3_mtls",
+          "segment-index": "2",
+          "workload-role": "service"
+        },
+        "observed_action": "ALLOW",
+        "observed_allowed_principals": [
+          "cluster.local/ns/rq21-ms-l3-mtls/sa/rq21-ms-l3-svc1"
+        ],
+        "unrestricted_source_rule": false,
+        "unexpected_source_constraints": []
+      }
+    ],
+    "selects_downstream_service2": true,
+    "allows_only_service1_principal": true,
+    "all_policies_valid": true
+  }
+}

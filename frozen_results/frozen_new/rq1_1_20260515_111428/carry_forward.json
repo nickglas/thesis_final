@@ -1,0 +1,26 @@
+{
+  "applicable": true,
+  "raw_fastest": "split_after_layer3",
+  "raw_fastest_mean_ms": 79.08428536599718,
+  "near_best_window_pct": 5.0,
+  "near_best_threshold_ms": 83.03849963429704,
+  "near_best_candidates": [
+    "split_after_layer1",
+    "split_after_layer4",
+    "split_after_layer3",
+    "split_after_layer2"
+  ],
+  "degeneracy_threshold_pct": 10.0,
+  "degenerate_candidates": [
+    "split_after_layer4"
+  ],
+  "selected_main": "split_after_layer3",
+  "selected_main_mean_ms": 79.08428536599718,
+  "selected_reference": "split_after_layer2",
+  "selected_reference_mean_ms": 80.11758244900079,
+  "rejected": [
+    "split_after_layer1",
+    "split_after_layer4"
+  ],
+  "fallback_used": false
+}

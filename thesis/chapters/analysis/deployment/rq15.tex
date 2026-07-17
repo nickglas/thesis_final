@@ -1,0 +1,188 @@
+\subsection{Stage~C: AKS Transfer Validation}
+\label{sec:analysis-rq15}
+
+Stage~C asks whether the local Kubernetes latency pattern observed for the
+coarse-stage ResNet-18 microservice chain family transfers to Azure
+Kubernetes Service (AKS), and how absolute and relative costs change
+under managed cloud execution. The analytical contribution is not to add
+a measurement on top of \cref{sec:analysis-rq14}, and not to re-select a
+split point, but to test whether the Stage~K service-count ordering
+survives a substrate change from a local single-node \texttt{kind}
+cluster to a managed AKS single-node cluster, and to scope precisely
+what that test does and does not establish. The natural reporting
+discipline for this kind of cross-substrate transfer is ranking +
+relative-overhead trend rather than millisecond
+equivalence~\cite{benchmarking_sc15}.
+
+\paragraph{The Stage~K ordering transfers directionally to AKS.}
+The complete Stage~K condition ordering is preserved in the frozen AKS
+benchmark: \texttt{monolithic\_k8s\_1svc} at 70.802~ms is the fastest,
+followed by \texttt{chain\_2svc} at 73.437~ms, \texttt{chain\_3svc} at
+75.410~ms, \texttt{chain\_4svc} at 78.294~ms, and \texttt{chain\_5svc}
+at 80.519~ms (\cref{tab:rq15_results}). Together with the kind
+multi-worker probe in \cref{sec:analysis-rq14b} (which preserves the ordering
+under same-host CNI-bridge routing) and the AKS multi-node sensitivity
+in \cref{sec:analysis-rq15b} (which preserves it under enforced
+inter-node placement), the Stage~K ordering now survives three orthogonal
+stresses: managed-cloud substrate (Stage~C), CNI-bridge routing on the
+local host (Stage~K (cross-node)), and genuine cross-host placement (Stage~C (multi-node)). Read
+across the deployment strand, this is a triple-coverage transfer of the
+service-count ordering established in Stage~K, while the activation/compute
+mechanisms identified in Stages~L1--L3 explain why the marginal increments
+are not constant. The ordering claim of the deployment strand is therefore
+not specific to the single-node \texttt{kind} substrate on which Stage~K was
+measured.
+
+\paragraph{The relative-overhead trend transfers within a small pp band.}
+Relative to each environment's own monolithic baseline, the AKS overhead
+profile across \texttt{chain\_2svc}--\texttt{chain\_5svc} is
+$\{3.7\%,\ 6.5\%,\ 10.6\%,\ 13.7\%\}$, against the Stage~K local
+Kubernetes profile of $\{2.9\%,\ 8.2\%,\ 11.7\%,\ 14.1\%\}$
+(\cref{tab:rq15_transfer}). Both curves are monotonic and track each
+other to within $1.7$~pp at any condition (the maximum gap is at
+\texttt{chain\_3svc}: 8.2\% local vs 6.5\% AKS; the other three
+conditions agree within $0.8$~pp). The transfer claim is therefore
+stronger than rank preservation alone: the shape of the overhead curve
+--- not just the ordering of conditions --- carries over from local
+Kubernetes to AKS. This shape correspondence at the relative-overhead
+level is what supports treating the chain-cost gradient as
+architectural rather than as a \texttt{kind}-specific artefact, while
+the small pp differences are compatible with the expected effect of
+managed-Kubernetes provider defaults on absolute
+performance~\cite{managed_k8s_perf}.
+
+\paragraph{The bounded-non-linearity at the last hop reappears with the same activation-transfer signature.}
+The AKS marginal increments are $+2.635$~ms from the monolithic baseline to
+\texttt{chain\_2svc}, then $+1.973$, $+2.884$, and $+2.225$~ms for
+\texttt{chain\_3svc}, \texttt{chain\_4svc}, and \texttt{chain\_5svc},
+respectively (\cref{tab:rq15_results}). The final increment is smaller than the
+preceding one because the layer-4 boundary that distinguishes
+\texttt{chain\_5svc} from \texttt{chain\_4svc} transfers only the
+98~KiB \texttt{layer4} output, against the 196--784~KiB tensors moved
+at the earlier \texttt{layer1}, \texttt{layer2}, and \texttt{layer3}
+boundaries (boundary-only activation sizes, consistent with the Stage~L1
+metric and distinct from the runner's input-inclusive
+\texttt{total\_activation\_bytes\_mean}). This is the activation-transfer
+dimension of the Stage~L3 two-dimensional
+account~\cite{deeperthings} reappearing in a third substrate, after
+\texttt{127.0.0.1} in Stage~L1 and single-node \texttt{kind} in Stage~K.
+The triple coverage strengthens the architectural reading of the
+bounded non-linearity but does not extend it beyond the evaluated
+coarse-stage ResNet-18 chain family --- the caveat already attached to
+the Stage~K reading carries over to Stage~C unchanged. The AKS curve has
+the same approximately-linear shape established for Stage~K: an
+ordinary-least-squares fit over the five frozen AKS means
+(\cref{tab:rq15_results}) has a slope of approximately $2.4$~ms per added
+service and $R^{2}\approx0.998$, so on managed cloud the service-count cost is
+also bounded and close to linear over the measured range rather than
+super-linear, with the activation-modulated marginal steps as the only
+departure from a constant slope.
+As in Stage~K, these adjacent increments are descriptive comparisons across the
+predefined chain family rather than clean causal estimates of adding a single
+isolated boundary in all cases.
+
+\paragraph{Absolute latency is environment-specific and is not the comparison Stage~C makes.}
+Every AKS condition mean is lower than its local Kubernetes counterpart,
+including the monolithic baseline (70.802~ms vs 81.066~ms). The two
+runs differ in host CPU, kernel, virtualisation layer, Kubernetes
+implementation (\texttt{kind}/containerd vs managed AKS control plane),
+container runtime context, CPU scheduling, networking path, and applied
+host controls: the local stage applied \texttt{performance} governor,
+disabled turbo, and \texttt{nice~-5}, whereas AKS does not expose those
+controls (\cref{sec:rq15}). The lower AKS absolute number is therefore
+confounded with hardware and host-control differences rather than
+isolated to a substrate property of AKS, and the absolute delta should
+not be read as evidence that AKS is generally faster than local
+Kubernetes for this workload. Independent of this thesis, container,
+VM, CNI, and managed-cluster differences are known to shift absolute
+timings across substrates~\cite{virtualization_costs,cni_k8s_ic2e21,
+noise_in_clouds,managed_k8s_perf}, which is why Stage~C uses
+within-environment ordering and relative-overhead transfer as the primary
+comparison and treats absolute latency as deployment-specific.
+
+\paragraph{Validation.}
+Three pieces of evidence support treating the within-run AKS ordering
+and the relative-overhead trend transfer as credible. First, functional
+parity holds: both local segment-chain validation and live in-cluster
+gRPC validation report \texttt{max\_abs\_diff}~$=0.0$ at the predeclared
+tolerance of $1.0\times10^{-5}$ for all five conditions
+(consolidated in \cref{sec:analysis-validation}), so the AKS condition
+means are not confounded with numerical drift across the partitioned
+graph. Second, cross-round stability is tight on the chained conditions:
+round CVs are 0.0019--0.0061 for
+\texttt{chain\_2svc}--\texttt{chain\_5svc} and 0.0117 for the monolithic
+baseline (\cref{tab:rq15_rounds}); these are in the same range as Stage~K
+(\cref{tab:rq14_rounds}) and meet the SC'15 reporting standard of
+treating cross-round consistency as the primary indicator of result
+stability~\cite{benchmarking_sc15}. The slightly higher monolithic round
+CV in AKS is compatible with managed-cloud variability landing on the
+single longer-running pod path rather than on the chained gRPC path,
+but the run does not isolate a single cause. Third, the AKS leg removes
+one reproducibility caveat that bounded Stage~K: every Stage~C condition
+ran with the pinned ACR image digest
+\texttt{sha256:d292aef407ee8a15da2b}\allowbreak\texttt{daa680de1cc24b0975e7de81d27e1fc3}\allowbreak\texttt{a7d128b8736b}
+under image pull policy \texttt{Always}, so the application code is
+byte-exact at this digest, in contrast to the mutable local
+\texttt{thesis-inference:latest} tag used in Stage~K
+(\cref{sec:methods-artifacts}). Three limits must be stated explicitly.
+(i) Stage~C is one AKS cluster, one node SKU (\texttt{Standard\_D8s\_v3}),
+one region (\texttt{swedencentral}), one fixed seed; replication across
+SKU, region, or vendor is not in scope. (ii) The local and AKS legs
+differ on host hardware and on whether the \texttt{performance}
+governor, turbo, and \texttt{nice~-5} could be applied, so the
+local-to-AKS absolute delta is confounded with host control state in
+addition to substrate. (iii) Inter-node placement is excluded by
+construction in Stage~C (single-node AKS); the corresponding bound is
+quantified in \cref{sec:analysis-rq15b}.
+
+\paragraph{Evaluation.}
+The evaluative reading of Stage~C has three facets. First, against the
+within-environment AKS monolithic baseline, every chained condition is
+measurably slower with overhead growing monotonically from
+$+2.635$~ms (3.7\%, \texttt{chain\_2svc}) to $+9.717$~ms (13.7\%,
+\texttt{chain\_5svc}) (\cref{tab:rq15_results}). The smallest
+non-monolithic overhead is again \texttt{chain\_2svc}, in agreement with the
+Stage~K reading that within the predefined family this is the
+least-expensive way to move from a single Kubernetes service to a
+chained AKS deployment while preserving exact functional parity. Second,
+against the Stage~K local Kubernetes baseline, the relative-overhead curve
+transfers within a small pp band ($\leq 1.7$~pp at any condition,
+\cref{tab:rq15_transfer}); the overhead trend therefore carries over to
+managed AKS even though the absolute milliseconds do not. Third,
+against the boundaries of what Stage~C can claim, the result supports a
+directional-transfer claim under managed-cloud execution --- the chain
+family runs end-to-end on AKS, the Stage~K ordering is preserved, and the
+relative-overhead trend tracks the local profile --- but it is not
+sufficient to support production-readiness, scalability, multi-tenant
+robustness, or millisecond-portability claims. Inter-node placement,
+autoscaling, concurrent clients, alternate SKUs and regions, and
+service-mesh hardening are all out of scope for Stage~C; the inter-node
+bound is quantified in \cref{sec:analysis-rq15b}, and the hardening cost
+is addressed in the RQ2 strand. The contribution of Stage~C stops at the
+substrate-transfer boundary.
+
+\paragraph{Stage~C outcome.}
+Under the controlled AKS transfer-validation setup, the local Kubernetes
+service-count pattern transfers directionally to managed cloud
+execution. The complete Stage~K ordering is preserved
+(\texttt{monolithic\_k8s\_1svc} 70.802~ms $<$ \texttt{chain\_2svc}
+73.437~ms $<$ \texttt{chain\_3svc} 75.410~ms $<$ \texttt{chain\_4svc}
+78.294~ms $<$ \texttt{chain\_5svc} 80.519~ms,
+\cref{tab:rq15_results}), and the relative-overhead profile against
+each environment's own monolithic baseline tracks the Stage~K profile
+within $1.7$~pp at any condition (\cref{tab:rq15_transfer}). The
+bounded non-linearity at the final boundary reappears with the same
+activation-transfer signature ($+2.225$~ms last step against a 98~KiB
+\texttt{layer4} transfer), so the Stage~L3 activation-driven mechanism
+holds in a third substrate~\cite{deeperthings}. Absolute latency is
+lower in AKS for every condition but is confounded with hardware and
+host-control differences and is therefore not the comparison Stage~C
+makes; substrate-dependent absolute shifts across container, VM, CNI,
+and managed-cluster implementations are independently
+documented~\cite{managed_k8s_perf,virtualization_costs,cni_k8s_ic2e21,
+noise_in_clouds}. Stage~C therefore supports a bounded directional
+transfer claim under single-node managed-cloud execution; it does not
+support production-readiness, scalability, or millisecond-portability
+claims, and the inter-node and security-hardening dimensions are
+addressed in \cref{sec:analysis-rq15b} and in the RQ2 analysis
+subsections respectively.

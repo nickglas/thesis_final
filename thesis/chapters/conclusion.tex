@@ -1,0 +1,234 @@
+\chapter{Conclusion}%
+\label{ch:conclusion}
+
+\section{Summary \& Findings}
+
+This thesis studied ResNet-18 inference as a staged microservice
+system. The motivating problem was that decomposing a deep neural
+network across service boundaries does not have a single best answer:
+the cost is shaped jointly by where the model is split, where the
+resulting services are deployed, and how the inter-service path is
+hardened. The research questions therefore split into two strands.
+RQ1 asked which coarse and refined ResNet-18 boundaries are suitable 
+under controlled local execution, how the resulting chain family
+behaves under local Kubernetes and managed AKS, and how much
+inter-node placement contributes to the cost. RQ2 asked what
+performance and operational overhead is introduced when the selected
+\texttt{chain\_2svc} AKS chain-family path is hardened with managed-Istio
+mTLS and authorisation policy, and when VM-level confidential execution
+under AMD SEV-SNP is added to the downstream service. The approach was a
+staged experimental pipeline that fixed the model, the timing protocol,
+and the functional parity contract across stages, and changed only one
+layer of the system at a time.
+
+On the architectural side, Stage~L1 established that coarse ResNet-18
+stage boundaries are not interchangeable under controlled local
+execution: the earliest boundary is penalised because the
+\texttt{layer1} activation expands the byte budget the boundary must
+carry, and the latest boundary is penalised because it satisfies the
+activation-size criterion only by collapsing the downstream service
+into the classification head. The suitable carry-forward region is
+mid-to-late. Stage~L2 then refined that region with a block-level split
+and found an operationally flat band of practically equivalent
+boundaries whose rule-selected carry-forward is
+\texttt{split\_after\_layer3\_block0} with
+\texttt{split\_after\_layer2} as the reference candidate; the
+analytically load-bearing observation is that, at constant 196~KiB
+activation transfer, the boundary-crossing gap between
+\texttt{split\_after\_layer3\_block0} and \texttt{split\_after\_layer3}
+is essentially the service-B compute gap. Stage~L3 fused these into a
+two-dimensional account: activation transfer dominates at the coarse
+level and compute placement is independently observable at the
+refined level, and the mid-to-late band is the only region in which
+both dimensions are simultaneously tolerable under the conditions
+measured here.
+
+On the deployment side, Stage~K established the service-count ordering
+inside local Kubernetes: end-to-end latency grows
+monotonically and approximately linearly over the measured one-to-five-service
+family from the
+monolithic in-cluster baseline through the five-service chain (a
+descriptive linear fit gives $R^{2}\approx0.98$ locally and $\approx0.998$
+on AKS), and the descriptive marginal cost of an added boundary is
+shaped by the tensor transferred at it rather than by a constant
+per-hop surcharge. Total compute is approximately flat across the
+chained conditions while the runner's non-compute component grows
+across the chain, so the added cost is platform-side rather than
+compute-side. Stage~C re-ran the same chain family on managed AKS and
+preserved both the condition ordering and the relative-overhead curve
+to within a small percentage-point band; absolute milliseconds differ
+between substrates and are not the comparison Stage~C makes. The Stage~C multi-node alternative bounded the inter-node cost
+that the single-node primary design
+intentionally hides: forcing every chain hop across a node boundary
+adds an envelope of +2.131--+4.086~ms across the chained conditions
+and +2.305~ms on the monolithic baseline, with the architectural
+ordering preserved.
+
+On the security side, Stage~H1 showed that adding service identity,
+managed-Istio mTLS, and authorisation policy to the selected
+\texttt{chain\_2svc} AKS deployment costs +3.488~ms / +4.62\% on the
+mean and +3.623~ms at p95, with a supporting ablation that localises
+most of this cost to entry into the managed-Istio data path rather
+than to strict mTLS or AuthorizationPolicy in isolation. The same
+hardening costs +8.837~ms / +10.74\% at \texttt{chain\_5svc}, so the
+mTLS cost grows with protected chain depth, and an independent
+multi-node sensitivity stage produces +2.71~ms / +3.90\% on
+\texttt{chain\_2svc}. Stage~H2 then showed that placing only the
+downstream service on an AMD SEV-SNP confidential VM adds a further
++1.854~ms / +3.17\% on the mean and +3.601~ms / +5.98\% at p95 over
+a within-cluster standard-node mTLS baseline, with the tail amplified
+relative to the mean. The security claims are bounded by the
+mTLS termination boundary, by the SEV-SNP vendor threat
+model~\cite{amd_sevsnp_whitepaper} and residual confidential-VM attack
+surfaces~\cite{schluter2024_heckler}, and by the threat-model gap with
+activation-privacy attacks against an untrusted remote
+partition~\cite{he2021_attacking_collaborative}: SEV-SNP defends
+against a host-platform adversary, not against a malicious remote
+service holding the activations. The trade-off synthesis combined these into a
+delta-space trade-off: the three hardening layers are composable
+rather than substitutable, the mTLS bundle is the most defensible
+default for the selected \texttt{chain\_2svc} topology, and selective
+SEV-SNP is the next defensible step only when the threat model
+explicitly includes the host platform of the downstream segment.
+
+\paragraph{Significance.} Taken together, these findings establish that the
+decomposition required to treat a neural network as a set of independently
+deployable and independently governable services carries a bounded, characterised
+overhead across the controlled, orchestrated, cloud, and security-hardened settings
+evaluated here.
+That result is the precondition for the broader significance discussed in
+\cref{sec:analysis-significance}: per-layer policy control, selective protection of
+individual segments, and --- prospectively --- the composition of a model from
+layers operated by different organisations. The thesis does not claim to have
+realised those capabilities, but its bounded-overhead evidence is what makes them
+worth pursuing rather than dismissing as the cost of decomposition for its own
+sake.
+
+\section{Contributions}
+\label{sec:conclusion-contributions}
+
+The thesis contributes the following tangible outcomes, each
+supported by earlier chapters.
+
+\paragraph{Methodological.} A staged experimental method for
+evaluating neural-network microservice decomposition that holds the
+model and benchmark contract fixed across local CPU execution, local
+Kubernetes, managed AKS, communication-level mTLS hardening, and
+selective AMD SEV-SNP VM-level confidential execution. The method
+makes the cross-stage deltas interpretable because only one system
+layer changes at a time.
+
+\paragraph{Technical.} A proof-of-concept gRPC-based ResNet-18
+microservice framework supporting variable chain depths from one to
+five services, together with the Kubernetes and AKS deployment
+configurations used in the chain-family and security stages. The
+AKS runs from Stage~C onwards share a single ACR-pinned application
+image so cross-stage comparisons are not confounded by application
+drift.
+
+\paragraph{Empirical.} A two-dimensional account of ResNet-18 split
+suitability under controlled local execution, in which
+activation-transfer size dominates at the coarse level and compute
+placement at the boundary is independently observable at the refined
+level; a characterisation of the chain-cost gradient under local
+Kubernetes and managed AKS, in which the condition ordering and
+non-constant descriptive marginal boundary cost transfer directionally between substrates;
+a per-condition multi-node penalty envelope quantifying
+the inter-node cost that the single-node primary design hides;
+paired, ablation-supported measurements of the managed-Istio
+mTLS + AuthZ bundle at two chain depths, localising most of the cost
+to entry into the sidecar data path; and a paired measurement of
+selective AMD SEV-SNP confidential-VM execution on the downstream
+service of the mTLS chain, with an explicit threat-model framing.
+
+\paragraph{Reproducibility.} A frozen, parity-validated,
+ACR-digest-pinned evidence set that traces every primary result to a
+specific result folder; the AKS legs are reproducible at the
+application-code level by digest, and the local \texttt{kind} stages
+are reproducible at the substrate level via the runtime metadata
+recorded alongside each artefact.
+
+\paragraph{Practical / deployment.} A delta-space security-hardening
+trade-off statement identifying managed-Istio mTLS with service
+identity and authorisation policy as the most defensible default among
+the evaluated configurations for
+the selected \texttt{chain\_2svc} AKS deployment, with selective
+SEV-SNP on the downstream service as the next defensible step only
+when the threat model includes the host platform of that segment.
+Extending the confidential-execution boundary to both services in
+the chain is explicitly treated as future work rather than as a
+measured trade-off point.
+
+\section{Limitations \& Threats to Validity}
+\label{sec:conclusion-limitations}
+
+The conclusions are bounded by the evaluated workload and deployment
+setup. The model under test is ResNet-18 in FP32 on CPU at batch
+size one with synchronous gRPC, so the headline numbers may not
+transfer quantitatively to GPU execution, mixed precision, larger or
+transformer-based models, or throughput-oriented batched workloads.
+The base cases of Stage~K, Stage~C, and Stage~H1 colocate the chain
+services on a single node so that the measured cost is attributable to
+orchestration, gRPC, and communication-security mechanisms rather than
+to inter-node networking; Stage~K (cross-node), Stage~C (multi-node), and
+Stage~H1 (multi-node) are explicit sensitivity stages that bound this
+design choice but do not extend the primary numbers to arbitrary
+multi-node deployments. Stage~H2 follows a different paired design: it
+keeps the communication-security contract fixed and compares the
+downstream service on a standard AMD node pool against the same service
+on an AMD SEV-SNP confidential node pool.
+Controlled-versus-production variability remains a known threat:
+CPU governor, turbo, and \texttt{nice} controls are enforceable on
+the local stages but not on AKS, so the measurement environment is
+quieter than a contended production workload.
+
+Security claims are bounded by their evaluated mechanisms. Stage~H1
+measures communication-level hardening only: the sidecar protects
+the proxy-mediated inter-service path, the mesh control plane and
+the local CA remain trust-critical, and the loopback inside each
+pod after TLS termination is not part of the protected boundary.
+Stage~H2 measures VM-level confidential execution on the downstream
+service against the SEV-SNP vendor threat model under policy
+validation, and not against residual host-platform attack surfaces
+such as malicious-interrupt
+injection~\cite{schluter2024_heckler}, which this thesis does not
+experimentally evaluate. The activation-privacy motivation
+in~\cite{he2021_attacking_collaborative} is cited as motivation but
+addresses a malicious-remote-service adversary, while SEV-SNP
+defends against a host-platform adversary. The mTLS depth-sensitivity
+finding rests on two measured chain depths and is therefore an
+order-of-magnitude observation rather than a fitted per-hop scaling
+law. A more detailed category-by-category discussion of the
+analysis-level validity boundaries is provided in
+\cref{sec:analysis-threats}.
+
+\section{Future Work}
+
+Several directions follow directly from the limitations above and
+were out of the scope of this thesis. The same staged method could
+be applied to larger and more diverse models, including transformer
+inference workloads and models with different activation profiles,
+and extended to GPU execution and mixed-precision settings. Combining
+architectural partitioning with feature compression at the boundary
+is a complementary direction, because compression may change the
+cost of early split points that the joint suitability criterion
+currently rejects on activation expansion. On the deployment side,
+the chain family could be evaluated under concurrent client load,
+sustained open-loop traffic, autoscaling, cross-availability-zone or
+cross-region placement, and alternate node SKUs, CNIs, and managed
+mesh implementations; the multi-node sensitivity stages of this
+thesis bound the intra-zone inter-node penalty but leave these
+wider topology and platform questions open.
+
+On the security side, the evaluation could be extended to sidecar
+and sidecarless meshes, eBPF data-plane variants, application-layer
+encryption, and integrated attestation workflows. Extending the
+confidential-execution boundary from the selective
+\texttt{service2\_only} scope evaluated here to both services in the
+chain, and evaluating \texttt{chain\_5svc} with TEE, are the natural
+next measurement points. Finally, the SEV-SNP security claim could
+be tested against residual attack surfaces outside the vendor threat
+model, including malicious-host interrupt
+injection~\cite{schluter2024_heckler}; this thesis treats such
+adversarial evaluation as an explicit next step rather than a
+measured result.

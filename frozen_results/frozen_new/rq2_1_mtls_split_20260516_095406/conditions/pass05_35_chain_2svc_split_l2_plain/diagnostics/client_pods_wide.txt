@@ -1,0 +1,2 @@
+NAME               READY   STATUS    RESTARTS   AGE    IP             NODE                               NOMINATED NODE   READINESS GATES
+benchmark-client   1/1     Running   0          100s   10.244.1.170   aks-rq15pool-53575030-vmss000000   <none>           <none>

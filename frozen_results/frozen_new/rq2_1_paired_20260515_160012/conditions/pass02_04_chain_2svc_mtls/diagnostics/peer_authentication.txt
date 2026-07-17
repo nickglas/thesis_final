@@ -1,0 +1,57 @@
+apiVersion: v1
+items:
+- apiVersion: security.istio.io/v1
+  kind: PeerAuthentication
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"PeerAuthentication","metadata":{"annotations":{},"labels":{"app":"thesis-inference","condition":"chain_2svc_mtls","experiment":"rq21-chain2-mtls","experiment-condition":"chain_2svc_mtls","mesh-enabled":"true","security-condition":"mtls","workload-role":"mesh-policy"},"name":"default","namespace":"rq21-chain2-mtls"},"spec":{"mtls":{"mode":"PERMISSIVE"}}}
+    creationTimestamp: "2026-05-15T16:21:36Z"
+    generation: 1
+    labels:
+      app: thesis-inference
+      condition: chain_2svc_mtls
+      experiment: rq21-chain2-mtls
+      experiment-condition: chain_2svc_mtls
+      mesh-enabled: "true"
+      security-condition: mtls
+      workload-role: mesh-policy
+    name: default
+    namespace: rq21-chain2-mtls
+    resourceVersion: "6813"
+    uid: 56c0bcbd-91f2-4d9b-a923-5ff8c8d0bf73
+  spec:
+    mtls:
+      mode: PERMISSIVE
+- apiVersion: security.istio.io/v1
+  kind: PeerAuthentication
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"PeerAuthentication","metadata":{"annotations":{},"labels":{"app":"thesis-inference","condition":"chain_2svc_mtls","experiment":"rq21-chain2-mtls","experiment-condition":"chain_2svc_mtls","mesh-enabled":"true","security-condition":"mtls","segment-index":"2","workload-role":"mesh-policy"},"name":"downstream-strict","namespace":"rq21-chain2-mtls"},"spec":{"mtls":{"mode":"STRICT"},"selector":{"matchLabels":{"condition":"chain_2svc_mtls","segment-index":"2","workload-role":"service"}}}}
+    creationTimestamp: "2026-05-15T16:21:36Z"
+    generation: 1
+    labels:
+      app: thesis-inference
+      condition: chain_2svc_mtls
+      experiment: rq21-chain2-mtls
+      experiment-condition: chain_2svc_mtls
+      mesh-enabled: "true"
+      security-condition: mtls
+      segment-index: "2"
+      workload-role: mesh-policy
+    name: downstream-strict
+    namespace: rq21-chain2-mtls
+    resourceVersion: "6818"
+    uid: 03549398-2751-4630-9384-e6f07eac0877
+  spec:
+    mtls:
+      mode: STRICT
+    selector:
+      matchLabels:
+        condition: chain_2svc_mtls
+        segment-index: "2"
+        workload-role: service
+kind: List
+metadata:
+  resourceVersion: ""

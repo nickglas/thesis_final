@@ -1,0 +1,231 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: chain-2svc-split-l4-plain-svc-1
+  namespace: rq21-ms-l4-plain
+  labels:
+    app: thesis-inference
+    experiment: rq21-ms-l4-plain
+    workload-role: service
+    security-condition: plain
+    mesh-enabled: 'false'
+    condition: chain_2svc_split_l4_plain
+    segment-index: '1'
+spec:
+  type: ClusterIP
+  selector:
+    app: thesis-inference
+    condition: chain_2svc_split_l4_plain
+    segment-index: '1'
+  ports:
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+    protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chain-2svc-split-l4-plain-svc-1
+  namespace: rq21-ms-l4-plain
+  labels:
+    app: thesis-inference
+    experiment: rq21-ms-l4-plain
+    workload-role: service
+    security-condition: plain
+    mesh-enabled: 'false'
+    condition: chain_2svc_split_l4_plain
+    segment-index: '1'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thesis-inference
+      condition: chain_2svc_split_l4_plain
+      segment-index: '1'
+  template:
+    metadata:
+      labels:
+        app: thesis-inference
+        experiment: rq21-ms-l4-plain
+        workload-role: service
+        security-condition: plain
+        mesh-enabled: 'false'
+        condition: chain_2svc_split_l4_plain
+        experiment-condition: chain_2svc_split_l4_plain
+        segment-index: '1'
+    spec:
+      containers:
+      - name: inference
+        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 50051
+          name: grpc
+        args:
+        - --segment_index
+        - '0'
+        - --host
+        - 0.0.0.0
+        - --port
+        - '50051'
+        - --max_message_bytes
+        - '16777216'
+        - --split_points
+        - layer4
+        - --next_address
+        - chain-2svc-split-l4-plain-svc-2.rq21-ms-l4-plain.svc.cluster.local:50051
+        env:
+        - name: PYTORCH_INTRA_OP_THREADS
+          value: '1'
+        - name: PYTORCH_INTER_OP_THREADS
+          value: '1'
+        - name: OMP_NUM_THREADS
+          value: '1'
+        - name: MKL_NUM_THREADS
+          value: '1'
+        - name: OPENBLAS_NUM_THREADS
+          value: '1'
+        resources:
+          requests:
+            cpu: '1'
+            memory: 1Gi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+        readinessProbe:
+          tcpSocket:
+            port: 50051
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 6
+      nodeSelector:
+        agentpool: rq15pool
+        workload: benchmark
+      tolerations:
+      - key: workload
+        operator: Equal
+        value: benchmark
+        effect: NoSchedule
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                experiment-condition: chain_2svc_split_l4_plain
+            topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chain-2svc-split-l4-plain-svc-2
+  namespace: rq21-ms-l4-plain
+  labels:
+    app: thesis-inference
+    experiment: rq21-ms-l4-plain
+    workload-role: service
+    security-condition: plain
+    mesh-enabled: 'false'
+    condition: chain_2svc_split_l4_plain
+    segment-index: '2'
+spec:
+  type: ClusterIP
+  selector:
+    app: thesis-inference
+    condition: chain_2svc_split_l4_plain
+    segment-index: '2'
+  ports:
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+    protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chain-2svc-split-l4-plain-svc-2
+  namespace: rq21-ms-l4-plain
+  labels:
+    app: thesis-inference
+    experiment: rq21-ms-l4-plain
+    workload-role: service
+    security-condition: plain
+    mesh-enabled: 'false'
+    condition: chain_2svc_split_l4_plain
+    segment-index: '2'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thesis-inference
+      condition: chain_2svc_split_l4_plain
+      segment-index: '2'
+  template:
+    metadata:
+      labels:
+        app: thesis-inference
+        experiment: rq21-ms-l4-plain
+        workload-role: service
+        security-condition: plain
+        mesh-enabled: 'false'
+        condition: chain_2svc_split_l4_plain
+        experiment-condition: chain_2svc_split_l4_plain
+        segment-index: '2'
+    spec:
+      containers:
+      - name: inference
+        image: thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 50051
+          name: grpc
+        args:
+        - --segment_index
+        - '1'
+        - --host
+        - 0.0.0.0
+        - --port
+        - '50051'
+        - --max_message_bytes
+        - '16777216'
+        - --split_points
+        - layer4
+        env:
+        - name: PYTORCH_INTRA_OP_THREADS
+          value: '1'
+        - name: PYTORCH_INTER_OP_THREADS
+          value: '1'
+        - name: OMP_NUM_THREADS
+          value: '1'
+        - name: MKL_NUM_THREADS
+          value: '1'
+        - name: OPENBLAS_NUM_THREADS
+          value: '1'
+        resources:
+          requests:
+            cpu: '1'
+            memory: 1Gi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+        readinessProbe:
+          tcpSocket:
+            port: 50051
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 6
+      nodeSelector:
+        agentpool: rq15pool
+        workload: benchmark
+      tolerations:
+      - key: workload
+        operator: Equal
+        value: benchmark
+        effect: NoSchedule
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                experiment-condition: chain_2svc_split_l4_plain
+            topologyKey: kubernetes.io/hostname

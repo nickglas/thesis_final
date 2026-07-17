@@ -33,7 +33,10 @@ Metadata records:
 import os
 import glob
 import logging
-import platform
+import shutil
+import subprocess
+import sys
+from dataclasses import dataclass
 from typing import Dict, Any, List, Optional
 
 import torch
@@ -41,6 +44,50 @@ import torch
 from src.benchmark.config import CpuStabilisationConfig
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class PrivilegedCommandResult:
+    """Result for a privileged operation that may use sudo as a narrow helper."""
+
+    error: Optional[str]
+    method: str
+
+
+def _is_effective_root() -> bool:
+    return hasattr(os, "geteuid") and os.geteuid() == 0
+
+
+def _sudo_command_base() -> Optional[List[str]]:
+    """Return a sudo prefix, or None if sudo should not be attempted.
+
+    CPU controls are the only operations that should need elevation. The
+    experiment orchestrators should keep running as the normal user so CLIs
+    such as az, docker, kubectl, and terraform use the user's credentials.
+    """
+    if _is_effective_root():
+        return None
+    if os.environ.get("OPUS_CPU_STABILISATION_SUDO", "1").lower() in {"0", "false", "no"}:
+        return None
+    sudo = shutil.which("sudo")
+    if sudo is None:
+        return None
+    command = [sudo]
+    if not sys.stdin.isatty():
+        command.append("-n")
+    return command
+
+
+def _sudo_failure_hint() -> str:
+    if sys.stdin.isatty():
+        return "sudo helper failed"
+    return "sudo helper failed; no interactive terminal was available, so run sudo -v first or use a terminal"
+
+
+def _summarise_methods(methods: List[str]) -> str:
+    unique = sorted(set(methods))
+    return unique[0] if len(unique) == 1 else "+".join(unique)
+
 
 # ---------------------------------------------------------------------------
 # Physical core detection (avoids SMT siblings)
@@ -95,16 +142,129 @@ def _read_sysfs(path: str) -> Optional[str]:
     return None
 
 
-def _write_sysfs(path: str, value: str) -> Optional[str]:
-    """Write a value to a sysfs file.  Returns None on success, error string on failure."""
+def _write_sysfs(path: str, value: str) -> PrivilegedCommandResult:
+    """Write a value to a sysfs file, using sudo only for this write if needed."""
     try:
         with open(path, "w") as f:
             f.write(value)
-        return None
-    except PermissionError:
-        return f"Permission denied writing to {path} (requires root)"
+        return PrivilegedCommandResult(error=None, method="direct")
+    except PermissionError as exc:
+        sudo_base = _sudo_command_base()
+        if sudo_base is None:
+            if _is_effective_root():
+                error = (
+                    f"Permission denied writing to {path} ({exc}); running as "
+                    "root was not enough, so the host/container likely does not "
+                    "expose this sysfs control as writable"
+                )
+            else:
+                error = (
+                    f"Permission denied writing to {path} ({exc}); "
+                    "run the experiment as your normal user and allow the CPU "
+                    "stabilisation helper to use sudo, or pre-authenticate with sudo -v"
+                )
+            return PrivilegedCommandResult(
+                error=error,
+                method="failed",
+            )
+
+        # Pass value/path as positional parameters so the shell never has to
+        # interpolate untrusted text into the script itself.
+        command = [
+            *sudo_base,
+            "sh",
+            "-c",
+            'printf "%s" "$1" > "$2"',
+            "sh",
+            value,
+            path,
+        ]
+        completed = subprocess.run(command, stdout=subprocess.DEVNULL)
+        if completed.returncode == 0:
+            return PrivilegedCommandResult(error=None, method="sudo")
+        return PrivilegedCommandResult(
+            error=(
+                f"Permission denied writing to {path}; "
+                f"{_sudo_failure_hint()} with exit code {completed.returncode}"
+            ),
+            method="failed",
+        )
     except OSError as e:
-        return f"OS error writing to {path}: {e}"
+        return PrivilegedCommandResult(error=f"OS error writing to {path}: {e}", method="failed")
+
+
+def _get_process_nice() -> Optional[int]:
+    try:
+        if hasattr(os, "getpriority") and hasattr(os, "PRIO_PROCESS"):
+            return int(os.getpriority(os.PRIO_PROCESS, 0))
+        if hasattr(os, "nice"):
+            return int(os.nice(0))
+    except OSError:
+        return None
+    return None
+
+
+def _set_process_nice(target_nice: int) -> PrivilegedCommandResult:
+    """Set the current process nice value, using sudo renice if required."""
+    try:
+        if hasattr(os, "setpriority") and hasattr(os, "PRIO_PROCESS"):
+            os.setpriority(os.PRIO_PROCESS, 0, target_nice)
+        elif hasattr(os, "nice"):
+            current = _get_process_nice()
+            if current is None:
+                return PrivilegedCommandResult(
+                    error="Cannot determine current nice value",
+                    method="failed",
+                )
+            os.nice(target_nice - current)
+        else:
+            return PrivilegedCommandResult(
+                error="process priority APIs are not available on this platform",
+                method="failed",
+            )
+        return PrivilegedCommandResult(error=None, method="direct")
+    except PermissionError as exc:
+        sudo_base = _sudo_command_base()
+        if sudo_base is None:
+            if _is_effective_root():
+                error = (
+                    f"Insufficient privileges for nice={target_nice} ({exc}); "
+                    "running as root was not enough, so CAP_SYS_NICE may be "
+                    "missing in this environment"
+                )
+            else:
+                error = (
+                    f"Insufficient privileges for nice={target_nice} ({exc}); "
+                    "run the experiment as your normal user and allow the CPU "
+                    "stabilisation helper to use sudo, or pre-authenticate with sudo -v"
+                )
+            return PrivilegedCommandResult(
+                error=error,
+                method="failed",
+            )
+        command = [
+            *sudo_base,
+            "renice",
+            "-n",
+            str(target_nice),
+            "-p",
+            str(os.getpid()),
+        ]
+        completed = subprocess.run(command, stdout=subprocess.DEVNULL)
+        if completed.returncode == 0:
+            return PrivilegedCommandResult(error=None, method="sudo")
+        return PrivilegedCommandResult(
+            error=(
+                f"sudo renice to {target_nice} failed with exit code "
+                f"{completed.returncode}; {_sudo_failure_hint()}"
+            ),
+            method="failed",
+        )
+    except OSError as exc:
+        return PrivilegedCommandResult(
+            error=f"OS error setting nice={target_nice}: {exc}",
+            method="failed",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -268,30 +428,29 @@ def _apply_priority(cfg) -> Dict[str, Any]:
         logger.info("Process priority adjustment: disabled by configuration")
         return result
 
-    try:
-        current_nice = os.nice(0)
-        result["detected"] = {"current_nice": current_nice}
-        try:
-            os.nice(cfg.nice_value)
-            final_nice = os.nice(0)
-            result["applied"] = True
-            result["applied_nice"] = final_nice
-            logger.info(f"Process nice adjusted to {final_nice}")
-        except PermissionError:
-            result["applied"] = False
-            result["applied_nice"] = current_nice
-            result["error"] = (
-                f"Insufficient privileges for nice({cfg.nice_value}); "
-                f"running at default nice={current_nice}"
-            )
-            logger.info(
-                f"Cannot set nice({cfg.nice_value}) (no root); "
-                f"running at default nice={current_nice}"
-            )
-    except (OSError, AttributeError):
+    current_nice = _get_process_nice()
+    if current_nice is None:
         result["applied"] = False
-        result["error"] = "os.nice not available on this platform"
-        logger.info("os.nice not available; skipping priority adjustment")
+        result["error"] = "process priority APIs are not available on this platform"
+        logger.info("Process priority APIs not available; skipping priority adjustment")
+        return result
+
+    result["detected"] = {"current_nice": current_nice}
+    set_result = _set_process_nice(cfg.nice_value)
+    final_nice = _get_process_nice()
+    if set_result.error is None:
+        result["applied"] = True
+        result["applied_nice"] = final_nice
+        result["method"] = set_result.method
+        logger.info(f"Process nice adjusted to {final_nice} ({set_result.method})")
+    else:
+        result["applied"] = False
+        result["applied_nice"] = final_nice if final_nice is not None else current_nice
+        result["error"] = set_result.error
+        logger.info(
+            f"Cannot set nice={cfg.nice_value}; "
+            f"running at nice={result['applied_nice']} ({set_result.error})"
+        )
 
     return result
 
@@ -344,20 +503,24 @@ def _apply_governor(cfg) -> Dict[str, Any]:
         return result
 
     errors = []
+    methods = []
     for gp in sorted(governor_paths):
-        err = _write_sysfs(gp, cfg.requested_mode)
-        if err:
-            errors.append(err)
+        write_result = _write_sysfs(gp, cfg.requested_mode)
+        methods.append(write_result.method)
+        if write_result.error:
+            errors.append(write_result.error)
 
     if errors:
         result["applied"] = False
         result["error"] = errors[0]  # Report first error (usually all identical)
+        result["method"] = _summarise_methods(methods)
         logger.warning(f"Could not set governor to '{cfg.requested_mode}': {errors[0]}")
     else:
         # Verify
         new_governor = _read_sysfs(governor_path)
         result["applied"] = True
         result["applied_mode"] = new_governor
+        result["method"] = _summarise_methods(methods)
         logger.info(f"CPU governor set to '{new_governor}' on {len(governor_paths)} cores")
 
     return result
@@ -418,16 +581,18 @@ def _apply_turbo(cfg) -> Dict[str, Any]:
         result["reason"] = "Not requested by configuration"
         return result
 
-    err = _write_sysfs(turbo_path, disable_value)
-    if err:
+    write_result = _write_sysfs(turbo_path, disable_value)
+    if write_result.error:
         result["applied"] = False
-        result["error"] = err
-        logger.warning(f"Could not disable turbo boost: {err}")
+        result["error"] = write_result.error
+        result["method"] = write_result.method
+        logger.warning(f"Could not disable turbo boost: {write_result.error}")
     else:
         # Verify
         new_val = _read_sysfs(turbo_path)
         result["applied"] = True
         result["applied_value"] = new_val
+        result["method"] = write_result.method
         logger.info(f"Turbo boost disabled (wrote '{disable_value}' to {turbo_path})")
 
     return result

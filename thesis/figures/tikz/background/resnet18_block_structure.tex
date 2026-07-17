@@ -1,0 +1,65 @@
+\begin{tikzpicture}[
+    thesisfig,
+    node distance=0.36cm,                 % gap *within* a layer's block pair
+    image/.style={tfbox, minimum width=0.7cm, inner xsep=3pt},
+    stem/.style ={tfbox, minimum width=0.7cm, inner xsep=3pt, draw=orange!75!black, fill=orange!15},
+    block/.style={tfbox, minimum width=0.55cm, inner xsep=3pt, draw=blue!65!black,   fill=blue!14},
+    head/.style ={tfbox, minimum width=0.7cm, inner xsep=3pt, draw=green!45!black,  fill=green!12},
+    arrow/.style={tfarrow},
+    layerbrace/.style={decorate, decoration={brace, amplitude=5pt}, thick, draw=black!65}
+]
+
+% Main pipeline. Blocks abbreviated B0/B1 (zero-indexed, as in layerN.0/.1;
+% defined in caption) so all 11 boxes fit one row at body-text size; layers
+% grouped by the braces above.
+\node[image] (img) {Image};
+\node[stem, right=0.38cm of img] (stem) {Stem};
+
+% Layer 1 blocks
+\node[block, right=0.45cm of stem] (l1b1) {B0};
+\node[block, right=of l1b1] (l1b2) {B1};
+
+% Layer 2 blocks
+\node[block, right=0.45cm of l1b2] (l2b1) {B0};
+\node[block, right=of l2b1] (l2b2) {B1};
+
+% Layer 3 blocks
+\node[block, right=0.45cm of l2b2] (l3b1) {B0};
+\node[block, right=of l3b1] (l3b2) {B1};
+
+% Layer 4 blocks
+\node[block, right=0.45cm of l3b2] (l4b1) {B0};
+\node[block, right=of l4b1] (l4b2) {B1};
+
+\node[head, right=0.45cm of l4b2] (head) {Head};
+
+% Arrows
+\draw[arrow] (img) -- (stem);
+\draw[arrow] (stem) -- (l1b1);
+\draw[arrow] (l1b1) -- (l1b2);
+\draw[arrow] (l1b2) -- (l2b1);
+\draw[arrow] (l2b1) -- (l2b2);
+\draw[arrow] (l2b2) -- (l3b1);
+\draw[arrow] (l3b1) -- (l3b2);
+\draw[arrow] (l3b2) -- (l4b1);
+\draw[arrow] (l4b1) -- (l4b2);
+\draw[arrow] (l4b2) -- (head);
+
+% Layer labels using braces
+\draw[layerbrace]
+    ($(l1b1.north west)+(0,0.18)$) -- ($(l1b2.north east)+(0,0.18)$)
+    node[midway, yshift=0.45cm] {Layer 1};
+
+\draw[layerbrace]
+    ($(l2b1.north west)+(0,0.18)$) -- ($(l2b2.north east)+(0,0.18)$)
+    node[midway, yshift=0.45cm] {Layer 2};
+
+\draw[layerbrace]
+    ($(l3b1.north west)+(0,0.18)$) -- ($(l3b2.north east)+(0,0.18)$)
+    node[midway, yshift=0.45cm] {Layer 3};
+
+\draw[layerbrace]
+    ($(l4b1.north west)+(0,0.18)$) -- ($(l4b2.north east)+(0,0.18)$)
+    node[midway, yshift=0.45cm] {Layer 4};
+
+\end{tikzpicture}%

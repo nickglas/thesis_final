@@ -1,4 +1,4 @@
-"""Visualization for RQ1.1 results.
+"""Visualization for RQ1.x results.
 
 Generates:
   - Latency box plot
@@ -28,8 +28,11 @@ def _load_csv(path: str) -> List[Dict[str, Any]]:
         rows = []
         for row in reader:
             for key in row:
-                if key in ("round", "iteration", "activation_bytes"):
-                    row[key] = int(float(row[key]))
+                if key in ("round", "iteration", "num_hops") or key.endswith("_bytes"):
+                    try:
+                        row[key] = int(float(row[key]))
+                    except (ValueError, TypeError):
+                        pass
                 elif key != "condition":
                     try:
                         row[key] = float(row[key])
@@ -40,7 +43,7 @@ def _load_csv(path: str) -> List[Dict[str, Any]]:
 
 
 def _condition_label(name: str) -> str:
-    return name.replace("split_after_", "").replace("monolithic", "Monolithic")
+    return name.replace("split_after_", "").replace("_", " ")
 
 
 # ------------------------------------------------------------------
@@ -63,7 +66,7 @@ def plot_latency_boxplot(rows: List[Dict], output_path: str):
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.boxplot(data, labels=labels, patch_artist=True)
     ax.set_ylabel("End-to-end latency (ms)")
-    ax.set_title("RQ1.1: Latency by Condition")
+    ax.set_title("Latency by Condition")
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()
     plt.savefig(output_path, dpi=150)
@@ -88,7 +91,7 @@ def plot_latency_violin(rows: List[Dict], output_path: str):
     ax.set_xticks(range(1, len(labels) + 1))
     ax.set_xticklabels(labels)
     ax.set_ylabel("End-to-end latency (ms)")
-    ax.set_title("RQ1.1: Latency Distribution by Condition")
+    ax.set_title("Latency Distribution by Condition")
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()
     plt.savefig(output_path, dpi=150)
@@ -110,7 +113,7 @@ def plot_overhead_vs_activation(cross_condition: List[Dict], output_path: str):
 
     ax.set_xlabel("Activation transfer (KB)")
     ax.set_ylabel("Overhead vs monolithic (ms)")
-    ax.set_title("RQ1.1: Overhead vs Activation-Transfer Burden")
+    ax.set_title("Overhead vs Activation-Transfer Burden")
     ax.grid(alpha=0.3)
     plt.tight_layout()
     plt.savefig(output_path, dpi=150)

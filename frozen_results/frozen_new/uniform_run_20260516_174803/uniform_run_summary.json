@@ -1,0 +1,49 @@
+{
+  "generated_at": "2026-05-16T18:28:00.642533+00:00",
+  "wrapper_run_stamp": "20260516_174803",
+  "image_ref": "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b",
+  "acr_name": "thesisrq15acr",
+  "selected_stages": [
+    "rq2_1b_multinode"
+  ],
+  "include_optional": true,
+  "destroy_cloud_on_success": true,
+  "destroy_cloud_on_failure": true,
+  "results": [
+    {
+      "name": "acr_login",
+      "status": "ok",
+      "elapsed_seconds": 2.8666281700134277,
+      "detail": "",
+      "artifact_dirs": [],
+      "artifact_summaries": []
+    },
+    {
+      "name": "rq2_1b_multinode",
+      "status": "ok",
+      "elapsed_seconds": 2393.9496932029724,
+      "detail": "",
+      "artifact_dirs": [
+        "results/rq2_1b_multinode_20260516_174806"
+      ],
+      "artifact_summaries": [
+        {
+          "artifact_dir": "results/rq2_1b_multinode_20260516_174806",
+          "name": "rq2_1b_multinode_20260516_174806",
+          "summary_type": "paired",
+          "stage": "RQ2.1b",
+          "topology": "chain2",
+          "placement_mode": "multi_node",
+          "mean_latency_overhead_ms": 2.711704127994153,
+          "mean_latency_overhead_pct": 3.9034471214084863,
+          "p95_latency_overhead_ms": 2.692163449751206,
+          "sidecar_cpu_mcores_mean_overhead": 35.382011353929336,
+          "sidecar_memory_mib_mean_overhead": 83.4,
+          "resource_metrics_complete": true,
+          "security_validation_complete": true,
+          "blocking_issues": []
+        }
+      ]
+    }
+  ]
+}

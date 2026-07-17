@@ -1,0 +1,248 @@
+\section{Stage~K -- Multi-Microservice Kubernetes Inference Chain}
+\label{sec:rq14}
+
+\subsection{Stage Objective}
+
+As the local-Kubernetes environment of RQ1, this stage addresses the following question:
+
+\begin{quote}
+\textit{How does increasing the number of microservices affect end-to-end inference
+cost when ResNet-18 is decomposed into synchronously chained coarse architectural stages
+under in-cluster Kubernetes execution?}
+\end{quote}
+
+Stage~K moves from the controlled-local split-selection and explanatory stages of
+Stages~L1--L3 to the final thesis-facing local Kubernetes benchmark for the
+coarse-stage ResNet-18 chain family.
+Rather than selecting a boundary through carry-forward, this stage benchmarks a
+predefined set of five in-cluster conditions from \texttt{monolithic\_k8s\_1svc} to
+\texttt{chain\_5svc} to measure how end-to-end latency changes as synchronous service
+boundaries are added under controlled local Kubernetes execution.
+
+The literature framing for multi-boundary chain cost and Kubernetes-level
+deployment overhead is discussed in
+\cref{sec:rw-split-computing,sec:rw-cloud-native}.
+
+\subsection{Experimental Setup}
+
+The thesis-facing Stage~K benchmark used the frozen controlled local Kubernetes run
+\texttt{rq1\_4\_fully\_controlled\_20260515\_141036}. The environment snapshot
+(\texttt{merged\_results/environment.json}) records an Ubuntu/Linux runtime
+(\texttt{Linux-6.17.0-23-generic-x86\_64-with-glibc2.41}), Python~3.10.20, and
+PyTorch~2.11.0+cpu. Deployment metadata
+(\texttt{merged\_results/deployment\_metadata.json}) shows that the benchmark ran
+in namespace \texttt{rq14} on a single-node \texttt{kind} cluster
+(\texttt{kind-thesis-rq14}); for every condition, all service pods were scheduled
+on the same node, \texttt{thesis-rq14-control-plane}. The container image is the
+mutable local tag \texttt{thesis-inference:latest} with pull policy
+\texttt{IfNotPresent}, as documented in the manifest's reproducibility note
+(\cref{sec:methods-artifacts}). The evaluated model was pretrained ResNet-18
+with CPU-only FP32 execution and input shape $1 \times 3 \times 224 \times 224$.
+
+The complete benchmark configuration is reported in
+\cref{tab:rq14_config} (\cref{sec:appendix-benchmark-configs}). The parameters
+salient to interpreting the results are the per-service resource budget of
+1~CPU core and 512~MiB (request equal to limit), a matching 1~CPU / 1~GiB client
+budget, the same five-round / 200-iteration protocol (50 warmup, seed~42) used in
+the local stages, and in-cluster gRPC with a 16~MiB maximum message size; parity
+was validated at \texttt{atol} $= 1 \times 10^{-5}$ over five inputs.
+
+CPU stabilisation controls were requested for the benchmark processes and applied where
+the runtime allowed. Threading controls for PyTorch, OpenMP, MKL, and OpenBLAS were all
+requested at one thread and observed at one thread. CPU affinity to one physical core
+with SMT excluded was requested and applied; the observed affinity set was core~0.
+Process priority \texttt{nice~-5} was requested and applied. Governor and turbo controls
+were also requested, but writes to \texttt{/sys} failed because the containerised
+environment exposed those paths as read-only. The detected governor was already
+\texttt{performance}, and turbo was already disabled. ASLR remained at the detected
+value~2 and was not modified.
+
+Methodological validity was established before timing. For all five conditions, local
+segment validation against the monolithic model and live gRPC chain validation against
+the deployed services both passed with \texttt{max\_abs\_diff} $= 0.0$,
+\texttt{atol} $= 1 \times 10^{-5}$, and \texttt{num\_inputs} $= 5$.
+
+\subsection{Conditions}
+
+Five conditions were evaluated in a rolling orchestration sweep:
+
+The byte totals reported below are the frozen runner's
+\texttt{total\_activation\_bytes\_mean} values converted with
+1024~bytes/KiB. This runner metric sums the input tensor and the tensors
+recorded across the service calls, so it is a per-request recorded tensor-byte
+total rather than the boundary-only activation-transfer size used in the local
+split-selection sections.
+
+\begin{itemize}
+    \item \textbf{\texttt{monolithic\_k8s\_1svc}}: Full ResNet-18 inference in a single Kubernetes service. This is the Kubernetes-native monolithic baseline.
+    \item \textbf{\texttt{chain\_2svc}}: Two services with a split after \texttt{layer2}. Recorded tensor bytes per request: 980~KiB.
+    \item \textbf{\texttt{chain\_3svc}}: Three services with splits after \texttt{layer1} and \texttt{layer3}. Recorded tensor bytes per request: 1568~KiB.
+    \item \textbf{\texttt{chain\_4svc}}: Four services with splits after \texttt{layer1}, \texttt{layer2}, and \texttt{layer3}. Recorded tensor bytes per request: 1960~KiB.
+    \item \textbf{\texttt{chain\_5svc}}: Five services with splits after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. Recorded tensor bytes per request: 2058~KiB.
+\end{itemize}
+
+Carry-forward is not applicable in Stage~K. The frozen \texttt{carry\_forward.json}
+states that carry-forward is defined only for the two-service split-selection experiments
+(Stages~L1 and~L2), whereas Stage~K benchmarks this predefined Kubernetes chain set.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~K latency and overhead summary]{Stage~K summary of mean latency and overhead vs.\ Kubernetes monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
+\label{tab:rq14_results}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 81.066 & 79.506 & 4.017 & 88.250 & --- \\
+\texttt{chain\_2svc}           & 83.387 & 81.803 & 3.525 & 90.189 & +2.321 / +2.9\% \\
+\texttt{chain\_3svc}           & 87.728 & 85.775 & 4.233 & 95.269 & +6.662 / +8.2\% \\
+\texttt{chain\_4svc}           & 90.572 & 88.675 & 3.929 & 97.713 & +9.506 / +11.7\% \\
+\texttt{chain\_5svc}           & 92.535 & 90.456 & 3.965 & 99.491 & +11.469 / +14.1\% \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\input{figures/tikz/results/rq14_kubernetes_chain_latency}
+}
+\caption[Stage~K local Kubernetes chain mean latency]{Mean end-to-end latency for the Stage~K local Kubernetes chain family
+(\texttt{rq1\_4\_fully\_controlled\_20260515\_141036}). Latency increases as
+the predefined service-chain configurations move from one to five services. Over
+this one-to-five range the trend is approximately linear (descriptive
+ordinary-least-squares fit: $\approx 3.0$~ms per added service, $R^{2}\approx
+0.98$; see \cref{sec:analysis-rq14}) and bounded rather than super-linear; the
+adjacent differences are descriptive comparisons across this predefined family,
+modulated by the activation-transfer size at each boundary, rather than isolated
+causal estimates for a single added boundary. The shaded band shows $\pm 1$~standard
+deviation of per-iteration latency (the \texttt{Std} column of
+\cref{tab:rq14_results}).}
+\label{fig:rq14_kubernetes_chain_latency}
+\end{figure}
+
+\Cref{fig:rq14_kubernetes_chain_latency} visualises the same latency trend reported in
+\cref{tab:rq14_results}. By \texttt{chain\_4svc}, the mean-latency overhead is
+9.506~ms out of the final \texttt{chain\_5svc} overhead of 11.469~ms, so most
+of the measured increase has already occurred before the five-service
+configuration.
+
+\begin{table}[ht]
+\centering
+\caption[Stage~K overhead and non-compute cost breakdown]{Stage~K overhead and non-compute/platform cost breakdown. Recorded tensor-byte totals are taken from \texttt{total\_activation\_bytes\_mean} in \texttt{merged\_results/condition\_summaries.csv} and converted to KiB (1024 bytes/KiB); the metric includes the input tensor. The platform column is \texttt{non\_compute\_overhead\_ms\_mean}.}
+\label{tab:rq14_overhead}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Overhead (ms)} & \textbf{Overhead (\%)} & \textbf{Tensor Bytes (KiB)} & \textbf{Non-Compute / Platform (ms)} \\
+\midrule
+\texttt{chain\_2svc} & 2.321  & 2.9  & 980  & 6.215 \\
+\texttt{chain\_3svc} & 6.662  & 8.2  & 1568 & 9.435 \\
+\texttt{chain\_4svc} & 9.506  & 11.7 & 1960 & 12.088 \\
+\texttt{chain\_5svc} & 11.469 & 14.1 & 2058 & 13.633 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~K effect sizes vs.\ monolithic baseline]{Stage~K effect sizes relative to monolithic baseline. Source: \texttt{merged\_results/effect\_sizes.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
+\label{tab:rq14_effects}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Condition} & \textbf{Cohen's $d$} & \textbf{Interpretation} & \textbf{Mann-Whitney $p$} \\
+\midrule
+\texttt{chain\_2svc} & 0.614 & medium & $7.66 \times 10^{-77}$ \\
+\texttt{chain\_3svc} & 1.614 & large  & $4.02 \times 10^{-181}$ \\
+\texttt{chain\_4svc} & 2.392 & large  & $3.23 \times 10^{-276}$ \\
+\texttt{chain\_5svc} & 2.874 & large  & $1.75 \times 10^{-301}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+\textit{Methodological note.} Effect sizes are computed from pooled per-iteration data
+($N = 1{,}000$ iterations per condition). With large $N$, Mann-Whitney $p$-values are
+near-zero for any non-trivial difference and should not be over-interpreted as evidence of
+strong practical significance. Cohen's $d$ provides a more informative measure of effect
+magnitude. Cross-round consistency and parity validation are the primary indicators of
+result stability and methodological validity.
+
+\begin{table}[ht]
+\centering
+\caption[Stage~K cross-round consistency]{Stage~K cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036}.}
+\label{tab:rq14_rounds}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 81.066 & 0.6864 & 1.8009 & 0.0085 \\
+\texttt{chain\_2svc}           & 83.387 & 0.8288 & 2.0200 & 0.0099 \\
+\texttt{chain\_3svc}           & 87.728 & 1.4109 & 3.8162 & 0.0161 \\
+\texttt{chain\_4svc}           & 90.572 & 0.8826 & 2.0073 & 0.0097 \\
+\texttt{chain\_5svc}           & 92.535 & 0.6820 & 1.6288 & 0.0074 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The frozen controlled local Kubernetes run was stable across rounds. Round CVs
+remained low for all five conditions: 0.0085 for \texttt{monolithic\_k8s\_1svc},
+0.0099 for \texttt{chain\_2svc}, 0.0161 for \texttt{chain\_3svc}, 0.0097 for
+\texttt{chain\_4svc}, and 0.0074 for \texttt{chain\_5svc}. Together with the
+parity checks above, this supports treating the reported condition means as
+representative of the local in-cluster benchmark.
+
+The interpretation of these results and their contribution to RQ1 are presented in
+\cref{sec:analysis-rq14}.
+
+\section{Stage~K (Cross-Node Alternative) -- kind Multi-Worker CNI Sensitivity}
+\label{sec:rq14b-stub}
+
+The cross-node alternative to Stage~K forces every chain hop across a kind
+worker-node boundary, bounding the cost that the single-node Stage~K base case
+hides on one host. It is declared in \cref{sec:methods-rq14b} as a
+\emph{supporting sensitivity condition} under RQ1, not a primary thesis-facing
+number: kind's worker ``nodes'' are Docker containers that share one host kernel
+and communicate over kind's CNI bridge, so the stage measures CNI-bridge routing
+cost on a single physical host rather than genuine cross-host networking. The
+real multi-host inter-node penalty is measured separately by the Stage~C
+multi-node alternative on AKS (\cref{sec:rq15b}). To keep the body uncluttered,
+the full per-condition summaries, cross-round consistency, and
+kind-vs.-single-node deltas are retained in
+\cref{sec:appendix-rq14b}
+(\cref{tab:rq14b_results,tab:rq14b_rounds,tab:rq14b_delta}); the salient figures
+are summarised here so that the cross-node condition is visible within the main
+deployment evaluation rather than only in the appendix.
+
+\paragraph{Summary of results.}
+Under the six-worker kind cluster with anti-affinity, mean end-to-end latency
+rises monotonically across the predefined chain family, from 67.491~ms for
+\texttt{monolithic\_k8s\_1svc} to 87.378~ms, 120.465~ms, 135.639~ms, and
+141.169~ms for \texttt{chain\_2svc} through \texttt{chain\_5svc}
+(\cref{tab:rq14b_results}). The Stage~K within-family ordering is preserved, and
+so is the bounded non-linearity at the final boundary: the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment of $+5.530$~ms
+is smaller than the preceding $+15.174$~ms step, matching the small 98~KiB
+\texttt{layer4} activation added at the last hop. Computed
+condition-by-condition against the frozen single-node Stage~K baseline, the
+per-condition penalty ranges from $+3.991$~ms (\texttt{chain\_2svc}) to
+$+48.634$~ms (\texttt{chain\_5svc}) (\cref{tab:rq14b_delta}). This is roughly an
+order of magnitude larger than the genuine cross-host AKS penalty of
+$+2.131$--$+4.086$~ms measured by the Stage~C multi-node alternative
+(\cref{tab:rq15b_delta}), which is the central reason the stage is read as a
+single-host CNI-bridge sensitivity envelope rather than as a deployment-grade
+multi-node result. Round-level CVs are correspondingly inflated, reaching
+$0.0551$ at \texttt{chain\_3svc} (\cref{tab:rq14b_rounds}), consistent with
+kind-CNI and shared-host variability rather than a chain-specific mechanism; the
+comparison is therefore interpreted at the per-condition delta level only, as the
+two runs also differ in host-control state (governor, turbo, and \texttt{nice}).
+
+The interpretation of these results and their contribution to RQ1 are presented
+in \cref{sec:analysis-rq14b}.

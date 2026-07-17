@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0finference.proto\x12\tinference\"2\n\x0cInferRequest\x12\x13\n\x0btensor_data\x18\x01 \x01(\x0c\x12\r\n\x05shape\x18\x02 \x03(\x03\"u\n\rInferResponse\x12\x13\n\x0btensor_data\x18\x01 \x01(\x0c\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x16\n\x0e\x64\x65serialize_ms\x18\x03 \x01(\x01\x12\x12\n\ncompute_ms\x18\x04 \x01(\x01\x12\x14\n\x0cserialize_ms\x18\x05 \x01(\x01\x32N\n\x10InferenceService\x12:\n\x05Infer\x12\x17.inference.InferRequest\x1a\x18.inference.InferResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0finference.proto\x12\tinference\"2\n\x0cInferRequest\x12\x13\n\x0btensor_data\x18\x01 \x01(\x0c\x12\r\n\x05shape\x18\x02 \x03(\x03\"\xa0\x01\n\rInferResponse\x12\x13\n\x0btensor_data\x18\x01 \x01(\x0c\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x16\n\x0e\x64\x65serialize_ms\x18\x03 \x01(\x01\x12\x12\n\ncompute_ms\x18\x04 \x01(\x01\x12\x14\n\x0cserialize_ms\x18\x05 \x01(\x01\x12)\n\x0bhop_timings\x18\x06 \x03(\x0b\x32\x14.inference.HopTiming\"\x8e\x01\n\tHopTiming\x12\x11\n\thop_index\x18\x01 \x01(\x05\x12\x16\n\x0e\x64\x65serialize_ms\x18\x02 \x01(\x01\x12\x12\n\ncompute_ms\x18\x03 \x01(\x01\x12\x14\n\x0cserialize_ms\x18\x04 \x01(\x01\x12\x12\n\nforward_ms\x18\x05 \x01(\x01\x12\x18\n\x10\x61\x63tivation_bytes\x18\x06 \x01(\x03\x32N\n\x10InferenceService\x12:\n\x05Infer\x12\x17.inference.InferRequest\x1a\x18.inference.InferResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,8 +33,10 @@ if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
   _globals['_INFERREQUEST']._serialized_start=30
   _globals['_INFERREQUEST']._serialized_end=80
-  _globals['_INFERRESPONSE']._serialized_start=82
-  _globals['_INFERRESPONSE']._serialized_end=199
-  _globals['_INFERENCESERVICE']._serialized_start=201
-  _globals['_INFERENCESERVICE']._serialized_end=279
+  _globals['_INFERRESPONSE']._serialized_start=83
+  _globals['_INFERRESPONSE']._serialized_end=243
+  _globals['_HOPTIMING']._serialized_start=246
+  _globals['_HOPTIMING']._serialized_end=388
+  _globals['_INFERENCESERVICE']._serialized_start=390
+  _globals['_INFERENCESERVICE']._serialized_end=468
 # @@protoc_insertion_point(module_scope)

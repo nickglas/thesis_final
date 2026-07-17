@@ -1,0 +1,83 @@
+{
+  "condition": "chain_2svc_mesh_strict_mtls_no_authz",
+  "condition_key": "c2",
+  "passed": true,
+  "errors": [],
+  "service_pod_nodes": [
+    "aks-rq15pool-31581052-vmss000000"
+  ],
+  "client_node": "aks-rq15pool-31581052-vmss000000",
+  "expected_shape": {
+    "mesh": true,
+    "service_accounts": 2,
+    "peer": 2,
+    "strict": 1,
+    "authz": 0
+  },
+  "peer_authentication_validation": {
+    "namespace_default_permissive": true,
+    "expected_peer_authentication_count": 2,
+    "observed_peer_authentication_count": 2,
+    "expected_strict_segments": [
+      "2"
+    ],
+    "observed_strict_segments": [
+      "2"
+    ],
+    "strict_peer_count_by_segment": {
+      "2": 1
+    }
+  },
+  "authorization_policy_validation": {},
+  "full_chain_probe": {
+    "target": "chain-2svc-mesh-strict-mtls-no-authz-svc-1.rq21-ab-c2-strict.svc.cluster.local:50051",
+    "expected_hop_count": 2,
+    "expected_hop_indexes": [
+      1,
+      2
+    ],
+    "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1_ablation_20260516_112348/conditions/pass02_08_chain_2svc_mesh_strict_mtls_no_authz/diagnostics/full_chain_probe_output.txt",
+    "returncode": 0,
+    "succeeded": true,
+    "response_shape": [
+      1,
+      1000
+    ],
+    "hop_count": 2,
+    "hop_indexes": [
+      1,
+      2
+    ],
+    "hop_timings": [
+      {
+        "hop_index": 1,
+        "deserialize_ms": 0.7812979999926029,
+        "compute_ms": 40.27117500004351,
+        "serialize_ms": 0.07389999996121333,
+        "forward_ms": 66.21749500004626,
+        "activation_bytes": 602112
+      },
+      {
+        "hop_index": 2,
+        "deserialize_ms": 0.5596979999609175,
+        "compute_ms": 38.71658100001696,
+        "serialize_ms": 0.04349899995759188,
+        "forward_ms": 0.0,
+        "activation_bytes": 401408
+      }
+    ]
+  },
+  "direct_service2_probe": {
+    "target": "chain-2svc-mesh-strict-mtls-no-authz-svc-2.rq21-ab-c2-strict.svc.cluster.local:50051",
+    "expected_blocked": true,
+    "manifest_file": "/home/nick/Desktop/thesis_final/results/rq2_1_ablation_20260516_112348/conditions/pass02_08_chain_2svc_mesh_strict_mtls_no_authz/diagnostics/direct_probe_c2_pod.yaml",
+    "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1_ablation_20260516_112348/conditions/pass02_08_chain_2svc_mesh_strict_mtls_no_authz/diagnostics/direct_probe_c2_output.txt",
+    "pod_name": "rq21-ab-direct-20260516120412",
+    "namespace": "rq21-ab-c2-client",
+    "pod_preserved": false,
+    "returncode": 42,
+    "blocked": true,
+    "ready": false,
+    "passed": true
+  }
+}

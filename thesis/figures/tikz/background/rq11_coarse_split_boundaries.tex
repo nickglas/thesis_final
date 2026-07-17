@@ -1,0 +1,50 @@
+\begin{tikzpicture}[
+    thesisfig,
+    node distance=0.45cm,
+    block/.style={tfbox, minimum width=1.0cm, inner xsep=3pt},
+    stem/.style ={tfbox, minimum width=1.0cm, inner xsep=3pt, draw=orange!75!black, fill=orange!15},
+    layer/.style={tfbox, minimum width=1.0cm, inner xsep=3pt, draw=blue!65!black,   fill=blue!14},
+    head/.style ={tfbox, minimum width=1.0cm, inner xsep=3pt, draw=green!45!black,  fill=green!12},
+    arrow/.style={tfarrow},
+    split/.style={dashed, very thick, draw=red!75!black},
+    splitlabel/.style={font=\small, text=red!75!black, align=center}
+]
+
+% Main pipeline
+\node[block] (img) {Image};
+\node[stem, right=of img] (stem) {Stem};
+\node[layer, right=of stem] (l1) {Layer 1};
+\node[layer, right=of l1] (l2) {Layer 2};
+\node[layer, right=of l2] (l3) {Layer 3};
+\node[layer, right=of l3] (l4) {Layer 4};
+\node[head, right=of l4] (head) {Classification\\Head};
+
+% Arrows
+\draw[arrow] (img) -- (stem);
+\draw[arrow] (stem) -- (l1);
+\draw[arrow] (l1) -- (l2);
+\draw[arrow] (l2) -- (l3);
+\draw[arrow] (l3) -- (l4);
+\draw[arrow] (l4) -- (head);
+
+% Stage~L1 coarse split markers after each residual stage
+\draw[split] ($(l1.east)+(0.15,0.75)$) -- ($(l1.east)+(0.15,-0.75)$);
+\draw[split] ($(l2.east)+(0.15,0.75)$) -- ($(l2.east)+(0.15,-0.75)$);
+\draw[split] ($(l3.east)+(0.15,0.75)$) -- ($(l3.east)+(0.15,-0.75)$);
+\draw[split] ($(l4.east)+(0.15,0.75)$) -- ($(l4.east)+(0.15,-0.75)$);
+
+% Labels under split markers
+\node[splitlabel, below=0.75cm of l1.east, xshift=0.15cm] {split after\\layer1};
+\node[splitlabel, below=0.75cm of l2.east, xshift=0.15cm] {split after\\layer2};
+\node[splitlabel, below=0.75cm of l3.east, xshift=0.15cm] {split after\\layer3};
+\node[splitlabel, below=0.75cm of l4.east, xshift=0.15cm] {split after\\layer4};
+
+% Optional RQ label
+\node[
+    font=\normalsize\bfseries,
+    text=red!75!black,
+    above=0.65cm of l2,
+    xshift=0.95cm
+] {Stage~L1 coarse split candidates};
+
+\end{tikzpicture}%

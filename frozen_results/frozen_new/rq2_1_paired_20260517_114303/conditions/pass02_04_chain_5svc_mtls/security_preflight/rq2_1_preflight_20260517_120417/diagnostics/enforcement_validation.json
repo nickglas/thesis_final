@@ -1,0 +1,149 @@
+{
+  "ran": true,
+  "expected_non_mesh_direct_failure": true,
+  "authorization_policy_expected_principal": "cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc1",
+  "authorization_policy_expected_principals": [
+    "cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc1",
+    "cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc2",
+    "cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc3",
+    "cluster.local/ns/rq21-chain5-mtls/sa/rq21-chain5-svc4"
+  ],
+  "full_chain_probe": {
+    "description": "Positive chain probe: non-meshed benchmark client calls service1 only; the mesh-protected chain must return 5 hop timings.",
+    "target": "chain-5svc-mtls-svc-1.rq21-chain5-mtls.svc.cluster.local:50051",
+    "expected_hop_count": 5,
+    "expected_hop_indexes": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "output_file": "/mnt/c/Users/Nick/Desktop/opus/results/new/rq2_1_paired_20260517_114303/conditions/pass02_04_chain_5svc_mtls/security_preflight/rq2_1_preflight_20260517_120417/diagnostics/full_chain_probe_output.txt",
+    "returncode": 0,
+    "succeeded": true,
+    "hop_count": 5,
+    "hop_indexes": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "hop_timings": [
+      {
+        "hop_index": 1,
+        "deserialize_ms": 0.8918899999343921,
+        "compute_ms": 29.032478000090123,
+        "serialize_ms": 0.16239799992945336,
+        "forward_ms": 234.99009099998602,
+        "activation_bytes": 602112
+      },
+      {
+        "hop_index": 2,
+        "deserialize_ms": 1.0456880000901947,
+        "compute_ms": 16.724814999975024,
+        "serialize_ms": 0.08119899996472668,
+        "forward_ms": 160.81941500010544,
+        "activation_bytes": 802816
+      },
+      {
+        "hop_index": 3,
+        "deserialize_ms": 0.5624939999506751,
+        "compute_ms": 20.614571000010073,
+        "serialize_ms": 0.07299899993995496,
+        "forward_ms": 111.10646700001325,
+        "activation_bytes": 401408
+      },
+      {
+        "hop_index": 4,
+        "deserialize_ms": 0.3429959999721177,
+        "compute_ms": 24.44842800002789,
+        "serialize_ms": 0.06379999990713259,
+        "forward_ms": 27.707593000059205,
+        "activation_bytes": 200704
+      },
+      {
+        "hop_index": 5,
+        "deserialize_ms": 0.21339800002806442,
+        "compute_ms": 0.8822899999358924,
+        "serialize_ms": 0.053199000035419886,
+        "forward_ms": 0.0,
+        "activation_bytes": 100352
+      }
+    ],
+    "response_shape": [
+      1,
+      1000
+    ]
+  },
+  "non_mesh_direct_denial_probe": {
+    "description": "Non-meshed debug pod direct gRPC readiness probes to downstream services.",
+    "pod_name": "rq21-direct-deny-20260517120438",
+    "namespace": "rq21-client-chain5-mtls",
+    "target": "chain-5svc-mtls-svc-2.rq21-chain5-mtls.svc.cluster.local:50051",
+    "targets": [
+      {
+        "segment_index": 2,
+        "target": "chain-5svc-mtls-svc-2.rq21-chain5-mtls.svc.cluster.local:50051"
+      },
+      {
+        "segment_index": 3,
+        "target": "chain-5svc-mtls-svc-3.rq21-chain5-mtls.svc.cluster.local:50051"
+      },
+      {
+        "segment_index": 4,
+        "target": "chain-5svc-mtls-svc-4.rq21-chain5-mtls.svc.cluster.local:50051"
+      },
+      {
+        "segment_index": 5,
+        "target": "chain-5svc-mtls-svc-5.rq21-chain5-mtls.svc.cluster.local:50051"
+      }
+    ],
+    "expected_failure": true,
+    "manifest_file": "/mnt/c/Users/Nick/Desktop/opus/results/new/rq2_1_paired_20260517_114303/conditions/pass02_04_chain_5svc_mtls/security_preflight/rq2_1_preflight_20260517_120417/diagnostics/negative_direct_probe_pod.yaml",
+    "output_file": "/mnt/c/Users/Nick/Desktop/opus/results/new/rq2_1_paired_20260517_114303/conditions/pass02_04_chain_5svc_mtls/security_preflight/rq2_1_preflight_20260517_120417/diagnostics/negative_direct_probe_output.txt",
+    "pod_preserved": false,
+    "returncode": 42,
+    "blocked_as_expected": true,
+    "succeeded_unexpectedly": false,
+    "target_results": [
+      {
+        "segment_index": 2,
+        "target": "chain-5svc-mtls-svc-2.rq21-chain5-mtls.svc.cluster.local:50051",
+        "returncode": 42,
+        "blocked_as_expected": true,
+        "succeeded_unexpectedly": false
+      },
+      {
+        "segment_index": 3,
+        "target": "chain-5svc-mtls-svc-3.rq21-chain5-mtls.svc.cluster.local:50051",
+        "returncode": 42,
+        "blocked_as_expected": true,
+        "succeeded_unexpectedly": false
+      },
+      {
+        "segment_index": 4,
+        "target": "chain-5svc-mtls-svc-4.rq21-chain5-mtls.svc.cluster.local:50051",
+        "returncode": 42,
+        "blocked_as_expected": true,
+        "succeeded_unexpectedly": false
+      },
+      {
+        "segment_index": 5,
+        "target": "chain-5svc-mtls-svc-5.rq21-chain5-mtls.svc.cluster.local:50051",
+        "returncode": 42,
+        "blocked_as_expected": true,
+        "succeeded_unexpectedly": false
+      }
+    ],
+    "blocked_segments": [
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  "passed": true,
+  "errors": []
+}

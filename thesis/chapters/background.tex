@@ -1,0 +1,259 @@
+\chapter{Background}%
+\label{ch:background}
+
+This chapter introduces the technical concepts needed to interpret the staged
+experiments. It explains the ResNet-18 architecture used as the inference workload,
+the meaning of a split boundary in distributed DNN inference, the difference between
+coarse and block-level split granularity, and the service-chain execution model used
+in the Kubernetes and AKS stages. It also introduces the protection boundaries used in
+the security-hardening stages. The chapter refers to literature where it clarifies a
+technique or concept; the more comparative discussion of prior work appears in
+\cref{ch:related}.
+
+\section{ResNet-18 as the Inference Workload}
+\label{sec:bg-resnet18}
+
+ResNet-18 can be viewed as three major parts for the purposes of this thesis:
+an initial stem, four residual stages, and a classification head. The stem performs
+the first feature extraction and spatial downsampling through convolution,
+normalisation, activation, and max pooling. The four residual stages, denoted
+\texttt{layer1} through \texttt{layer4}, contain the main residual-block computation
+of the network. The classification head then reduces the final feature map through
+average pooling and applies the final fully connected classifier. This stage-based
+view follows the residual-network design introduced by He~et~al., where successive
+stages reduce spatial resolution while increasing channel depth~\cite{resnet}.
+
+\begin{figure}[htbp]
+\centering
+\input{../figures/tikz/background/resnet18_pipeline.tex}%
+\caption[Top-level ResNet-18 inference pipeline]{Top-level ResNet-18 inference pipeline used in this thesis. The model is treated as a stem, four residual stages, and a classification head. The stem (convolution, batch normalisation, ReLU, and max pooling) and the classification head (average pooling and the fully connected classifier) are shown as single boxes; their internals are described in the surrounding text.}
+\label{fig:resnet18_pipeline}
+\end{figure}
+
+\section{Split Inference and Partition Boundaries}
+\label{sec:bg-split-inference}
+
+In split inference, a neural network forward pass is divided into execution segments.
+An upstream segment computes an intermediate activation tensor, transfers that tensor
+to another execution environment, and a downstream segment completes the forward pass.
+Prior split-inference systems use this same basic abstraction when partitioning neural
+network inference across devices, edge nodes, or cloud resources~\cite{neurosurgeon,jointdnn}.
+
+\begin{figure}[htbp]
+\centering
+\input{../figures/tikz/background/split_after_layer2_two_segments.tex}%
+\caption[Example two-segment decomposition (split after \texttt{layer2})]{Example two-segment decomposition produced by a split after \texttt{layer2}. The first segment executes the stem through \texttt{layer2}; the second segment receives the intermediate activation tensor and executes \texttt{layer3} through the classification head.}
+\label{fig:split_after_layer2_two_segments}
+\end{figure}
+
+A split boundary is therefore both an architectural position in the model and a
+runtime interface between two execution segments. For example,
+\texttt{split\_after\_layer2} creates the two-segment decomposition shown in
+\cref{fig:split_after_layer2_two_segments}: the first segment executes the model up
+to the boundary, and the second segment resumes computation from the transferred
+activation tensor.
+
+\section{Coarse Split Points in ResNet-18}
+\label{sec:bg-coarse-splits}
+
+The stage structure of ResNet-18 motivates the coarse split choices used later in
+Stage~L1. The thesis does not treat every primitive operation as an equally meaningful
+split candidate. Instead, the initial coarse sweep uses the four residual-stage
+boundaries after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and
+\texttt{layer4}. These boundaries preserve the architectural stage structure of
+ResNet-18 and provide a controlled progression from early, high-activation regions
+to later, lower-activation regions.
+
+Splits inside the stem are excluded from the primary coarse sweep because they would
+place boundaries between tightly coupled primitive operations before substantial
+activation-size reduction. Splits inside the classification head are also excluded
+because the head contains only the final pooling and linear classification operations,
+leaving one side of the partition with negligible computation. This framing follows
+partitioning literature that treats split selection as a trade-off among
+activation-transfer cost, compute placement, and deployment context rather than as a
+search over depth alone~\cite{dnnsplit,deeperthings,survey_partitioning}.
+
+\begin{figure}[htbp]
+\centering
+\input{../figures/tikz/background/rq11_coarse_split_boundaries.tex}%
+\caption[Coarse ResNet-18 partition boundaries (Stage~L1)]{Coarse ResNet-18 partition boundaries evaluated in Stage~L1. The stem and classification head are collapsed into single blocks, while the four residual stages are shown as the candidate split locations.}
+\label{fig:rq11_coarse_split_boundaries}
+\end{figure}
+
+As shown in \cref{fig:rq11_coarse_split_boundaries}, Stage~L1 evaluates split
+points after the four major residual stages rather than inside the stem or
+classification head.
+
+\section{Block-Level Structure and Fine-Grained Splits}
+\label{sec:bg-block-granularity}
+
+Each residual stage in ResNet-18 contains two BasicBlock containers, and each
+BasicBlock contains two convolution operations. The first block of layers 2--4 also
+uses a projection shortcut for downsampling. This internal structure is hidden in the
+coarse stage-level view, but it matters when reasoning about finer split
+boundaries~\cite{resnet}.
+
+\begin{figure}[htbp]
+\centering
+\input{../figures/tikz/background/resnet18_block_structure.tex}%
+\caption[Simplified ResNet-18 block structure]{Simplified ResNet-18 block structure. The stem and classification head are shown as single components, while each residual stage is shown as its two basic blocks, abbreviated \texttt{B0} and \texttt{B1} to match the zero-indexed \texttt{layerN.0}/\texttt{layerN.1} module names used throughout.}
+\label{fig:resnet18_block_structure}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\input{../figures/tikz/background/basicblock_anatomy.tex}%
+\caption[Anatomy of a ResNet-18 BasicBlock]{Anatomy of a ResNet-18 BasicBlock. Each block applies two $3{\times}3$ convolutions (each followed by batch normalisation, with a ReLU after the first) and adds a residual shortcut before a final ReLU. In the first block of layers 2--4 the shortcut is a $1{\times}1$ projection with stride~2 for downsampling; elsewhere it is an identity connection. The convolution width is 64, 128, 256, and 512 channels across \texttt{layer1}--\texttt{layer4} respectively.}
+\label{fig:basicblock_anatomy}
+\end{figure}
+
+The block-level view matters because two boundaries with the same activation tensor can
+still assign different amounts of computation to the upstream and downstream services.
+The refined boundary inside \texttt{layer3} used later in the thesis should therefore
+be read as a compute-placement distinction, not only as an activation-size
+distinction. Prior work on fine-grained and hierarchical DNN partitioning similarly
+argues that useful split selection requires awareness of the model's internal
+computational structure~\cite{fine_grained_partitioning,hierarchical_partitioning,pareto_split}.
+
+\begin{figure}[htbp]
+\centering
+\input{../figures/tikz/background/rq12_split_after_layer3_block0_segments.tex}%
+\caption[Block-level two-segment decomposition (Stage~L2)]{Block-level two-segment decomposition used in Stage~L2. Layers 1, 2, and 4 are drawn as single boxes; only \texttt{layer3} is expanded into its two residual blocks (\texttt{B0}, \texttt{B1}, zero-indexed) so the refined split point inside it is visible. The split falls between the blocks: Segment 1 executes the stem through \texttt{layer3.0} (block \texttt{B0}); Segment 2 receives the intermediate activation tensor and executes \texttt{layer3.1} through the classification head.}
+\label{fig:rq12_split_after_layer3_block0_segments}
+\end{figure}
+
+\section{Service Boundaries and RPC Cost}
+\label{sec:bg-service-boundaries}
+
+A split boundary becomes a service boundary when the execution segments are packaged
+as independently addressable services. In that setting, the boundary-crossing interval
+used later in the thesis should be read as a compound systems cost rather than as
+network transfer alone. It includes tensor serialization, RPC handling, transport
+through the service interface, downstream deserialization, remote computation after the
+boundary, and response handling.
+
+\begin{figure}[htbp]
+\centering
+\input{../figures/tikz/background/service_boundary_rpc_cost.tex}%
+\caption[Runtime cost components of an inference boundary]{Runtime cost components introduced by a two-service inference
+boundary. In addition to the model computation on each side of the split,
+the intermediate activation must be serialized, transferred through gRPC,
+deserialized by the downstream service, and followed by response
+serialization and reconstruction. The boundary-crossing interval therefore
+includes serialization, RPC transport, remote execution, and response
+reconstruction.}
+\label{fig:service_boundary_rpc_cost}
+\end{figure}
+
+Recent microservice systems work shows that RPC paths can accumulate overhead through
+protocol processing, memory copies, socket operations, and network-stack traversal,
+even before the application-specific computation is considered~\cite{rpc_overhead_hotos25,notnets_apsys24}.
+
+\section{Kubernetes Service Chains}
+\label{sec:bg-kubernetes-chains}
+
+In the Kubernetes and AKS stages, each model segment is packaged as a separate service
+and communicates through synchronous gRPC forwarding. This makes the inference pipeline
+closer to a cloud-native microservice deployment, but it also introduces platform
+effects from container execution, service networking, CNI behavior, and managed-cluster
+infrastructure. The single-node and multi-node placements used later are compared in
+\cref{fig:chain5_placement_comparison}.
+
+%% Single-node vs multi-node placement of the five-service chain
+\begin{figure}[htbp]
+\centering
+\input{../figures/tikz/background/chain5_placement_comparison.tex}%
+\caption[Single-node vs.\ multi-node pod placement]{Pod placement for the \texttt{chain\_5svc} five-service chain under the
+two placements used in this thesis. \textbf{(a)} Single-node placement (Stage~K
+local Kubernetes, and the single-node Stage~C AKS base case): the benchmark
+client and all five inference pods share one node, so every synchronous gRPC hop
+stays on-host. \textbf{(b)} Multi-node placement (the Stage~C alternative):
+anti-affinity places each chain segment on a distinct node and the client on a
+sixth, so every gRPC hop crosses a node boundary. The chain topology and the
+per-boundary activation-transfer sizes (784, 392, 196, and 98~KiB) are identical
+in both placements; only the network path differs.}
+\label{fig:chain5_placement_comparison}
+\end{figure}
+
+Prior Kubernetes and cloud-performance studies show that container execution, service
+networking, CNI behavior, and managed infrastructure can affect measured latency and
+variability. This is why the terminology in this thesis distinguishes local process
+benchmarks, local Kubernetes benchmarks, and managed AKS benchmarks as separate
+execution contexts~\cite{managed_k8s_perf,cni_k8s_ic2e21,noise_in_clouds}.
+
+\section{Communication and Runtime Protection Boundaries}
+\label{sec:bg-security-boundaries}
+
+The security-hardening stages use two distinct protection layers. The first layer is
+communication-level hardening. In a service-mesh deployment, sidecar proxies can attach
+identity to workloads, establish mutually authenticated TLS channels between services,
+and enforce authorization policy based on those identities. This strengthens the
+service-to-service path because a downstream service can reject traffic that does not
+come from the expected peer identity, while the traffic between proxies is encrypted and
+mutually authenticated~\cite{ashraf2025policy_workflow,bremlerbarr2025mtls}.
+
+\Cref{fig:rq21_mtls_identity_authz} shows this mechanism between two services in
+the inference chain. Each service runs alongside an Istio sidecar proxy that
+terminates TLS, so the inter-pod hop carries mTLS plus an identity-bound
+\texttt{AuthorizationPolicy} check while application-to-sidecar traffic stays
+plaintext inside the pod boundary. The Istio control plane acts as the identity
+issuer that mints SPIFFE workload identities and certificates for each sidecar
+(dashed teal arrows), which is what allows the receiving sidecar to bind an
+\texttt{AuthorizationPolicy} to a peer service-account identity (\texttt{sa-svc1}
+and \texttt{sa-svc2}). A request therefore enters the first service, is handed to
+its sidecar as plaintext, crosses the protected inter-pod hop as mTLS, and is
+delivered to the downstream service as a plaintext loopback; the response returns
+along the same sidecar path. A non-mesh probe that lacks a SPIFFE identity is
+denied at the receiving sidecar; this is the property that the Stage~H1 direct
+non-mesh denial probe exercises against the protected downstream segments.
+
+\begin{figure}[htbp]
+\centering
+\input{../figures/tikz/background/rq21_mtls_identity_authz.tex}%
+\caption[Service identity, mTLS, and authorization]{Service identity, mTLS, and authorization between two inference
+services. The Istio control plane mints SPIFFE workload identities and
+certificates for each sidecar (dashed teal arrows). The protected inter-pod hop
+carries mTLS plus an identity-bound \texttt{AuthorizationPolicy} check between
+the workload identities \texttt{sa-svc1} and \texttt{sa-svc2} (purple double
+arrow), while application-to-sidecar traffic inside each pod stays plaintext
+(orange arrows). A non-mesh probe that lacks a SPIFFE identity is rejected at
+the receiving sidecar by the same authorization policy (red arrow with cross).}
+\label{fig:rq21_mtls_identity_authz}
+\end{figure}
+
+This protection boundary is still a communication boundary. Once a request has reached
+the downstream endpoint and the activation tensor has been deserialized, the plaintext
+activation exists inside the receiving service's runtime environment. Communication
+hardening therefore protects the inter-service path, but it does not by itself protect
+the downstream service from the infrastructure on which it runs or from software inside
+the receiving runtime.
+
+The second layer used later in the thesis is VM-level confidential execution. On Azure,
+confidential VM nodes backed by AMD SEV-SNP protect the guest VM's memory and execution
+state against parts of the host platform and hypervisor, shifting the relevant boundary
+from the network path to the VM boundary~\cite{amd_sevsnp_whitepaper}. In this thesis,
+this mechanism is applied selectively to the downstream service in the secured two-service
+chain. The term \emph{VM-level confidential execution} is used deliberately: the
+protected unit is the VM that hosts the Kubernetes node, not an application-level enclave
+around only the model code or activation tensor.
+
+\begin{figure}[htbp]
+\centering
+\input{../figures/tikz/background/confidential_vm_boundary.tex}%
+\caption[Protection boundaries in the secured AKS deployment]{Protection boundaries in the secured two-service AKS deployment. The service
+mesh provides communication-level protection between sidecar proxies using mTLS and
+workload identity. AMD SEV-SNP confidential nodes add a VM-level host-protection boundary
+around the downstream service's Kubernetes node. The figure is schematic: plaintext
+activations still exist inside the endpoint after mTLS termination, and the VM-level
+boundary does not remove all trusted software or residual attack surfaces.}
+\label{fig:confidential_vm_boundary}
+\end{figure}
+
+This distinction, shown in \cref{fig:confidential_vm_boundary}, is important for
+interpreting the security results. Service-mesh mTLS and authorization answer whether
+the selected AKS inference path can be protected at the communication level and what
+that costs. SEV-SNP-backed confidential nodes answer a different question: what extra
+cost is paid when the downstream service is also placed inside a VM-level
+host-protection boundary. Neither layer removes every trusted component or eliminates
+all residual attack surfaces; confidential-VM systems still have bounded threat models
+and known residual risks~\cite{guanciale2022_confidential_quartet,schluter2024_heckler}.

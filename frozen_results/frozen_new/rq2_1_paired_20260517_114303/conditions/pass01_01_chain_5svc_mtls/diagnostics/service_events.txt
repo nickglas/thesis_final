@@ -1,0 +1,71 @@
+LAST SEEN   TYPE     REASON              OBJECT                                        MESSAGE
+2m26s       Normal   Scheduled           pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Successfully assigned rq21-chain5-mtls/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4 to aks-rq15pool-34343338-vmss000000
+2m26s       Normal   Scheduled           pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Successfully assigned rq21-chain5-mtls/chain-5svc-mtls-svc-2-68679c65fc-vrxh8 to aks-rq15pool-34343338-vmss000000
+2m25s       Normal   Scheduled           pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Successfully assigned rq21-chain5-mtls/chain-5svc-mtls-svc-5-8675b46f94-4fs29 to aks-rq15pool-34343338-vmss000000
+2m25s       Normal   Scheduled           pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Successfully assigned rq21-chain5-mtls/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll to aks-rq15pool-34343338-vmss000000
+2m26s       Normal   Scheduled           pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Successfully assigned rq21-chain5-mtls/chain-5svc-mtls-svc-1-84b5769f94-sm55g to aks-rq15pool-34343338-vmss000000
+2m27s       Normal   SuccessfulCreate    replicaset/chain-5svc-mtls-svc-1-84b5769f94   Created pod: chain-5svc-mtls-svc-1-84b5769f94-sm55g
+2m27s       Normal   ScalingReplicaSet   deployment/chain-5svc-mtls-svc-1              Scaled up replica set chain-5svc-mtls-svc-1-84b5769f94 from 0 to 1
+2m27s       Normal   SuccessfulCreate    replicaset/chain-5svc-mtls-svc-2-68679c65fc   Created pod: chain-5svc-mtls-svc-2-68679c65fc-vrxh8
+2m27s       Normal   ScalingReplicaSet   deployment/chain-5svc-mtls-svc-2              Scaled up replica set chain-5svc-mtls-svc-2-68679c65fc from 0 to 1
+2m26s       Normal   Pulling             pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Pulling image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4"
+2m26s       Normal   ScalingReplicaSet   deployment/chain-5svc-mtls-svc-5              Scaled up replica set chain-5svc-mtls-svc-5-8675b46f94 from 0 to 1
+2m26s       Normal   SuccessfulCreate    replicaset/chain-5svc-mtls-svc-5-8675b46f94   Created pod: chain-5svc-mtls-svc-5-8675b46f94-4fs29
+2m26s       Normal   Pulling             pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Pulling image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4"
+2m26s       Normal   SuccessfulCreate    replicaset/chain-5svc-mtls-svc-3-75965b8cbd   Created pod: chain-5svc-mtls-svc-3-75965b8cbd-gh4j4
+2m26s       Normal   ScalingReplicaSet   deployment/chain-5svc-mtls-svc-3              Scaled up replica set chain-5svc-mtls-svc-3-75965b8cbd from 0 to 1
+2m26s       Normal   SuccessfulCreate    replicaset/chain-5svc-mtls-svc-4-7b845cfbb7   Created pod: chain-5svc-mtls-svc-4-7b845cfbb7-7bgll
+2m26s       Normal   Pulling             pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Pulling image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4"
+2m26s       Normal   Pulling             pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Pulling image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4"
+2m26s       Normal   ScalingReplicaSet   deployment/chain-5svc-mtls-svc-4              Scaled up replica set chain-5svc-mtls-svc-4-7b845cfbb7 from 0 to 1
+2m25s       Normal   Pulling             pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Pulling image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4"
+2m23s       Normal   Started             pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Started container istio-init
+2m23s       Normal   Started             pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Started container istio-init
+2m23s       Normal   Created             pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Created container: istio-init
+2m23s       Normal   Pulled              pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Successfully pulled image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" in 2.654s (2.654s including waiting). Image size: 59694811 bytes.
+2m23s       Normal   Pulled              pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Successfully pulled image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" in 2.366s (2.366s including waiting). Image size: 59694811 bytes.
+2m23s       Normal   Created             pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Created container: istio-init
+2m23s       Normal   Started             pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Started container istio-init
+2m23s       Normal   Started             pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Started container istio-init
+2m23s       Normal   Created             pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Created container: istio-init
+2m23s       Normal   Pulled              pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Successfully pulled image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" in 2.972s (2.972s including waiting). Image size: 59694811 bytes.
+2m23s       Normal   Pulled              pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Successfully pulled image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" in 2.94s (2.94s including waiting). Image size: 59694811 bytes.
+2m23s       Normal   Created             pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Created container: istio-init
+2m23s       Normal   Started             pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Started container istio-init
+2m23s       Normal   Created             pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Created container: istio-init
+2m23s       Normal   Pulled              pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Successfully pulled image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" in 2.948s (2.948s including waiting). Image size: 59694811 bytes.
+2m21s       Normal   Created             pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Created container: istio-proxy
+2m21s       Normal   Created             pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Created container: istio-proxy
+2m21s       Normal   Pulled              pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+2m21s       Normal   Created             pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Created container: istio-proxy
+2m21s       Normal   Created             pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Created container: istio-proxy
+2m21s       Normal   Started             pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Started container istio-proxy
+2m21s       Normal   Pulled              pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+2m21s       Normal   Started             pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Started container istio-proxy
+2m21s       Normal   Started             pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Started container istio-proxy
+2m21s       Normal   Pulled              pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+2m21s       Normal   Created             pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Created container: istio-proxy
+2m21s       Normal   Pulled              pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+2m21s       Normal   Pulled              pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+2m21s       Normal   Started             pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Started container istio-proxy
+2m21s       Normal   Started             pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Started container istio-proxy
+2m19s       Normal   Pulling             pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+2m19s       Normal   Pulling             pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+2m19s       Normal   Pulling             pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+2m19s       Normal   Pulling             pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+2m19s       Normal   Pulling             pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+2m5s        Normal   Pulled              pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 14.723s (14.723s including waiting). Image size: 413013146 bytes.
+2m5s        Normal   Pulled              pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 14.748s (14.749s including waiting). Image size: 413013146 bytes.
+2m5s        Normal   Pulled              pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 14.749s (14.749s including waiting). Image size: 413013146 bytes.
+2m5s        Normal   Pulled              pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 14.766s (14.766s including waiting). Image size: 413013146 bytes.
+2m4s        Normal   Started             pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Started container inference
+2m4s        Normal   Started             pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Started container inference
+2m4s        Normal   Created             pod/chain-5svc-mtls-svc-4-7b845cfbb7-7bgll    Created container: inference
+2m4s        Normal   Created             pod/chain-5svc-mtls-svc-1-84b5769f94-sm55g    Created container: inference
+2m4s        Normal   Created             pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Created container: inference
+2m4s        Normal   Started             pod/chain-5svc-mtls-svc-2-68679c65fc-vrxh8    Started container inference
+2m4s        Normal   Started             pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Started container inference
+2m4s        Normal   Created             pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Created container: inference
+2m4s        Normal   Started             pod/chain-5svc-mtls-svc-5-8675b46f94-4fs29    Started container inference
+2m4s        Normal   Created             pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Created container: inference
+2m4s        Normal   Pulled              pod/chain-5svc-mtls-svc-3-75965b8cbd-gh4j4    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 14.788s (14.788s including waiting). Image size: 413013146 bytes.

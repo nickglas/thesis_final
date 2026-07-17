@@ -1,0 +1,66 @@
+\begin{tikzpicture}[
+    thesisfig,
+    node distance=0.4cm,
+    pod/.style={tfbox, draw=blue!65!black, fill=blue!12, minimum width=1.25cm, minimum height=1.0cm, inner xsep=3pt},
+    client/.style={tfbox, draw=orange!75!black, fill=orange!14, minimum width=1.25cm, minimum height=1.0cm, inner xsep=3pt},
+    onenode/.style={draw=black!60, fill=black!3, rounded corners=8pt, thick, inner xsep=9pt, inner ysep=9pt},
+    nodebox/.style={draw=black!60, fill=black!4, rounded corners=6pt, thick, inner xsep=2pt, inner ysep=5pt},
+    intra/.style={tfarrow},
+    inter/.style={-{Latex[length=2mm]}, very thick, draw=red!70!black},
+    xfer/.style={font=\small, text=red!70!black, align=center},
+    nodelbl/.style={font=\small, text=black!70},
+    panel/.style={font=\small\bfseries, text=black!80, align=center},
+    note/.style={font=\small, text=black!55, align=center}
+]
+
+% ---- Panel (a): single-node placement -------------------------------------
+\node[client] (a_c)  at (0,0)            {Client};
+\node[pod, right=0.72cm of a_c] (a1) {Pod 1\\{\small stem+L1}};
+\node[pod, right=0.72cm of a1] (a2) {Pod 2\\{\small L2}};
+\node[pod, right=0.72cm of a2] (a3) {Pod 3\\{\small L3}};
+\node[pod, right=0.72cm of a3] (a4) {Pod 4\\{\small L4}};
+\node[pod, right=0.72cm of a4] (a5) {Pod 5\\{\small avg+fc}};
+
+\begin{pgfonlayer}{background}
+\node[onenode, fit=(a_c)(a1)(a2)(a3)(a4)(a5)] (a_node) {};
+\end{pgfonlayer}
+
+\draw[intra] (a_c) -- (a1);
+\draw[intra] (a1) -- node[xfer, above] {784} (a2);
+\draw[intra] (a2) -- node[xfer, above] {392} (a3);
+\draw[intra] (a3) -- node[xfer, above] {196} (a4);
+\draw[intra] (a4) -- node[xfer, above] {98}  (a5);
+
+\node[panel, anchor=west] at ($(a_node.north west)+(0,0.55)$)
+    {\textbf{(a)} Single-node (Stage~K, single-node Stage~C): every gRPC hop stays on-host};
+
+% ---- Panel (b): multi-node placement --------------------------------------
+\node[client] (b_c)  at (0,-3.4)         {Client};
+\node[pod, right=0.79cm of b_c] (b1) {Pod 1\\{\small stem+L1}};
+\node[pod, right=0.77cm of b1] (b2) {Pod 2\\{\small L2}};
+\node[pod, right=0.77cm of b2] (b3) {Pod 3\\{\small L3}};
+\node[pod, right=0.77cm of b3] (b4) {Pod 4\\{\small L4}};
+\node[pod, right=0.77cm of b4] (b5) {Pod 5\\{\small avg+fc}};
+
+\begin{pgfonlayer}{background}
+\node[nodebox, fit=(b_c), label={[nodelbl]below:N0}] (b_n0) {};
+\node[nodebox, fit=(b1),  label={[nodelbl]below:N1}] (b_n1) {};
+\node[nodebox, fit=(b2),  label={[nodelbl]below:N2}] (b_n2) {};
+\node[nodebox, fit=(b3),  label={[nodelbl]below:N3}] (b_n3) {};
+\node[nodebox, fit=(b4),  label={[nodelbl]below:N4}] (b_n4) {};
+\node[nodebox, fit=(b5),  label={[nodelbl]below:N5}] (b_n5) {};
+\end{pgfonlayer}
+
+\draw[inter] (b_n0) -- (b_n1);
+\draw[inter] (b_n1) -- node[xfer, above] {784} (b_n2);
+\draw[inter] (b_n2) -- node[xfer, above] {392} (b_n3);
+\draw[inter] (b_n3) -- node[xfer, above] {196} (b_n4);
+\draw[inter] (b_n4) -- node[xfer, above] {98}  (b_n5);
+
+\node[panel, anchor=west] at ($(b_n0.north west)+(0,0.55)$)
+    {\textbf{(b)} Multi-node (Stage~C alternative): every gRPC hop crosses a node boundary};
+
+\node[note, anchor=north] at ($(b_n0.south east)!0.5!(b_n5.south west)+(0,-0.75)$)
+    {transfer sizes (KiB) are identical in both placements; only the network path differs};
+
+\end{tikzpicture}%

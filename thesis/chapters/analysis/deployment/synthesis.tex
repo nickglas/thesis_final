@@ -1,0 +1,30 @@
+\subsection{Synthesis: Deployment Context}
+\label{sec:analysis-deployment-synthesis}
+
+Stage~K and Stage~C show that the architectural pattern remains visible after the
+workload is moved into Kubernetes-style service chains. In local
+\texttt{kind}, latency increases from the monolithic Kubernetes baseline
+through the five-service chain, with a smaller final increment because
+the added late-stage boundary transfers a much smaller
+activation tensor. The same ordering and the same bounded-non-linearity
+pattern also survive the kind multi-worker CNI sensitivity probe of
+the Stage~K cross-node alternative (\cref{sec:analysis-rq14b}), so neither finding is an artefact
+of single-node pod colocation on the local cluster; the kind multi-node
+per-condition deltas are, however, an order of magnitude larger than the
+AKS multi-node deltas of \cref{sec:analysis-rq15b} and should be read as
+a kind-CNI sensitivity envelope, not as a substitute for a managed-cloud
+cross-host measurement. In AKS, the same condition ordering is preserved:
+\texttt{monolithic\_k8s\_1svc}, \texttt{chain\_2svc}, \texttt{chain\_3svc},
+\texttt{chain\_4svc}, and \texttt{chain\_5svc}. The absolute millisecond
+values differ between local Kubernetes and AKS, but the within-environment
+overhead trend transfers directionally, as summarised in
+\cref{tab:rq15_transfer}.
+
+This distinction is important. The thesis does not claim that local Kubernetes
+predicts AKS latency numerically. Cloud and Kubernetes performance studies
+show that container runtime, virtualization, CNI, managed-cluster
+implementation, and cloud variability can change absolute
+measurements~\cite{managed_k8s_perf,virtualization_costs,cni_k8s_ic2e21,
+noise_in_clouds}. The stronger supported claim is architectural: when the
+same ResNet-18 chain family is run in AKS, the relative ordering remains
+interpretable even though the platform changes.

@@ -1,0 +1,95 @@
+\begin{tikzpicture}[
+    font=\normalsize,
+    axis/.style={thick, draw=black!70, -{Latex[length=2mm]}},
+    grid/.style={draw=black!12, thin},
+    localpoint/.style={
+        circle,
+        draw=blue!65!black,
+        fill=blue!18,
+        thick,
+        minimum size=5.5pt,
+        inner sep=0pt
+    },
+    akspoint/.style={
+        rectangle,
+        draw=green!45!black,
+        fill=green!18,
+        thick,
+        minimum size=5.5pt,
+        inner sep=0pt
+    },
+    localseries/.style={very thick, draw=blue!65!black},
+    aksseries/.style={very thick, draw=green!45!black},
+    pointlabel/.style={font=\small\bfseries, align=center},
+    xlabel/.style={font=\footnotesize, text=black!75, align=center},
+    ylabel/.style={font=\normalsize, text=black!75},
+    legendlabel/.style={font=\footnotesize, text=black!75}
+]
+
+% y scale: y = overhead percentage * 0.25
+% Local Kubernetes overheads (Stage K frozen): 0.0, 2.9,  8.2,  11.7, 14.1
+% AKS overheads        (Stage C  frozen AKS):   0.0, 3.7,  6.5,  10.6, 13.7
+
+\foreach \pct/\y in {0/0,5/1.25,10/2.5,15/3.75} {
+    \draw[grid] (0,\y) -- (10.4,\y);
+    \node[anchor=east, font=\footnotesize, text=black!65] at (-0.18,\y) {\pct};
+}
+
+\draw[axis] (0,0) -- (10.75,0);
+\draw[axis] (0,0) -- (0,4.15);
+
+\node[ylabel, rotate=90] at (-1.05,2.05) {Overhead vs.\ environment baseline (\%)};
+\node[ylabel] at (5.2,-1.25) {Condition};
+
+\coordinate (l1) at (1,0.000);
+\coordinate (l2) at (3,0.725);
+\coordinate (l3) at (5,2.050);
+\coordinate (l4) at (7,2.925);
+\coordinate (l5) at (9,3.525);
+
+\coordinate (a1) at (1,0.000);
+\coordinate (a2) at (3,0.925);
+\coordinate (a3) at (5,1.625);
+\coordinate (a4) at (7,2.650);
+\coordinate (a5) at (9,3.425);
+
+\draw[localseries] (l1) -- (l2) -- (l3) -- (l4) -- (l5);
+\draw[aksseries] (a1) -- (a2) -- (a3) -- (a4) -- (a5);
+
+\node[localpoint] at (l1) {};
+\node[localpoint] at (l2) {};
+\node[localpoint] at (l3) {};
+\node[localpoint] at (l4) {};
+\node[localpoint] at (l5) {};
+
+\node[akspoint] at (a1) {};
+\node[akspoint] at (a2) {};
+\node[akspoint] at (a3) {};
+\node[akspoint] at (a4) {};
+\node[akspoint] at (a5) {};
+
+\node[pointlabel, text=blue!65!black, below right=0.06cm and 0.05cm of l2] {2.9};
+\node[pointlabel, text=blue!65!black, above=0.10cm of l3] {8.2};
+\node[pointlabel, text=blue!65!black, above=0.10cm of l4] {11.7};
+\node[pointlabel, text=blue!65!black, above=0.10cm of l5] {14.1};
+
+\node[pointlabel, text=green!45!black, above=0.10cm of a2] {3.7};
+\node[pointlabel, text=green!45!black, below right=0.06cm and 0.05cm of a3] {6.5};
+\node[pointlabel, text=green!45!black, below=0.16cm of a4] {10.6};
+\node[pointlabel, text=green!45!black, below=0.16cm of a5] {13.7};
+
+\node[xlabel] at (1,-0.45) {\texttt{1svc}\\mono};
+\node[xlabel] at (3,-0.45) {\texttt{2svc}};
+\node[xlabel] at (5,-0.45) {\texttt{3svc}};
+\node[xlabel] at (7,-0.45) {\texttt{4svc}};
+\node[xlabel] at (9,-0.45) {\texttt{5svc}};
+
+\draw[localseries] (6.25,0.70) -- (6.95,0.70);
+\node[localpoint] at (6.60,0.70) {};
+\node[legendlabel, anchor=west] at (7.15,0.70) {Local Kubernetes};
+
+\draw[aksseries] (6.25,0.28) -- (6.95,0.28);
+\node[akspoint] at (6.60,0.28) {};
+\node[legendlabel, anchor=west] at (7.15,0.28) {AKS};
+
+\end{tikzpicture}

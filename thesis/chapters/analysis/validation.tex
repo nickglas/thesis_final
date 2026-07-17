@@ -1,0 +1,84 @@
+\section{Validation}
+\label{sec:analysis-validation}
+
+This section is the cross-RQ synthesis of the validation discipline: it does
+not repeat the per-RQ ``Validation.'' paragraphs in
+\cref{sec:analysis-split,sec:analysis-deployment,sec:analysis-security}, which
+remain the per-stage credibility statements, but consolidates the
+thesis-wide evidence under which the conclusions are treated as credible. The
+validation discipline follows the shared benchmark contract defined in
+\cref{sec:methods-contract,sec:methods-cpu,sec:methods-statistics}.
+
+This consolidated validation is placed \emph{after} the per-RQ analyses by
+design rather than before them. Each per-RQ subsection in
+\cref{sec:analysis-split,sec:analysis-deployment,sec:analysis-security} already
+establishes its own credibility inline through a dedicated \emph{Validation}
+paragraph, and the present section deliberately draws on those per-stage
+observations --- the parity outcomes, round-level CVs, and ordering they report
+--- to make a single cross-RQ credibility statement rather than restating them.
+It therefore necessarily follows the observations it consolidates. The program
+thesis template requires the analysis chapter to establish how the results are
+known to be valid but does not prescribe the order of validation relative to the
+per-RQ observations, so this placement is consistent with the template.
+
+\paragraph{Functional parity.}
+Every thesis-facing frozen run achieves
+\texttt{max\_abs\_diff}~$=0.0$ against the monolithic reference under absolute
+tolerance $1.0 \times 10^{-5}$ and five validation inputs. This applies to all
+five Stage~L1 conditions (\cref{sec:rq11}), all four Stage~L2 conditions
+(\cref{sec:rq12}), all five Stage~K conditions (\cref{sec:rq14}), all five
+Stage~C conditions (\cref{sec:rq15}), all five Stage~C (multi-node) conditions
+(\cref{sec:rq15b}), and all paired Stage~H1 and Stage~H2 runs
+(\cref{sec:rq21,sec:rq22}). No numerical drift is introduced by the partition
+or transport layer at any stage.
+
+\paragraph{Cross-round consistency.}
+Each benchmark stage reports per-condition round CVs computed as the standard
+deviation of per-round condition means divided by the grand mean
+(\cref{sec:methods-statistics}). The local screening stages (Stage~L1, Stage~L2)
+achieve round CVs in the range 0.0017--0.0113. The local Kubernetes stage
+(Stage~K) sees round CVs of 0.0074--0.0161 (\cref{tab:rq14_rounds}). The AKS
+single-node stage (Stage~C) sees round CVs of 0.0019--0.0061 across the chained
+conditions, with the monolithic baseline at 0.0117 (\cref{tab:rq15_rounds}); the
+AKS multi-node sensitivity stage (Stage~C (multi-node)) records round CVs of
+0.0036--0.0127 across the chained conditions and 0.0084 on the monolithic
+baseline, remaining in the same low range rather than tightening uniformly
+(\cref{tab:rq15b_rounds}). The placement metadata confirms distinct AKS nodes
+for the service pods, but the run does not isolate a single causal source for
+the low cross-round drift. These low CVs support treating the reported
+condition means as representative of this measured environment rather than as
+artefacts of a single favourable or unfavourable run.
+
+\paragraph{Paired execution and transfer validation.}
+Stage~H1 uses a paired alternated design (three mTLS-first passes, two
+plain-first passes) to defend against slow performance drift over the course
+of the benchmark. Pass-level mTLS deltas remain positive in every pass:
+2.223--5.230~ms for \texttt{chain\_2svc} and 7.623--9.985~ms for
+\texttt{chain\_5svc} (\cref{tab:rq21_paired_deltas}). Stage~C preserves the
+complete Stage~K condition ordering (\texttt{monolithic\_k8s\_1svc}~$<$
+\texttt{chain\_2svc}~$<$ \texttt{chain\_3svc}~$<$ \texttt{chain\_4svc}~$<$
+\texttt{chain\_5svc}) under managed-AKS execution
+(\cref{tab:rq15_transfer}). This directional transfer supports treating the
+chain-cost trend as architectural rather than as an environment-specific
+artefact, in line with systems-benchmarking
+guidance~\cite{benchmarking_sc15}.
+
+\paragraph{Security validation.}
+The Stage~H1 mTLS configuration was validated through static manifest checks of
+peer-authentication and authorisation-policy objects, runtime validation of
+policy object counts, full-chain positive probes confirming that valid
+upstream-to-downstream requests succeeded, and direct non-mesh denial probes
+confirming that unauthenticated access to protected downstream services was
+blocked (\cref{sec:rq21}). All four checks passed in every paired mTLS
+pass. Stage~H2 collected fresh paired standard baselines for each
+confidential-node artifact rather than reusing older Stage~H1 data
+(\cref{sec:rq22}); incremental overhead can therefore be attributed to the
+confidential-node placement rather than to session-level drift.
+
+\paragraph{Effect-size discipline.}
+Effect sizes are computed from pooled per-iteration data
+($N = 1{,}000$ per condition). At this $N$, Mann--Whitney $p$-values are
+near-zero for any non-trivial difference and are reported only as
+supplementary evidence. Cohen's~$d$ and cross-round stability are treated as
+the more informative measures of effect magnitude
+(\cref{sec:methods-statistics,tab:rq14_effects}).

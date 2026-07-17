@@ -1,0 +1,175 @@
+\subsection{Stage~L3: Explanatory Synthesis}
+\label{sec:analysis-rq13}
+
+Stage~L3 asks how activation-transfer size and compute distribution together
+explain the latency and boundary-crossing behaviour observed for the
+decomposition choices in Stage~L1 and Stage~L2. The analytical contribution of
+this section is not to add a measurement but to fuse the two preceding
+readings into a single, scoped explanatory model and to state precisely
+what that model does and does not answer. Stage~L1 gave the joint reading
+across four coarse boundaries but could not separate the two dimensions
+because activation size moved with stage depth across all four
+conditions. Stage~L2 supplied the controlled contrast at constant
+activation size that Stage~L1 lacked. The supporting internal-timing study
+(\cref{sec:rq13}) supplies the structural mechanism that links both
+observations to the architecture of ResNet-18~\cite{resnet}.
+
+\paragraph{A two-dimensional account is the smallest model that fits both stages.}
+At the coarse level (\cref{tab:rq11-results}), the boundary-crossing
+interval decreases monotonically from \(53.81\)~ms to \(2.22\)~ms as
+the activation transferred at the boundary decreases from
+\(802{,}816\)~B to \(100{,}352\)~B
+(\texttt{rq1\_1\_20260515\_111428/condition\_summaries.csv}). At the
+refined level (\cref{tab:rq12-results}), holding activation transfer
+constant at \(200{,}704\)~B isolates a \(7.81\)~ms boundary-crossing
+gap between \texttt{split\_after\_layer3\_block0} and
+\texttt{split\_after\_layer3} that the per-segment decomposition
+attributes essentially in full to service-B compute, with a non-compute
+residual that is the same for both conditions
+(\texttt{rq1\_2\_20260515\_112636/cross\_condition.csv}). Neither
+dimension on its own fits both observations: activation transfer is
+well-fit to the coarse gradient but cannot account for the
+wire-cost-equal asymmetry, and compute placement accounts for the
+wire-cost-equal asymmetry but cannot account for the order-of-magnitude
+transfer gradient between coarse boundaries. The two-dimensional
+account that treats activation transfer and compute placement as
+\emph{complementary} dimensions is therefore the smallest model
+consistent with both stages, and it is consistent with the joint
+framing already established in the split-inference literature for
+both activation-driven and compute-driven failure
+modes~\cite{neurosurgeon,dnnsplit,deeperthings}.
+
+\paragraph{The structural compute profile of ResNet-18 supplies a plausible mechanism.}
+The supporting internal-timing study reports that \texttt{layer4}
+accounts for \(31.28\%\) of monolithic forward-pass compute, the
+\texttt{layer3.1} block accounts for \(9.92\%\) (\(7.48\)~ms), and
+the classification head accounts for \(0.44\%\)
+(\texttt{internal\_timing\_resnet18\_20260515\_113614/summary.csv};
+\cref{tab:rq13-internal-summary,fig:rq13-stage-compute-distribution}).
+Two predictions follow. First, a split after \texttt{layer4} leaves
+the downstream service with only the classification head and is
+therefore expected to be compute-degenerate; this is consistent with
+the \(0.62\%\) downstream-compute share measured in Stage~L1
+(\texttt{carry\_forward.json}). Second, the wire-cost-equal contrast
+in Stage~L2 moves precisely the \texttt{layer3.1} block across the
+boundary; the monolithic cost of that block (\(7.48\)~ms) and the
+measured service-B compute gap (\(7.81\)~ms) agree to within roughly
+\(4\%\). The agreement should not be read as identity, because the
+two values come from separate runs (instrumented monolithic profiling
+versus split benchmarking) and the residual difference is within the
+range explained by run-to-run variability and instrumentation. It
+does, however, supply a structural reason why the two wire-cost-equal
+conditions differ by the magnitude they do, consistent with the prior
+observation that block-level execution time can vary across candidate
+boundaries even when their activation footprints are
+similar~\cite{pareto_split}.
+
+\paragraph{Why the carry-forward valley is mid-to-late.}
+The two-dimensional account also predicts the shape of the
+carry-forward region. The earliest boundary is excluded because the
+layer-1 activation expands the byte budget the boundary must carry,
+exceeding the raw input size in this run --- the activation-transfer
+dimension is dominant on the early side. The latest boundary is
+excluded because almost all meaningful computation sits before
+\texttt{layer4} in the architecture --- the compute-distribution
+dimension is dominant on the late side. The mid-to-late region around
+\texttt{layer2}, \texttt{layer3.0}, and \texttt{layer3} is the only
+band in which both dimensions are simultaneously tolerable, and it is
+the band that the carry-forward rule selects from in both stages
+(\texttt{carry\_forward.json} in both frozen runs). Stage~L2 further
+shows that this band is operationally flat at the available
+measurement resolution: the three refined splits cluster in a
+\(0.235\)~ms window whose internal ordering is not separated at the
+per-iteration \(95\%\) CI level, and the mean separation between the
+rule-selected main and the rejected condition is smaller than the
+round-to-round range of the rule-selected main itself
+(\texttt{round\_consistency.json}). The two-dimensional account
+therefore reframes the Stage~L2 tie-break: it is the rule choosing
+legitimately within a genuinely flat valley, not a discovery that
+\texttt{split\_after\_layer3\_block0} is meaningfully faster than the
+other two refined candidates.
+
+\paragraph{Validation.}
+The synthesis rests on the union of the Stage~L1 and Stage~L2 validation
+arguments together with the validation of the supporting
+internal-timing run. Functional parity holds across every split used
+in the synthesis (\texttt{max\_abs\_diff} \(=0.0\) at tolerance
+\(1.0\times 10^{-5}\), \texttt{parity\_validation.json} in both
+frozen runs), so the \(7.81\)~ms wire-cost-equal gap and the coarse
+boundary-crossing gradient are not confounded with numerical drift
+across the partition. Round-level consistency remains low in both
+stages (per-condition round CV between \(0.002\) and \(0.011\) in
+Stage~L1 and between \(0.0017\) and \(0.0070\) in Stage~L2,
+\texttt{round\_consistency.json}), which is the reporting practice on
+which the cross-stage comparison rests~\cite{benchmarking_sc15}. The
+internal-timing run is itself functionally equivalent
+(\texttt{validation.json}) with measured instrumentation overhead of
+\(0.708\)~ms (\(0.94\%\) of total forward-pass time,
+\texttt{instrumentation\_overhead.json}), so the structural
+percentages used in the mechanism argument are not materially
+distorted by profiling. Three limits must be stated. First, the
+synthesis inherits the scope of the underlying runs: single host,
+single build, fixed seed, CPU-only batch-one localhost gRPC; the
+order-of-magnitude correspondence between architectural cost shares
+and measured gaps on this host is not evidence of host-independent
+generality. Second, the \(7.48\)~ms versus \(7.81\)~ms agreement is
+across two runs of different instrumentation; it bounds the
+mechanism, it does not prove it. Third, the boundary-crossing metric
+is a composite that bundles service-B compute with serialisation,
+transport, and deserialisation (\cref{sec:methods-contract}); the
+two-dimensional account works because the wire-cost-equal contrast
+isolates the compute component, not because boundary-crossing has
+been decomposed into independent transport and compute channels in
+the general case.
+
+\paragraph{Evaluation.}
+The evaluative reading of Stage~L3 has three facets. First, against the
+monolithic baseline, the two-dimensional account does \emph{not}
+identify a configuration that is faster than monolithic execution
+under Stage~L1 and Stage~L2 conditions --- every split is measurably slower
+(\(+2.4\%\) to \(+4.7\%\) in Stage~L1; \(+3.34\%\) to \(+3.64\%\) in
+Stage~L2). The contribution of Stage~L3 is therefore explanatory, not
+optimisation-oriented. Second, against a single-dimension decision
+rule, the joint criterion is strictly stronger: a transfer-only rule
+would select \texttt{split\_after\_layer4} and produce a structurally
+degenerate microservice, and a compute-only rule has no principled
+mechanism for rejecting \texttt{split\_after\_layer1}. Third, against
+the carry-forward outcome, the joint criterion ratifies the rule's
+selection of the mid-to-late band without ratifying any particular
+split inside it: the rule's tie-break is a deterministic choice within
+an operationally flat valley, and the defensible carry-forward set is
+the pair \texttt{split\_after\_layer3\_block0} (rule-selected main)
+plus \texttt{split\_after\_layer2} (reference). Stage~L3 does not
+establish that this carry-forward set is host-independent; it
+establishes that it is the set the joint criterion identifies under
+these conditions.
+
+\paragraph{Stage~L3 outcome.}
+Under the controlled local conditions of Stage~L1 and Stage~L2, the latency
+and boundary-crossing behaviour of the evaluated splits is well
+explained by a two-dimensional model: activation-transfer size
+dominates at the coarse level and accounts for the monotonic
+boundary-crossing gradient across stage
+boundaries~\cite{deeperthings}, and compute placement at the boundary
+is independently observable at the refined level and accounts for the
+wire-cost-equal asymmetry between \texttt{split\_after\_layer3\_block0}
+and \texttt{split\_after\_layer3}~\cite{pareto_split}. The supporting
+internal-timing study supplies a plausible structural mechanism that
+links both observations to the late-stage compute concentration of
+ResNet-18~\cite{resnet}: the same architectural feature that makes
+\texttt{layer4} a degenerate split, because almost no computation
+remains downstream of it, also makes \texttt{layer3.1} a costly block
+to relocate across the boundary, because its monolithic cost
+approximates the measured wire-cost-equal gap. The carry-forward
+region selected by the rule in both stages --- the mid-to-late band
+around \texttt{layer2} to \texttt{layer3}, consistent with the
+clustering of suitable boundaries at architecturally meaningful points
+reported in the split-inference literature~\cite{dnnsplit} --- is the
+band in which both dimensions are simultaneously tolerable, and the
+carry-forward outcome \texttt{split\_after\_layer3\_block0} (main)
+plus \texttt{split\_after\_layer2} (reference) is the rule's
+deterministic selection within that band rather than a separation
+discovered by Stage~L2. These claims are scoped to single-host,
+single-build, fixed-seed, CPU-only batch-one localhost gRPC; whether
+the joint criterion is shaped by infrastructure context is the
+empirical question that the later Kubernetes and Azure stages address.

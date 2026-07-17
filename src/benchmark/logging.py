@@ -7,6 +7,7 @@ import shutil
 import platform
 import subprocess
 import datetime
+from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List
 
 
@@ -19,6 +20,18 @@ class ArtifactLogger:
 
     def save_config_copy(self, config_path: str):
         shutil.copy2(config_path, os.path.join(self.output_dir, "config.yaml"))
+
+    def save_resolved_config(self, config: Any, config_path: str):
+        if is_dataclass(config):
+            data = asdict(config)
+        else:
+            data = config
+        payload = {
+            "source_config_path": os.path.abspath(config_path),
+            "resolved_config": data,
+        }
+        with open(os.path.join(self.output_dir, "resolved_config.json"), "w") as f:
+            json.dump(payload, f, indent=2)
 
     def save_environment(self, stabilisation_meta: dict = None):
         import torch
@@ -44,6 +57,16 @@ class ArtifactLogger:
         with open(os.path.join(self.output_dir, "environment.json"), "w") as f:
             json.dump(env, f, indent=2)
 
+    def update_environment(self, updates: Dict[str, Any]):
+        path = os.path.join(self.output_dir, "environment.json")
+        current: Dict[str, Any] = {}
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                current = json.load(f)
+        current.update(updates)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(current, f, indent=2)
+
     def save_raw_iterations(self, rows: List[Dict[str, Any]]):
         if not rows:
             return
@@ -52,6 +75,19 @@ class ArtifactLogger:
         with open(path, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
+            writer.writerows(rows)
+
+    def append_raw_iterations(self, rows: List[Dict[str, Any]]):
+        if not rows:
+            return
+        path = os.path.join(self.output_dir, "raw_iterations.csv")
+        fieldnames = list(rows[0].keys())
+        file_has_content = os.path.exists(path) and os.path.getsize(path) > 0
+        mode = "a" if file_has_content else "w"
+        with open(path, mode, newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if not file_has_content:
+                writer.writeheader()
             writer.writerows(rows)
 
     def save_json(self, filename: str, data: Any):

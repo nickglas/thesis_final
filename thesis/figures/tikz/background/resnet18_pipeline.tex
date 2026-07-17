@@ -1,0 +1,34 @@
+\begin{tikzpicture}[
+    thesisfig,
+    node distance=0.30cm,
+    image/.style={tfbox},
+    stem/.style ={tfbox, draw=orange!75!black, fill=orange!15},
+    layer/.style={tfbox, draw=blue!65!black,   fill=blue!14},
+    head/.style ={tfbox, draw=green!45!black,  fill=green!12},
+    arrow/.style={tfarrow}
+]
+
+%% top-level ResNet-18 pipeline: stem and head collapsed to single boxes;
+%% their internals (Conv-BN-ReLU-MaxPool / AvgPool-FC) are given in the caption.
+\node[image] (img) {Image};
+\node[stem, right=of img] (stem) {Stem};
+
+\node[layer, right=0.5cm of stem] (l1) {Layer 1};
+\node[layer, right=of l1] (l2) {Layer 2};
+\node[layer, right=of l2] (l3) {Layer 3};
+\node[layer, right=of l3] (l4) {Layer 4};
+
+\node[head, right=0.5cm of l4] (head) {Head};
+
+\draw[arrow] (img) -- (stem);
+\draw[arrow] (stem) -- (l1);
+\draw[arrow] (l1) -- (l2);
+\draw[arrow] (l2) -- (l3);
+\draw[arrow] (l3) -- (l4);
+\draw[arrow] (l4) -- (head);
+
+\draw[tfbrace]
+    ($(l1.north west)+(0,0.12)$) -- ($(l4.north east)+(0,0.12)$)
+    node[midway, yshift=0.45cm] {Residual stages};
+
+\end{tikzpicture}%

@@ -1,0 +1,172 @@
+% Stage K / Stage C multi-node placement — VNet cloud stylisation.
+% Each Kubernetes node is its own rounded-rectangle island. Between every
+% pair of adjacent nodes sits an "Azure VNet" cloud (a tinted ellipse with
+% small overlapping arcs to suggest cloud shape) that the gRPC arrows pass
+% through. The cloud explicitly signals that traffic crosses the network.
+\begin{tikzpicture}[
+    font=\small,
+    cluster/.style={
+        draw=black!50,
+        fill=white,
+        rounded corners=10pt,
+        thick,
+        inner xsep=18pt,
+        inner ysep=22pt
+    },
+    nodebox/.style={
+        draw=blue!55!black,
+        fill=blue!8,
+        rounded corners=8pt,
+        line width=1.1pt,
+        inner xsep=12pt,
+        inner ysep=14pt
+    },
+    clientnodebox/.style={
+        draw=orange!75!black,
+        fill=orange!10,
+        rounded corners=8pt,
+        line width=1.1pt,
+        inner xsep=12pt,
+        inner ysep=14pt
+    },
+    pod/.style={
+        draw=blue!65!black,
+        fill=blue!18,
+        rounded corners=4pt,
+        minimum width=2.0cm,
+        minimum height=1.0cm,
+        align=center,
+        thick
+    },
+    clientpod/.style={
+        draw=orange!75!black,
+        fill=orange!22,
+        rounded corners=4pt,
+        minimum width=2.0cm,
+        minimum height=1.0cm,
+        align=center,
+        thick
+    },
+    svc/.style={
+        draw=green!45!black,
+        fill=green!15,
+        rounded corners=3pt,
+        minimum width=1.6cm,
+        minimum height=0.45cm,
+        align=center,
+        thick,
+        font=\tiny
+    },
+    vnetcloud/.style={
+        draw=blue!55!black,
+        fill=blue!12,
+        line width=0.7pt
+    },
+    arrow/.style={
+        -{Latex[length=2.4mm]},
+        very thick,
+        draw=red!75!black
+    },
+    returnarrow/.style={
+        -{Latex[length=2.4mm]},
+        thick,
+        draw=black!55,
+        dashed
+    },
+    smalllabel/.style={
+        font=\scriptsize,
+        text=black!65,
+        align=center
+    },
+    transferlabel/.style={
+        font=\scriptsize\bfseries,
+        text=red!75!black,
+        align=center
+    },
+    nodelabel/.style={
+        font=\small\bfseries,
+        text=black!75
+    },
+    cloudlabel/.style={
+        font=\tiny\itshape,
+        text=blue!55!black
+    }
+]
+
+% --- Pods (with wide gaps to make space for VNet clouds between them) ---
+\node[clientpod] (client) {Benchmark\\client pod};
+\node[pod, right=3.0cm of client] (p1) {Pod 1\\\texttt{stem+layer1}};
+\node[pod, right=2.6cm of p1]    (p2) {Pod 2\\\texttt{layer2}};
+\node[pod, right=2.6cm of p2]    (p3) {Pod 3\\\texttt{layer3}};
+\node[pod, right=2.6cm of p3]    (p4) {Pod 4\\\texttt{layer4}};
+\node[pod, right=2.6cm of p4]    (p5) {Pod 5\\\texttt{avgpool+fc}};
+
+% Services below each pod
+\node[svc, below=0.4cm of p1] (s1) {Service 1};
+\node[svc, below=0.4cm of p2] (s2) {Service 2};
+\node[svc, below=0.4cm of p3] (s3) {Service 3};
+\node[svc, below=0.4cm of p4] (s4) {Service 4};
+\node[svc, below=0.4cm of p5] (s5) {Service 5};
+
+% --- Six node islands ---
+\begin{pgfonlayer}{background}
+\node[clientnodebox, fit=(client),    label={[nodelabel]above:Node 0 (client)}] (n0) {};
+\node[nodebox,       fit=(p1)(s1),    label={[nodelabel]above:Node 1}]          (n1) {};
+\node[nodebox,       fit=(p2)(s2),    label={[nodelabel]above:Node 2}]          (n2) {};
+\node[nodebox,       fit=(p3)(s3),    label={[nodelabel]above:Node 3}]          (n3) {};
+\node[nodebox,       fit=(p4)(s4),    label={[nodelabel]above:Node 4}]          (n4) {};
+\node[nodebox,       fit=(p5)(s5),    label={[nodelabel]above:Node 5}]          (n5) {};
+
+\node[
+    cluster,
+    fit=(n0)(n1)(n2)(n3)(n4)(n5),
+    label={[font=\small\bfseries, text=black!75]above:%
+        AKS cluster \textemdash{} 6 \texttt{Standard\_D8s\_v3} nodes, single VNet, anti-affinity enforced}
+] (clusterbox) {};
+\end{pgfonlayer}
+
+% --- VNet clouds between every adjacent pair of nodes ---
+% Each cloud is a stylised silhouette built from overlapping circles, with
+% an "Azure VNet" label nearby. The arrow visibly passes through the cloud.
+\foreach \a/\b/\name in {n0/n1/c01, n1/n2/c12, n2/n3/c23, n3/n4/c34, n4/n5/c45} {
+    \coordinate (mid_\name) at ($(\a.east)!0.5!(\b.west)$);
+    \begin{scope}[shift={(mid_\name)}]
+        % Cloud silhouette: 4 overlapping circles
+        \fill[vnetcloud]
+            ( 0mm,    0mm) circle (3.6mm)
+            ( 4mm,   1mm)  circle (3.0mm)
+            (-4mm,   1mm)  circle (3.0mm)
+            ( 0mm,   3mm)  circle (3.0mm);
+        \draw[draw=blue!55!black, line width=0.6pt, fill=none]
+            ( 0mm,    0mm) circle (3.6mm);
+        \draw[draw=blue!55!black, line width=0.6pt, fill=none]
+            ( 4mm,   1mm)  circle (3.0mm);
+        \draw[draw=blue!55!black, line width=0.6pt, fill=none]
+            (-4mm,   1mm)  circle (3.0mm);
+        \draw[draw=blue!55!black, line width=0.6pt, fill=none]
+            ( 0mm,   3mm)  circle (3.0mm);
+        \node[cloudlabel] at (0, 1mm) {VNet};
+    \end{scope}
+}
+
+% --- gRPC arrows: visibly cross the cloud between each pair of nodes ---
+\draw[arrow] (client.east) -- node[transferlabel, above=4mm] {gRPC}    (p1.west);
+\draw[arrow] (p1.east)     -- node[transferlabel, above=4mm] {784 KiB} (p2.west);
+\draw[arrow] (p2.east)     -- node[transferlabel, above=4mm] {392 KiB} (p3.west);
+\draw[arrow] (p3.east)     -- node[transferlabel, above=4mm] {196 KiB} (p4.west);
+\draw[arrow] (p4.east)     -- node[transferlabel, above=4mm] {98 KiB}  (p5.west);
+
+% Pod-to-service association lines
+\draw[black!35, thick] (s1) -- (p1);
+\draw[black!35, thick] (s2) -- (p2);
+\draw[black!35, thick] (s3) -- (p3);
+\draw[black!35, thick] (s4) -- (p4);
+\draw[black!35, thick] (s5) -- (p5);
+
+% Return path (dashed curve below the cluster)
+\draw[returnarrow]
+    (p5.south east) .. controls +(0.7,-2.0) and +(0,-2.4) ..
+    node[smalllabel, below, pos=0.85] {final output returned to caller}
+    (client.south);
+
+\end{tikzpicture}%

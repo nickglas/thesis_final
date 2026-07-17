@@ -1,0 +1,19 @@
+## segment 2 -> chain-5svc-mtls-svc-2.rq21-chain5-mtls.svc.cluster.local:50051
+probing chain-5svc-mtls-svc-2.rq21-chain5-mtls.svc.cluster.local:50051 from a non-meshed pod
+EXPECTED_FAILURE: direct non-meshed gRPC channel was not ready: FutureTimeoutError 
+command terminated with exit code 42
+
+## segment 3 -> chain-5svc-mtls-svc-3.rq21-chain5-mtls.svc.cluster.local:50051
+probing chain-5svc-mtls-svc-3.rq21-chain5-mtls.svc.cluster.local:50051 from a non-meshed pod
+EXPECTED_FAILURE: direct non-meshed gRPC channel was not ready: FutureTimeoutError 
+command terminated with exit code 42
+
+## segment 4 -> chain-5svc-mtls-svc-4.rq21-chain5-mtls.svc.cluster.local:50051
+probing chain-5svc-mtls-svc-4.rq21-chain5-mtls.svc.cluster.local:50051 from a non-meshed pod
+EXPECTED_FAILURE: direct non-meshed gRPC channel was not ready: FutureTimeoutError 
+command terminated with exit code 42
+
+## segment 5 -> chain-5svc-mtls-svc-5.rq21-chain5-mtls.svc.cluster.local:50051
+probing chain-5svc-mtls-svc-5.rq21-chain5-mtls.svc.cluster.local:50051 from a non-meshed pod
+EXPECTED_FAILURE: direct non-meshed gRPC channel was not ready: FutureTimeoutError 
+command terminated with exit code 42

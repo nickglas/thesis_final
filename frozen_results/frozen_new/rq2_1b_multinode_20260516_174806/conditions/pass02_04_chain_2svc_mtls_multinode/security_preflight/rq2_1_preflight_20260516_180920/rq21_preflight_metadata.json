@@ -1,0 +1,573 @@
+{
+  "captured_at": "2026-05-16T18:09:48.591557+00:00",
+  "config_path": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_180920/effective_config.yaml",
+  "condition": "chain_2svc_mtls_multinode",
+  "topology": "chain_2svc",
+  "service_count": 2,
+  "mesh": {
+    "enabled": true,
+    "implementation": "managed AKS Istio add-on",
+    "revision": "asm-1-29",
+    "namespace": "rq21b-chain2-mtls"
+  },
+  "namespaces": {
+    "service": {
+      "name": "rq21b-chain2-mtls",
+      "labels": {
+        "experiment": "rq21b-chain2-mtls",
+        "istio.io/rev": "asm-1-29",
+        "kubernetes.io/metadata.name": "rq21b-chain2-mtls",
+        "mesh-enabled": "true",
+        "security-condition": "mtls",
+        "workload-role": "inference"
+      },
+      "annotations": {
+        "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq21b-chain2-mtls\",\"istio.io/rev\":\"asm-1-29\",\"mesh-enabled\":\"true\",\"security-condition\":\"mtls\",\"workload-role\":\"inference\"},\"name\":\"rq21b-chain2-mtls\"}}\n"
+      }
+    },
+    "client": {
+      "name": "rq21b-client-mtls",
+      "labels": {
+        "experiment": "rq21b-chain2-mtls",
+        "kubernetes.io/metadata.name": "rq21b-client-mtls",
+        "mesh-enabled": "false",
+        "security-condition": "mtls",
+        "workload-role": "benchmark-client"
+      },
+      "annotations": {
+        "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"experiment\":\"rq21b-chain2-mtls\",\"mesh-enabled\":\"false\",\"security-condition\":\"mtls\",\"workload-role\":\"benchmark-client\"},\"name\":\"rq21b-client-mtls\"}}\n"
+      }
+    }
+  },
+  "service_accounts": {
+    "declared": {
+      "1": "rq21b-chain2-svc1",
+      "2": "rq21b-chain2-svc2"
+    },
+    "observed_by_pod": {
+      "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm": "rq21b-chain2-svc1",
+      "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf": "rq21b-chain2-svc2"
+    }
+  },
+  "sidecar_presence_per_pod": {
+    "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm": true,
+    "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf": true
+  },
+  "sidecar_image_ids_by_pod": {
+    "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm": [
+      "mcr.microsoft.com/oss/v2/istio/proxyv2@sha256:e06392c2c98c365bfa9197de30d73867a35ade779926441e913f7754df3e20ae"
+    ],
+    "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf": [
+      "mcr.microsoft.com/oss/v2/istio/proxyv2@sha256:e06392c2c98c365bfa9197de30d73867a35ade779926441e913f7754df3e20ae"
+    ]
+  },
+  "proxy_resources": {
+    "declared": {
+      "cpu_request": "100m",
+      "cpu_limit": "500m",
+      "memory_request": "128Mi",
+      "memory_limit": "512Mi"
+    },
+    "annotations_by_deployment": {
+      "chain-2svc-mtls-multinode-svc-1": {
+        "sidecar.istio.io/proxyCPU": "100m",
+        "sidecar.istio.io/proxyCPULimit": "500m",
+        "sidecar.istio.io/proxyMemory": "128Mi",
+        "sidecar.istio.io/proxyMemoryLimit": "512Mi"
+      },
+      "chain-2svc-mtls-multinode-svc-2": {
+        "sidecar.istio.io/proxyCPU": "100m",
+        "sidecar.istio.io/proxyCPULimit": "500m",
+        "sidecar.istio.io/proxyMemory": "128Mi",
+        "sidecar.istio.io/proxyMemoryLimit": "512Mi"
+      }
+    }
+  },
+  "peer_authentication_resources": [
+    {
+      "name": "default",
+      "namespace": "rq21b-chain2-mtls",
+      "labels": {
+        "app": "thesis-inference",
+        "condition": "chain_2svc_mtls_multinode",
+        "experiment": "rq21b-chain2-mtls",
+        "experiment-condition": "chain_2svc_mtls_multinode",
+        "mesh-enabled": "true",
+        "security-condition": "mtls",
+        "workload-role": "mesh-policy"
+      },
+      "spec": {
+        "mtls": {
+          "mode": "PERMISSIVE"
+        }
+      }
+    },
+    {
+      "name": "downstream-strict",
+      "namespace": "rq21b-chain2-mtls",
+      "labels": {
+        "app": "thesis-inference",
+        "condition": "chain_2svc_mtls_multinode",
+        "experiment": "rq21b-chain2-mtls",
+        "experiment-condition": "chain_2svc_mtls_multinode",
+        "mesh-enabled": "true",
+        "security-condition": "mtls",
+        "segment-index": "2",
+        "workload-role": "mesh-policy"
+      },
+      "spec": {
+        "mtls": {
+          "mode": "STRICT"
+        },
+        "selector": {
+          "matchLabels": {
+            "condition": "chain_2svc_mtls_multinode",
+            "segment-index": "2",
+            "workload-role": "service"
+          }
+        }
+      }
+    }
+  ],
+  "authorization_policy_resources": [
+    {
+      "name": "downstream-service1-only",
+      "namespace": "rq21b-chain2-mtls",
+      "labels": {
+        "app": "thesis-inference",
+        "condition": "chain_2svc_mtls_multinode",
+        "experiment": "rq21b-chain2-mtls",
+        "experiment-condition": "chain_2svc_mtls_multinode",
+        "mesh-enabled": "true",
+        "security-condition": "mtls",
+        "segment-index": "2",
+        "workload-role": "mesh-policy"
+      },
+      "spec": {
+        "action": "ALLOW",
+        "rules": [
+          {
+            "from": [
+              {
+                "source": {
+                  "principals": [
+                    "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "selector": {
+          "matchLabels": {
+            "condition": "chain_2svc_mtls_multinode",
+            "segment-index": "2",
+            "workload-role": "service"
+          }
+        }
+      }
+    }
+  ],
+  "enforcement_validation": {
+    "ran": true,
+    "expected_non_mesh_direct_failure": true,
+    "authorization_policy_expected_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+    "authorization_policy_expected_principals": [
+      "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+    ],
+    "full_chain_probe": {
+      "description": "Positive chain probe: non-meshed benchmark client calls service1 only; the mesh-protected chain must return 2 hop timings.",
+      "target": "chain-2svc-mtls-multinode-svc-1.rq21b-chain2-mtls.svc.cluster.local:50051",
+      "expected_hop_count": 2,
+      "expected_hop_indexes": [
+        1,
+        2
+      ],
+      "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_180920/diagnostics/full_chain_probe_output.txt",
+      "returncode": 0,
+      "succeeded": true,
+      "hop_count": 2,
+      "hop_indexes": [
+        1,
+        2
+      ],
+      "hop_timings": [
+        {
+          "hop_index": 1,
+          "deserialize_ms": 0.7818959998076025,
+          "compute_ms": 39.252286000191816,
+          "serialize_ms": 0.0731999998606625,
+          "forward_ms": 69.93792000002941,
+          "activation_bytes": 602112
+        },
+        {
+          "hop_index": 2,
+          "deserialize_ms": 0.5519970000023022,
+          "compute_ms": 37.52819100009219,
+          "serialize_ms": 0.040099000216287095,
+          "forward_ms": 0.0,
+          "activation_bytes": 401408
+        }
+      ],
+      "response_shape": [
+        1,
+        1000
+      ]
+    },
+    "non_mesh_direct_denial_probe": {
+      "description": "Non-meshed debug pod direct gRPC readiness probes to downstream services.",
+      "pod_name": "rq21-direct-deny-20260516180937",
+      "namespace": "rq21b-client-mtls",
+      "target": "chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051",
+      "targets": [
+        {
+          "segment_index": 2,
+          "target": "chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051"
+        }
+      ],
+      "expected_failure": true,
+      "manifest_file": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_180920/diagnostics/negative_direct_probe_pod.yaml",
+      "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1b_multinode_20260516_174806/conditions/pass02_04_chain_2svc_mtls_multinode/security_preflight/rq2_1_preflight_20260516_180920/diagnostics/negative_direct_probe_output.txt",
+      "pod_preserved": false,
+      "returncode": 42,
+      "blocked_as_expected": true,
+      "succeeded_unexpectedly": false,
+      "target_results": [
+        {
+          "segment_index": 2,
+          "target": "chain-2svc-mtls-multinode-svc-2.rq21b-chain2-mtls.svc.cluster.local:50051",
+          "returncode": 42,
+          "blocked_as_expected": true,
+          "succeeded_unexpectedly": false
+        }
+      ],
+      "blocked_segments": [
+        2
+      ]
+    },
+    "passed": true,
+    "errors": []
+  },
+  "service_pod_node_placement": {
+    "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm": "aks-rq21bpool-33797924-vmss000000",
+    "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf": "aks-rq21bpool-33797924-vmss000002"
+  },
+  "client_pod_node_placement": {
+    "benchmark-client": "aks-rq21bpool-33797924-vmss000001"
+  },
+  "service_pods": [
+    {
+      "pod_name": "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-69xtm",
+      "namespace": "rq21b-chain2-mtls",
+      "node_name": "aks-rq21bpool-33797924-vmss000000",
+      "phase": "Running",
+      "service_account_name": "rq21b-chain2-svc1",
+      "labels": {
+        "app": "thesis-inference",
+        "condition": "chain_2svc_mtls_multinode",
+        "experiment": "rq21b-chain2-mtls",
+        "experiment-condition": "chain_2svc_mtls_multinode",
+        "mesh-enabled": "true",
+        "pod-template-hash": "848fcd5cf4",
+        "security-condition": "mtls",
+        "security.istio.io/tlsMode": "istio",
+        "segment-index": "1",
+        "service.istio.io/canonical-name": "thesis-inference",
+        "service.istio.io/canonical-revision": "latest",
+        "workload-role": "service"
+      },
+      "annotations": {
+        "istio.io/rev": "asm-1-29",
+        "kubectl.kubernetes.io/default-container": "inference",
+        "kubectl.kubernetes.io/default-logs-container": "inference",
+        "prometheus.io/path": "/stats/prometheus",
+        "prometheus.io/port": "15020",
+        "prometheus.io/scrape": "true",
+        "sidecar.istio.io/proxyCPU": "100m",
+        "sidecar.istio.io/proxyCPULimit": "500m",
+        "sidecar.istio.io/proxyMemory": "128Mi",
+        "sidecar.istio.io/proxyMemoryLimit": "512Mi",
+        "sidecar.istio.io/status": "{\"initContainers\":[\"istio-init\",\"istio-proxy\"],\"containers\":null,\"volumes\":[\"workload-socket\",\"credential-socket\",\"workload-certs\",\"istio-envoy\",\"istio-data\",\"istio-podinfo\",\"istio-token\",\"istiod-ca-cert\",\"istio-ca-crl\"],\"imagePullSecrets\":null,\"revision\":\"asm-1-29\"}"
+      },
+      "containers": [
+        {
+          "name": "istio-init",
+          "container_type": "init",
+          "native_sidecar": false,
+          "image": "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4",
+          "image_id": "mcr.microsoft.com/oss/v2/istio/proxyv2@sha256:e06392c2c98c365bfa9197de30d73867a35ade779926441e913f7754df3e20ae",
+          "ready": true,
+          "resources": {
+            "limits": {
+              "cpu": "500m",
+              "memory": "512Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            }
+          }
+        },
+        {
+          "name": "istio-proxy",
+          "container_type": "init",
+          "native_sidecar": true,
+          "image": "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4",
+          "image_id": "mcr.microsoft.com/oss/v2/istio/proxyv2@sha256:e06392c2c98c365bfa9197de30d73867a35ade779926441e913f7754df3e20ae",
+          "ready": true,
+          "resources": {
+            "limits": {
+              "cpu": "500m",
+              "memory": "512Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            }
+          }
+        },
+        {
+          "name": "inference",
+          "container_type": "app",
+          "native_sidecar": false,
+          "image": "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b",
+          "image_id": "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b",
+          "ready": true,
+          "resources": {
+            "limits": {
+              "cpu": "1",
+              "memory": "1Gi"
+            },
+            "requests": {
+              "cpu": "1",
+              "memory": "1Gi"
+            }
+          }
+        }
+      ],
+      "sidecar_present": true,
+      "sidecar_image_ids": [
+        "mcr.microsoft.com/oss/v2/istio/proxyv2@sha256:e06392c2c98c365bfa9197de30d73867a35ade779926441e913f7754df3e20ae"
+      ]
+    },
+    {
+      "pod_name": "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-w85gf",
+      "namespace": "rq21b-chain2-mtls",
+      "node_name": "aks-rq21bpool-33797924-vmss000002",
+      "phase": "Running",
+      "service_account_name": "rq21b-chain2-svc2",
+      "labels": {
+        "app": "thesis-inference",
+        "condition": "chain_2svc_mtls_multinode",
+        "experiment": "rq21b-chain2-mtls",
+        "experiment-condition": "chain_2svc_mtls_multinode",
+        "mesh-enabled": "true",
+        "pod-template-hash": "7dd948d8d8",
+        "security-condition": "mtls",
+        "security.istio.io/tlsMode": "istio",
+        "segment-index": "2",
+        "service.istio.io/canonical-name": "thesis-inference",
+        "service.istio.io/canonical-revision": "latest",
+        "workload-role": "service"
+      },
+      "annotations": {
+        "istio.io/rev": "asm-1-29",
+        "kubectl.kubernetes.io/default-container": "inference",
+        "kubectl.kubernetes.io/default-logs-container": "inference",
+        "prometheus.io/path": "/stats/prometheus",
+        "prometheus.io/port": "15020",
+        "prometheus.io/scrape": "true",
+        "sidecar.istio.io/proxyCPU": "100m",
+        "sidecar.istio.io/proxyCPULimit": "500m",
+        "sidecar.istio.io/proxyMemory": "128Mi",
+        "sidecar.istio.io/proxyMemoryLimit": "512Mi",
+        "sidecar.istio.io/status": "{\"initContainers\":[\"istio-init\",\"istio-proxy\"],\"containers\":null,\"volumes\":[\"workload-socket\",\"credential-socket\",\"workload-certs\",\"istio-envoy\",\"istio-data\",\"istio-podinfo\",\"istio-token\",\"istiod-ca-cert\",\"istio-ca-crl\"],\"imagePullSecrets\":null,\"revision\":\"asm-1-29\"}"
+      },
+      "containers": [
+        {
+          "name": "istio-init",
+          "container_type": "init",
+          "native_sidecar": false,
+          "image": "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4",
+          "image_id": "mcr.microsoft.com/oss/v2/istio/proxyv2@sha256:e06392c2c98c365bfa9197de30d73867a35ade779926441e913f7754df3e20ae",
+          "ready": true,
+          "resources": {
+            "limits": {
+              "cpu": "500m",
+              "memory": "512Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            }
+          }
+        },
+        {
+          "name": "istio-proxy",
+          "container_type": "init",
+          "native_sidecar": true,
+          "image": "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4",
+          "image_id": "mcr.microsoft.com/oss/v2/istio/proxyv2@sha256:e06392c2c98c365bfa9197de30d73867a35ade779926441e913f7754df3e20ae",
+          "ready": true,
+          "resources": {
+            "limits": {
+              "cpu": "500m",
+              "memory": "512Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            }
+          }
+        },
+        {
+          "name": "inference",
+          "container_type": "app",
+          "native_sidecar": false,
+          "image": "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b",
+          "image_id": "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b",
+          "ready": true,
+          "resources": {
+            "limits": {
+              "cpu": "1",
+              "memory": "1Gi"
+            },
+            "requests": {
+              "cpu": "1",
+              "memory": "1Gi"
+            }
+          }
+        }
+      ],
+      "sidecar_present": true,
+      "sidecar_image_ids": [
+        "mcr.microsoft.com/oss/v2/istio/proxyv2@sha256:e06392c2c98c365bfa9197de30d73867a35ade779926441e913f7754df3e20ae"
+      ]
+    }
+  ],
+  "client_pod": {
+    "pod_name": "benchmark-client",
+    "namespace": "rq21b-client-mtls",
+    "node_name": "aks-rq21bpool-33797924-vmss000001",
+    "phase": "Running",
+    "service_account_name": "default",
+    "labels": {
+      "app": "thesis-inference",
+      "experiment": "rq21b-chain2-mtls",
+      "mesh-enabled": "false",
+      "role": "client",
+      "security-condition": "mtls",
+      "workload-role": "client"
+    },
+    "annotations": {
+      "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{\"sidecar.istio.io/inject\":\"false\"},\"labels\":{\"app\":\"thesis-inference\",\"experiment\":\"rq21b-chain2-mtls\",\"mesh-enabled\":\"false\",\"role\":\"client\",\"security-condition\":\"mtls\",\"workload-role\":\"client\"},\"name\":\"benchmark-client\",\"namespace\":\"rq21b-client-mtls\"},\"spec\":{\"affinity\":{\"podAntiAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":[{\"labelSelector\":{\"matchLabels\":{\"workload-role\":\"service\"}},\"topologyKey\":\"kubernetes.io/hostname\"}]}},\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"env\":[{\"name\":\"PYTORCH_INTRA_OP_THREADS\",\"value\":\"1\"},{\"name\":\"PYTORCH_INTER_OP_THREADS\",\"value\":\"1\"},{\"name\":\"OMP_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MKL_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"OPENBLAS_NUM_THREADS\",\"value\":\"1\"},{\"name\":\"MY_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}},{\"name\":\"MY_NODE_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"spec.nodeName\"}}},{\"name\":\"MY_POD_IP\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.podIP\"}}}],\"image\":\"thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b\",\"imagePullPolicy\":\"Always\",\"name\":\"client\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"1Gi\"},\"requests\":{\"cpu\":\"100m\",\"memory\":\"1Gi\"}}}],\"nodeSelector\":{\"agentpool\":\"rq21bpool\",\"workload\":\"benchmark\"},\"restartPolicy\":\"Never\",\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"workload\",\"operator\":\"Equal\",\"value\":\"benchmark\"}]}}\n",
+      "sidecar.istio.io/inject": "false"
+    },
+    "containers": [
+      {
+        "name": "client",
+        "container_type": "app",
+        "native_sidecar": false,
+        "image": "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b",
+        "image_id": "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b",
+        "ready": true,
+        "resources": {
+          "limits": {
+            "cpu": "1",
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "100m",
+            "memory": "1Gi"
+          }
+        }
+      }
+    ],
+    "sidecar_present": false,
+    "sidecar_image_ids": []
+  },
+  "mesh_control_plane_system_pod_placement": [
+    {
+      "namespace": "aks-istio-system",
+      "pod_name": "istiod-asm-1-29-75c9d9c6bd-dqx7x",
+      "node_name": "aks-systempool-21862522-vmss000000",
+      "phase": "Running",
+      "labels": {
+        "app": "istiod",
+        "app.kubernetes.io/instance": "azure-service-mesh-istio-discovery",
+        "app.kubernetes.io/managed-by": "Helm",
+        "app.kubernetes.io/name": "istiod",
+        "app.kubernetes.io/part-of": "istio",
+        "app.kubernetes.io/version": "1.0.0-v20260410-addon-260507-1",
+        "azureservicemesh/istio.component": "istio-discovery",
+        "helm.sh/chart": "azure-service-mesh-istio-discovery-addon-1.0.0-v20260410-addon",
+        "install.operator.istio.io/owning-resource": "unknown",
+        "istio": "istiod",
+        "istio.io/dataplane-mode": "none",
+        "istio.io/rev": "asm-1-29",
+        "kubernetes.azure.com/managedby": "aks",
+        "operator.istio.io/component": "Pilot",
+        "pod-template-hash": "75c9d9c6bd",
+        "sidecar.istio.io/inject": "false"
+      },
+      "owner_references": [
+        {
+          "apiVersion": "apps/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "ReplicaSet",
+          "name": "istiod-asm-1-29-75c9d9c6bd",
+          "uid": "71f5fa6e-07f0-45cf-b656-ad8c289683c2"
+        }
+      ]
+    },
+    {
+      "namespace": "aks-istio-system",
+      "pod_name": "istiod-asm-1-29-75c9d9c6bd-s4967",
+      "node_name": "aks-systempool-21862522-vmss000000",
+      "phase": "Running",
+      "labels": {
+        "app": "istiod",
+        "app.kubernetes.io/instance": "azure-service-mesh-istio-discovery",
+        "app.kubernetes.io/managed-by": "Helm",
+        "app.kubernetes.io/name": "istiod",
+        "app.kubernetes.io/part-of": "istio",
+        "app.kubernetes.io/version": "1.0.0-v20260410-addon-260507-1",
+        "azureservicemesh/istio.component": "istio-discovery",
+        "helm.sh/chart": "azure-service-mesh-istio-discovery-addon-1.0.0-v20260410-addon",
+        "install.operator.istio.io/owning-resource": "unknown",
+        "istio": "istiod",
+        "istio.io/dataplane-mode": "none",
+        "istio.io/rev": "asm-1-29",
+        "kubernetes.azure.com/managedby": "aks",
+        "operator.istio.io/component": "Pilot",
+        "pod-template-hash": "75c9d9c6bd",
+        "sidecar.istio.io/inject": "false"
+      },
+      "owner_references": [
+        {
+          "apiVersion": "apps/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "ReplicaSet",
+          "name": "istiod-asm-1-29-75c9d9c6bd",
+          "uid": "71f5fa6e-07f0-45cf-b656-ad8c289683c2"
+        }
+      ]
+    }
+  ],
+  "control_plane_isolation": {
+    "required": true,
+    "benchmark_node_names": [
+      "aks-rq21bpool-33797924-vmss000000",
+      "aks-rq21bpool-33797924-vmss000001",
+      "aks-rq21bpool-33797924-vmss000002"
+    ],
+    "avoidable_istio_control_plane_pods_on_benchmark_node": [],
+    "violates_isolated_pool_contract": false
+  },
+  "preflight_passed": true,
+  "errors": [],
+  "warnings": [],
+  "limitations": []
+}

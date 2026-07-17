@@ -1,0 +1,116 @@
+{
+  "condition": "chain_2svc_mesh_strict_mtls_authz",
+  "condition_key": "c3",
+  "passed": true,
+  "errors": [],
+  "service_pod_nodes": [
+    "aks-rq15pool-31581052-vmss000000"
+  ],
+  "client_node": "aks-rq15pool-31581052-vmss000000",
+  "expected_shape": {
+    "mesh": true,
+    "service_accounts": 2,
+    "peer": 2,
+    "strict": 1,
+    "authz": 1
+  },
+  "peer_authentication_validation": {
+    "namespace_default_permissive": true,
+    "expected_peer_authentication_count": 2,
+    "observed_peer_authentication_count": 2,
+    "expected_strict_segments": [
+      "2"
+    ],
+    "observed_strict_segments": [
+      "2"
+    ],
+    "strict_peer_count_by_segment": {
+      "2": 1
+    }
+  },
+  "authorization_policy_validation": {
+    "expected_policy_count": 1,
+    "expected_policy_names": [
+      "service2-service1-only"
+    ],
+    "observed_policy_names": [
+      "service2-service1-only"
+    ],
+    "policies": [
+      {
+        "expected_policy_name": "service2-service1-only",
+        "expected_source_segment_index": "1",
+        "expected_downstream_segment_index": "2",
+        "expected_allowed_principal": "cluster.local/ns/rq21-ab-c3-authz/sa/rq21-ab-c3-svc1",
+        "present": true,
+        "selects_downstream_service": true,
+        "allows_only_expected_principal": true,
+        "observed_selector": {
+          "condition": "chain_2svc_mesh_strict_mtls_authz",
+          "segment-index": "2",
+          "workload-role": "service"
+        },
+        "observed_action": "ALLOW",
+        "observed_allowed_principals": [
+          "cluster.local/ns/rq21-ab-c3-authz/sa/rq21-ab-c3-svc1"
+        ],
+        "unrestricted_source_rule": false,
+        "unexpected_source_constraints": []
+      }
+    ],
+    "selects_downstream_service2": true,
+    "allows_only_service1_principal": true,
+    "all_policies_valid": true
+  },
+  "full_chain_probe": {
+    "target": "chain-2svc-mesh-strict-mtls-authz-svc-1.rq21-ab-c3-authz.svc.cluster.local:50051",
+    "expected_hop_count": 2,
+    "expected_hop_indexes": [
+      1,
+      2
+    ],
+    "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1_ablation_20260516_112348/conditions/pass01_03_chain_2svc_mesh_strict_mtls_authz/diagnostics/full_chain_probe_output.txt",
+    "returncode": 0,
+    "succeeded": true,
+    "response_shape": [
+      1,
+      1000
+    ],
+    "hop_count": 2,
+    "hop_indexes": [
+      1,
+      2
+    ],
+    "hop_timings": [
+      {
+        "hop_index": 1,
+        "deserialize_ms": 0.8153969999966648,
+        "compute_ms": 39.164551999874675,
+        "serialize_ms": 0.0685990000874881,
+        "forward_ms": 63.93265799988512,
+        "activation_bytes": 602112
+      },
+      {
+        "hop_index": 2,
+        "deserialize_ms": 0.5295980001847056,
+        "compute_ms": 37.35885799983407,
+        "serialize_ms": 0.040900000158217154,
+        "forward_ms": 0.0,
+        "activation_bytes": 401408
+      }
+    ]
+  },
+  "direct_service2_probe": {
+    "target": "chain-2svc-mesh-strict-mtls-authz-svc-2.rq21-ab-c3-authz.svc.cluster.local:50051",
+    "expected_blocked": true,
+    "manifest_file": "/home/nick/Desktop/thesis_final/results/rq2_1_ablation_20260516_112348/conditions/pass01_03_chain_2svc_mesh_strict_mtls_authz/diagnostics/direct_probe_c3_pod.yaml",
+    "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1_ablation_20260516_112348/conditions/pass01_03_chain_2svc_mesh_strict_mtls_authz/diagnostics/direct_probe_c3_output.txt",
+    "pod_name": "rq21-ab-direct-20260516115406",
+    "namespace": "rq21-ab-c3-client",
+    "pod_preserved": false,
+    "returncode": 42,
+    "blocked": true,
+    "ready": false,
+    "passed": true
+  }
+}

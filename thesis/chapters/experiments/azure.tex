@@ -1,0 +1,408 @@
+\section{Stage~C -- Azure Kubernetes Service Transfer Validation}
+\label{sec:rq15}
+
+\subsection{Stage Objective}
+
+As the Azure cloud environment of RQ1, this stage addresses the following question:
+
+\begin{quote}
+\textit{Does the local Kubernetes latency pattern observed for the coarse-stage
+ResNet-18 microservice chain transfer to Azure Kubernetes Service, and how do the
+absolute and relative costs change under managed cloud execution?}
+\end{quote}
+
+Stage~C moves the predefined Stage~K chain family from local \texttt{kind} Kubernetes to
+Azure Kubernetes Service (AKS). The purpose is not to select a new decomposition, but to
+test whether the architectural ordering observed in local Kubernetes remains credible
+when the same synchronously chained inference workload is executed on managed cloud
+infrastructure. The stage therefore compares absolute latency, relative overhead, and
+condition ordering between the frozen Stage~K local Kubernetes run and the frozen Stage~C
+AKS run.
+
+The literature framing for transfer-validation between local Kubernetes and
+managed cloud execution is discussed in \cref{sec:rw-cloud-native}: managed
+Kubernetes, CNI, and cloud-network studies motivate treating local-to-cloud
+transfer as a directional comparison rather than a millisecond-identical
+reproduction~\cite{managed_k8s_perf,cni_k8s_ic2e21,noise_in_clouds}, while
+benchmarking guidance motivates reporting ranking, tails, and cross-round
+stability alongside means~\cite{benchmarking_sc15}.
+
+
+\subsection{Experimental Setup}
+
+The thesis-facing Stage~C benchmark used the frozen controlled AKS
+transfer-validation benchmark \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.
+The deployment ran in namespace \texttt{rq15} on a single-node AKS cluster,
+with \texttt{Standard\_D8s\_v3} nodes (per
+\texttt{deployment\_metadata.json}, \texttt{node\_instance\_type}) in the
+\texttt{swedencentral} Azure region. Deployment metadata confirms that pod
+colocation was enforced: for every condition, the benchmark client and all
+service pods were scheduled on the same AKS node
+(\texttt{aks-rq15pool-42653082-vmss000000}). All AKS conditions used the same
+pinned container image digest:
+\texttt{sha256:d292aef407ee8a15da2b}\allowbreak
+\texttt{daa680de1cc24b0975e7de81d27e1fc3}\allowbreak
+\texttt{a7d128b8736b}.
+
+The complete benchmark configuration is reported in
+\cref{tab:rq15_config} (\cref{sec:appendix-benchmark-configs}). The salient
+parameters are a per-service budget of 1~CPU core and 1~GiB under Guaranteed QoS
+on \texttt{Standard\_D8s\_v3} nodes, a matching 1~CPU / 1~GiB client budget, and
+the same five-round / 200-iteration protocol (50 warmup, seed~42) and 16~MiB
+in-cluster gRPC limit used in Stage~K, with parity validated at
+\texttt{atol} $= 1 \times 10^{-5}$.
+
+The service-pod memory request and limit were raised from 512~MiB in Stage~K to
+1~GiB in Stage~C. This is a within-experimenter configuration change rather than
+a managed-cloud constraint: it affects pod admission and the cgroup memory
+ceiling but not the single-threaded ResNet-18 CPU inference path itself. The
+client memory profile (1~GiB request / limit) is unchanged from Stage~K, and the
+Guaranteed QoS class, CPU request/limit, image, and pull policy are otherwise
+identical to the Stage~K carry-forward setup. Each service is capped at one CPU,
+the same per-service budget enforced in the local stages, so the managed-cloud
+run is not given a larger per-service allocation than the local benchmark;
+\cref{tab:env-parity} compares the local and cloud infrastructure directly.
+
+Threading, affinity, and priority controls followed the same stabilisation intent as
+the preceding stages and were applied where the managed AKS runtime allowed.
+Threading controls for PyTorch, OpenMP, MKL, and OpenBLAS were requested and observed
+at one thread. CPU affinity was applied to one physical core with SMT excluded; the
+observed affinity set was core~0. Process priority \texttt{nice~-5} was requested but
+could not be applied due to insufficient privileges, so the benchmark ran at
+\texttt{nice=0}. CPU governor and turbo controls were deliberately disabled in the AKS
+configuration because the relevant sysfs interfaces were unavailable. These constraints
+are treated as realistic cloud-environment limitations of managed or virtualised
+execution, not as architectural effects of the microservice decomposition.
+
+Before timing, both local chain-segment validation and live gRPC validation passed for
+every condition with \texttt{max\_abs\_diff} $= 0.0$ and
+\texttt{atol} $= 1 \times 10^{-5}$. This supports functional equivalence across the
+monolithic and chained AKS deployments.
+
+\subsection{Conditions}
+
+Stage~C reused the same predefined chain family as Stage~K:
+
+\begin{itemize}
+    \item \textbf{\texttt{monolithic\_k8s\_1svc}}: Full ResNet-18 inference in a single Kubernetes service.
+    \item \textbf{\texttt{chain\_2svc}}: Two services with a split after \texttt{layer2}. Recorded tensor bytes per request: 980~KiB.
+    \item \textbf{\texttt{chain\_3svc}}: Three services with splits after \texttt{layer1} and \texttt{layer3}. Recorded tensor bytes per request: 1568~KiB.
+    \item \textbf{\texttt{chain\_4svc}}: Four services with splits after \texttt{layer1}, \texttt{layer2}, and \texttt{layer3}. Recorded tensor bytes per request: 1960~KiB.
+    \item \textbf{\texttt{chain\_5svc}}: Five services with splits after \texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}. Recorded tensor bytes per request: 2058~KiB.
+\end{itemize}
+
+Carry-forward is not applicable in this stage. The experiment evaluates a fixed
+deployment family in AKS rather than choosing a new split point.
+As in Stage~K, the recorded tensor-byte totals are taken from the runner metadata and
+include the input tensor as well as hop activations; they are therefore used as a
+consistent input-inclusive traffic proxy, not as a boundary-only activation-transfer
+size.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~C AKS latency and overhead summary]{Stage~C AKS summary of mean latency and overhead vs.\ AKS monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
+\label{tab:rq15_results}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 70.802 & 70.224 & 2.659 & 75.151 & --- \\
+\texttt{chain\_2svc}           & 73.437 & 73.124 & 1.831 & 76.602 & +2.635 / +3.7\% \\
+\texttt{chain\_3svc}           & 75.410 & 75.043 & 1.971 & 78.301 & +4.608 / +6.5\% \\
+\texttt{chain\_4svc}           & 78.294 & 77.923 & 2.190 & 81.698 & +7.492 / +10.6\% \\
+\texttt{chain\_5svc}           & 80.519 & 80.078 & 2.158 & 84.635 & +9.717 / +13.7\% \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~C AKS overhead and non-compute cost breakdown]{Stage~C AKS overhead and inferred non-compute/platform cost breakdown. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}; the platform column is \texttt{non\_compute\_overhead\_ms\_mean}.}
+\label{tab:rq15_overhead}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Overhead (ms)} & \textbf{Overhead (\%)} & \textbf{Recorded Tensor Bytes (KiB)} & \textbf{Inferred Non-Compute / Platform (ms)} \\
+\midrule
+\texttt{chain\_2svc} & 2.635 & 3.7  & 980  & 4.489 \\
+\texttt{chain\_3svc} & 4.608 & 6.5  & 1568 & 7.073 \\
+\texttt{chain\_4svc} & 7.492 & 10.6 & 1960 & 9.138 \\
+\texttt{chain\_5svc} & 9.717 & 13.7 & 2058 & 10.490 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The transfer comparison was derived directly from the frozen Stage~K and Stage~C summary
+CSV artifacts, because the generated Stage~C report does not itself embed the
+cross-stage comparison.
+
+\begin{table}[ht]
+\centering
+\caption[Stage~C transfer comparison (local vs.\ AKS)]{Stage~C transfer comparison between local Kubernetes and AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_4\_fully\_controlled\_20260515\_141036} and \texttt{rq1\_5\_fully\_controlled\_20260515\_145954}.}
+\label{tab:rq15_transfer}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Local mean (ms)} & \textbf{AKS mean (ms)} & \textbf{Local overhead} & \textbf{AKS overhead} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 81.066 & 70.802 & 0.0\%  & 0.0\% \\
+\texttt{chain\_2svc}           & 83.387 & 73.437 & 2.9\%  & 3.7\% \\
+\texttt{chain\_3svc}           & 87.728 & 75.410 & 8.2\%  & 6.5\% \\
+\texttt{chain\_4svc}           & 90.572 & 78.294 & 11.7\% & 10.6\% \\
+\texttt{chain\_5svc}           & 92.535 & 80.519 & 14.1\% & 13.7\% \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\input{figures/tikz/results/rq15_transfer_overhead}
+}
+\caption[Stage~C normalised overhead transfer comparison]{Stage~C normalised overhead transfer comparison between local Kubernetes and AKS. Overheads are computed relative to each environment's own monolithic Kubernetes baseline, so the figure visualises directional transfer of the service-count trend rather than raw latency equivalence.}
+\label{fig:rq15_transfer_overhead}
+\end{figure}
+
+\Cref{fig:rq15_transfer_overhead} visualises the transfer comparison in
+\cref{tab:rq15_transfer}. The overhead trend is similar across environments even though
+the absolute millisecond values differ.
+
+The rank ordering is identical between the frozen local Kubernetes and AKS runs:
+\texttt{monolithic\_k8s\_1svc}, \texttt{chain\_2svc}, \texttt{chain\_3svc},
+\texttt{chain\_4svc}, and \texttt{chain\_5svc}. Absolute latency is lower in the AKS
+run for every condition, but the within-environment ordering and the direction of the
+overhead trend are preserved.
+
+\begin{table}[ht]
+\centering
+\caption[Stage~C AKS cross-round consistency]{Stage~C AKS cross-round consistency. Source: frozen Stage~C \texttt{merged\_results/round\_consistency.json}.}
+\label{tab:rq15_rounds}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 70.802 & 0.8255 & 1.9646 & 0.0117 \\
+\texttt{chain\_2svc}           & 73.437 & 0.1398 & 0.3183 & 0.0019 \\
+\texttt{chain\_3svc}           & 75.410 & 0.1879 & 0.5187 & 0.0025 \\
+\texttt{chain\_4svc}           & 78.294 & 0.1960 & 0.4629 & 0.0025 \\
+\texttt{chain\_5svc}           & 80.519 & 0.4911 & 1.1659 & 0.0061 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The AKS run is stable across measured rounds for all chained conditions, with
+round CVs of 0.0019--0.0061. The monolithic baseline shows a slightly higher
+round CV of 0.0117. This pattern is compatible with managed-cloud variability on
+the \texttt{Standard\_D8s\_v3} VM, but the run does not isolate a single cause; in
+this frozen measurement, the chained conditions show lower round-level CVs than the
+monolithic baseline. Warmup calibration
+indicated that each run reached a stable trailing-window CV at least once before
+measurement, while the cross-round CVs of the measured iterations provide the stronger
+stability evidence for the final reported means. As in the previous stage, effect sizes
+and Mann-Whitney tests were computed from pooled per-iteration data and are treated as
+supplementary because $N = 1{,}000$ per condition makes very small differences
+statistically significant. Cross-round stability, parity validation, and preserved
+ordering are the primary evidence for this stage.
+
+The interpretation of these results and their contribution to RQ1 are presented in
+\cref{sec:analysis-rq15}.
+
+% ----------------------------------------------------------------------
+\section{Stage~C (Multi-Node Alternative) -- AKS Inter-Node Sensitivity}
+\label{sec:rq15b}
+
+\subsection{Stage Objective}
+
+As the cloud-environment alternative to the single-node Stage~C base case, this stage addresses the following question:
+
+\begin{quote}
+\textit{When every chain hop is forced across a node boundary, how much additional
+end-to-end latency does the inter-node network path add, relative to the same-node
+Stage~C baseline?}
+\end{quote}
+
+The Stage~C multi-node alternative is a sensitivity stage. It does not replace the Stage~C base case; the frozen single-node AKS
+results in \cref{sec:rq15} remain the thesis-facing primary numbers. Its role
+is to quantify, in milliseconds, the inter-node penalty that the single-node
+design intentionally hides, so that the single-node deployment threat to validity
+becomes a bounded, measured cost rather than an unspecified one. Public-cloud
+networks exhibit performance variability that can shift absolute latency without
+changing the application~\cite{noise_in_clouds}, which is precisely why this
+sensitivity stage measures the multi-node penalty directly rather than assuming
+it. The single-node base case and this multi-node alternative are the two
+placements already contrasted in \cref{fig:chain5_placement_comparison}: the same
+five-service chain either runs co-located on one node, so every gRPC hop is a
+loopback call, or is spread across distinct nodes so that every hop crosses the
+Azure VNet, with the chain itself and the per-boundary transfer sizes unchanged.
+
+\subsection{Experimental Setup}
+
+The thesis-facing Stage~C (multi-node) benchmark used the frozen multi-node sensitivity run
+\texttt{rq1\_5b\_multinode\_20260515\_152628}. The deployment ran in namespace
+\texttt{rq15b} on a multi-node AKS cluster in the \texttt{swedencentral} Azure
+region. All worker nodes were \texttt{Standard\_D8s\_v3} (per
+\texttt{node\_instance\_type} in \texttt{deployment\_metadata.json}) and shared
+one node pool, so the only intentional experimental difference from Stage~C is
+the pod-to-node assignment.
+
+Multi-node placement was enforced by Kubernetes pod anti-affinity. Each service pod
+of a given condition repels every other service pod of that condition keyed on
+\texttt{kubernetes.io/hostname}, and the benchmark client repels every pod with
+\texttt{workload-role: service}. The combined rule guarantees that for the
+\texttt{chain\_5svc} condition all five service segments land on distinct nodes and
+the client lands on a sixth dedicated node, so every gRPC hop in the inference path
+crosses the Azure VNet rather than staying loopback. Compliance was verified after
+deployment by reading observed \texttt{nodeName} values from the Kubernetes API for
+each pod and by checking the runner's aggregated multi-node validation flag. For
+every condition, the recorded service nodes were pairwise disjoint and the client
+node was distinct from every service node, as preserved in
+\texttt{merged\_results/deployment\_metadata.json}; the aggregated
+\texttt{multi\_node\_validation} entry in
+\texttt{merged\_results/environment.json} records
+\texttt{passed=True} for the run as a whole. Functional parity was independently verified:
+\texttt{max\_abs\_diff}~$=0.0$ at \texttt{atol}~$=1\times10^{-5}$ for all five
+conditions in both the local segment validation and the live gRPC chain validation
+(\texttt{num\_inputs}~$=5$).
+
+The shared benchmark contract is otherwise unchanged from Stage~C: ResNet-18 with
+pretrained weights, CPU FP32 inference, the same five chain conditions, the same
+five-round / 200-iteration / 50-warmup discipline, the same Guaranteed-QoS pod
+profile (1~vCPU + 1~GiB per pod), and the same image used in Stage~C
+(\texttt{sha256:d292aef407ee8a15da2b}\allowbreak\texttt{daa680de1cc24b0975e7de81d27e1fc3}\allowbreak\texttt{a7d128b8736b}).
+
+\subsection{Conditions}
+
+Stage~C (multi-node) reuses the same predefined chain family as Stage~K and Stage~C
+(\texttt{monolithic\_k8s\_1svc}, \texttt{chain\_2svc}, \texttt{chain\_3svc},
+\texttt{chain\_4svc}, \texttt{chain\_5svc}). The full family is included rather than
+a single representative because the per-condition delta is the headline metric: a
+single point cannot show whether the inter-node penalty grows with hop count,
+dominates one specific boundary, or stays roughly flat. Five points support the
+direct comparison shown in \cref{tab:rq15b_delta}.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~C (multi-node) AKS latency and overhead summary]{Stage~C (multi-node) AKS summary of mean latency and overhead vs.\ the AKS multi-node monolithic baseline. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
+\label{tab:rq15b_results}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std (ms)} & \textbf{p95 (ms)} & \textbf{Overhead vs.\ baseline} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 73.108 & 72.403 & 3.707 & 79.598 & --- \\
+\texttt{chain\_2svc}           & 76.470 & 75.653 & 3.435 & 82.696 & +3.362 / +4.6\% \\
+\texttt{chain\_3svc}           & 77.541 & 76.848 & 2.786 & 83.041 & +4.433 / +6.1\% \\
+\texttt{chain\_4svc}           & 82.103 & 81.660 & 2.355 & 86.394 & +8.995 / +12.3\% \\
+\texttt{chain\_5svc}           & 84.605 & 84.131 & 2.497 & 89.186 & +11.497 / +15.7\% \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~C (multi-node) inter-node penalty by condition]{Stage~C (multi-node) inter-node penalty, condition-by-condition vs.\ frozen Stage~C single-node AKS. Source: \texttt{merged\_results/condition\_summaries.csv} in \texttt{rq1\_5\_fully\_controlled\_20260515\_145954} and \texttt{rq1\_5b\_multinode\_20260515\_152628}; overhead points are with respect to each environment's own monolithic baseline (\cref{tab:rq15_results,tab:rq15b_results}).}
+\label{tab:rq15b_delta}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Single-node mean (ms)} & \textbf{Multi-node mean (ms)} & \textbf{$\Delta$ (ms)} & \textbf{$\Delta$ overhead (pp)} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 70.802 & 73.108 & +2.305 & --- \\
+\texttt{chain\_2svc}           & 73.437 & 76.470 & +3.033 & +0.9 \\
+\texttt{chain\_3svc}           & 75.410 & 77.541 & +2.131 & $-$0.4 \\
+\texttt{chain\_4svc}           & 78.294 & 82.103 & +3.808 & +1.7 \\
+\texttt{chain\_5svc}           & 80.519 & 84.605 & +4.086 & +2.0 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~C (multi-node) AKS cross-round consistency]{Stage~C (multi-node) AKS cross-round consistency. Source: \texttt{merged\_results/round\_consistency.json} in \texttt{rq1\_5b\_multinode\_20260515\_152628}.}
+\label{tab:rq15b_rounds}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Grand Mean (ms)} & \textbf{Round Std (ms)} & \textbf{Round Range (ms)} & \textbf{Round CV} \\
+\midrule
+\texttt{monolithic\_k8s\_1svc} & 73.108 & 0.6134 & 1.5076 & 0.0084 \\
+\texttt{chain\_2svc}           & 76.470 & 0.9679 & 2.3363 & 0.0127 \\
+\texttt{chain\_3svc}           & 77.541 & 0.4388 & 0.9236 & 0.0057 \\
+\texttt{chain\_4svc}           & 82.103 & 0.3757 & 0.9645 & 0.0046 \\
+\texttt{chain\_5svc}           & 84.605 & 0.3047 & 0.6512 & 0.0036 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The within-environment ordering is preserved
+(\texttt{monolithic\_k8s\_1svc}~$<$~\texttt{chain\_2svc}~$<$~\texttt{chain\_3svc}~$<$~\texttt{chain\_4svc}~$<$~\texttt{chain\_5svc}),
+and the per-hop addition does not keep growing: the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 2.502~ms,
+smaller than the preceding 4.562~ms step, mirroring the saturating per-hop
+behaviour observed in Stage~K (\cref{tab:rq14_results}). The same pattern is
+visible in the single-node Stage~C run, where the
+\texttt{chain\_4svc}~$\rightarrow$~\texttt{chain\_5svc} increment is 2.225~ms
+versus a preceding 2.884~ms step (\cref{tab:rq15_results}), so the saturating
+last step is consistent across Stage~K, Stage~C, and Stage~C (multi-node). Cross-round CVs are
+0.0036--0.0127 across all chained conditions. Because the placement metadata
+confirms distinct AKS nodes for the service pods, these CVs show that the
+distributed placement did not introduce large round-to-round drift in this
+frozen run; they do not isolate a single causal source of stability.
+
+\paragraph{Effect-size note.} Per-iteration Cohen's $d$ and Mann--Whitney
+statistics are emitted alongside the frozen artefact in
+\texttt{merged\_results/effect\_sizes.csv} for completeness, but Stage~C (multi-node) is framed
+as a sensitivity stage on the single-node Stage~C primary. The headline numbers in
+this section are therefore the per-condition multi-node penalty
+(\cref{tab:rq15b_delta}) and the cross-round CVs (\cref{tab:rq15b_rounds}); a
+full effect-size table analogous to \cref{tab:rq14_effects} is intentionally
+omitted to avoid implying that Stage~C (multi-node) is a second primary result.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\input{figures/tikz/results/rq15b_multinode_delta}
+}
+\caption[Stage~C (multi-node) inter-node penalty per condition]{Stage~C (multi-node) inter-node penalty per condition. Same SKU
+(\texttt{Standard\_D8s\_v3}), same region (\texttt{swedencentral}); the
+intentional experimental contrast is single-node colocation versus
+\texttt{multi\_node\_anti\_affinity} placement. The figure is manually
+rendered from the same frozen summary artefacts as \cref{tab:rq15b_delta}.
+Per-condition deltas range
+from 2.131~ms (\texttt{chain\_3svc}) to 4.086~ms (\texttt{chain\_5svc}), and
+the monolithic-baseline penalty is 2.305~ms.}
+\label{fig:rq15b_multinode_delta}
+\end{figure}
+
+\Cref{tab:rq15b_delta} and \cref{fig:rq15b_multinode_delta} summarise the
+per-condition multi-node penalty. The penalty is positive across all
+conditions but is not monotonic with chain depth: the
+\texttt{chain\_3svc} delta is smaller than the \texttt{chain\_2svc} delta,
+while the largest absolute penalty appears at \texttt{chain\_5svc}. The
+\texttt{monolithic\_k8s\_1svc} baseline is 2.305~ms slower in the multi-node
+placement than in the single-node Stage~C baseline. This is compatible with
+the client now shipping a 588~KiB input tensor across the Azure VNet rather
+than over loopback; the cited RPC study supports the general mechanism that
+layered RPC stacks can add transport, parsing, copying, and serialisation
+work on top of the payload bytes themselves~\cite{rpc_overhead_hotos25}.
+The chained conditions, with intermediate activations of
+784, 392, 196 and 98~KiB, yield per-condition deltas between 2.131~ms and
+4.086~ms, with the deepest \texttt{chain\_5svc} configuration carrying the
+largest absolute penalty. The within-environment monotonic ordering is
+preserved.
+
+The interpretation of these results and their contribution to RQ1 are presented in
+\cref{sec:analysis-rq15b}.

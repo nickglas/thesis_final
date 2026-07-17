@@ -1,0 +1,145 @@
+\begin{tikzpicture}[
+    font=\small,
+    cluster/.style={
+        draw=black!55,
+        fill=black!2,
+        rounded corners=8pt,
+        thick,
+        inner xsep=18pt,
+        inner ysep=20pt
+    },
+    nodebox/.style={
+        draw=black!65,
+        fill=black!4,
+        rounded corners=7pt,
+        thick,
+        inner xsep=16pt,
+        inner ysep=18pt
+    },
+    pod/.style={
+        draw=blue!65!black,
+        fill=blue!10,
+        rounded corners=4pt,
+        minimum width=2.15cm,
+        minimum height=1.05cm,
+        align=center,
+        thick
+    },
+    clientpod/.style={
+        draw=orange!75!black,
+        fill=orange!13,
+        rounded corners=4pt,
+        minimum width=2.25cm,
+        minimum height=1.05cm,
+        align=center,
+        thick
+    },
+    svc/.style={
+        draw=green!45!black,
+        fill=green!12,
+        rounded corners=3pt,
+        minimum width=1.75cm,
+        minimum height=0.55cm,
+        align=center,
+        thick,
+        font=\scriptsize
+    },
+    arrow/.style={
+        -{Latex[length=2mm]},
+        thick,
+        draw=black!70
+    },
+    returnarrow/.style={
+        -{Latex[length=2mm]},
+        thick,
+        draw=black!55,
+        dashed
+    },
+    smalllabel/.style={
+        font=\scriptsize,
+        text=black!65,
+        align=center
+    },
+    segmentlabel/.style={
+        font=\scriptsize,
+        text=blue!65!black,
+        align=center
+    },
+    transferlabel/.style={
+        font=\scriptsize,
+        text=red!70!black,
+        align=center
+    },
+    node distance=0.55cm
+]
+
+% Top row: client and inference pods
+\node[clientpod] (client) {Benchmark\\client pod};
+
+\node[pod, right=1.05cm of client] (p1) {Pod 1\\\texttt{stem+layer1}};
+\node[pod, right=0.95cm of p1] (p2) {Pod 2\\\texttt{layer2}};
+\node[pod, right=0.95cm of p2] (p3) {Pod 3\\\texttt{layer3}};
+\node[pod, right=0.95cm of p3] (p4) {Pod 4\\\texttt{layer4}};
+\node[pod, right=0.95cm of p4] (p5) {Pod 5\\\texttt{avgpool+fc}};
+
+% Services below each inference pod
+\node[svc, below=0.45cm of p1] (s1) {Service 1};
+\node[svc, below=0.45cm of p2] (s2) {Service 2};
+\node[svc, below=0.45cm of p3] (s3) {Service 3};
+\node[svc, below=0.45cm of p4] (s4) {Service 4};
+\node[svc, below=0.45cm of p5] (s5) {Service 5};
+
+% Background boxes: one Kubernetes node inside one cluster
+\begin{pgfonlayer}{background}
+\node[
+    nodebox,
+    fit=(client)(p1)(p2)(p3)(p4)(p5)(s1)(s2)(s3)(s4)(s5),
+    label={[font=\small\bfseries, text=black!70]above:Single Kubernetes node}
+] (k8snode) {};
+
+\node[
+    cluster,
+    fit=(k8snode),
+    label={[font=\small\bfseries, text=black!70]above:Local Kubernetes cluster / namespace \texttt{rq14}}
+] (clusterbox) {};
+\end{pgfonlayer}
+
+% Request and forwarding path
+\draw[arrow] (client) -- node[smalllabel, above] {gRPC} (p1);
+\draw[arrow] (p1) -- node[transferlabel, above] {784 KiB} (p2);
+\draw[arrow] (p2) -- node[transferlabel, above] {392 KiB} (p3);
+\draw[arrow] (p3) -- node[transferlabel, above] {196 KiB} (p4);
+\draw[arrow] (p4) -- node[transferlabel, above] {98 KiB} (p5);
+
+% Pod-to-service visual association
+\draw[black!35, thick] (s1) -- (p1);
+\draw[black!35, thick] (s2) -- (p2);
+\draw[black!35, thick] (s3) -- (p3);
+\draw[black!35, thick] (s4) -- (p4);
+\draw[black!35, thick] (s5) -- (p5);
+
+% Return path
+\draw[returnarrow]
+    (p5.south) .. controls +(0,-1.25) and +(0,-1.25) ..
+    node[smalllabel, below] {final output returned to caller}
+    (client.south);
+
+% Explanatory labels
+\node[
+    smalllabel,
+    below=0.55cm of s3,
+    text width=9.5cm
+] {
+    \texttt{chain\_5svc} is the maximum coarse-stage decomposition:
+    each residual-stage boundary becomes a synchronous gRPC hop between pods.
+};
+
+\node[
+    segmentlabel,
+    above=0.35cm of p3,
+    text width=7.5cm
+] {
+    Forward path: one request enters the first pod and intermediate activations are forwarded synchronously until inference completes.
+};
+
+\end{tikzpicture}%

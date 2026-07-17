@@ -1,0 +1,27 @@
+LAST SEEN   TYPE     REASON              OBJECT                                                 MESSAGE
+72s         Normal   Scheduled           pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9    Successfully assigned rq21-ms-l1-mtls/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9 to aks-rq15pool-53575030-vmss000000
+72s         Normal   Scheduled           pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49    Successfully assigned rq21-ms-l1-mtls/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49 to aks-rq15pool-53575030-vmss000000
+73s         Normal   SuccessfulCreate    replicaset/chain-2svc-split-l1-mtls-svc-1-84fbdcc666   Created pod: chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9
+73s         Normal   ScalingReplicaSet   deployment/chain-2svc-split-l1-mtls-svc-2              Scaled up replica set chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d from 0 to 1
+73s         Normal   SuccessfulCreate    replicaset/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d   Created pod: chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49
+73s         Normal   ScalingReplicaSet   deployment/chain-2svc-split-l1-mtls-svc-1              Scaled up replica set chain-2svc-split-l1-mtls-svc-1-84fbdcc666 from 0 to 1
+72s         Normal   Created             pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49    Created container: istio-proxy
+72s         Normal   Started             pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49    Started container istio-init
+72s         Normal   Pulled              pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+72s         Normal   Created             pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9    Created container: istio-init
+72s         Normal   Started             pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9    Started container istio-init
+72s         Normal   Pulled              pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+72s         Normal   Created             pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9    Created container: istio-proxy
+72s         Normal   Pulled              pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+72s         Normal   Pulled              pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+72s         Normal   Created             pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49    Created container: istio-init
+71s         Normal   Started             pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9    Started container istio-proxy
+71s         Normal   Started             pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49    Started container istio-proxy
+70s         Normal   Pulling             pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+70s         Normal   Pulling             pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+69s         Normal   Started             pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9    Started container inference
+69s         Normal   Pulled              pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 206ms (206ms including waiting). Image size: 413013146 bytes.
+69s         Normal   Created             pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49    Created container: inference
+69s         Normal   Started             pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-c2q49    Started container inference
+69s         Normal   Created             pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9    Created container: inference
+69s         Normal   Pulled              pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-59nj9    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 185ms (185ms including waiting). Image size: 413013146 bytes.

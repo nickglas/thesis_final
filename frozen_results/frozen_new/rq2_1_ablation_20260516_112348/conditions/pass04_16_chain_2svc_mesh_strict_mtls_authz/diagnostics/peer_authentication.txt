@@ -1,0 +1,57 @@
+apiVersion: v1
+items:
+- apiVersion: security.istio.io/v1
+  kind: PeerAuthentication
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"PeerAuthentication","metadata":{"annotations":{},"labels":{"app":"thesis-inference","condition":"chain_2svc_mesh_strict_mtls_authz","experiment":"rq21-ab-c3-authz","experiment-condition":"chain_2svc_mesh_strict_mtls_authz","mesh-enabled":"true","security-condition":"mesh_strict_mtls_authz","workload-role":"mesh-policy"},"name":"default","namespace":"rq21-ab-c3-authz"},"spec":{"mtls":{"mode":"PERMISSIVE"}}}
+    creationTimestamp: "2026-05-16T12:19:55Z"
+    generation: 1
+    labels:
+      app: thesis-inference
+      condition: chain_2svc_mesh_strict_mtls_authz
+      experiment: rq21-ab-c3-authz
+      experiment-condition: chain_2svc_mesh_strict_mtls_authz
+      mesh-enabled: "true"
+      security-condition: mesh_strict_mtls_authz
+      workload-role: mesh-policy
+    name: default
+    namespace: rq21-ab-c3-authz
+    resourceVersion: "19868"
+    uid: e30f7909-f833-4bb8-8b93-d0e243bc94e4
+  spec:
+    mtls:
+      mode: PERMISSIVE
+- apiVersion: security.istio.io/v1
+  kind: PeerAuthentication
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"PeerAuthentication","metadata":{"annotations":{},"labels":{"app":"thesis-inference","condition":"chain_2svc_mesh_strict_mtls_authz","experiment":"rq21-ab-c3-authz","experiment-condition":"chain_2svc_mesh_strict_mtls_authz","mesh-enabled":"true","security-condition":"mesh_strict_mtls_authz","segment-index":"2","workload-role":"mesh-policy"},"name":"service2-strict","namespace":"rq21-ab-c3-authz"},"spec":{"mtls":{"mode":"STRICT"},"selector":{"matchLabels":{"condition":"chain_2svc_mesh_strict_mtls_authz","segment-index":"2","workload-role":"service"}}}}
+    creationTimestamp: "2026-05-16T12:19:55Z"
+    generation: 1
+    labels:
+      app: thesis-inference
+      condition: chain_2svc_mesh_strict_mtls_authz
+      experiment: rq21-ab-c3-authz
+      experiment-condition: chain_2svc_mesh_strict_mtls_authz
+      mesh-enabled: "true"
+      security-condition: mesh_strict_mtls_authz
+      segment-index: "2"
+      workload-role: mesh-policy
+    name: service2-strict
+    namespace: rq21-ab-c3-authz
+    resourceVersion: "19872"
+    uid: 8472fdbb-4cd2-45d7-902b-68f67862ee9c
+  spec:
+    mtls:
+      mode: STRICT
+    selector:
+      matchLabels:
+        condition: chain_2svc_mesh_strict_mtls_authz
+        segment-index: "2"
+        workload-role: service
+kind: List
+metadata:
+  resourceVersion: ""

@@ -1,0 +1,27 @@
+LAST SEEN   TYPE     REASON              OBJECT                                                          MESSAGE
+70s         Normal   Scheduled           pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz     Successfully assigned rq21-ab-c3-authz/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz to aks-rq15pool-31581052-vmss000000
+70s         Normal   Scheduled           pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7    Successfully assigned rq21-ab-c3-authz/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7 to aks-rq15pool-31581052-vmss000000
+71s         Normal   ScalingReplicaSet   deployment/chain-2svc-mesh-strict-mtls-authz-svc-1              Scaled up replica set chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8 from 0 to 1
+71s         Normal   SuccessfulCreate    replicaset/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8    Created pod: chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz
+70s         Normal   Pulled              pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz     Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+70s         Normal   Created             pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz     Created container: istio-init
+70s         Normal   Started             pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz     Started container istio-init
+70s         Normal   ScalingReplicaSet   deployment/chain-2svc-mesh-strict-mtls-authz-svc-2              Scaled up replica set chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494 from 0 to 1
+70s         Normal   SuccessfulCreate    replicaset/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494   Created pod: chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7
+70s         Normal   Started             pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7    Started container istio-init
+70s         Normal   Created             pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7    Created container: istio-init
+70s         Normal   Pulled              pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+69s         Normal   Started             pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz     Started container istio-proxy
+69s         Normal   Created             pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7    Created container: istio-proxy
+69s         Normal   Pulled              pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz     Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+69s         Normal   Created             pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz     Created container: istio-proxy
+69s         Normal   Started             pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7    Started container istio-proxy
+69s         Normal   Pulled              pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7    Container image "mcr.microsoft.com/oss/v2/istio/proxyv2:v1.29.1-4" already present on machine
+67s         Normal   Pulling             pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz     Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+67s         Normal   Started             pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz     Started container inference
+67s         Normal   Pulling             pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7    Pulling image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b"
+67s         Normal   Pulled              pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7    Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 140ms (140ms including waiting). Image size: 413013146 bytes.
+67s         Normal   Created             pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7    Created container: inference
+67s         Normal   Started             pod/chain-2svc-mesh-strict-mtls-authz-svc-2-5f886b7494-2g4t7    Started container inference
+67s         Normal   Pulled              pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz     Successfully pulled image "thesisrq15acr.azurecr.io/thesis-inference@sha256:d292aef407ee8a15da2bdaa680de1cc24b0975e7de81d27e1fc3a7d128b8736b" in 145ms (146ms including waiting). Image size: 413013146 bytes.
+67s         Normal   Created             pod/chain-2svc-mesh-strict-mtls-authz-svc-1-b9b4f4ff8-qdcpz     Created container: inference

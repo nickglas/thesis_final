@@ -1,0 +1,128 @@
+\section{Stage~L2 -- Fine-Grained Refinement}
+\label{sec:rq12}
+
+\subsection{Stage Objective}
+
+As the second controlled-local stage of RQ1, this stage addresses the following question:
+
+\begin{quote}
+\textit{How does finer-grained refinement within the late-stage coarse region carried forward from Stage~L1 affect latency and communication-related overhead for two-part microservice inference?}
+\end{quote}
+
+Stage~L2 is designed as a targeted refinement stage, not as a new blind search across the network. It takes the carry-forward outcome of Stage~L1 as its starting point. In Stage~L1, the coarse architectural boundary screening identified the mid-to-late region around \texttt{layer2} and \texttt{layer3} as the strongest balanced carry-forward zone, with \texttt{split\_after\_layer3} selected as the main candidate and \texttt{split\_after\_layer2} retained as the reference candidate. Stage~L2 therefore operates within that carried-forward comparison space and introduces one meaningful finer-grained split point between the two coarse anchors. The purpose is to determine whether a block-level boundary within this region reveals latency or communication-related differences that were not visible at the coarse stage level.
+
+The literature framing for finer-grained partition refinement is discussed in
+\cref{sec:rw-granularity}.
+
+\subsection{Experimental Setup}
+\label{sec:rq12-setup}
+
+The Stage~L2 benchmark reused the same fully controlled local CPU-only configuration as Stage~L1 in order to ensure that the two stages remain directly comparable. The evaluated model was ResNet-18 with pretrained weights, executed on CPU in FP32 precision with an input shape of $1 \times 3 \times 224 \times 224$. Communication between the two split services used gRPC over localhost (\texttt{127.0.0.1:50051}) with a maximum message size of 16~MiB ($16{,}777{,}216$ bytes).
+
+As in Stage~L1, activation-transfer sizes in this section are reported in binary
+kibibytes (KiB, $1024$ bytes).
+
+The complete benchmark configuration is reported in
+\cref{tab:rq12-config} (\cref{sec:appendix-benchmark-configs}); it matches the
+Stage~L1 protocol exactly --- five rounds of 200 measured iterations (50 warmup
+iterations, seed~42), localhost gRPC at a 16~MiB message size, and parity at
+$1.0 \times 10^{-5}$ --- differing only in the condition set, which here comprises
+a monolithic baseline plus splits after \texttt{layer2}, \texttt{layer3.0}, and
+\texttt{layer3}.
+
+All CPU stabilisation controls from Stage~L1 were applied identically: single-threaded PyTorch execution pinned to one physical core with SMT avoided, thread counts for PyTorch, OpenMP, MKL, and OpenBLAS all fixed to one, process priority elevated, the CPU governor set to \texttt{performance}, and turbo boost disabled. These controls were applied symmetrically across all conditions so that environmental variation was reduced as a competing explanation for observed boundary-placement differences.
+
+\subsection{Benchmark Design}
+\label{sec:rq12-design}
+
+The experiment followed the same repeated-measures protocol as Stage~L1: 5~rounds of 200 measured iterations per condition, preceded by 50 warmup iterations and separated by 5-second cooldowns. Condition ordering was randomised within each round using a fixed seed. Functional equivalence between monolithic and split executions was enforced through both local and gRPC parity checks using five inputs and an absolute tolerance of $1.0 \times 10^{-5}$. A warmup calibration procedure using a trailing window of 10~iterations and a coefficient-of-variation threshold of 0.02 was applied to verify that latency had stabilised before measurement.
+
+The key difference from Stage~L1 is the composition of the condition set. Rather than sweeping across all coarse stage boundaries, Stage~L2 evaluates a targeted set of three refined split conditions anchored by the Stage~L1 carry-forward candidates, with one new block-level split point inserted between them~\cite{fine_grained_partitioning}.
+
+\subsection{Refined Partition Conditions}
+\label{sec:rq12-conditions}
+
+The Stage~L2 condition set consists of one monolithic baseline and three split configurations:
+
+\begin{itemize}
+    \item \textbf{split\_after\_layer2:} The first service executes the stem and \texttt{layer1}--\texttt{layer2}, and the second service executes \texttt{layer3} through the classifier head. This is the Stage~L1 reference carry-forward candidate. The intermediate activation tensor is of exact shape $1 \times 128 \times 28 \times 28$, $401{,}408$ bytes ($392$ KiB) in FP32.
+
+    \item \textbf{split\_after\_layer3\_block0:} The first service executes the stem and \texttt{layer1}--\texttt{layer3.0} (i.e., the first residual block of \texttt{layer3}), and the second service executes from \texttt{layer3.1} onward through the classifier head. This is the single new finer-grained split point introduced in Stage~L2. It bisects the coarse \texttt{layer3} stage at its internal block boundary. The intermediate activation tensor is of exact shape $1 \times 256 \times 14 \times 14$, $200{,}704$ bytes ($196$ KiB) in FP32 --- the same size as the tensor produced at the end of the full \texttt{layer3} stage.
+
+    \item \textbf{split\_after\_layer3:} The first service executes the stem and \texttt{layer1}--\texttt{layer3}, and the second service executes \texttt{layer4} plus pooling and classification. This is the Stage~L1 main carry-forward candidate. The intermediate activation tensor is of exact shape $1 \times 256 \times 14 \times 14$, $200{,}704$ bytes ($196$ KiB) in FP32.
+\end{itemize}
+
+The monolithic baseline is retained for reference so that all overhead values remain anchored to the same absolute comparison. Together, these four conditions form a targeted refinement set rather than an exhaustive within-stage search: \texttt{split\_after\_layer2} and \texttt{split\_after\_layer3} anchor the carried-forward coarse space, while \texttt{split\_after\_layer3\_block0} probes the single meaningful block-level internal boundary between them.
+
+An important structural observation motivates this design. The coarse boundary after \texttt{layer3} and the block-level boundary after \texttt{layer3.0} produce intermediate activation tensors of the same exact size (both $200{,}704$~B / $196$~KiB). This creates a controlled comparison in which the activation-transfer burden is held constant while the distribution of computation across the two services differs. If the two conditions yield different end-to-end latencies or boundary-crossing intervals, the comparison points to compute placement as a plausible explanatory factor rather than to activation size alone~\cite{pareto_split}; it does not by itself establish compute placement as the only source of the difference.
+
+\subsection{Results}
+\label{sec:rq12-results}
+
+The thesis-facing Stage~L2 benchmark used the tracked frozen artifact
+\texttt{rq1\_2\_20260515\_112636}. Mean and table values use
+\texttt{condition\_summaries.csv}; boundary and cross-round values use
+\texttt{cross\_condition.csv} and \texttt{round\_consistency.json} in the
+same artifact.
+The measured results are summarised in \cref{tab:rq12-results}. Monolithic
+execution achieved the lowest mean end-to-end latency at 77.565~ms. Among
+the three refined split conditions, \texttt{split\_after\_layer3\_block0}
+achieved the lowest mean split latency at 80.157~ms, followed by
+\texttt{split\_after\_layer2} at 80.348~ms and \texttt{split\_after\_layer3}
+at 80.392~ms. This corresponds to overhead relative to monolithic execution
+of approximately 3.3\%, 3.6\%, and 3.6\%, respectively. The three split
+means are tightly clustered within a 0.235~ms band in this run, so this
+ordering should be read as a narrow within-run ordering rather than as a
+materially separated ranking.
+
+\begin{table}[t]
+\centering
+\caption[Stage~L2 latency, dispersion, overhead, and transfer summary]{Stage~L2 summary of mean latency, dispersion, descriptive within-run per-iteration 95\% confidence interval on the mean, overhead, and activation-transfer burden. Source files: \texttt{condition\_summaries.csv}, \texttt{cross\_condition.csv}, and \texttt{round\_consistency.json} in the frozen artifact \texttt{rq1\_2\_20260515\_112636}. Confidence intervals are reported from the \texttt{ci95\_lower\_ms} / \texttt{ci95\_upper\_ms} columns of \texttt{condition\_summaries.csv} and summarise per-iteration variation within this run.}
+\label{tab:rq12-results}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Condition} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{Std.\ Dev.\ (ms)} & \textbf{Within-run 95\% CI (ms)} & \textbf{Overhead} & \textbf{Activation (KiB)} \\
+\midrule
+Monolithic                    & 77.565 & 75.641 & 3.663 & $[77.338,\ 77.792]$ & ---   & --- \\
+Split after layer2            & 80.348 & 79.570 & 2.510 & $[80.192,\ 80.504]$ & 3.6\% & 392 \\
+Split after layer3\_block0    & 80.157 & 79.379 & 2.564 & $[79.998,\ 80.316]$ & 3.3\% & 196 \\
+Split after layer3            & 80.392 & 79.687 & 2.475 & $[80.238,\ 80.545]$ & 3.6\% & 196 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The boundary-crossing interval measurements reveal a notable difference between
+the two conditions that share the same activation size.
+\texttt{split\_after\_layer3\_block0} exhibited a boundary-crossing interval of
+33.97~ms, while \texttt{split\_after\_layer3} exhibited a boundary-crossing
+interval of 26.16~ms. Despite producing activation tensors of the same exact
+size ($200{,}704$~B / $196$~KiB), the two conditions differ by approximately
+7.8~ms in boundary-crossing cost. As restated from the measurement contract in
+\cref{sec:methods-contract}, the boundary-crossing interval is a composite that
+includes the remote service-B compute alongside activation serialisation, gRPC
+transport, and response deserialisation. In this run, the per-service compute
+means in \texttt{cross\_condition.csv} show service-B compute of 31.87~ms for
+\texttt{split\_after\_layer3\_block0} and 24.06~ms for \texttt{split\_after\_layer3}
+(a 7.81~ms gap), while the non-compute residual is approximately 2.1~ms for both
+conditions. The 7.8~ms boundary-crossing difference is therefore dominated by
+the service-B compute component rather than by a transport or serialisation
+difference, which is consistent with treating compute placement (not activation
+size or wire cost) as the proximate explanatory factor for this pair.
+The earlier split (\texttt{layer2}) had the largest boundary-crossing interval
+at 40.86~ms, consistent with its larger activation tensor of 392~KiB.
+
+Within-run cross-round consistency was strong across all conditions, per
+\texttt{round\_consistency.json} in the same artifact. The monolithic condition
+had a round coefficient of variation (CV) of 0.0017, while the split conditions
+had round CVs of 0.0046 (\texttt{split\_after\_layer2}), 0.0033
+(\texttt{split\_after\_layer3}), and 0.0070
+(\texttt{split\_after\_layer3\_block0}). The reported means can therefore be
+treated as representative of this frozen run rather than as artefacts of a
+single favourable round. This remains a single-run local result with fixed
+seed, host, and build; cross-seed or cross-host replication is outside the
+scope of Stage~L2.
+
+The interpretation of these results and their contribution to RQ1 are presented in
+\cref{sec:analysis-rq12}.

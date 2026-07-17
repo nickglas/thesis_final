@@ -1,0 +1,147 @@
+\section{Significance and Broader Implications}
+\label{sec:analysis-significance}
+
+The preceding sections answer the research questions for the evaluated
+configuration and bound what those answers can support. This section steps back
+to reflect on two questions that the measurements raise but do not themselves
+settle: how far the \emph{method} developed here transfers to other model
+families, and what the decomposition it studies signifies beyond raw latency.
+Both are framed as reasoned reflection bounded by the evidence rather than as
+new empirical claims; their purpose is to make explicit the forward-looking
+significance that the per-stage results otherwise leave implicit.
+
+\subsection{Generalisability of the method to other neural architectures}
+\label{sec:analysis-generalisability}
+
+The headline numbers in this thesis are specific to ResNet-18
+(\cref{sec:conclusion-limitations}), but the \emph{staged method} --- screen
+split candidates under controlled local execution, explain them through
+activation-transfer size and compute distribution
+(\cref{sec:analysis-rq13}), then carry the selected decomposition through
+local Kubernetes, managed cloud, and security-hardened deployment while changing
+one layer at a time --- is largely architecture-agnostic. What determines
+whether it transfers is not the milliseconds reported here but two structural
+inputs it consumes at each stage: the set of \emph{candidate boundaries} and the
+\emph{per-segment cost profile} (activation-transfer size and compute share) used
+to screen them. It is therefore more useful to reflect on how those two inputs
+change for a different architecture than to ask whether the absolute numbers
+recur.
+
+For another convolutional network the reasoning carries over directly. The
+candidate boundaries remain the architecturally meaningful layer or block edges,
+and the two-dimensional screening rule --- reject boundaries that expand the
+activation budget the interface must carry, and reject boundaries that leave a
+compute-degenerate downstream segment --- is unchanged. Only the cost profile
+differs: a network without ResNet-18's channel-doubling, resolution-halving
+structure would place its tolerable mid-region elsewhere, but the method
+discovers that region empirically rather than assuming it, so no part of the
+pipeline needs redesign.
+
+The transformer case is the more substantive reflection, both because it was
+raised explicitly during supervision and because the method's two inputs map
+onto transformers cleanly despite the different architecture. The natural
+candidate boundaries become the inter-block edges between encoder or decoder
+layers, and at finer granularity the attention-versus-feed-forward sub-block
+edges within a block, rather than residual stages. The activation-transfer
+dimension still applies, but its driver changes: the tensor crossing a boundary
+is the per-token hidden state, whose size scales with sequence length times
+hidden dimension, so transfer cost becomes sequence-length-dependent in a way it
+is not for a fixed-resolution image model --- a boundary that is inexpensive for
+a short prompt can dominate for a long context. The compute-distribution
+dimension also still applies, but its shape inverts: transformer blocks are far
+more uniform than ResNet stages, with approximately equal parameter and
+floating-point cost per block, so the compute-degeneracy failure mode that
+rejected \texttt{split\_after\_layer4} in \cref{sec:analysis-rq11} is far less
+likely to bind and a near-balanced split is achievable at almost any block
+edge. The reflective consequence is that, run on a transformer, the same method
+would likely report a flatter suitability landscape in which the boundary choice
+is governed mainly by activation transfer --- and hence by sequence length ---
+rather than by compute balance, the opposite weighting to the late-CNN case
+studied here. The screening, explanatory, deployment, and hardening stages
+themselves would execute unchanged; only the cost profile they consume differs.
+
+Three aspects would require genuine extension rather than reinterpretation, and
+naming them identifies the concrete modifications the pipeline would need. First,
+the fixed single-input-shape benchmark contract (\cref{sec:methods-contract})
+would have to be parameterised over sequence length, because a single shape no
+longer characterises the workload. Second, autoregressive decoding introduces
+key-value cache state that persists across tokens, whereas the stateless
+per-request chain measured here carries no such cross-step state; a split placed
+inside an attention block would have to account for where that cache lives and
+whether it crosses the boundary. Third, secure-transformer inference is a
+distinct research line in which the protection mechanism is cryptographic
+(for example homomorphic or multi-party protocols) rather than the
+infrastructure-level identity, transport, and VM-level controls measured in this
+thesis; that changes the cost model at the boundary entirely and is not a simple
+substitution into the present pipeline. These are extensions of the method, not
+merely caveats on it: each identifies a specific place where the staged design
+would have to be enriched to remain valid for a transformer workload.
+
+\subsection{Significance of per-layer service decomposition}
+\label{sec:analysis-impact}
+
+This thesis frames its contribution defensively, as a bounded overhead budget for
+the architectural, deployment, and security properties that a monolithic baseline
+does not provide (\cref{sec:analysis-evaluation}). That framing is deliberate and
+evidence-bounded, but it understates a capability that the decomposition opens and
+that the monolith structurally cannot offer, and it is worth stating that
+significance plainly. When each architectural segment runs as an independently
+addressable service behind a typed inter-layer interface, the service boundary
+becomes a point of control.
+
+The most immediate consequence is \emph{per-layer policy}. Each boundary is a
+place at which identity, authorisation, encryption, confidential execution, audit,
+and placement can be enforced independently of the rest of the model. This thesis
+already demonstrates the principle: communication-level identity, mutual TLS, and
+authorisation policy were applied at the inter-service path
+(\cref{sec:analysis-rq21}), and VM-level confidential execution was applied
+\emph{selectively} to the single downstream segment that receives intermediate
+activations rather than to the whole model (\cref{sec:analysis-rq22}). A monolith
+admits none of this granularity: it is one trust domain, one placement decision,
+and one policy. Decomposition turns ``the model'' into a set of independently
+governable units, and the overhead this thesis measures is precisely the price of
+that governance capability rather than a cost incurred for its own sake.
+
+A more speculative future direction is \emph{cross-organisational
+composition}. Once layers are independently addressable services joined by an
+explicit interface, nothing in the architecture requires them to be owned or
+operated by the same organisation. Different segments could be provided by
+different parties that agree to interoperate, so that a model is assembled at run
+time from components hosted under distinct administrative and legal domains ---
+analogous to a ``digital embassy'', in which one party's workload runs within
+another's jurisdiction under agreed terms. The per-layer controls above are what
+make such a scenario credible rather than merely conceivable: a participating
+organisation can require an authenticated identity from its upstream, run its own
+segment inside a confidential VM so that the (possibly foreign) host cannot
+observe the activations it processes, and admit traffic only from authorised
+peers. The thesis does not implement this scenario, but it is a plausible extension
+of the decomposition the thesis measures, and it reframes the act of splitting a
+monolith into services as one that \emph{enables} new governance, jurisdiction,
+and selective-protection options rather than one that only adds overhead.
+
+Both consequences depend on the boundary between layers being a stable, explicit
+contract rather than an internal implementation detail, which is where the
+thesis's measurements bear most directly on future design. The activation-transfer
+interface used here --- a typed tensor message with an explicit shape and a
+functional-parity contract, carried over gRPC --- is exactly such a boundary, and
+the central explanatory finding that boundary cost is jointly determined by
+activation-transfer size and compute placement (\cref{sec:analysis-rq13}) is
+informative for how an inter-layer API for composed inference would have to be
+parameterised. Such an API would need to expose at least the activation tensor's
+shape and dtype, because those determine both the transfer cost and the size of
+the confidentiality envelope that must protect the activation in transit and at
+rest, together with enough of the compute-distribution contract for a consumer to
+reason about where its segment sits in the chain and what it is responsible for
+executing. The thesis does not design this API, but its results indicate which
+properties such an interface would have to treat as first-class.
+
+These reflections should not be read as claims that the thesis has demonstrated
+per-layer governance or cross-organisational inference at scale; it has not. What
+it has demonstrated is that the decomposition on which those capabilities depend
+carries a bounded and characterised overhead across controlled, orchestrated,
+cloud, and security-hardened settings. That bounded answer is the precondition
+for the larger questions: decomposition is worth pursuing as an enabler of
+governance and composition precisely because its cost has been shown to be
+contained rather than prohibitive, which is the sense in which ``measuring the
+overhead'' is foundational rather than incidental to the broader significance of
+the work.

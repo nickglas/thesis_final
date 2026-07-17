@@ -1,0 +1,67 @@
+{
+  "condition": "chain_2svc_split_l4_plain",
+  "passed": true,
+  "errors": [],
+  "service_pod_nodes": [
+    "aks-rq15pool-53575030-vmss000000"
+  ],
+  "client_node": "aks-rq15pool-53575030-vmss000000",
+  "placement_validation": {
+    "strategy": "strict_same_node",
+    "service_pod_node_placement": {
+      "chain-2svc-split-l4-plain-svc-1-84b6b65b56-h7j86": "aks-rq15pool-53575030-vmss000000",
+      "chain-2svc-split-l4-plain-svc-2-595bf6f8f8-4dx8c": "aks-rq15pool-53575030-vmss000000"
+    },
+    "service_pod_nodes": [
+      "aks-rq15pool-53575030-vmss000000"
+    ],
+    "client_node": "aks-rq15pool-53575030-vmss000000",
+    "service_nodes_distinct": false,
+    "dedicated_client_node": false,
+    "min_nodes": null
+  },
+  "condition_key": "l4_plain",
+  "full_chain_probe": {
+    "target": "chain-2svc-split-l4-plain-svc-1.rq21-ms-l4-plain.svc.cluster.local:50051",
+    "expected_hop_count": 2,
+    "expected_hop_indexes": [
+      1,
+      2
+    ],
+    "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1_mtls_split_20260516_095406/conditions/pass04_32_chain_2svc_split_l4_plain/diagnostics/full_chain_probe_output.txt",
+    "returncode": 0,
+    "succeeded": true,
+    "response_shape": [
+      1,
+      1000
+    ],
+    "hop_count": 2,
+    "hop_indexes": [
+      1,
+      2
+    ],
+    "hop_timings": [
+      {
+        "hop_index": 1,
+        "activation_bytes": 602112
+      },
+      {
+        "hop_index": 2,
+        "activation_bytes": 100352
+      }
+    ]
+  },
+  "direct_service2_probe": {
+    "target": "chain-2svc-split-l4-plain-svc-2.rq21-ms-l4-plain.svc.cluster.local:50051",
+    "expected_blocked": false,
+    "manifest_file": "/home/nick/Desktop/thesis_final/results/rq2_1_mtls_split_20260516_095406/conditions/pass04_32_chain_2svc_split_l4_plain/diagnostics/direct_probe_l4_plain_pod.yaml",
+    "output_file": "/home/nick/Desktop/thesis_final/results/rq2_1_mtls_split_20260516_095406/conditions/pass04_32_chain_2svc_split_l4_plain/diagnostics/direct_probe_l4_plain_output.txt",
+    "pod_name": "rq21-ms-direct-20260516105954",
+    "namespace": "rq21-ms-l4-plain-client",
+    "pod_preserved": false,
+    "returncode": 0,
+    "blocked": false,
+    "ready": true,
+    "passed": true
+  }
+}

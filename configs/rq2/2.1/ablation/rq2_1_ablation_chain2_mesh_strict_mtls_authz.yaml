@@ -1,0 +1,137 @@
+# -----------------------------------------------------------------------------
+# RQ2.1 Ablation C3: Strict mTLS Plus AuthorizationPolicy
+#
+# Purpose: selected chain_2svc AKS path with the full RQ2.1 communication
+# hardening contract: managed-Istio sidecars, explicit ServiceAccounts,
+# downstream STRICT PeerAuthentication, and AuthorizationPolicy allowing only
+# the expected upstream service principal.
+# -----------------------------------------------------------------------------
+experiment:
+  name: "RQ2.1 ablation chain_2svc C3 strict mTLS AuthZ"
+  description: "RQ2.1 ablation: chain_2svc with managed-Istio sidecars, downstream STRICT PeerAuthentication, and service1-only AuthorizationPolicy"
+
+model:
+  name: "resnet18"
+  pretrained: true
+  device: "cpu"
+  input_shape: [1, 3, 224, 224]
+  precision: "fp32"
+
+conditions:
+  - name: "chain_2svc_mesh_strict_mtls_authz"
+    type: "chain"
+    chain_split_points: ["layer2"]
+
+benchmark:
+  rounds: 1
+  warmup_iterations: 50
+  measured_iterations: 200
+  cooldown_seconds: 5
+  seed: 42
+
+grpc:
+  host: "127.0.0.1"
+  port: 50051
+  max_message_bytes: 16777216
+
+carry_forward:
+  near_best_window_pct: 5.0
+  degeneracy_threshold_pct: 10.0
+
+parity:
+  atol: 1.0e-5
+  num_inputs: 5
+
+warmup_calibration:
+  window: 10
+  cv_threshold: 0.02
+  max_extra_iterations: -1
+
+cpu_stabilisation:
+  threading:
+    pytorch_intra_op: 1
+    pytorch_inter_op: 1
+    omp_num_threads: 1
+    mkl_num_threads: 1
+    openblas_num_threads: 1
+  affinity:
+    enabled: true
+    num_cores: 1
+    avoid_smt: true
+    explicit_cpus: null
+  priority:
+    enabled: true
+    nice_value: -5
+  governor:
+    set_governor: false
+    requested_mode: "performance"
+  turbo:
+    disable_turbo: false
+
+kubernetes:
+  namespace: "rq21-ab-c3-authz"
+  client_namespace: "rq21-ab-c3-client"
+  client_pod_name: "benchmark-client"
+  security_condition: "mesh_strict_mtls_authz"
+  service_name_template: "{condition}-svc-{index}"
+  grpc_port: 50051
+  max_message_bytes: 16777216
+  readiness_timeout: 120.0
+  image: "thesisrq21acr26.azurecr.io/thesis-inference@sha256:524e8618c61d97f466b647cdc408e836256a94807790ad66321ae724f975a221"
+  image_pull_policy: "Always"
+  resources:
+    cpu_request: "1"
+    cpu_limit: "1"
+    memory_request: "1Gi"
+    memory_limit: "1Gi"
+  client_resources:
+    cpu_request: "100m"
+    cpu_limit: "1"
+    memory_request: "1Gi"
+    memory_limit: "1Gi"
+  placement:
+    strategy: "strict_same_node"
+    require_same_node: true
+    fail_if_not_colocated: true
+    node_selector:
+      workload: "benchmark"
+    node_pool: "rq15pool"
+    tolerations:
+      - key: "workload"
+        operator: "Equal"
+        value: "benchmark"
+        effect: "NoSchedule"
+    require_control_plane_isolation: true
+  resource_sampling:
+    enabled: true
+    interval_seconds: 5
+    source: "kubectl_top"
+    require_metrics_server: false
+  metadata:
+    capture_mesh: true
+    record_control_plane_placement: true
+  mesh:
+    enabled: true
+    implementation: "managed AKS Istio add-on"
+    namespace: "rq21-ab-c3-authz"
+    revision: "asm-1-29"
+    service_accounts:
+      "1": "rq21-ab-c3-svc1"
+      "2": "rq21-ab-c3-svc2"
+    proxy_resources:
+      cpu_request: "100m"
+      cpu_limit: "500m"
+      memory_request: "128Mi"
+      memory_limit: "512Mi"
+    peer_authentication:
+      enabled: true
+      namespace_mode: "PERMISSIVE"
+      strict_workloads:
+        - name: "service2-strict"
+          segment_index: "2"
+          mode: "STRICT"
+    authorization_policy:
+      enabled: true
+      name: "service2-service1-only"
+      source_segment_index: "1"
+      downstream_segment_index: "2"

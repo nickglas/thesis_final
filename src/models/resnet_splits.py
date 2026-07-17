@@ -141,3 +141,133 @@ def get_split_models(split_after: str):
     part_a.eval()
     part_b.eval()
     return part_a, part_b
+
+
+# ---------------------------------------------------------------------------
+# N-way chain segmentation for RQ1.4
+# ---------------------------------------------------------------------------
+
+class ModelSegment(nn.Module):
+    """One segment of an N-way chain decomposition of ResNet-18.
+
+    Each segment covers a contiguous slice of the network between two
+    split boundaries (or from the start / to the end).
+
+    Parameters
+    ----------
+    model : nn.Module
+        Full pretrained ResNet-18 (used to extract submodules).
+    segment_index : int
+        0-based position of this segment in the chain.
+    split_points : list[str]
+        Ordered list of coarse split-point names that define the chain.
+        For N split points, there are N+1 segments (indices 0..N).
+    """
+
+    def __init__(self, model: nn.Module, segment_index: int,
+                 split_points: list):
+        super().__init__()
+        n_segments = len(split_points) + 1
+        if segment_index < 0 or segment_index >= n_segments:
+            raise ValueError(
+                f"segment_index={segment_index} out of range for "
+                f"{n_segments} segments (split_points={split_points})"
+            )
+        for sp in split_points:
+            if sp not in COARSE_SPLIT_POINTS:
+                raise ValueError(
+                    f"Chain segmentation only supports coarse split points. "
+                    f"Got '{sp}'. Valid: {COARSE_SPLIT_POINTS}"
+                )
+
+        self._segment_index = segment_index
+        self._split_points = list(split_points)
+        self._is_first = (segment_index == 0)
+        self._is_last = (segment_index == n_segments - 1)
+
+        # Determine which stages belong to this segment.
+        # Boundaries: segment 0 starts at stem, segment N ends at tail.
+        # split_points[i] means "after stage split_points[i]" is a boundary.
+        #
+        # Convert split points to stage indices for slicing.
+        stage_indices = [STAGE_ORDER.index(sp) for sp in split_points]
+
+        if len(split_points) == 0:
+            # No splits: single segment contains the entire model.
+            start_stage_idx = 0
+            end_stage_idx = len(STAGE_ORDER) - 1
+        elif segment_index == 0:
+            start_stage_idx = 0
+            end_stage_idx = stage_indices[0]  # inclusive
+        elif segment_index == n_segments - 1:
+            start_stage_idx = stage_indices[-1] + 1
+            end_stage_idx = len(STAGE_ORDER) - 1  # inclusive
+        else:
+            start_stage_idx = stage_indices[segment_index - 1] + 1
+            end_stage_idx = stage_indices[segment_index]  # inclusive
+
+        # Build module list
+        modules = []
+
+        # First segment includes the stem
+        if self._is_first:
+            modules.extend([model.conv1, model.bn1, model.relu, model.maxpool])
+
+        # Add the stages for this segment
+        for i in range(start_stage_idx, end_stage_idx + 1):
+            modules.append(getattr(model, STAGE_ORDER[i]))
+
+        self.layers = nn.Sequential(*modules) if modules else nn.Identity()
+
+        # Last segment includes avgpool + fc
+        if self._is_last:
+            self.avgpool = model.avgpool
+            self.fc = model.fc
+        else:
+            self.avgpool = None
+            self.fc = None
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.layers(x)
+        if self._is_last:
+            x = self.avgpool(x)
+            x = torch.flatten(x, 1)
+            x = self.fc(x)
+        return x
+
+    @property
+    def segment_index(self) -> int:
+        return self._segment_index
+
+    @property
+    def is_first(self) -> bool:
+        return self._is_first
+
+    @property
+    def is_last(self) -> bool:
+        return self._is_last
+
+
+def get_chain_segments(split_points: list) -> list:
+    """Return a list of ModelSegment modules for an N-way chain decomposition.
+
+    Parameters
+    ----------
+    split_points : list[str]
+        Ordered coarse split-point names (e.g. ["layer1", "layer3"]).
+        For N split points, returns N+1 segments.
+        An empty list returns a single segment containing the full model.
+
+    Returns
+    -------
+    list[ModelSegment]
+        Segments in chain order, all in eval mode, sharing pretrained weights.
+    """
+    model = get_full_model()
+    n_segments = len(split_points) + 1
+    segments = []
+    for i in range(n_segments):
+        seg = ModelSegment(model, i, split_points)
+        seg.eval()
+        segments.append(seg)
+    return segments

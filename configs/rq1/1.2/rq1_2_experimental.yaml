@@ -27,7 +27,10 @@ conditions:
 
 benchmark:
   rounds: 1
-  warmup_iterations: 3
+  # Warmup count, parity, and warmup_calibration are kept uniform with the
+  # thesis-facing configs. Smoke speed-up comes from rounds=1 and few measured
+  # iterations.
+  warmup_iterations: 50
   measured_iterations: 5
   cooldown_seconds: 2
   seed: 42
@@ -46,8 +49,9 @@ parity:
   num_inputs: 5
 
 warmup_calibration:
-  window: 3
+  window: 10
   cv_threshold: 0.02
+  max_extra_iterations: -1
 
 cpu_stabilisation:
   threading:

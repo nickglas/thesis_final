@@ -1,0 +1,57 @@
+apiVersion: v1
+items:
+- apiVersion: security.istio.io/v1
+  kind: PeerAuthentication
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"PeerAuthentication","metadata":{"annotations":{},"labels":{"app":"thesis-inference","condition":"chain_2svc_split_l1_mtls","experiment":"rq21-ms-l1-mtls","experiment-condition":"chain_2svc_split_l1_mtls","mesh-enabled":"true","security-condition":"mtls","workload-role":"mesh-policy"},"name":"default","namespace":"rq21-ms-l1-mtls"},"spec":{"mtls":{"mode":"PERMISSIVE"}}}
+    creationTimestamp: "2026-05-16T10:11:45Z"
+    generation: 1
+    labels:
+      app: thesis-inference
+      condition: chain_2svc_split_l1_mtls
+      experiment: rq21-ms-l1-mtls
+      experiment-condition: chain_2svc_split_l1_mtls
+      mesh-enabled: "true"
+      security-condition: mtls
+      workload-role: mesh-policy
+    name: default
+    namespace: rq21-ms-l1-mtls
+    resourceVersion: "34361"
+    uid: 04ee3d1c-eda1-4e0e-857c-56a91b25aefc
+  spec:
+    mtls:
+      mode: PERMISSIVE
+- apiVersion: security.istio.io/v1
+  kind: PeerAuthentication
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"PeerAuthentication","metadata":{"annotations":{},"labels":{"app":"thesis-inference","condition":"chain_2svc_split_l1_mtls","experiment":"rq21-ms-l1-mtls","experiment-condition":"chain_2svc_split_l1_mtls","mesh-enabled":"true","security-condition":"mtls","segment-index":"2","workload-role":"mesh-policy"},"name":"service2-strict","namespace":"rq21-ms-l1-mtls"},"spec":{"mtls":{"mode":"STRICT"},"selector":{"matchLabels":{"condition":"chain_2svc_split_l1_mtls","segment-index":"2","workload-role":"service"}}}}
+    creationTimestamp: "2026-05-16T10:11:45Z"
+    generation: 1
+    labels:
+      app: thesis-inference
+      condition: chain_2svc_split_l1_mtls
+      experiment: rq21-ms-l1-mtls
+      experiment-condition: chain_2svc_split_l1_mtls
+      mesh-enabled: "true"
+      security-condition: mtls
+      segment-index: "2"
+      workload-role: mesh-policy
+    name: service2-strict
+    namespace: rq21-ms-l1-mtls
+    resourceVersion: "34367"
+    uid: ea1e2dde-38bd-42c3-ab72-f7fd532bcbda
+  spec:
+    mtls:
+      mode: STRICT
+    selector:
+      matchLabels:
+        condition: chain_2svc_split_l1_mtls
+        segment-index: "2"
+        workload-role: service
+kind: List
+metadata:
+  resourceVersion: ""

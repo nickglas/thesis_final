@@ -1,0 +1,125 @@
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553411Z	info	FLAG: --concurrency="0"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553460Z	info	FLAG: --domain="rq21-ms-l1-mtls.svc.cluster.local"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553477Z	info	FLAG: --help="false"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553481Z	info	FLAG: --log_as_json="false"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553486Z	info	FLAG: --log_caller=""
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553490Z	info	FLAG: --log_output_level="default:info"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553501Z	info	FLAG: --log_stacktrace_level="default:none"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553511Z	info	FLAG: --log_target="[stdout]"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553516Z	info	FLAG: --meshConfig="./etc/istio/config/mesh"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553520Z	info	FLAG: --outlierLogPath=""
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553524Z	info	FLAG: --profiling="true"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553539Z	info	FLAG: --proxyComponentLogLevel="misc:error"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553543Z	info	FLAG: --proxyLogLevel="warning"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553547Z	info	FLAG: --serviceCluster="istio-proxy"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553552Z	info	FLAG: --stsPort="0"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553556Z	info	FLAG: --templateFile=""
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553570Z	info	FLAG: --tokenManagerPlugin=""
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553575Z	info	FLAG: --vklog="0"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553580Z	info	Version 1.29.1-6991a379e1fcfbe21e64da2eda5d56624a5547b4-unknown
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553887Z	info	Proxy role	ips=[10.244.1.98] type=sidecar id=chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n.rq21-ms-l1-mtls domain=rq21-ms-l1-mtls.svc.cluster.local
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.553997Z	info	Apply proxy config from env {"discoveryAddress":"istiod-asm-1-29.aks-istio-system.svc:15012","gatewayTopology":{"numTrustedProxies":1},"image":{"imageType":"distroless"}}
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.558152Z	info	cpu limit detected as 1, setting concurrency
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.558723Z	info	Effective config: binaryPath: /usr/local/bin/envoy
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] concurrency: 1
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] configPath: ./etc/istio/proxy
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] controlPlaneAuthPolicy: MUTUAL_TLS
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] discoveryAddress: istiod-asm-1-29.aks-istio-system.svc:15012
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] drainDuration: 45s
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] gatewayTopology:
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy]   numTrustedProxies: 1
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] image:
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy]   imageType: distroless
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] proxyAdminPort: 15000
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] serviceCluster: istio-proxy
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] statNameLength: 189
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] statusPort: 15020
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] terminationDrainDuration: 5s
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.558749Z	info	JWT policy is third-party-jwt
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.558754Z	info	using credential fetcher of JWT type in cluster.local trust domain
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.560749Z	info	platform detected is Azure
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.583216Z	info	Starting default Istio SDS Server
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.583243Z	info	CA Endpoint istiod-asm-1-29.aks-istio-system.svc:15012, provider Citadel
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.583261Z	info	Using CA istiod-asm-1-29.aks-istio-system.svc:15012 cert with certs: var/run/secrets/istio/root-cert.pem
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.583737Z	info	Opening status port 15020
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.584565Z	info	xdsproxy	Initializing with upstream address "istiod-asm-1-29.aks-istio-system.svc:15012" and cluster "Kubernetes"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.586196Z	info	Pilot SAN: [istiod-asm-1-29.aks-istio-system.svc]
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.587155Z	info	Starting proxy agent
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.587199Z	info	Envoy command: [-c etc/istio/proxy/envoy-rev.json --drain-time-s 45 --drain-strategy immediate --local-address-ip-version v4 --file-flush-interval-msec 1000 --disable-hot-restart --allow-unknown-static-fields -l warning --component-log-level misc:error --skip-deprecated-logs --concurrency 1]
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.588360Z	info	sds	Starting SDS grpc server
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.588388Z	info	sds	Starting SDS server for workload certificates, will listen on "var/run/secrets/workload-spiffe-uds/socket"
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.925904Z	info	xdsproxy	connected to delta upstream XDS server: istiod-asm-1-29.aks-istio-system.svc:15012	id=1
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.944509Z	info	cache	generated new workload certificate	resourceName=default latency=356.389701ms ttl=23h59m59.055494831s
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.944553Z	info	cache	Root cert has changed, start rotating root cert
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.944588Z	info	cache	returned workload trust anchor from cache	ttl=23h59m59.05541273s
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.948160Z	info	ads	ADS: new connection for node:1
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.948223Z	info	cache	returned workload certificate from cache	ttl=23h59m59.051778486s
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.949839Z	info	ads	ADS: new connection for node:2
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:43.949915Z	info	cache	returned workload trust anchor from cache	ttl=23h59m59.050087866s
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:45.382143Z	info	Readiness succeeded in 1.831759306s
+[pod/chain-2svc-split-l1-mtls-svc-2-79b5b9dc9d-fb25n/istio-proxy] 2026-05-16T10:35:45.382510Z	info	Envoy proxy is ready
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543536Z	info	FLAG: --concurrency="0"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543581Z	info	FLAG: --domain="rq21-ms-l1-mtls.svc.cluster.local"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543593Z	info	FLAG: --help="false"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543596Z	info	FLAG: --log_as_json="false"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543599Z	info	FLAG: --log_caller=""
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543601Z	info	FLAG: --log_output_level="default:info"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543603Z	info	FLAG: --log_stacktrace_level="default:none"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543612Z	info	FLAG: --log_target="[stdout]"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543615Z	info	FLAG: --meshConfig="./etc/istio/config/mesh"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543617Z	info	FLAG: --outlierLogPath=""
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543620Z	info	FLAG: --profiling="true"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543622Z	info	FLAG: --proxyComponentLogLevel="misc:error"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543628Z	info	FLAG: --proxyLogLevel="warning"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543631Z	info	FLAG: --serviceCluster="istio-proxy"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543633Z	info	FLAG: --stsPort="0"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543635Z	info	FLAG: --templateFile=""
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543641Z	info	FLAG: --tokenManagerPlugin=""
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543644Z	info	FLAG: --vklog="0"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543647Z	info	Version 1.29.1-6991a379e1fcfbe21e64da2eda5d56624a5547b4-unknown
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.543964Z	info	Proxy role	ips=[10.244.1.97] type=sidecar id=chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp.rq21-ms-l1-mtls domain=rq21-ms-l1-mtls.svc.cluster.local
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.544065Z	info	Apply proxy config from env {"discoveryAddress":"istiod-asm-1-29.aks-istio-system.svc:15012","gatewayTopology":{"numTrustedProxies":1},"image":{"imageType":"distroless"}}
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.546624Z	info	cpu limit detected as 1, setting concurrency
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.547059Z	info	Effective config: binaryPath: /usr/local/bin/envoy
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] concurrency: 1
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] configPath: ./etc/istio/proxy
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] controlPlaneAuthPolicy: MUTUAL_TLS
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] discoveryAddress: istiod-asm-1-29.aks-istio-system.svc:15012
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] drainDuration: 45s
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] gatewayTopology:
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy]   numTrustedProxies: 1
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] image:
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy]   imageType: distroless
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] proxyAdminPort: 15000
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] serviceCluster: istio-proxy
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] statNameLength: 189
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] statusPort: 15020
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] terminationDrainDuration: 5s
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.547078Z	info	JWT policy is third-party-jwt
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.547083Z	info	using credential fetcher of JWT type in cluster.local trust domain
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.549097Z	info	platform detected is Azure
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.572793Z	info	Starting default Istio SDS Server
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.572826Z	info	CA Endpoint istiod-asm-1-29.aks-istio-system.svc:15012, provider Citadel
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.572845Z	info	Using CA istiod-asm-1-29.aks-istio-system.svc:15012 cert with certs: var/run/secrets/istio/root-cert.pem
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.573269Z	info	Opening status port 15020
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.574176Z	info	xdsproxy	Initializing with upstream address "istiod-asm-1-29.aks-istio-system.svc:15012" and cluster "Kubernetes"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.576128Z	info	Pilot SAN: [istiod-asm-1-29.aks-istio-system.svc]
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.577340Z	info	Starting proxy agent
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.577385Z	info	Envoy command: [-c etc/istio/proxy/envoy-rev.json --drain-time-s 45 --drain-strategy immediate --local-address-ip-version v4 --file-flush-interval-msec 1000 --disable-hot-restart --allow-unknown-static-fields -l warning --component-log-level misc:error --skip-deprecated-logs --concurrency 1]
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.579025Z	info	sds	Starting SDS grpc server
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.579051Z	info	sds	Starting SDS server for workload certificates, will listen on "var/run/secrets/workload-spiffe-uds/socket"
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.848853Z	info	xdsproxy	connected to delta upstream XDS server: istiod-asm-1-29.aks-istio-system.svc:15012	id=1
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:43.938552Z	info	ads	ADS: new connection for node:1
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:44.020036Z	info	ads	ADS: new connection for node:2
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:44.043668Z	info	cache	generated new workload certificate	resourceName=default latency=464.934711ms ttl=23h59m59.956336534s
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:44.043729Z	info	cache	Root cert has changed, start rotating root cert
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:44.043773Z	info	cache	returned workload trust anchor from cache	ttl=23h59m59.956227633s
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:44.043793Z	info	cache	returned workload certificate from cache	ttl=23h59m59.956208133s
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:44.044261Z	info	cache	returned workload trust anchor from cache	ttl=23h59m59.955741727s
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:44.044432Z	info	cache	returned workload trust anchor from cache	ttl=23h59m59.955568625s
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:45.147232Z	info	Readiness succeeded in 1.605914881s
+[pod/chain-2svc-split-l1-mtls-svc-1-84fbdcc666-8w6lp/istio-proxy] 2026-05-16T10:35:45.147592Z	info	Envoy proxy is ready

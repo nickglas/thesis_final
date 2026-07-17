@@ -1,0 +1,75 @@
+{
+  "condition": "chain_2svc_mtls_multinode",
+  "passed": true,
+  "errors": [],
+  "service_pod_nodes": [
+    "aks-rq21bpool-33797924-vmss000000",
+    "aks-rq21bpool-33797924-vmss000002"
+  ],
+  "client_node": "aks-rq21bpool-33797924-vmss000001",
+  "placement_validation": {
+    "strategy": "multi_node_anti_affinity",
+    "service_pod_node_placement": {
+      "chain-2svc-mtls-multinode-svc-1-848fcd5cf4-wlsg4": "aks-rq21bpool-33797924-vmss000000",
+      "chain-2svc-mtls-multinode-svc-2-7dd948d8d8-9mt5s": "aks-rq21bpool-33797924-vmss000002"
+    },
+    "service_pod_nodes": [
+      "aks-rq21bpool-33797924-vmss000000",
+      "aks-rq21bpool-33797924-vmss000002"
+    ],
+    "client_node": "aks-rq21bpool-33797924-vmss000001",
+    "service_nodes_distinct": true,
+    "dedicated_client_node": true,
+    "min_nodes": 3
+  },
+  "peer_authentication_count": 2,
+  "authorization_policy_count": 1,
+  "peer_authentication_validation": {
+    "namespace_default_permissive": true,
+    "expected_peer_authentication_count": 2,
+    "observed_peer_authentication_count": 2,
+    "expected_strict_segments": [
+      "2"
+    ],
+    "observed_strict_segments": [
+      "2"
+    ],
+    "strict_peer_count_by_segment": {
+      "2": 1
+    }
+  },
+  "authorization_policy_validation": {
+    "expected_policy_count": 1,
+    "expected_policy_names": [
+      "downstream-service1-only"
+    ],
+    "observed_policy_names": [
+      "downstream-service1-only"
+    ],
+    "policies": [
+      {
+        "expected_policy_name": "downstream-service1-only",
+        "expected_source_segment_index": "1",
+        "expected_downstream_segment_index": "2",
+        "expected_allowed_principal": "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1",
+        "present": true,
+        "selects_downstream_service": true,
+        "allows_only_expected_principal": true,
+        "observed_selector": {
+          "condition": "chain_2svc_mtls_multinode",
+          "segment-index": "2",
+          "workload-role": "service"
+        },
+        "observed_action": "ALLOW",
+        "observed_allowed_principals": [
+          "cluster.local/ns/rq21b-chain2-mtls/sa/rq21b-chain2-svc1"
+        ],
+        "unrestricted_source_rule": false,
+        "unexpected_source_constraints": []
+      }
+    ],
+    "selects_downstream_service2": true,
+    "allows_only_service1_principal": true,
+    "all_policies_valid": true
+  }
+}

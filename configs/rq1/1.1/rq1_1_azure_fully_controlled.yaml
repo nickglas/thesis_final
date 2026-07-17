@@ -1,0 +1,123 @@
+# -----------------------------------------------------------------------------
+# AKS-backed fully controlled benchmark mode
+#
+# Intended for: Azure-backed RQ1.1 coarse split benchmarking.
+#
+# Execution model:
+#   - The benchmark client pod runs monolithic inference locally.
+#   - Each split condition deploys one remote Service B pod on AKS.
+#   - The host orchestrator runs the conditions in rolling mode and merges the
+#     exported artifacts back into one thesis-facing result set.
+#
+# Managed AKS limitations:
+#   - CPU governor and turbo controls are unavailable on managed nodes.
+#   - These controls are therefore disabled explicitly and recorded in
+#     environment.json for auditability.
+#
+# Image note:
+#   - The source config uses an explicit bootstrap tag so the intended registry
+#     is visible in version control.
+#   - Run scripts/run_rq11_azure_fully_controlled.py with --push to publish and
+#     pin a digest into the runtime effective config for thesis-facing runs.
+# -----------------------------------------------------------------------------
+experiment:
+  name: "RQ1.1 fully controlled (azure)"
+  description: "AKS-backed coarse split benchmark with client-local Part A and remote Service B"
+
+model:
+  name: "resnet18"
+  pretrained: true
+  device: "cpu"
+  input_shape: [1, 3, 224, 224]
+  precision: "fp32"
+
+conditions:
+  - name: "monolithic"
+    type: "monolithic"
+  - name: "split_after_layer1"
+    type: "split"
+    split_after: "layer1"
+  - name: "split_after_layer2"
+    type: "split"
+    split_after: "layer2"
+  - name: "split_after_layer3"
+    type: "split"
+    split_after: "layer3"
+  - name: "split_after_layer4"
+    type: "split"
+    split_after: "layer4"
+
+benchmark:
+  rounds: 5
+  warmup_iterations: 50
+  measured_iterations: 200
+  cooldown_seconds: 5
+  seed: 42
+
+grpc:
+  # The in-cluster runner resolves the active condition service DNS name at
+  # runtime. This placeholder keeps the source config explicit.
+  host: "condition-service-placeholder"
+  port: 50051
+  max_message_bytes: 16777216
+
+carry_forward:
+  near_best_window_pct: 5.0
+  degeneracy_threshold_pct: 10.0
+
+parity:
+  atol: 1.0e-5
+  num_inputs: 5
+
+warmup_calibration:
+  window: 10
+  cv_threshold: 0.02
+  # Adaptive extra warmup: run at least warmup_iterations, then continue
+  # until the current trailing window is stable. -1 uses the runner safety cap.
+  max_extra_iterations: -1
+
+cpu_stabilisation:
+  threading:
+    pytorch_intra_op: 1
+    pytorch_inter_op: 1
+    omp_num_threads: 1
+    mkl_num_threads: 1
+    openblas_num_threads: 1
+  affinity:
+    enabled: true
+    num_cores: 1
+    avoid_smt: true
+    explicit_cpus: null
+  priority:
+    enabled: true
+    nice_value: -5
+  governor:
+    set_governor: false
+    requested_mode: "performance"
+  turbo:
+    disable_turbo: false
+
+kubernetes:
+  namespace: "rq11-azure"
+  service_name_template: "{condition}-svc-{index}"
+  grpc_port: 50051
+  max_message_bytes: 16777216
+  readiness_timeout: 120.0
+  placement:
+    strategy: "strict_same_node"
+    require_same_node: true
+    fail_if_not_colocated: true
+    node_pool: "rq11pool"
+    node_selector: {}
+  image: "thesisrq11acr.azurecr.io/thesis-inference:rq11-bootstrap"
+  image_pull_policy: "Always"
+  resources:
+    cpu_request: "1"
+    cpu_limit: "1"
+    memory_request: "1Gi"
+    memory_limit: "1Gi"
+  client_resources:
+    cpu_request: "1"
+    cpu_limit: "1"
+    memory_request: "1Gi"
+    memory_limit: "1Gi"

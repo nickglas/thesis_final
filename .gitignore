@@ -1,4 +1,6 @@
-results
+results/
+results_exports/
+.tools/
 thesis
 
 # Byte-compiled / optimized / DLL files
@@ -217,3 +219,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+opus.zip

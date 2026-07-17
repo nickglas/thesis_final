@@ -1,0 +1,605 @@
+\section{Stage~H1 -- Service Identity and Mutual TLS Hardening}
+\label{sec:rq21}
+
+\subsection{Stage Objective}
+
+As the communication-hardening stage of RQ2, this stage addresses the following question:
+
+\begin{quote}
+\textit{What performance and operational overhead is introduced when the selected
+AKS microservice inference path is hardened with service identity, mutual TLS, and
+inter-service authorization policy?}
+\end{quote}
+
+Stage~H1 adds the first security-hardening layer to the Azure chain-family deployment
+carried forward from Stage~K and Stage~C, rather than reopening the local split-selection
+result from Stages~L1--L2. The primary thesis-facing topology is
+\texttt{chain\_2svc}, because it was the lowest-overhead non-monolithic chain in the
+preceding Kubernetes and AKS chain-count stages.
+The additional \texttt{chain\_5svc} run is used as a stress case to examine whether
+the same security mechanism becomes more costly when the number of protected service
+boundaries increases. The goal is not to evaluate trusted execution environments in
+this stage, but to measure the cost of communication-level hardening: service identity,
+mutual TLS, and service-account-based authorization for inter-service traffic.
+
+The literature framing for service-mesh-based mTLS, identity, and
+authorisation policy is discussed in \cref{sec:rw-security}.
+
+\subsection{Experimental Setup}
+
+The Stage~H1 benchmark used two frozen paired AKS artifact sets: a chain-2 main
+driver \texttt{rq2\_1\_paired\_20260515\_160012} and a chain-5 maximum-depth
+stress driver \texttt{rq2\_1\_paired\_20260517\_114303}. Both runs used the
+same AKS cluster (\texttt{thesis-rq15}), strict same-node placement, and an
+isolated system node pool so that control-plane pods did not share the
+benchmark node.
+
+All Stage~H1 conditions used the same pinned container image digest, shown across
+two lines for typesetting:
+\begin{center}
+\small\texttt{sha256:d292aef407ee8a15da2bdaa680de1cc2}\\
+\small\texttt{4b0975e7de81d27e1fc3a7d128b8736b}
+\end{center}
+The mTLS condition used the managed AKS Istio add-on
+(\texttt{asm-1-29}). Each paired pass executed both security conditions; per
+\texttt{paired\_summary.md} the alternation was mTLS-first on passes 1, 3, 5 and
+plain-first on passes 2, 4 in both topologies, so each condition has five
+executions and 1,000 measured iterations in total.
+
+The complete benchmark configuration is reported in
+\cref{tab:rq21_config} (\cref{sec:appendix-benchmark-configs}). The salient
+parameters are the two paired topologies (\texttt{chain\_2svc} as the primary,
+\texttt{chain\_5svc} as the maximum-depth stress case), the managed-Istio mesh
+revision \texttt{asm-1-29}, a per-service budget of 1~CPU / 1~GiB plus an
+additional per-service sidecar budget (100m--500m~CPU, 128--512~MiB) in the mTLS
+condition, and five paired passes of 200 iterations per condition (1,000 after
+merging) at seed~42.
+
+The plain condition used Kubernetes service-to-service communication without mesh
+injection. The mTLS condition added one Istio proxy per inference service, service
+accounts for the protected services, workload-level peer-authentication objects, and
+authorization-policy objects. The benchmark client remained outside the mesh.
+Consequently, Stage~H1 measures hardening of the inter-service path inside the inference
+chain rather than external ingress hardening. For \texttt{chain\_2svc}, the downstream
+service was protected by strict mTLS and an authorization policy that allowed only the
+expected upstream service account. For \texttt{chain\_5svc}, the same pattern was
+applied to each downstream segment, producing four immediate-upstream authorization
+policies.
+
+Security validation passed in both frozen artifact sets. The mTLS runs passed static
+manifest validation and runtime validation, including the expected
+peer-authentication and authorization-policy counts. The full-chain
+positive probe passed for every mTLS pass, and direct non-mesh probes were blocked for
+the protected downstream segments. Resource metrics were complete in both runs.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~H1 latency: plain vs.\ mTLS AKS chains]{Stage~H1 latency results for plain and mTLS AKS chains. Sources: \texttt{merged/aggregated\_results.md} in \texttt{rq2\_1\_paired\_20260515\_160012} (\texttt{chain\_2svc}) and \texttt{rq2\_1\_paired\_20260517\_114303} (\texttt{chain\_5svc}).}
+\label{tab:rq21_latency}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{llccccc}
+\toprule
+\textbf{Topology} & \textbf{Condition} & \textbf{n} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{p95 (ms)} & \textbf{Inferred non-compute/platform (ms)} \\
+\midrule
+\texttt{chain\_2svc} & \texttt{plain} & 1000 & 75.557 & 75.262 & 80.047 & 4.559 \\
+\texttt{chain\_2svc} & \texttt{mtls}  & 1000 & 79.045 & 78.590 & 83.670 & 7.891 \\
+\texttt{chain\_5svc} & \texttt{plain} & 1000 & 82.302 & 81.818 & 87.502 & 10.801 \\
+\texttt{chain\_5svc} & \texttt{mtls}  & 1000 & 91.139 & 90.823 & 96.485 & 19.949 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+For the primary \texttt{chain\_2svc} topology, the mTLS/AuthZ hardening bundle
+increased mean latency from 75.557~ms to 79.045~ms. The mean overhead was
+therefore 3.488~ms, or 4.62\%, and p95 latency increased by 3.623~ms. The
+inferred non-compute/platform component increased from 4.559~ms to 7.891~ms.
+This supports the interpretation that most of the added latency is associated
+with the communication/platform path introduced by the mesh rather than with a
+change in neural-network computation.
+
+For the additional \texttt{chain\_5svc} stress topology, the same hardening
+bundle increased mean latency from 82.302~ms to 91.139~ms. The mean overhead
+was 8.837~ms, or 10.74\%, and p95 latency increased by 8.983~ms. The inferred
+non-compute/platform component increased from 10.801~ms to 19.949~ms. The
+stress run therefore shows that the measured communication-hardening cost is
+larger in the four-boundary stress case than in the selected two-service chain,
+even though the main Stage~H1 answer remains anchored in \texttt{chain\_2svc}. This
+two-point comparison should be read as depth sensitivity, not as a calibrated
+scaling law.
+
+\begin{table}[ht]
+\centering
+\caption[Stage~H1 paired-pass latency deltas]{Stage~H1 paired-pass latency deltas. Sources: \texttt{merged/aggregated\_results.md} (per-pass tables) in \texttt{rq2\_1\_paired\_20260515\_160012} and \texttt{rq2\_1\_paired\_20260517\_114303}. The pass-delta std is computed from the five per-pass deltas.}
+\label{tab:rq21_paired_deltas}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Topology} & \textbf{Mean delta (ms)} & \textbf{Mean delta (\%)} & \textbf{Min--max pass delta (ms)} & \textbf{Pass-delta std (ms)} & \textbf{p95 delta (ms)} \\
+\midrule
+\texttt{chain\_2svc} & 3.488 & 4.62  & 2.223--5.230 & 1.091 & 3.623 \\
+\texttt{chain\_5svc} & 8.837 & 10.74 & 7.623--9.985 & 0.881 & 8.983 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The paired-pass deltas in \cref{tab:rq21_paired_deltas} are consistent with the
+overall means. In \texttt{chain\_2svc}, every paired pass shows a positive
+mTLS/AuthZ hardening overhead, with pass-level deltas between 2.223~ms and
+5.230~ms. In \texttt{chain\_5svc}, every paired pass is also positive, with
+deltas between 7.623~ms and 9.985~ms. The alternating execution order reduces
+the risk that the result is explained only by slow drift during the run.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\input{figures/tikz/results/rq21_mtls_latency_overhead}
+}
+\caption[Stage~H1 mTLS/AuthZ latency overhead]{Stage~H1 mTLS/AuthZ latency overhead for the primary and stress AKS chains. Mean and p95 deltas are computed within the paired plain/mTLS design. The stress topology contains four protected inter-service boundaries, so the larger overhead visualises the observed stress-case sensitivity of sidecar-mediated communication hardening.}
+\label{fig:rq21_mtls_latency_overhead}
+\end{figure}
+
+\Cref{fig:rq21_mtls_latency_overhead} visualises the paired latency deltas from
+\cref{tab:rq21_paired_deltas}. The figure focuses on deltas rather than raw latency so
+that the two Stage~H1 findings remain visible: the selected two-service chain pays a
+modest overhead, while the deeper stress chain pays a larger overhead once four
+inter-service boundaries are protected.
+
+\begin{table}[ht]
+\centering
+\caption[Stage~H1 communication-hardening ablation]{Stage~H1 \texttt{chain\_2svc} ablation of the communication-hardening bundle. Source: \texttt{merged/rq2\_1\_ablation\_summary.md} in \texttt{rq2\_1\_ablation\_20260516\_112348}. As documented in the evidence manifest, ablation deltas are internally comparable only and must not be spliced into the frozen two-condition paired result.}
+\label{tab:rq21_ablation}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{llccc}
+\toprule
+\textbf{Step} & \textbf{Condition} & \textbf{Mean latency (ms)} & \textbf{Adjacent delta (ms)} & \textbf{Interpretation} \\
+\midrule
+C0 & Plain Kubernetes, no mesh & 69.901 & -- & Non-mesh baseline \\
+C1 & Mesh-default sidecars / auto-mTLS / no AuthZ & 72.470 & +2.569 & Main mesh data-path cost \\
+C2 & Strict downstream mTLS / no AuthZ & 72.784 & +0.315 & Small added enforcement cost \\
+C3 & Strict downstream mTLS plus AuthZ & 72.740 & -0.044 & Within pass-level noise \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+An additional \texttt{chain\_2svc} ablation was run after the frozen paired
+benchmark to interpret the hardening bundle more precisely. This ablation is
+supporting evidence rather than a replacement for the frozen paired result; the
+evidence manifest states that the ablation campaign is internally comparable
+only and that its deltas must not be spliced into the frozen two-condition
+chain-2 / chain-5 numbers. With that caveat, the full hardened ablation
+condition reproduces the frozen result's order of magnitude: C3$-$C0 adds
+2.840~ms, in the same range as the frozen paired \texttt{chain\_2svc} overhead
+of 3.488~ms. As shown in \cref{tab:rq21_ablation}, most of the adjacent latency
+change occurs when moving from plain Kubernetes to the mesh-default condition.
+Strict mTLS enforcement over mesh-default traffic and the AuthorizationPolicy
+step are both small relative to pass-level variation. The correct
+interpretation is therefore that the deployed managed-Istio data path
+introduces most of the measured overhead, while strict mTLS and identity-based
+authorization mainly add enforcement semantics with little additional
+steady-state latency in this workload.
+
+\begin{table}[ht]
+\centering
+\caption[Stage~H1 resource and operational overheads]{Stage~H1 resource and operational overheads. Sources: \texttt{merged/paired\_summary.md} in \texttt{rq2\_1\_paired\_20260515\_160012} (\texttt{chain\_2svc}) and \texttt{rq2\_1\_paired\_20260517\_114303} (\texttt{chain\_5svc}).}
+\label{tab:rq21_resource_overhead}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Topology} & \textbf{Sidecar CPU (mCPU)} & \textbf{Total pod CPU delta (mCPU)} & \textbf{Sidecar memory (MiB)} & \textbf{Total pod memory delta (MiB)} & \textbf{Schedule-to-ready delta (s)} & \textbf{Additional objects} \\
+\midrule
+\texttt{chain\_2svc} & 34.684 & $-$56.813 & 82.125  &  93.819 & 6.30 & 5 \\
+\texttt{chain\_5svc} & 87.602 &   37.490  & 223.714 & 264.143 & 6.84 & 14 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The mTLS condition also increased resource requests and deployment complexity.
+For \texttt{chain\_2svc}, the mesh added two injected proxies, two service
+accounts, two peer-authentication objects, one authorization-policy object,
+200m requested sidecar CPU, and 256~MiB requested sidecar memory. For
+\texttt{chain\_5svc}, the mesh added five injected proxies, five service
+accounts, five peer-authentication objects, four authorization-policy objects,
+500m requested sidecar CPU, and 640~MiB requested sidecar memory. In both
+cases, the always-on Istio control-plane pods were present on the isolated
+system pool rather than the benchmark node. The CPU counter deltas should be
+read as window-level operational measurements rather than perfect causal
+attribution: in \texttt{chain\_2svc}, measured application-container CPU was
+lower in the mTLS condition, which makes the total pod CPU delta negative
+despite a clearly positive sidecar contribution.
+
+The interpretation of these results and their contribution to RQ2 are presented in
+\cref{sec:analysis-rq21}.
+
+\section{Stage~H1 (Split Sensitivity) -- Single-Hop mTLS vs Activation Size}
+\label{sec:rq21-splitsens}
+
+This stage corresponds to the methodological design declared in
+\cref{sec:methods-rq21-splitsens}: a supporting campaign that varies the
+single protected hop's activation size across \texttt{layer1},
+\texttt{layer2}, \texttt{layer3}, and \texttt{layer4} and pairs each split
+point's plain and mTLS conditions, in order to measure whether the
+single-hop mTLS overhead scales with the activation crossing that hop.
+
+\subsection{Experimental Setup}
+
+The split-sensitivity campaign used the frozen paired AKS artifact
+\texttt{rq2\_1\_mtls\_split\_20260516\_095406}. It ran on the same AKS cluster
+(\texttt{thesis-rq15}), the same managed-Istio revision (\texttt{asm-1-29}), the
+same isolated system node pool, and the same strict same-node placement as the
+primary Stage~H1 design, and reused the identical pinned application image
+digest:
+\begin{center}
+\small\texttt{sha256:d292aef407ee8a15da2bdaa680de1cc2}\\
+\small\texttt{4b0975e7de81d27e1fc3a7d128b8736b}
+\end{center}
+The independent variable is the split point that produces the activation crossing
+the single protected hop (hop~2 of \texttt{chain\_2svc}). It is varied across
+\texttt{layer1}, \texttt{layer2}, \texttt{layer3}, and \texttt{layer4}, yielding
+protected activations of 784, 392, 196, and 98~KiB respectively
+($802{,}816$, $401{,}408$, $200{,}704$, and $100{,}352$~bytes), which match the
+Stage~L1 activation sizes. For each split point a plain and an mTLS condition form
+a paired pair, giving eight conditions in total. The campaign ran five
+seeded-interleaved passes (\texttt{order\_seed}~$=42$, protected hop index~2)
+across the eight conditions, for $5 \times 8 \times 200 = 8{,}000$ measured
+iterations (1{,}000 per condition). Functional parity against the monolithic
+reference held for every condition, and the per-pass security validation --
+static manifest checks, runtime policy-object counts, full-chain positive probes,
+and direct non-mesh denial probes against the protected downstream segment --
+passed as in the primary Stage~H1 run.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~H1 single-hop mTLS overhead by split point]{Stage~H1 split-sensitivity: single-hop mTLS overhead as a function of the activation crossing the protected hop. Each row is a paired plain/mTLS pair at one split point, aggregated over five interleaved passes (1{,}000 measured iterations per condition). Source: \texttt{merged/split\_sensitivity\_summary.csv} and \texttt{merged/aggregated\_results.csv} in \texttt{rq2\_1\_mtls\_split\_20260516\_095406}. As documented in the evidence manifest, these per-split deltas are internally comparable within this interleaved campaign and must not be spliced into the frozen two-condition \texttt{chain\_2svc} or \texttt{chain\_5svc} paired results.}
+\label{tab:rq21_splitsens}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Split point} & \textbf{Protected (KiB)} & \textbf{Plain mean (ms)} & \textbf{mTLS mean (ms)} & \textbf{Mean $\Delta$ (ms)} & \textbf{Mean $\Delta$ (\%)} & \textbf{p95 $\Delta$ (ms)} \\
+\midrule
+\texttt{split\_after\_layer1}            & 784 & 58.752 & 63.172 & +4.420 & +7.52 & +5.359 \\
+\texttt{split\_after\_layer2}            & 392 & 59.317 & 63.004 & +3.687 & +6.22 & +4.172 \\
+\texttt{split\_after\_layer3}            & 196 & 57.992 & 61.473 & +3.481 & +6.00 & +3.428 \\
+\texttt{split\_after\_layer4}$^{\dagger}$ & 98  & 56.815 & 59.401 & +2.586 & +4.55 & +2.918 \\
+\bottomrule
+\end{tabular}
+}
+\\[2pt]
+{\footnotesize $^{\dagger}$\,\texttt{split\_after\_layer4} remains compute-degenerate under the Stage~L1 degeneracy rule (\cref{sec:methods-carryforward}) and is retained only as a low-payload diagnostic endpoint, not as a candidate deployment.}
+\end{table}
+
+The single-hop mTLS overhead decreases monotonically with the size of the activation
+crossing the protected hop in this supporting campaign. As the protected activation falls from 784~KiB
+(\texttt{layer1}) to 98~KiB (\texttt{layer4}), the mean overhead decreases
+monotonically from +4.420~ms to +2.586~ms, the percentage overhead from +7.52\%
+to +4.55\%, and the p95 overhead from +5.359~ms to +2.918~ms
+(\cref{tab:rq21_splitsens}). This is the activation-transfer dimension of the
+Stage~L3 two-dimensional account (\cref{sec:analysis-rq13}) reappearing at the
+security layer: a larger protected activation costs proportionally more to push
+through the mTLS-mediated sidecar data path.
+
+The increase is attributable to the communication/platform path rather than to
+model computation. The inferred non-compute/platform component of the mTLS
+overhead decreases in step with activation size --- +4.253~ms, +3.481~ms,
++3.026~ms, and +2.560~ms for \texttt{layer1} through \texttt{layer4} --- while the
+total-compute delta between the plain and mTLS conditions stays within
+$\pm0.46$~ms at every split point (0.167, 0.206, 0.455, and 0.026~ms
+respectively, from \texttt{aggregated\_results.csv}). The mTLS condition therefore
+changes the platform path, not the ResNet-18 computation, exactly as expected for
+a sidecar-mediated boundary.
+
+Two further readings sharpen the result. First, the overhead does not vanish as
+the activation shrinks: even the smallest 98~KiB \texttt{layer4} hop pays
++2.586~ms. This is consistent with the Stage~H1 ablation
+(\cref{tab:rq21_ablation}), which localised most of the hardening cost to entry
+into the managed-Istio data path rather than to the bytes encrypted; the
+split-sensitivity campaign decomposes the same cost into a fixed sidecar-entry
+component plus an activation-scaling component. Second, the \texttt{layer2}
+single-hop delta measured here (+3.687~ms) reproduces the primary
+\texttt{chain\_2svc} paired overhead (+3.488~ms, \cref{tab:rq21_latency}) to
+within roughly 0.2~ms, even though the plain absolute baseline in this campaign
+(59.317~ms) sits well below the primary \texttt{chain\_2svc} plain baseline
+(75.557~ms). The two runs are separate campaigns and their absolutes are not
+comparable --- which is precisely why the thesis reports paired deltas rather than
+absolute latencies --- but the close agreement of the \emph{delta} is an
+order-of-magnitude cross-check on the primary single-node Stage~H1 number, in the
+same spirit as the ablation cross-check.
+
+\begin{table}[ht]
+\centering
+\caption[Stage~H1 split-sensitivity resource and operational overhead]{Stage~H1 split-sensitivity per-split resource and operational overhead of the mTLS condition relative to plain. Source: \texttt{merged/resource\_summary\_by\_split.csv} and \texttt{merged/operational\_overhead\_by\_split.json} in \texttt{rq2\_1\_mtls\_split\_20260516\_095406}. The window-level sidecar-CPU, total-pod-CPU, and schedule-to-ready columns are operational measurements over the run window rather than perfect causal attributions; as in the primary Stage~H1 run, the total-pod-CPU delta can read negative when measured application-container CPU happens to be lower in the mTLS pass (here at \texttt{layer3}).}
+\label{tab:rq21_splitsens_resource}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Split point} & \textbf{Protected (KiB)} & \textbf{Sidecar CPU $\Delta$ (mCPU)} & \textbf{Sidecar mem $\Delta$ (MiB)} & \textbf{Total pod CPU $\Delta$ (mCPU)} & \textbf{Sched.-to-ready $\Delta$ (s)} \\
+\midrule
+\texttt{split\_after\_layer1} & 784 & 54.1 & 85.2 & $+97.6$ & 3.2 \\
+\texttt{split\_after\_layer2} & 392 & 44.9 & 83.8 & $+93.2$ & 3.3 \\
+\texttt{split\_after\_layer3} & 196 & 29.7 & 82.0 & $-10.4$ & 0.2 \\
+\texttt{split\_after\_layer4} & 98  & 27.7 & 82.7 & $+45.0$ & 3.4 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The operational footprint of the hardening is otherwise constant across split
+points, because the \texttt{chain\_2svc} topology and the single protected hop do
+not change: every split point adds the same five Kubernetes objects (two service
+accounts, two peer-authentication objects, and one authorization policy), the same
+two injected sidecars, and the same requested sidecar budget of $+200$~mCPU and
+$+256$~MiB. What varies is the \emph{window-level} sidecar resource use:
+\cref{tab:rq21_splitsens_resource} shows that the measured sidecar CPU delta
+itself decreases with activation size, from 54.1~mCPU at \texttt{layer1} to
+27.7~mCPU at \texttt{layer4}, reinforcing the latency finding that the sidecar
+performs proportionally more work for larger protected activations. The
+total-pod-CPU and schedule-to-ready columns are noisier window-level counters and
+are not interpreted beyond the direction noted above.
+
+This campaign is supporting evidence, not a headline Stage~H1 result. Its
+contribution is to confirm that the single-hop mTLS overhead is activation-size
+dependent and dominated by the platform path, which is consistent with both the
+Stage~L3 activation-transfer mechanism (\cref{sec:analysis-rq13}) and the primary
+Stage~H1 finding that the hardening cost lives in the managed-Istio data path
+(\cref{sec:analysis-rq21}). Per the evidence manifest, the per-split deltas remain
+campaign-internal and are not spliced into the frozen \texttt{chain\_2svc} or
+\texttt{chain\_5svc} paired numbers.
+
+\section{Stage~H1 (Multi-Node Alternative) -- Inter-Node Sensitivity of mTLS Overhead}
+\label{sec:rq21b}
+
+This stage corresponds to the methodological design declared in
+\cref{sec:methods-rq21b}: a paired sensitivity stage that forces the two
+\texttt{chain\_2svc} inference services onto distinct AKS nodes and re-pairs
+the plain and mTLS conditions under the same managed-Istio configuration as
+the primary Stage~H1 run. Every paired execution passed the multi-node placement
+contract described in \cref{sec:methods-rq21b}. The supporting result is
+frozen as \texttt{rq2\_1b\_multinode\_20260516\_174806}; the reported
+overhead is taken from \texttt{merged/paired\_summary.md} and
+\texttt{merged/aggregated\_results.csv}.
+
+Under the multi-node placement, the mean mTLS overhead on \texttt{chain\_2svc}
+is +2.71~ms, or +3.90\%, with every paired execution passing multi-node
+placement validation. This is in the same direction and order of magnitude as
+the +3.488~ms / +4.62\% single-node primary result reported in
+\cref{tab:rq21_latency}, and is slightly smaller in percent terms, consistent
+with a larger plain baseline absorbing more of the proxy cost once inter-node
+transport is added. The result is treated as a sensitivity envelope around the
+primary single-node Stage~H1 result, not as a substitute for it.
+
+The interpretation of this multi-node sensitivity result, and its role in
+bounding the single-node primary number, are developed under
+\cref{sec:analysis-rq21} as Finding~7.
+
+\section{Stage~H2 -- Confidential VM Execution Hardening}
+\label{sec:rq22}
+
+\subsection{Stage Objective}
+
+As the confidential-execution stage of RQ2, this stage addresses the following question:
+
+\begin{quote}
+\textit{What additional performance and operational overhead is introduced when
+VM-level confidential execution is added to the already communication-secured
+AKS inference chain, when the downstream protected service is placed on AMD
+SEV-SNP confidential nodes?}
+\end{quote}
+
+Stage~H2 adds a second security-hardening layer to the Azure deployment path. Stage~H1
+already established the communication-secured baseline: the selected
+\texttt{chain\_2svc} inference pipeline runs on AKS with managed-Istio mTLS,
+service identity, and an authorisation policy on the protected downstream
+service. Stage~H2 keeps that communication-security contract fixed and changes the
+execution environment of the downstream service. The confidential condition
+places \texttt{service2} on an Azure confidential VM node pool backed by AMD
+SEV-SNP, while the standard condition uses matched non-confidential AMD VM
+nodes for both services. Per the canonical evidence manifest, the
+thesis-facing Stage~H2 scope is \texttt{service2\_only}; placing both services on
+confidential nodes (full two-service TEE) is treated as future work and is not
+evaluated here. He~et~al.~\cite{he2021_attacking_collaborative} motivate
+protecting the activations received by the downstream segment beyond the
+in-transit mTLS layer, although they evaluate a different (malicious
+remote-service) threat model than the SEV-SNP infrastructure-level protection
+measured here.
+
+The purpose of this stage is therefore incremental. It does not ask whether
+mTLS is useful; that was answered in Stage~H1. Instead, it asks what extra cost is
+paid when runtime protection against an additional infrastructure-level threat model is
+added on top of the already secured service-to-service path.
+
+The literature framing for AMD SEV-SNP, VM-level confidential computing, and
+its interaction with sidecar-based service meshes is discussed in
+\cref{sec:rw-security}.
+
+\subsection{Experimental Setup}
+
+Stage~H2 used the frozen rolling AKS artifact \texttt{rq2\_2\_confidential\_20260516\_135726}.
+The run preserves the Stage~H1 managed-Istio mTLS and authorisation semantics, and
+collects newly paired standard baselines on \texttt{Standard\_D8as\_v5} nodes
+rather than reusing the Stage~H1 numbers. The application image is the same ACR
+digest used in Stage~C and Stage~H1
+(\texttt{thesisrq15acr.azurecr.io/thesis-inference\\@sha256:d292aef407ee\dots}),
+recorded in \texttt{image\_reference.txt}.
+
+The complete benchmark configuration is reported in
+\cref{tab:rq22_config} (\cref{sec:appendix-benchmark-configs}). The salient
+parameters are the standard VM size \texttt{Standard\_D8as\_v5} and the
+confidential \texttt{Standard\_DC8as\_v5} (AMD SEV-SNP), a \texttt{service2\_only}
+TEE scope, the \texttt{chain\_2svc} topology inheriting the Stage~H1 mTLS and
+authorisation semantics, and five paired passes of 200 iterations per condition
+(1,000 after merging).
+
+The benchmark compared two conditions. In the standard condition, service1 and
+service2 both ran on \texttt{Standard\_D8as\_v5}. In the confidential
+condition, service1 remained on \texttt{Standard\_D8as\_v5}, while service2 ran
+on \texttt{Standard\_DC8as\_v5} backed by AMD SEV-SNP. This estimates the paired
+standard-vs-confidential node-pool delta for protecting the downstream service
+that receives intermediate activations and executes the later ResNet-18 segment.
+The rolling design alternates
+standard and confidential passes from a seeded order (standard-first on passes
+1, 3, 5; confidential-first on passes 2, 4 per
+\texttt{execution\_plan.json}), and parity validation against the monolithic
+reference (\texttt{max\_abs\_diff}~$=0.0$, \texttt{num\_inputs}~$=5$) passed in
+every per-pass \texttt{parity\_validation.json}.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption[Stage~H2 service2-only confidential execution results]{Stage~H2 service2-only confidential execution results. Source: per-pass \texttt{benchmark/raw\_iterations.csv} in \texttt{rq2\_2\_confidential\_20260516\_135726/conditions/}, aggregated across the five standard and five confidential passes (1,000 iterations per condition).}
+\label{tab:rq22_service2_results}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Condition} & \textbf{Service2 VM} & \textbf{n} & \textbf{Mean (ms)} & \textbf{Median (ms)} & \textbf{p95 (ms)} \\
+\midrule
+\texttt{standard}     & \texttt{Standard\_D8as\_v5}  & 1000 & 58.492 & 58.289 & 60.255 \\
+\texttt{confidential} & \texttt{Standard\_DC8as\_v5} & 1000 & 60.346 & 59.756 & 63.856 \\
+\midrule
+\textbf{Delta} & --- & --- & \textbf{+1.854 / +3.17\%} & \textbf{+1.467 / +2.52\%} & \textbf{+3.601 / +5.98\%} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+In the service2-only TEE run, mean end-to-end latency increased from 58.492~ms
+to 60.346~ms. The mean overhead was therefore 1.854~ms, or 3.17\%. Median
+latency increased by 1.467~ms, and p95 latency increased by 3.601~ms.
+Sequential throughput, computed from the mean latency, decreased from
+17.096~req/s to 16.571~req/s, a reduction of approximately 3.07\%.
+
+This is the only confidential-execution scope evaluated in the thesis. The
+evidence manifest scopes Stage~H2 to \texttt{service2\_only} and explicitly treats
+a full two-service confidential placement as future work. The trade-off table
+in \cref{sec:rq23} therefore compares plain AKS, mTLS, and mTLS plus selective
+TEE only.
+
+The interpretation of these results and their contribution to RQ2 are presented in
+\cref{sec:analysis-rq22}.
+
+\section{Trade-off Synthesis -- Security-Hardening Recommendation}
+\label{sec:rq23}
+
+\subsection{Stage Objective}
+
+As the concluding trade-off synthesis of RQ2, this stage addresses the following question:
+
+\begin{quote}
+Which evaluated security-hardening configuration is the most defensible default
+under the stated performance-cost, operational-complexity, and protection-scope
+criteria for the selected AKS microservice inference deployment?
+\end{quote}
+
+The trade-off synthesis is a synthesis stage rather than a new benchmark. Stage~H1 measured the
+cost of adding service identity, mutual TLS, and inter-service authorization
+policy to the selected Azure inference path. Stage~H2 then measured the additional
+cost of placing the downstream protected service on an AMD SEV-SNP confidential
+VM node pool while keeping the communication-security contract fixed. The trade-off synthesis
+combines these results to compare the evaluated hardening levels and identify
+when each level is appropriate.
+
+\subsection{Synthesis Basis}
+
+The synthesis compares three deployment configurations evaluated in this
+thesis. The first is the plain AKS baseline from Stage~C, where the inference
+chain runs without service-mesh mTLS or confidential-node placement. The second
+is the Stage~H1 communication-secured configuration, where managed-Istio mTLS,
+service identity, and authorization policy are added to the selected chain.
+The third is the Stage~H2 selective confidential-execution configuration, where
+only the downstream protected service runs on an AMD SEV-SNP confidential
+node. Extending the confidential-computing boundary to both services (full
+two-service TEE) is out of the thesis-facing scope per the evidence manifest
+and is discussed only as future work.
+
+These configurations should not be interpreted as interchangeable variants of
+the same security mechanism. They protect different parts of the system. Plain
+AKS provides the performance baseline but does not add the communication-level
+identity and encryption policy evaluated in Stage~H1. The mTLS/AuthZ configuration
+hardens the service-to-service path by authenticating workloads and enforcing
+authorization policy. The confidential-node configuration adds a VM-level
+runtime protection boundary for the downstream service placed on AMD SEV-SNP
+infrastructure. As discussed in
+\cref{sec:methods-rq22,sec:analysis-rq22,sec:analysis-threats}, the SEV-SNP
+threat-model scope is bounded: residual attack surfaces such as malicious-host
+interrupt injection remain outside the memory-encryption
+guarantee~\cite{schluter2024_heckler}, and this thesis does not experimentally
+evaluate such attacks.
+
+\subsection{Trade-off Summary}
+
+\begin{table}[!htbp]
+\centering
+\caption[Trade-off synthesis of security-hardening levels]{Trade-off synthesis of evaluated security-hardening levels. mTLS overheads are taken from \cref{tab:rq21_latency}; the selective TEE overhead is taken from \cref{tab:rq22_service2_results} relative to its own paired standard-node mTLS baseline. Each cost is reported as both the mean delta and the p95 delta, because the two security mechanisms differ in how the latency cost is distributed between the centre and the tail of the distribution.}
+\label{tab:rq23_security_tradeoff}
+\begingroup
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.18\textwidth}>{\raggedright\arraybackslash}p{0.31\textwidth}>{\raggedright\arraybackslash}p{0.205\textwidth}>{\raggedright\arraybackslash}p{0.205\textwidth}}
+\toprule
+\mbox{Configuration} & Protection scope & Mean cost & p95 cost \\
+\midrule
+Plain AKS
+& Baseline AKS deployment without mesh mTLS/AuthZ or confidential-node placement.
+& Baseline (reference).
+& Baseline (reference). \\
+\addlinespace
+\mbox{mTLS/AuthZ}
+& Service identity, encrypted service-to-service communication, and authorization policy for the selected inference path.
+& chain\_2svc: +3.488~ms / +4.62\%\newline chain\_5svc: +8.837~ms / +10.74\%.
+& chain\_2svc: +3.623~ms / +4.53\%\newline chain\_5svc: +8.983~ms / +10.27\%. \\
+\addlinespace
+\mbox{mTLS/AuthZ} + selective TEE
+& Communication hardening plus AMD SEV-SNP VM-level confidential execution for the downstream protected service (\texttt{service2\_only}).
+& +1.854~ms / +3.17\% over the newly paired standard-node mTLS baseline.
+& +3.601~ms / +5.98\% over the same baseline. \\
+\bottomrule
+\end{tabular}
+\endgroup
+\end{table}
+
+The trade-off is not a single global ranking because the preferred configuration
+depends on the threat model. If performance is the only criterion, the plain
+AKS deployment is the best option. However, it does not provide the additional
+service identity, encrypted inter-service communication, or
+authorization-policy enforcement evaluated in Stage~H1. If the main security
+requirement is to protect communication between inference services, the
+mTLS/AuthZ configuration provides the most appropriate default balance. It
+adds a mean latency overhead of 3.488~ms, or 4.62\%, for the selected
+\texttt{chain\_2svc} topology, while enforcing the intended
+service-account-based policy. The \texttt{chain\_5svc} stress case shows a larger
+cost when four inter-service boundaries are protected, reaching 8.837~ms, or
+10.74\%, for the full five-service chain. The mean and p95 overheads fall in the
+same range, so the mTLS cost is centred rather than concentrated in the latency
+tail.
+
+If the threat model includes host-level exposure of the downstream inference
+component, mTLS alone is not sufficient because it protects the communication
+path rather than the runtime memory of the service, and prior work shows that
+an untrusted remote service holding only intermediate feature maps can in
+principle recover the input~\cite{he2021_attacking_collaborative}. Selective
+confidential execution provides a narrower hardening step against an
+infrastructure-level adversary on the host platform. The service2-only
+confidential-node run increases mean latency by 1.854~ms, or 3.17\%, relative
+to its paired standard-node mTLS baseline. In contrast to mTLS, this cost is
+tail-weighted: the p95 delta of 3.601~ms (5.98\%) is roughly 1.9~times the mean
+delta in percentage terms, so tail-sensitive service-level objectives should
+budget against the p95 figure. This makes selective TEE attractive
+when the downstream service is the main infrastructure-level sensitivity
+boundary, while bounded by SEV-SNP's known residual attack
+surfaces~\cite{schluter2024_heckler}, which this thesis does not
+experimentally evaluate.
+
+Extending the confidential-execution boundary to both services would broaden
+the runtime-protection scope at additional cost. That configuration is out of
+the thesis-facing scope of Stage~H2 (see the evidence manifest) and is therefore
+discussed as future work rather than as a measured trade-off point.
+
+The interpretation of these results and their contribution to RQ2 are presented in
+\cref{sec:analysis-rq23}.
